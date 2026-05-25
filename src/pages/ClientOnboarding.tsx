@@ -25,19 +25,25 @@ const SCHEDULES = [
 ];
 
 const STEP_TITLES = ["Your Details", "What Do You Need?", "Job Details"];
-const STEP_SUBS   = ["Tell us a bit about yourself", "Choose a service and your preferred timing", "Where and what needs fixing?"];
+const STEP_SUBS   = ["Tell us a bit about yourself", "Choose your services and preferred timing", "Where and what needs fixing?"];
 
 export default function ClientOnboarding() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
   const TOTAL = 3;
-  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", password:"", serviceNeeded:"", preferredSchedule:"", location:"", jobDescription:"" });
+  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", password:"", preferredSchedule:"", location:"", jobDescription:"" });
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string,string>>({});
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [success, setSuccess] = useState(false);
 
   const set = (key: string, val: string) => { setForm(f => ({ ...f, [key]: val })); setErrors(e => ({ ...e, [key]: "" })); };
+
+  const toggleService = (label: string) => {
+    setSelectedServices(prev => prev.includes(label) ? prev.filter(s => s !== label) : [...prev, label]);
+    setErrors(e => ({ ...e, serviceNeeded: "" }));
+  };
 
   const validate = () => {
     const errs: Record<string,string> = {};
@@ -49,11 +55,11 @@ export default function ClientOnboarding() {
       if (form.password.length < 8) errs.password = "Minimum 8 characters";
     }
     if (step === 2) {
-      if (!form.serviceNeeded)     errs.serviceNeeded     = "Please select a service";
+      if (selectedServices.length === 0) errs.serviceNeeded = "Please select at least one service";
       if (!form.preferredSchedule) errs.preferredSchedule = "Please select a schedule";
     }
     if (step === 3) {
-      if (!form.location.trim())                errs.location       = "Location required";
+      if (!form.location.trim()) errs.location = "Location required";
       if (form.jobDescription.trim().length < 10) errs.jobDescription = "Min 10 characters";
     }
     setErrors(errs);
@@ -72,7 +78,7 @@ export default function ClientOnboarding() {
       if (!authData.user) throw new Error("Account creation failed.");
       const userId = authData.user.id;
       await supabase.from("profiles").insert({ id: userId, email: form.email, first_name: form.firstName, last_name: form.lastName, phone: form.phone, role: "client" });
-      await supabase.from("client_requests").insert({ user_id: userId, first_name: form.firstName, last_name: form.lastName, email: form.email, phone: form.phone, service_needed: form.serviceNeeded, preferred_schedule: form.preferredSchedule, location: form.location, job_description: form.jobDescription, status: "pending" });
+      await supabase.from("client_requests").insert({ user_id: userId, first_name: form.firstName, last_name: form.lastName, email: form.email, phone: form.phone, service_needed: selectedServices.join(", "), preferred_schedule: form.preferredSchedule, location: form.location, job_description: form.jobDescription, status: "pending" });
       setSuccess(true); window.scrollTo(0,0);
     } catch (err: any) {
       setSubmitError(err.message?.includes("already registered") ? "An account with this email already exists. Please sign in instead." : err.message ?? "Something went wrong.");
@@ -160,15 +166,20 @@ export default function ClientOnboarding() {
 
           {step === 2 && (
             <div>
-              <p style={s.label}>Service Needed</p>
+              <p style={s.label}>Services Needed <span style={{ color:"rgba(190,205,235,.4)", textTransform:"none", letterSpacing:0 }}>(select all that apply)</span></p>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".75rem", marginBottom:"1.5rem" }}>
                 {SERVICES.map(sv => (
-                  <button key={sv.label} style={{ ...s.svcBtn, ...(form.serviceNeeded===sv.label ? s.svcBtnSel : {}) }} onClick={() => set("serviceNeeded",sv.label)}>
-                    <span style={{ fontSize:"1.2rem" }}>{sv.icon}</span>{sv.label}
+                  <button key={sv.label} style={{ ...s.svcBtn, ...(selectedServices.includes(sv.label) ? s.svcBtnSel : {}) }} onClick={() => toggleService(sv.label)}>
+                    <span style={{ fontSize:"1.2rem", flexShrink:0 }}>{sv.icon}</span>
+                    <span>{sv.label}</span>
+                    {selectedServices.includes(sv.label) && <span style={{ marginLeft:"auto", color:"#ea6b14", fontSize:"1rem" }}>✓</span>}
                   </button>
                 ))}
               </div>
               {errors.serviceNeeded && <p style={s.err}>{errors.serviceNeeded}</p>}
+              {selectedServices.length > 0 && (
+                <p style={{ fontSize:".78rem", color:"#ea6b14", marginBottom:"1.5rem" }}>✓ {selectedServices.length} service{selectedServices.length > 1 ? "s" : ""} selected</p>
+              )}
               <p style={{ ...s.label, marginTop:"1.5rem" }}>When Do You Need It?</p>
               {SCHEDULES.map(sc => (
                 <button key={sc.label} style={{ ...s.schedBtn, ...(form.preferredSchedule===sc.label ? s.schedBtnSel : {}) }} onClick={() => set("preferredSchedule",sc.label)}>
