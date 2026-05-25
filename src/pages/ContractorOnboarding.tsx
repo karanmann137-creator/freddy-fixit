@@ -18,6 +18,8 @@ const SPECIALTIES = [
   { icon: "🚗", label: "Oil Change" },
   { icon: "🔋", label: "Battery / Brakes" },
   { icon: "🧰", label: "Vehicle Maintenance" },
+  { icon: "🌳", label: "Landscaping" },
+  { icon: "❄️", label: "Snow Removal" },
 ];
 
 const CALGARY_ZONES = [

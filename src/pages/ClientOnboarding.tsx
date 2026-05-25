@@ -14,6 +14,8 @@ const SERVICES = [
   { icon: "🛞", label: "Tire Swap / Rotation" },
   { icon: "🔋", label: "Battery / Brakes" },
   { icon: "🧰", label: "Vehicle Maintenance" },
+  { icon: "🌳", label: "Landscaping" },
+  { icon: "❄️", label: "Snow Removal" },
   { icon: "📦", label: "Other" },
 ];
 
