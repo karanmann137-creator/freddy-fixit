@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
-import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 
 const SERVICES = [
   { icon: "🔧", label: "General Handyman" },
@@ -20,358 +17,198 @@ const SERVICES = [
   { icon: "📦", label: "Other" },
 ];
 
-const SCHEDULE_OPTIONS = [
-  { icon: "⚡", label: "Urgent / ASAP", sub: "Within 24 hours" },
-  { icon: "📅", label: "This Week", sub: "Next 2–5 days" },
-  { icon: "🗓️", label: "Flexible", sub: "I'm not in a rush" },
-  { icon: "🔁", label: "Recurring", sub: "Regular maintenance" },
+const SCHEDULES = [
+  { icon: "⚡", label: "Urgent / ASAP",  sub: "Within 24 hours" },
+  { icon: "📅", label: "This Week",       sub: "Next 2–5 days" },
+  { icon: "🗓️", label: "Flexible",        sub: "I'm not in a rush" },
+  { icon: "🔁", label: "Recurring",       sub: "Regular maintenance" },
 ];
 
-interface FormData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  serviceNeeded: string;
-  location: string;
-  preferredSchedule: string;
-  jobDescription: string;
-}
-
-const TOTAL_STEPS = 3;
-
-const sharedStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
-
-  .ff-wrap {
-    min-height: 100vh;
-    background: #1a2236;
-    background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(234,107,20,0.15) 0%, transparent 70%);
-    padding: 2.5rem 1rem;
-    font-family: 'DM Sans', sans-serif;
-    color: #f0f4ff;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .ff-wrap::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: repeating-linear-gradient(0deg, transparent, transparent 60px, rgba(255,255,255,0.015) 60px, rgba(255,255,255,0.015) 61px),
-      repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(255,255,255,0.015) 60px, rgba(255,255,255,0.015) 61px);
-    pointer-events: none;
-  }
-
-  .ff-container { max-width: 580px; margin: 0 auto; position: relative; z-index: 1; }
-
-  .ff-back-home {
-    display: inline-flex; align-items: center; gap: 0.4rem;
-    color: rgba(190,205,235,0.5); font-size: 0.82rem;
-    background: none; border: none; cursor: pointer;
-    font-family: 'DM Sans', sans-serif; padding: 0;
-    margin-bottom: 2rem; transition: color 0.2s; text-transform: uppercase; letter-spacing: 0.08em;
-  }
-  .ff-back-home:hover { color: #ea6b14; }
-
-  .ff-header { margin-bottom: 2rem; }
-  .ff-step-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.15em; color: #ea6b14; margin-bottom: 0.4rem; }
-  .ff-heading { font-family: 'Bebas Neue', sans-serif; font-size: 2.6rem; letter-spacing: 0.06em; color: #f0f4ff; margin: 0; line-height: 1; }
-  .ff-subhead { font-size: 0.9rem; color: rgba(190,205,235,0.6); margin-top: 0.4rem; font-weight: 300; }
-
-  .ff-progress { display: flex; gap: 6px; margin-bottom: 2.5rem; }
-  .ff-progress-bar { height: 3px; flex: 1; border-radius: 99px; background: rgba(255,255,255,0.1); transition: background 0.4s; }
-  .ff-progress-bar.active { background: #ea6b14; box-shadow: 0 0 8px rgba(234,107,20,0.5); }
-  .ff-progress-bar.done { background: rgba(234,107,20,0.45); }
-
-  .ff-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 2rem; }
-
-  .ff-label { display: block; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(190,205,235,0.6); margin-bottom: 0.6rem; }
-  .ff-input {
-    width: 100%; padding: 0.75rem 1rem; background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
-    color: #f0f4ff; font-family: 'DM Sans', sans-serif; font-size: 0.95rem;
-    outline: none; transition: border-color 0.2s, box-shadow 0.2s; box-sizing: border-box;
-  }
-  .ff-input:focus { border-color: rgba(234,107,20,0.5); box-shadow: 0 0 0 3px rgba(234,107,20,0.1); }
-  .ff-input.error { border-color: rgba(239,68,68,0.6); }
-  .ff-input::placeholder { color: rgba(190,205,235,0.3); }
-  .ff-textarea { resize: vertical; min-height: 120px; }
-  .ff-error { font-size: 0.78rem; color: #f87171; margin-top: 0.35rem; }
-  .ff-field { margin-bottom: 1.2rem; }
-  .ff-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-
-  .ff-service-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-  .ff-service-btn {
-    display: flex; align-items: center; gap: 0.65rem;
-    padding: 0.9rem 1rem; background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
-    color: rgba(190,205,235,0.8); font-family: 'DM Sans', sans-serif;
-    font-size: 0.88rem; cursor: pointer; transition: all 0.2s; text-align: left;
-  }
-  .ff-service-btn:hover { border-color: rgba(234,107,20,0.3); color: #f0f4ff; }
-  .ff-service-btn.selected {
-    background: rgba(234,107,20,0.12); border-color: rgba(234,107,20,0.5);
-    color: #f0f4ff; box-shadow: 0 0 12px rgba(234,107,20,0.1);
-  }
-  .ff-service-icon { font-size: 1.2rem; flex-shrink: 0; }
-
-  .ff-schedule-grid { display: flex; flex-direction: column; gap: 0.75rem; }
-  .ff-schedule-btn {
-    display: flex; align-items: center; gap: 1rem;
-    padding: 1rem 1.2rem; background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
-    color: rgba(190,205,235,0.8); font-family: 'DM Sans', sans-serif;
-    cursor: pointer; transition: all 0.2s; text-align: left;
-  }
-  .ff-schedule-btn:hover { border-color: rgba(234,107,20,0.3); color: #f0f4ff; }
-  .ff-schedule-btn.selected {
-    background: rgba(234,107,20,0.12); border-color: rgba(234,107,20,0.5);
-    color: #f0f4ff;
-  }
-  .ff-schedule-icon { font-size: 1.5rem; flex-shrink: 0; }
-  .ff-schedule-label { font-size: 0.95rem; font-weight: 500; }
-  .ff-schedule-sub { font-size: 0.78rem; color: rgba(190,205,235,0.5); margin-top: 0.1rem; }
-
-  .ff-nav { display: flex; gap: 0.75rem; margin-top: 2rem; }
-  .ff-btn {
-    flex: 1; padding: 0.85rem 1.5rem; border-radius: 8px;
-    font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 500;
-    cursor: pointer; border: none; transition: all 0.2s;
-    display: flex; align-items: center; justify-content: center; gap: 0.4rem;
-    letter-spacing: 0.05em;
-  }
-  .ff-btn-secondary { background: rgba(255,255,255,0.06); color: rgba(190,205,235,0.8); border: 1px solid rgba(255,255,255,0.1); }
-  .ff-btn-secondary:hover { background: rgba(255,255,255,0.1); }
-  .ff-btn-primary { background: #ea6b14; color: #fff; }
-  .ff-btn-primary:hover { background: #f07a28; box-shadow: 0 4px 20px rgba(234,107,20,0.35); }
-  .ff-btn-primary:disabled { background: rgba(234,107,20,0.35); cursor: not-allowed; }
-  .ff-btn-submit { background: linear-gradient(135deg, #ea6b14, #f09020); color: #fff; }
-  .ff-btn-submit:hover { box-shadow: 0 4px 24px rgba(234,107,20,0.4); }
-`;
+const STEP_TITLES = ["Your Details", "What Do You Need?", "Job Details"];
+const STEP_SUBS   = ["Tell us a bit about yourself", "Choose a service and your preferred timing", "Where and what needs fixing?"];
 
 export default function ClientOnboarding() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState<FormData>({
-    firstName: "", lastName: "", email: "", phone: "",
-    serviceNeeded: "", location: "", preferredSchedule: "", jobDescription: "",
-  });
+  const TOTAL = 3;
+  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", password:"", serviceNeeded:"", preferredSchedule:"", location:"", jobDescription:"" });
+  const [errors, setErrors] = useState<Record<string,string>>({});
+  const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [success, setSuccess] = useState(false);
 
-  const set = (field: keyof FormData, value: string) => {
-    setForm(p => ({ ...p, [field]: value }));
-    setErrors(p => { const n = { ...p }; delete n[field]; return n; });
-  };
+  const set = (key: string, val: string) => { setForm(f => ({ ...f, [key]: val })); setErrors(e => ({ ...e, [key]: "" })); };
 
-  const validate = (s: number) => {
-    const e: Record<string, string> = {};
-    if (s === 1) {
-      if (!form.firstName.trim()) e.firstName = "Required";
-      if (!form.lastName.trim()) e.lastName = "Required";
-      if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Valid email required";
-      if (form.phone.replace(/\D/g, "").length < 10) e.phone = "10-digit phone required";
-    } else if (s === 2) {
-      if (!form.serviceNeeded) e.serviceNeeded = "Please select a service";
-      if (!form.preferredSchedule) e.preferredSchedule = "Please select a schedule";
-    } else if (s === 3) {
-      if (!form.location.trim()) e.location = "Location required";
-      if (form.jobDescription.trim().length < 10) e.jobDescription = "Please describe the job (min 10 chars)";
+  const validate = () => {
+    const errs: Record<string,string> = {};
+    if (step === 1) {
+      if (!form.firstName.trim()) errs.firstName = "Required";
+      if (!form.lastName.trim())  errs.lastName  = "Required";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = "Valid email required";
+      if (form.phone.replace(/\D/g,"").length < 10) errs.phone = "10-digit phone required";
+      if (form.password.length < 8) errs.password = "Minimum 8 characters";
     }
-    setErrors(e);
-    return Object.keys(e).length === 0;
+    if (step === 2) {
+      if (!form.serviceNeeded)     errs.serviceNeeded     = "Please select a service";
+      if (!form.preferredSchedule) errs.preferredSchedule = "Please select a schedule";
+    }
+    if (step === 3) {
+      if (!form.location.trim())                errs.location       = "Location required";
+      if (form.jobDescription.trim().length < 10) errs.jobDescription = "Min 10 characters";
+    }
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
   };
 
-  const next = () => { if (validate(step)) setStep(s => s + 1); };
-  const prev = () => { setStep(s => s - 1); setErrors({}); };
+  const next = () => { if (validate()) { setStep(s => s + 1); window.scrollTo(0,0); } };
+  const back = () => { if (step === 1) setLocation("/"); else { setStep(s => s - 1); window.scrollTo(0,0); } };
 
   const handleSubmit = async () => {
-    if (!validate(3)) return;
-    setIsSubmitting(true);
+    if (!validate()) return;
+    setLoading(true); setSubmitError("");
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await supabase.from("clients").insert({
-        user_id: user?.id ?? null,
-        first_name: form.firstName,
-        last_name: form.lastName,
-        email: form.email,
-        phone: form.phone,
-      });
-      if (error) throw error;
-
-      // Create the job request
-      const { data: client } = await supabase
-        .from("clients")
-        .select("id")
-        .eq("email", form.email)
-        .single();
-
-      if (client) {
-        await supabase.from("jobs").insert({
-          client_id: client.id,
-          service_needed: form.serviceNeeded,
-          location: form.location,
-          preferred_schedule: form.preferredSchedule,
-          job_description: form.jobDescription,
-          status: "pending",
-        });
-      }
-
-      toast.success("Request submitted!");
-      setLocation("/client-success");
-    } catch {
-      toast.error("Something went wrong. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
+      const { data: authData, error: authErr } = await supabase.auth.signUp({ email: form.email, password: form.password });
+      if (authErr) throw authErr;
+      if (!authData.user) throw new Error("Account creation failed.");
+      const userId = authData.user.id;
+      await supabase.from("profiles").insert({ id: userId, email: form.email, first_name: form.firstName, last_name: form.lastName, phone: form.phone, role: "client" });
+      await supabase.from("client_requests").insert({ user_id: userId, first_name: form.firstName, last_name: form.lastName, email: form.email, phone: form.phone, service_needed: form.serviceNeeded, preferred_schedule: form.preferredSchedule, location: form.location, job_description: form.jobDescription, status: "pending" });
+      setSuccess(true); window.scrollTo(0,0);
+    } catch (err: any) {
+      setSubmitError(err.message?.includes("already registered") ? "An account with this email already exists. Please sign in instead." : err.message ?? "Something went wrong.");
+    } finally { setLoading(false); }
   };
 
-  const stepTitles = ["Your Details", "What Do You Need?", "Job Details"];
-  const stepSubs = [
-    "Tell us a bit about yourself",
-    "Choose a service and your preferred timing",
-    "Where and what needs fixing?",
-  ];
+  const inp = { width:"100%", padding:".75rem 1rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.1)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".95rem", outline:"none", boxSizing:"border-box" as const };
+  const s = {
+    wrap: { minHeight:"100vh", background:"#1a2236", padding:"3rem 1rem 4rem", fontFamily:"'DM Sans',sans-serif", color:"#f0f4ff" },
+    inner: { maxWidth:"580px", margin:"0 auto" },
+    card: { background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"14px", padding:"2rem" },
+    label: { display:"block", fontSize:".78rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.6)", marginBottom:".6rem" },
+    err: { fontSize:".78rem", color:"#f87171", marginTop:".35rem" },
+    svcBtn: { display:"flex", alignItems:"center", gap:".65rem", padding:".9rem 1rem", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"10px", color:"rgba(190,205,235,.8)", fontFamily:"inherit", fontSize:".88rem", cursor:"pointer", textAlign:"left" as const, width:"100%" },
+    svcBtnSel: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.5)", color:"#f0f4ff" },
+    schedBtn: { display:"flex", alignItems:"center", gap:"1rem", padding:"1rem 1.2rem", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"10px", color:"rgba(190,205,235,.8)", fontFamily:"inherit", cursor:"pointer", textAlign:"left" as const, width:"100%", marginBottom:".75rem" },
+    schedBtnSel: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.5)", color:"#f0f4ff" },
+    navBtn: { flex:1, padding:".85rem 1.5rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer", border:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:".4rem" },
+  };
+
+  if (success) return (
+    <div style={s.wrap}>
+      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+      <div style={{ ...s.inner, textAlign:"center", paddingTop:"4rem" }}>
+        <div style={{ width:"72px", height:"72px", background:"rgba(234,107,20,.15)", border:"2px solid rgba(234,107,20,.4)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 2rem" }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ea6b14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"3rem", letterSpacing:".06em", marginBottom:".5rem" }}>Request <span style={{ color:"#ea6b14" }}>Received!</span></h1>
+        <p style={{ color:"rgba(190,205,235,.65)", marginBottom:"2rem" }}>We'll be in touch within a few hours.</p>
+        <div style={{ display:"flex", gap:".75rem", justifyContent:"center" }}>
+          <button style={{ ...s.navBtn, background:"rgba(255,255,255,.06)", color:"rgba(190,205,235,.8)", border:"1px solid rgba(255,255,255,.1)" }} onClick={() => setLocation("/")}>← Home</button>
+          <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff" }} onClick={() => setLocation("/client-dashboard")}>My Dashboard →</button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="ff-wrap">
-      <style>{sharedStyles}</style>
-      <div className="ff-container">
-        <button className="ff-back-home" onClick={() => setLocation("/")}>
-          ← Home
+    <div style={s.wrap}>
+      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+      <div style={s.inner}>
+        <button onClick={back} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(190,205,235,.5)", fontFamily:"inherit", fontSize:".82rem", textTransform:"uppercase", letterSpacing:".08em", padding:0, marginBottom:"2rem", display:"block" }}>
+          {step === 1 ? "← Home" : "← Back"}
         </button>
-
-        <div className="ff-header">
-          <p className="ff-step-label">Step {step} of {TOTAL_STEPS}</p>
-          <h1 className="ff-heading">{stepTitles[step - 1]}</h1>
-          <p className="ff-subhead">{stepSubs[step - 1]}</p>
+        <p style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".15em", color:"#ea6b14", marginBottom:".4rem" }}>Step {step} of {TOTAL}</p>
+        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:".4rem" }}>{STEP_TITLES[step-1]}</h1>
+        <p style={{ color:"rgba(190,205,235,.6)", fontSize:".9rem", marginBottom:"2rem" }}>{STEP_SUBS[step-1]}</p>
+        <div style={{ display:"flex", gap:"6px", marginBottom:"2.5rem" }}>
+          {Array.from({length:TOTAL},(_,i) => <div key={i} style={{ height:"3px", flex:1, borderRadius:"99px", background: i+1===step ? "#ea6b14" : i+1<step ? "rgba(234,107,20,.45)" : "rgba(255,255,255,.1)" }} />)}
         </div>
 
-        <div className="ff-progress">
-          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-            <div key={i} className={`ff-progress-bar ${i + 1 === step ? "active" : i + 1 < step ? "done" : ""}`} />
-          ))}
-        </div>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            initial={{ opacity: 0, x: 24 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -24 }}
-            transition={{ duration: 0.28 }}
-          >
-            <div className="ff-card">
-
-              {step === 1 && (
-                <>
-                  <div className="ff-row">
-                    <div className="ff-field">
-                      <label className="ff-label">First Name</label>
-                      <input className={`ff-input${errors.firstName ? " error" : ""}`} value={form.firstName} onChange={e => set("firstName", e.target.value)} placeholder="Alex" />
-                      {errors.firstName && <p className="ff-error">{errors.firstName}</p>}
-                    </div>
-                    <div className="ff-field">
-                      <label className="ff-label">Last Name</label>
-                      <input className={`ff-input${errors.lastName ? " error" : ""}`} value={form.lastName} onChange={e => set("lastName", e.target.value)} placeholder="Johnson" />
-                      {errors.lastName && <p className="ff-error">{errors.lastName}</p>}
-                    </div>
-                  </div>
-                  <div className="ff-field">
-                    <label className="ff-label">Email</label>
-                    <input className={`ff-input${errors.email ? " error" : ""}`} type="email" value={form.email} onChange={e => set("email", e.target.value)} placeholder="alex@email.com" />
-                    {errors.email && <p className="ff-error">{errors.email}</p>}
-                  </div>
-                  <div className="ff-field">
-                    <label className="ff-label">Phone</label>
-                    <input className={`ff-input${errors.phone ? " error" : ""}`} type="tel" value={form.phone} onChange={e => set("phone", e.target.value)} placeholder="403-555-0100" />
-                    {errors.phone && <p className="ff-error">{errors.phone}</p>}
-                  </div>
-                </>
-              )}
-
-              {step === 2 && (
-                <>
-                  <div className="ff-field">
-                    <label className="ff-label">Service Needed</label>
-                    <div className="ff-service-grid">
-                      {SERVICES.map(s => (
-                        <button
-                          key={s.label}
-                          className={`ff-service-btn${form.serviceNeeded === s.label ? " selected" : ""}`}
-                          onClick={() => set("serviceNeeded", s.label)}
-                        >
-                          <span className="ff-service-icon">{s.icon}</span>
-                          {s.label}
-                        </button>
-                      ))}
-                    </div>
-                    {errors.serviceNeeded && <p className="ff-error">{errors.serviceNeeded}</p>}
-                  </div>
-
-                  <div className="ff-field" style={{ marginTop: "1.5rem" }}>
-                    <label className="ff-label">When Do You Need It?</label>
-                    <div className="ff-schedule-grid">
-                      {SCHEDULE_OPTIONS.map(o => (
-                        <button
-                          key={o.label}
-                          className={`ff-schedule-btn${form.preferredSchedule === o.label ? " selected" : ""}`}
-                          onClick={() => set("preferredSchedule", o.label)}
-                        >
-                          <span className="ff-schedule-icon">{o.icon}</span>
-                          <div>
-                            <div className="ff-schedule-label">{o.label}</div>
-                            <div className="ff-schedule-sub">{o.sub}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                    {errors.preferredSchedule && <p className="ff-error">{errors.preferredSchedule}</p>}
-                  </div>
-                </>
-              )}
-
-              {step === 3 && (
-                <>
-                  <div className="ff-field">
-                    <label className="ff-label">Your Address / Location in Calgary</label>
-                    <input className={`ff-input${errors.location ? " error" : ""}`} value={form.location} onChange={e => set("location", e.target.value)} placeholder="e.g. 123 Main St NW, Calgary" />
-                    {errors.location && <p className="ff-error">{errors.location}</p>}
-                  </div>
-                  <div className="ff-field">
-                    <label className="ff-label">Describe the Job</label>
-                    <textarea className={`ff-input ff-textarea${errors.jobDescription ? " error" : ""}`} value={form.jobDescription} onChange={e => set("jobDescription", e.target.value)} placeholder="Tell us what's broken or what you need done. The more detail, the better." />
-                    {errors.jobDescription && <p className="ff-error">{errors.jobDescription}</p>}
-                  </div>
-                </>
-              )}
-
+        <div style={s.card}>
+          {step === 1 && (
+            <div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+                <div style={{ marginBottom:"1.2rem" }}>
+                  <label style={s.label}>First Name</label>
+                  <input style={{ ...inp, borderColor: errors.firstName ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} placeholder="Alex" value={form.firstName} onChange={e => set("firstName",e.target.value)} />
+                  {errors.firstName && <p style={s.err}>{errors.firstName}</p>}
+                </div>
+                <div style={{ marginBottom:"1.2rem" }}>
+                  <label style={s.label}>Last Name</label>
+                  <input style={{ ...inp, borderColor: errors.lastName ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} placeholder="Johnson" value={form.lastName} onChange={e => set("lastName",e.target.value)} />
+                  {errors.lastName && <p style={s.err}>{errors.lastName}</p>}
+                </div>
+              </div>
+              <div style={{ marginBottom:"1.2rem" }}>
+                <label style={s.label}>Email</label>
+                <input style={{ ...inp, borderColor: errors.email ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} type="email" placeholder="alex@email.com" value={form.email} onChange={e => set("email",e.target.value)} />
+                {errors.email && <p style={s.err}>{errors.email}</p>}
+              </div>
+              <div style={{ marginBottom:"1.2rem" }}>
+                <label style={s.label}>Phone</label>
+                <input style={{ ...inp, borderColor: errors.phone ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} type="tel" placeholder="403-555-0100" value={form.phone} onChange={e => set("phone",e.target.value)} />
+                {errors.phone && <p style={s.err}>{errors.phone}</p>}
+              </div>
+              <div style={{ marginBottom:"1.2rem" }}>
+                <label style={s.label}>Password (for your account)</label>
+                <input style={{ ...inp, borderColor: errors.password ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} type="password" placeholder="Min 8 characters" value={form.password} onChange={e => set("password",e.target.value)} />
+                {errors.password && <p style={s.err}>{errors.password}</p>}
+              </div>
+              <p style={{ fontSize:".78rem", color:"rgba(190,205,235,.4)", fontWeight:300 }}>We'll create a free account so you can track your request.</p>
             </div>
-          </motion.div>
-        </AnimatePresence>
-
-        <div className="ff-nav">
-          {step > 1 ? (
-            <button className="ff-btn ff-btn-secondary" onClick={prev}>
-              <ChevronLeft size={16} /> Back
-            </button>
-          ) : (
-            <button className="ff-btn ff-btn-secondary" onClick={() => setLocation("/")}>
-              ← Home
-            </button>
           )}
 
-          {step < TOTAL_STEPS ? (
-            <button className="ff-btn ff-btn-primary" onClick={next}>
-              Next <ChevronRight size={16} />
-            </button>
-          ) : (
-            <button className="ff-btn ff-btn-submit" onClick={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Submitting...</> : "Submit Request →"}
-            </button>
+          {step === 2 && (
+            <div>
+              <p style={s.label}>Service Needed</p>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".75rem", marginBottom:"1.5rem" }}>
+                {SERVICES.map(sv => (
+                  <button key={sv.label} style={{ ...s.svcBtn, ...(form.serviceNeeded===sv.label ? s.svcBtnSel : {}) }} onClick={() => set("serviceNeeded",sv.label)}>
+                    <span style={{ fontSize:"1.2rem" }}>{sv.icon}</span>{sv.label}
+                  </button>
+                ))}
+              </div>
+              {errors.serviceNeeded && <p style={s.err}>{errors.serviceNeeded}</p>}
+              <p style={{ ...s.label, marginTop:"1.5rem" }}>When Do You Need It?</p>
+              {SCHEDULES.map(sc => (
+                <button key={sc.label} style={{ ...s.schedBtn, ...(form.preferredSchedule===sc.label ? s.schedBtnSel : {}) }} onClick={() => set("preferredSchedule",sc.label)}>
+                  <span style={{ fontSize:"1.5rem" }}>{sc.icon}</span>
+                  <div><div style={{ fontSize:".95rem", fontWeight:500 }}>{sc.label}</div><div style={{ fontSize:".78rem", color:"rgba(190,205,235,.5)" }}>{sc.sub}</div></div>
+                </button>
+              ))}
+              {errors.preferredSchedule && <p style={s.err}>{errors.preferredSchedule}</p>}
+            </div>
+          )}
+
+          {step === 3 && (
+            <div>
+              <div style={{ marginBottom:"1.2rem" }}>
+                <label style={s.label}>Your Address / Location in Calgary</label>
+                <input style={{ ...inp, borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} placeholder="e.g. 123 Main St NW, Calgary" value={form.location} onChange={e => set("location",e.target.value)} />
+                {errors.location && <p style={s.err}>{errors.location}</p>}
+              </div>
+              <div style={{ marginBottom:"1.2rem" }}>
+                <label style={s.label}>Describe the Job</label>
+                <textarea style={{ ...inp, resize:"vertical", minHeight:"120px", borderColor: errors.jobDescription ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} placeholder="Tell us what's broken or what you need done." value={form.jobDescription} onChange={e => set("jobDescription",e.target.value)} />
+                {errors.jobDescription && <p style={s.err}>{errors.jobDescription}</p>}
+              </div>
+              {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"#fca5a5", marginTop:"1rem" }}>{submitError}</div>}
+            </div>
           )}
         </div>
+
+        <div style={{ display:"flex", gap:".75rem", marginTop:"2rem" }}>
+          <button style={{ ...s.navBtn, background:"rgba(255,255,255,.06)", color:"rgba(190,205,235,.8)", border:"1px solid rgba(255,255,255,.1)" }} onClick={back}>{step===1 ? "← Home" : "← Back"}</button>
+          {step < TOTAL
+            ? <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff" }} onClick={next}>Next →</button>
+            : <button style={{ ...s.navBtn, background:"linear-gradient(135deg,#ea6b14,#f09020)", color:"#fff", opacity: loading ? .6 : 1 }} onClick={handleSubmit} disabled={loading}>
+                {loading ? "Submitting…" : "Submit Request →"}
+              </button>
+          }
+        </div>
+        <p style={{ textAlign:"center", marginTop:"1.25rem", fontSize:".82rem", color:"rgba(190,205,235,.4)" }}>
+          Already have an account? <button onClick={() => setLocation("/login")} style={{ background:"none", border:"none", cursor:"pointer", color:"#ea6b14", fontFamily:"inherit", fontSize:".82rem", padding:0 }}>Sign in</button>
+        </p>
       </div>
     </div>
   );
