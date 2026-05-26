@@ -1,6 +1,25 @@
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 
+const SERVICES = [
+  { icon:"🔧", label:"General Repairs",      desc:"Handyman services for anything around the house" },
+  { icon:"🚿", label:"Plumbing",              desc:"Leaks, installs, and everything in between" },
+  { icon:"⚡", label:"Electrical",            desc:"Safe, certified electrical work done right" },
+  { icon:"🌡️", label:"HVAC",                  desc:"Heating, cooling, and ventilation maintenance" },
+  { icon:"🪵", label:"Carpentry",             desc:"Custom builds, repairs, and finishing work" },
+  { icon:"🎨", label:"Painting",              desc:"Interior and exterior painting services" },
+  { icon:"🏠", label:"Drywall & Flooring",    desc:"From patch jobs to full installs" },
+  { icon:"🚗", label:"Vehicle Maintenance",   desc:"Oil changes, tires, brakes and more" },
+  { icon:"🌳", label:"Landscaping",           desc:"Lawn care, cleanup, and yard work" },
+  { icon:"❄️", label:"Snow Removal",          desc:"Residential and commercial snow clearing" },
+];
+
+const HOW_IT_WORKS = [
+  { step:"01", icon:"📋", title:"Submit a Request",    desc:"Tell us what needs fixing — takes less than 2 minutes. Choose your service, location, and preferred timing." },
+  { step:"02", icon:"🔗", title:"Get Matched",         desc:"We match you with a vetted local contractor in your area based on your service needs and schedule." },
+  { step:"03", icon:"🔧", title:"Job Done",            desc:"Your contractor shows up and gets it done. Simple, reliable, no hassle." },
+];
+
 export default function Home() {
   const [, setLocation] = useLocation();
 
@@ -17,8 +36,7 @@ export default function Home() {
             radial-gradient(ellipse 80% 60% at 50% -10%, rgba(234,107,20,0.2) 0%, transparent 70%),
             radial-gradient(ellipse 40% 40% at 80% 80%, rgba(60,80,120,0.25) 0%, transparent 60%);
           display: flex; flex-direction: column; align-items: center; justify-content: center;
-          padding: 2rem 1rem 4rem;
-          position: relative; overflow: hidden;
+          padding: 2rem 1rem 4rem; position: relative; overflow: hidden;
         }
         .ff-hero::before {
           content: ''; position: absolute; inset: 0;
@@ -39,7 +57,7 @@ export default function Home() {
         .ff-card::before { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity 0.25s ease; border-radius: 12px; }
         .ff-card-contractor::before { background: radial-gradient(ellipse at 50% 0%, rgba(234,107,20,0.15) 0%, transparent 70%); }
         .ff-card-client::before { background: radial-gradient(ellipse at 50% 0%, rgba(100,150,220,0.15) 0%, transparent 70%); }
-        .ff-card:hover { transform: translateY(-3px); border-color: rgba(234,107,20,0.4); box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(234,107,20,0.15); }
+        .ff-card:hover { transform: translateY(-3px); border-color: rgba(234,107,20,0.4); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
         .ff-card:hover::before { opacity: 1; }
         .ff-card-icon { font-size: 2.2rem; line-height: 1; }
         .ff-card-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.08em; color: #f0f4ff; }
@@ -52,18 +70,35 @@ export default function Home() {
         .ff-scroll-hint { position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 0.4rem; color: rgba(190,205,235,0.3); font-size: 0.72rem; letter-spacing: 0.15em; text-transform: uppercase; animation: bounce 2s infinite; }
         @keyframes bounce { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(6px); } }
 
-        /* ── About section ── */
-        .ff-about {
-          background: #151d2e;
-          position: relative;
-          overflow: hidden;
-        }
-        .ff-about::before {
-          content: ''; position: absolute; inset: 0;
-          background-image: repeating-linear-gradient(0deg, transparent, transparent 60px, rgba(255,255,255,0.01) 60px, rgba(255,255,255,0.01) 61px),
-            repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(255,255,255,0.01) 60px, rgba(255,255,255,0.01) 61px);
-          pointer-events: none;
-        }
+        /* ── Services ── */
+        .ff-services { background: #151d2e; }
+        .ff-services-inner { max-width: 1000px; margin: 0 auto; padding: 6rem 2rem; }
+        .ff-services-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-top: 3rem; }
+        @media (max-width: 900px) { .ff-services-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 500px) { .ff-services-grid { grid-template-columns: repeat(2, 1fr); } }
+        .ff-service-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 1.5rem 1rem; text-align: center; transition: all 0.25s; }
+        .ff-service-card:hover { border-color: rgba(234,107,20,0.4); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+        .ff-service-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+        .ff-service-label { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.06em; color: #f0f4ff; margin-bottom: 0.4rem; }
+        .ff-service-desc { font-size: 0.72rem; color: rgba(190,205,235,0.5); font-weight: 300; line-height: 1.5; }
+
+        /* ── How it works ── */
+        .ff-how { background: #1a2236; position: relative; overflow: hidden; }
+        .ff-how::before { content: ''; position: absolute; inset: 0; background-image: repeating-linear-gradient(0deg, transparent, transparent 60px, rgba(255,255,255,0.01) 60px, rgba(255,255,255,0.01) 61px), repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(255,255,255,0.01) 60px, rgba(255,255,255,0.01) 61px); pointer-events: none; }
+        .ff-how-inner { max-width: 1000px; margin: 0 auto; padding: 6rem 2rem; position: relative; z-index: 1; }
+        .ff-how-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 3rem; }
+        @media (max-width: 700px) { .ff-how-grid { grid-template-columns: 1fr; } }
+        .ff-how-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 2rem; position: relative; }
+        .ff-how-step { font-family: 'Bebas Neue', sans-serif; font-size: 3.5rem; letter-spacing: 0.06em; color: rgba(234,107,20,0.15); line-height: 1; margin-bottom: 1rem; }
+        .ff-how-icon { font-size: 2rem; margin-bottom: 1rem; }
+        .ff-how-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 0.06em; color: #f0f4ff; margin-bottom: 0.75rem; }
+        .ff-how-desc { font-size: 0.85rem; color: rgba(190,205,235,0.6); font-weight: 300; line-height: 1.7; }
+        .ff-how-connector { display: none; }
+        @media (min-width: 700px) { .ff-how-connector { display: block; position: absolute; top: 2.5rem; right: -1rem; width: 2rem; height: 2px; background: linear-gradient(90deg, rgba(234,107,20,0.3), transparent); } }
+
+        /* ── About ── */
+        .ff-about { background: #151d2e; position: relative; overflow: hidden; }
+        .ff-about::before { content: ''; position: absolute; inset: 0; background-image: repeating-linear-gradient(0deg, transparent, transparent 60px, rgba(255,255,255,0.01) 60px, rgba(255,255,255,0.01) 61px), repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(255,255,255,0.01) 60px, rgba(255,255,255,0.01) 61px); pointer-events: none; }
         .ff-about-inner { max-width: 900px; margin: 0 auto; padding: 6rem 2rem; position: relative; z-index: 1; }
         .ff-about-eyebrow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.2em; color: #ea6b14; margin-bottom: 1.5rem; }
         .ff-about-headline { font-family: 'Bebas Neue', sans-serif; font-size: clamp(2.8rem, 7vw, 5rem); letter-spacing: 0.06em; line-height: 1; color: #f0f4ff; margin-bottom: 2rem; }
@@ -77,13 +112,13 @@ export default function Home() {
         .ff-stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; letter-spacing: 0.06em; color: #ea6b14; line-height: 1; margin-bottom: 0.4rem; }
         .ff-stat-label { font-size: 0.82rem; color: rgba(190,205,235,0.5); font-weight: 300; line-height: 1.4; }
 
-        .ff-footer-bar { background: #111827; border-top: 1px solid rgba(255,255,255,0.06); padding: 1.5rem; text-align: center; font-size: 0.75rem; color: rgba(190,205,235,0.25); letter-spacing: 0.05em; }
+        /* ── Footer ── */
+        .ff-footer-bar { background: #111827; border-top: 1px solid rgba(255,255,255,0.06); padding: 2rem 1.5rem; text-align: center; font-size: 0.75rem; color: rgba(190,205,235,0.25); letter-spacing: 0.05em; }
       `}</style>
 
       {/* ── Hero ── */}
       <div className="ff-hero">
         <motion.div className="ff-inner" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: "easeOut" }}>
-
           <motion.svg className="ff-logo-mark" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg"
             initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.6, delay: 0.1 }}>
             <polygon points="40,8 72,28 72,60 40,72 8,60 8,28" fill="none" stroke="#ea6b14" strokeWidth="2" opacity="0.4"/>
@@ -140,7 +175,49 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── About section ── */}
+      {/* ── Services ── */}
+      <div className="ff-services">
+        <div className="ff-services-inner">
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
+            <p className="ff-about-eyebrow" style={{ textAlign:"center" }}>What We Cover</p>
+            <h2 className="ff-about-headline" style={{ textAlign:"center" }}>Every Fix. <span>Every Time.</span></h2>
+          </motion.div>
+          <div className="ff-services-grid">
+            {SERVICES.map((s, i) => (
+              <motion.div key={s.label} className="ff-service-card"
+                initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.05 }}>
+                <div className="ff-service-icon">{s.icon}</div>
+                <div className="ff-service-label">{s.label}</div>
+                <div className="ff-service-desc">{s.desc}</div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── How It Works ── */}
+      <div className="ff-how">
+        <div className="ff-how-inner">
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
+            <p className="ff-about-eyebrow" style={{ textAlign:"center" }}>The Process</p>
+            <h2 className="ff-about-headline" style={{ textAlign:"center" }}>How It <span>Works</span></h2>
+          </motion.div>
+          <div className="ff-how-grid">
+            {HOW_IT_WORKS.map((h, i) => (
+              <motion.div key={h.step} className="ff-how-card"
+                initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.15 }}>
+                <div className="ff-how-step">{h.step}</div>
+                <div className="ff-how-icon">{h.icon}</div>
+                <div className="ff-how-title">{h.title}</div>
+                <div className="ff-how-desc">{h.desc}</div>
+                {i < HOW_IT_WORKS.length - 1 && <div className="ff-how-connector" />}
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── About ── */}
       <div className="ff-about">
         <div className="ff-about-inner">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
@@ -154,7 +231,6 @@ export default function Home() {
               Power-packed maintenance & repair solutions and on-site services that dominate deadlines and crush downtime.
             </p>
           </motion.div>
-
           <motion.div className="ff-stats" initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7, delay: 0.2 }}>
             <div className="ff-stat">
               <div className="ff-stat-num">2–6h</div>
@@ -172,12 +248,16 @@ export default function Home() {
         </div>
       </div>
 
+      {/* ── Footer ── */}
       <div className="ff-footer-bar">
         <div style={{ fontSize:"1rem", fontWeight:500, color:"rgba(190,205,235,0.6)", marginBottom:"0.75rem" }}>
           Contact us: <a href="mailto:hello@freddyfixit.ca" style={{ color:"#ea6b14", textDecoration:"none" }}>hello@freddyfixit.ca</a>
         </div>
         <div>Calgary, AB · Home Repairs · Vehicle Maintenance · Trusted Tradespeople</div>
-        <div style={{ marginTop:"0.75rem", fontSize:"0.65rem", color:"rgba(190,205,235,0.2)", maxWidth:"700px", margin:"0.75rem auto 0", lineHeight:1.6 }}>Freddy Fix It is a platform that connects clients with independent contractors. We are not liable for any damages, defects, injury, or loss arising from services booked through this platform. All contractors are independent professionals. Use of this platform constitutes acceptance of our terms.</div>
-      </div>    </div>
+        <div style={{ marginTop:"0.75rem", fontSize:"0.65rem", color:"rgba(190,205,235,0.2)", maxWidth:"700px", margin:"0.75rem auto 0", lineHeight:1.6 }}>
+          Freddy Fix It is a platform that connects clients with independent contractors. We are not liable for any damages, defects, injury, or loss arising from services booked through this platform. All contractors are independent professionals. Use of this platform constitutes acceptance of our terms.
+        </div>
+      </div>
+    </div>
   );
 }
