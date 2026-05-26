@@ -52,7 +52,7 @@ export default function Home() {
         .ff-tagline { font-size: 1rem; font-weight: 300; color: rgba(190,205,235,0.75); text-align: center; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 3rem; }
         .ff-divider { width: 48px; height: 2px; background: linear-gradient(90deg, transparent, #ea6b14, transparent); margin: 0 auto 3rem; }
         .ff-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; width: 100%; margin-bottom: 1.5rem; }
-        @media (max-width: 480px) { .ff-cards { grid-template-columns: 1fr; } }
+        @media (max-width: 480px) { .ff-cards { grid-template-columns: 1fr; } .ff-card-client { order: -1; } }
         .ff-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 2rem 1.5rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; transition: all 0.25s ease; position: relative; overflow: hidden; text-align: center; }
         .ff-card::before { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity 0.25s ease; border-radius: 12px; }
         .ff-card-contractor::before { background: radial-gradient(ellipse at 50% 0%, rgba(234,107,20,0.15) 0%, transparent 70%); }
@@ -184,7 +184,7 @@ export default function Home() {
           </motion.div>
           <div className="ff-services-grid">
             {SERVICES.map((s, i) => (
-              <motion.div key={s.label} className="ff-service-card"
+              <motion.div key={s.label} className="ff-service-card" onClick={() => window.location.href="/client-onboarding"} style={{ cursor:"pointer" }}
                 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.05 }}>
                 <div className="ff-service-icon">{s.icon}</div>
                 <div className="ff-service-label">{s.label}</div>
