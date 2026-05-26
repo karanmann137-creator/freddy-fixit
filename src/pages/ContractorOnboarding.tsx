@@ -20,15 +20,22 @@ const SPECIALTIES = [
 ];
 
 const AREAS = ["NW Calgary","NE Calgary","SW Calgary","SE Calgary","Downtown / Beltline","Airdrie","Cochrane","Chestermere"];
-const DAYS  = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-const getSlots = (day: string) => ["Saturday","Sunday"].includes(day) ? ["Morning","Afternoon"] : ["Morning","Afternoon","Evening"];
 
-const STEP_TITLES = ["Your Details","Your Specialties","Service Area","Availability","Profile Photo"];
+const AVAILABILITY_OPTIONS = [
+  { icon: "☀️", label: "Weekday Mornings",   sub: "Mon–Fri, 7am–12pm" },
+  { icon: "🌤️", label: "Weekday Afternoons", sub: "Mon–Fri, 12pm–5pm" },
+  { icon: "🌙", label: "Weekday Evenings",   sub: "Mon–Fri, 5pm–9pm" },
+  { icon: "🗓️", label: "Weekends",           sub: "Sat & Sun, flexible hours" },
+  { icon: "⚡", label: "Urgent / On-Call",   sub: "Available for same-day jobs" },
+  { icon: "🔁", label: "Fully Flexible",     sub: "Available anytime" },
+];
+
+const STEP_TITLES = ["Your Details", "Your Specialties", "Service Area", "Availability", "Profile Photo"];
 const STEP_SUBS   = [
   "Basic contact information",
   "What services do you offer? Select all that apply",
   "Which parts of Calgary do you cover?",
-  "When are you available for jobs?",
+  "When are you generally available?",
   "Add a profile photo (optional)",
 ];
 
@@ -39,19 +46,16 @@ export default function ContractorOnboarding() {
   const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", password:"", yearsOfExperience:0, photoUrl:"" });
   const [selectedSpec,  setSelectedSpec]  = useState<string[]>([]);
   const [selectedArea,  setSelectedArea]  = useState<string[]>([]);
-  const [selectedAvail, setSelectedAvail] = useState<Record<string,string[]>>({});
+  const [selectedAvail, setSelectedAvail] = useState<string[]>([]);
   const [errors, setErrors]   = useState<Record<string,string>>({});
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [success, setSuccess] = useState(false);
 
   const setF = (key: string, val: string | number) => { setForm(f => ({ ...f, [key]: val })); setErrors(e => ({ ...e, [key]: "" })); };
-  const toggleSpec = (label: string) => { setSelectedSpec(prev => prev.includes(label) ? prev.filter(x => x !== label) : [...prev, label]); setErrors(e => ({ ...e, spec: "" })); };
-  const toggleArea = (zone: string)  => { setSelectedArea(prev => prev.includes(zone)  ? prev.filter(x => x !== zone)  : [...prev, zone]);  setErrors(e => ({ ...e, area: "" })); };
-  const toggleSlot = (day: string, slot: string) => {
-    setSelectedAvail(prev => { const ex = prev[day] ?? []; return { ...prev, [day]: ex.includes(slot) ? ex.filter(s => s !== slot) : [...ex, slot] }; });
-    setErrors(e => ({ ...e, avail: "" }));
-  };
+  const toggleSpec  = (l: string) => { setSelectedSpec(prev  => prev.includes(l)  ? prev.filter(x => x !== l)  : [...prev, l]);  setErrors(e => ({ ...e, spec: "" })); };
+  const toggleArea  = (z: string) => { setSelectedArea(prev  => prev.includes(z)  ? prev.filter(x => x !== z)  : [...prev, z]);  setErrors(e => ({ ...e, area: "" })); };
+  const toggleAvail = (a: string) => { setSelectedAvail(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]); setErrors(e => ({ ...e, avail: "" })); };
 
   const validate = () => {
     const errs: Record<string,string> = {};
@@ -62,9 +66,9 @@ export default function ContractorOnboarding() {
       if (form.phone.replace(/\D/g,"").length < 10) errs.phone = "10-digit phone required";
       if (form.password.length < 8) errs.password = "Minimum 8 characters";
     }
-    if (step === 2 && selectedSpec.length === 0) errs.spec = "Select at least one specialty";
-    if (step === 3 && selectedArea.length === 0) errs.area = "Select at least one area";
-    if (step === 4 && Object.values(selectedAvail).reduce((n,a) => n + a.length, 0) === 0) errs.avail = "Select at least one time slot";
+    if (step === 2 && selectedSpec.length === 0)  errs.spec  = "Select at least one specialty";
+    if (step === 3 && selectedArea.length === 0)  errs.area  = "Select at least one area";
+    if (step === 4 && selectedAvail.length === 0) errs.avail = "Select at least one availability window";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -80,7 +84,7 @@ export default function ContractorOnboarding() {
       if (!authData.user) throw new Error("Account creation failed.");
       const userId = authData.user.id;
       await supabase.from("profiles").insert({ id: userId, email: form.email, first_name: form.firstName, last_name: form.lastName, phone: form.phone, role: "contractor" });
-      await supabase.from("contractors").insert({ id: userId, specialties: selectedSpec, years_of_experience: form.yearsOfExperience, service_area: selectedArea, availability: selectedAvail, photo_url: form.photoUrl || null, status: "pending" });
+      await supabase.from("contractors").insert({ id: userId, specialties: selectedSpec, years_of_experience: form.yearsOfExperience, service_area: selectedArea, availability: { windows: selectedAvail }, photo_url: form.photoUrl || null, status: "pending" });
       setSuccess(true); window.scrollTo(0,0);
     } catch (err: any) {
       setSubmitError(err.message?.includes("already registered") ? "An account with this email already exists. Please sign in instead." : err.message ?? "Something went wrong.");
@@ -96,8 +100,8 @@ export default function ContractorOnboarding() {
     err: { fontSize:".78rem", color:"#f87171", marginTop:".35rem" },
     chip: { display:"flex", alignItems:"center", gap:".5rem", padding:".75rem 1rem", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"8px", color:"rgba(190,205,235,.75)", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", textAlign:"left" as const, width:"100%" },
     chipSel: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.5)", color:"#f0f4ff" },
-    slot: { padding:".38rem .85rem", borderRadius:"99px", fontSize:".78rem", cursor:"pointer", border:"1px solid rgba(255,255,255,.1)", background:"rgba(255,255,255,.04)", color:"rgba(190,205,235,.7)", fontFamily:"inherit", margin:".2rem" },
-    slotSel: { background:"rgba(234,107,20,.15)", borderColor:"rgba(234,107,20,.5)", color:"#f0f4ff" },
+    availBtn: { display:"flex", alignItems:"center", gap:"1rem", padding:"1rem 1.25rem", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"10px", color:"rgba(190,205,235,.8)", fontFamily:"inherit", cursor:"pointer", textAlign:"left" as const, width:"100%", marginBottom:".75rem" },
+    availBtnSel: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.5)", color:"#f0f4ff" },
     navBtn: { flex:1, padding:".85rem 1.5rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer", border:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:".4rem" },
   };
 
@@ -129,10 +133,13 @@ export default function ContractorOnboarding() {
         <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:".4rem" }}>{STEP_TITLES[step-1]}</h1>
         <p style={{ color:"rgba(190,205,235,.6)", fontSize:".9rem", marginBottom:"2rem" }}>{STEP_SUBS[step-1]}</p>
         <div style={{ display:"flex", gap:"6px", marginBottom:"2.5rem" }}>
-          {Array.from({length:TOTAL},(_,i) => <div key={i} style={{ height:"3px", flex:1, borderRadius:"99px", background: i+1===step ? "#ea6b14" : i+1<step ? "rgba(234,107,20,.45)" : "rgba(255,255,255,.1)" }} />)}
+          {Array.from({length:TOTAL},(_,i) => (
+            <div key={i} style={{ height:"3px", flex:1, borderRadius:"99px", background: i+1===step ? "#ea6b14" : i+1<step ? "rgba(234,107,20,.45)" : "rgba(255,255,255,.1)" }} />
+          ))}
         </div>
 
         <div style={s.card}>
+          {/* Step 1 — Contact */}
           {step === 1 && (
             <div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
@@ -170,6 +177,7 @@ export default function ContractorOnboarding() {
             </div>
           )}
 
+          {/* Step 2 — Specialties */}
           {step === 2 && (
             <div>
               <p style={s.label}>Select All That Apply</p>
@@ -187,6 +195,7 @@ export default function ContractorOnboarding() {
             </div>
           )}
 
+          {/* Step 3 — Service Area */}
           {step === 3 && (
             <div>
               <p style={s.label}>Calgary Zones You Serve</p>
@@ -203,23 +212,28 @@ export default function ContractorOnboarding() {
             </div>
           )}
 
+          {/* Step 4 — Availability (simplified) */}
           {step === 4 && (
             <div>
-              {DAYS.map(day => (
-                <div key={day} style={{ marginBottom:"1rem" }}>
-                  <div style={{ fontSize:".78rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.45)", marginBottom:".5rem" }}>{day}</div>
-                  <div style={{ display:"flex", flexWrap:"wrap" }}>
-                    {getSlots(day).map(slot => {
-                      const sel = (selectedAvail[day] ?? []).includes(slot);
-                      return <button key={slot} style={{ ...s.slot, ...(sel ? s.slotSel : {}) }} onClick={() => toggleSlot(day, slot)}>{slot}</button>;
-                    })}
+              <p style={{ fontSize:".85rem", color:"rgba(190,205,235,.5)", marginBottom:"1.5rem", fontWeight:300, lineHeight:1.6 }}>
+                Select all the windows that generally work for you. You can update this anytime from your dashboard.
+              </p>
+              {AVAILABILITY_OPTIONS.map(a => (
+                <button key={a.label} style={{ ...s.availBtn, ...(selectedAvail.includes(a.label) ? s.availBtnSel : {}) }} onClick={() => toggleAvail(a.label)}>
+                  <span style={{ fontSize:"1.5rem", flexShrink:0 }}>{a.icon}</span>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:".95rem", fontWeight:500 }}>{a.label}</div>
+                    <div style={{ fontSize:".78rem", color:"rgba(190,205,235,.5)", marginTop:".1rem" }}>{a.sub}</div>
                   </div>
-                </div>
+                  {selectedAvail.includes(a.label) && <span style={{ color:"#ea6b14", fontSize:"1.1rem", flexShrink:0 }}>✓</span>}
+                </button>
               ))}
               {errors.avail && <p style={s.err}>{errors.avail}</p>}
+              {selectedAvail.length > 0 && <p style={{ fontSize:".78rem", color:"#ea6b14" }}>✓ {selectedAvail.length} window{selectedAvail.length > 1 ? "s" : ""} selected</p>}
             </div>
           )}
 
+          {/* Step 5 — Photo */}
           {step === 5 && (
             <div>
               <div style={{ border:"2px dashed rgba(255,255,255,.12)", borderRadius:"12px", padding:"2rem 1.5rem", textAlign:"center", marginBottom:"1rem" }}>
@@ -235,7 +249,9 @@ export default function ContractorOnboarding() {
         </div>
 
         <div style={{ display:"flex", gap:".75rem", marginTop:"2rem" }}>
-          <button style={{ ...s.navBtn, background:"rgba(255,255,255,.06)", color:"rgba(190,205,235,.8)", border:"1px solid rgba(255,255,255,.1)" }} onClick={back}>{step===1 ? "← Home" : "← Back"}</button>
+          <button style={{ ...s.navBtn, background:"rgba(255,255,255,.06)", color:"rgba(190,205,235,.8)", border:"1px solid rgba(255,255,255,.1)" }} onClick={back}>
+            {step===1 ? "← Home" : "← Back"}
+          </button>
           {step < TOTAL
             ? <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff" }} onClick={next}>Next →</button>
             : <button style={{ ...s.navBtn, background:"linear-gradient(135deg,#ea6b14,#f09020)", color:"#fff", opacity: loading ? .6 : 1 }} onClick={handleSubmit} disabled={loading}>
@@ -243,8 +259,12 @@ export default function ContractorOnboarding() {
               </button>
           }
         </div>
+
         <p style={{ textAlign:"center", marginTop:"1.25rem", fontSize:".82rem", color:"rgba(190,205,235,.4)" }}>
-          Already have an account? <button onClick={() => setLocation("/login")} style={{ background:"none", border:"none", cursor:"pointer", color:"#ea6b14", fontFamily:"inherit", fontSize:".82rem", padding:0 }}>Sign in</button>
+          Already have an account?{" "}
+          <button onClick={() => setLocation("/login")} style={{ background:"none", border:"none", cursor:"pointer", color:"#ea6b14", fontFamily:"inherit", fontSize:".82rem", padding:0 }}>
+            Sign in
+          </button>
         </p>
       </div>
     </div>
