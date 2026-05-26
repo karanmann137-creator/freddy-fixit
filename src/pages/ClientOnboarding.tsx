@@ -169,7 +169,7 @@ export default function ClientOnboarding() {
           {step === 2 && (
             <div>
               <p style={s.label}>Services Needed <span style={{ color:"rgba(190,205,235,.4)", textTransform:"none", letterSpacing:0 }}>(select all that apply)</span></p>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".75rem", marginBottom:"1.5rem" }}>
+              <div style={{ maxWidth:"100%", overflowX:"hidden", display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:".75rem", marginBottom:"1.5rem" }}>
                 {SERVICES.map(sv => (
                   <button key={sv.label} style={{ ...s.svcBtn, ...(selectedServices.includes(sv.label) ? s.svcBtnSel : {}) }} onClick={() => toggleService(sv.label)}>
                     <span style={{ fontSize:"1.2rem", flexShrink:0 }}>{sv.icon}</span>

@@ -76,7 +76,7 @@ export default function Home() {
         .ff-services-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-top: 3rem; }
         @media (max-width: 900px) { .ff-services-grid { grid-template-columns: repeat(3, 1fr); } }
         @media (max-width: 500px) { .ff-services-grid { grid-template-columns: repeat(2, 1fr); } }
-        .ff-service-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 1.5rem 1rem; text-align: center; transition: all 0.25s; }
+        .ff-service-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 1.5rem 1rem; text-align: center; transition: all 0.25s; width: 100%; }
         .ff-service-card:hover { border-color: rgba(234,107,20,0.4); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
         .ff-service-icon { font-size: 2rem; margin-bottom: 0.75rem; }
         .ff-service-label { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.06em; color: #f0f4ff; margin-bottom: 0.4rem; }
