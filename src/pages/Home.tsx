@@ -206,9 +206,9 @@ export default function Home() {
             {HOW_IT_WORKS.map((h, i) => (
               <motion.div key={h.step} className="ff-how-card"
                 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.15 }}>
-                <div className="ff-how-step">{h.step}</div>
-                <div className="ff-how-icon">{h.icon}</div>
-                <div className="ff-how-title">{h.title}</div>
+                <div style={{ display:"flex", alignItems:"baseline", gap:"0.75rem", marginBottom:"0.75rem" }}>
+                  <div className="ff-how-step">{h.step}</div><div className="ff-how-title">{h.title}</div>
+                </div>
                 <div className="ff-how-desc">{h.desc}</div>
                 {i < HOW_IT_WORKS.length - 1 && <div className="ff-how-connector" />}
               </motion.div>
