@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
-import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 
 const SPECIALTIES = [
   { icon: "🔧", label: "General Repairs" },
@@ -22,349 +19,233 @@ const SPECIALTIES = [
   { icon: "❄️", label: "Snow Removal" },
 ];
 
-const CALGARY_ZONES = [
-  "NW Calgary", "NE Calgary", "SW Calgary", "SE Calgary",
-  "Downtown / Beltline", "Airdrie", "Cochrane", "Chestermere",
+const AREAS = ["NW Calgary","NE Calgary","SW Calgary","SE Calgary","Downtown / Beltline","Airdrie","Cochrane","Chestermere"];
+const DAYS  = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const getSlots = (day: string) => ["Saturday","Sunday"].includes(day) ? ["Morning","Afternoon"] : ["Morning","Afternoon","Evening"];
+
+const STEP_TITLES = ["Your Details","Your Specialties","Service Area","Availability","Profile Photo"];
+const STEP_SUBS   = [
+  "Basic contact information",
+  "What services do you offer? Select all that apply",
+  "Which parts of Calgary do you cover?",
+  "When are you available for jobs?",
+  "Add a profile photo (optional)",
 ];
-
-const AVAILABILITY_SLOTS: Record<string, string[]> = {
-  Monday: ["Morning", "Afternoon", "Evening"],
-  Tuesday: ["Morning", "Afternoon", "Evening"],
-  Wednesday: ["Morning", "Afternoon", "Evening"],
-  Thursday: ["Morning", "Afternoon", "Evening"],
-  Friday: ["Morning", "Afternoon", "Evening"],
-  Saturday: ["Morning", "Afternoon"],
-  Sunday: ["Morning", "Afternoon"],
-};
-
-interface FormData {
-  firstName: string; lastName: string; email: string; phone: string;
-  specialties: string[];
-  yearsOfExperience: number;
-  serviceArea: string[];
-  availability: Record<string, string[]>;
-  photoUrl: string;
-}
-
-const TOTAL_STEPS = 5;
-
-const sharedStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
-
-  .ff-wrap { min-height: 100vh; background: #1a2236;
-    background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(234,107,20,0.15) 0%, transparent 70%);
-    padding: 2.5rem 1rem; font-family: 'DM Sans', sans-serif; color: #f0f4ff; position: relative; overflow: hidden; }
-  .ff-wrap::before { content: ''; position: absolute; inset: 0;
-    background-image: repeating-linear-gradient(0deg, transparent, transparent 60px, rgba(255,255,255,0.015) 60px, rgba(255,255,255,0.015) 61px),
-      repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(255,255,255,0.015) 60px, rgba(255,255,255,0.015) 61px);
-    pointer-events: none; }
-  .ff-container { max-width: 580px; margin: 0 auto; position: relative; z-index: 1; }
-  .ff-back-home { display: inline-flex; align-items: center; gap: 0.4rem; color: rgba(190,205,235,0.5); font-size: 0.82rem;
-    background: none; border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; padding: 0;
-    margin-bottom: 2rem; transition: color 0.2s; text-transform: uppercase; letter-spacing: 0.08em; }
-  .ff-back-home:hover { color: #ea6b14; }
-  .ff-step-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.15em; color: #ea6b14; margin-bottom: 0.4rem; }
-  .ff-heading { font-family: 'Bebas Neue', sans-serif; font-size: 2.6rem; letter-spacing: 0.06em; color: #f0f4ff; margin: 0; line-height: 1; }
-  .ff-subhead { font-size: 0.9rem; color: rgba(190,205,235,0.6); margin-top: 0.4rem; font-weight: 300; margin-bottom: 2rem; }
-  .ff-progress { display: flex; gap: 6px; margin-bottom: 2.5rem; }
-  .ff-progress-bar { height: 3px; flex: 1; border-radius: 99px; background: rgba(255,255,255,0.1); transition: background 0.4s; }
-  .ff-progress-bar.active { background: #ea6b14; box-shadow: 0 0 8px rgba(234,107,20,0.5); }
-  .ff-progress-bar.done { background: rgba(234,107,20,0.45); }
-  .ff-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 2rem; }
-  .ff-label { display: block; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(190,205,235,0.6); margin-bottom: 0.6rem; }
-  .ff-input { width: 100%; padding: 0.75rem 1rem; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 8px; color: #f0f4ff; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; outline: none;
-    transition: border-color 0.2s, box-shadow 0.2s; box-sizing: border-box; }
-  .ff-input:focus { border-color: rgba(234,107,20,0.5); box-shadow: 0 0 0 3px rgba(234,107,20,0.1); }
-  .ff-input.error { border-color: rgba(239,68,68,0.6); }
-  .ff-input::placeholder { color: rgba(190,205,235,0.3); }
-  .ff-error { font-size: 0.78rem; color: #f87171; margin-top: 0.35rem; }
-  .ff-field { margin-bottom: 1.2rem; }
-  .ff-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-
-  .ff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
-  .ff-chip {
-    display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem;
-    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 8px; color: rgba(190,205,235,0.75); font-family: 'DM Sans', sans-serif;
-    font-size: 0.85rem; cursor: pointer; transition: all 0.2s; text-align: left;
-  }
-  .ff-chip:hover { border-color: rgba(234,107,20,0.3); color: #f0f4ff; }
-  .ff-chip.selected { background: rgba(234,107,20,0.12); border-color: rgba(234,107,20,0.5); color: #f0f4ff; }
-  .ff-chip-icon { font-size: 1.1rem; flex-shrink: 0; }
-
-  .ff-avail-day { margin-bottom: 1.2rem; }
-  .ff-avail-day-name { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(190,205,235,0.5); margin-bottom: 0.5rem; }
-  .ff-avail-slots { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-  .ff-avail-slot {
-    padding: 0.4rem 0.9rem; border-radius: 99px; font-size: 0.8rem; cursor: pointer;
-    border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04);
-    color: rgba(190,205,235,0.7); transition: all 0.2s; font-family: 'DM Sans', sans-serif;
-  }
-  .ff-avail-slot:hover { border-color: rgba(234,107,20,0.35); color: #f0f4ff; }
-  .ff-avail-slot.selected { background: rgba(234,107,20,0.15); border-color: rgba(234,107,20,0.5); color: #f0f4ff; }
-
-  .ff-photo-drop {
-    border: 2px dashed rgba(255,255,255,0.12); border-radius: 12px; padding: 2.5rem 1.5rem;
-    text-align: center; transition: border-color 0.2s;
-  }
-  .ff-photo-drop:hover { border-color: rgba(234,107,20,0.3); }
-  .ff-photo-icon { font-size: 2.5rem; margin-bottom: 1rem; }
-  .ff-photo-text { color: rgba(190,205,235,0.6); font-size: 0.9rem; margin-bottom: 0.5rem; }
-  .ff-photo-sub { color: rgba(190,205,235,0.35); font-size: 0.8rem; }
-  .ff-photo-or { color: rgba(190,205,235,0.4); font-size: 0.8rem; margin: 1rem 0; }
-
-  .ff-nav { display: flex; gap: 0.75rem; margin-top: 2rem; }
-  .ff-btn { flex: 1; padding: 0.85rem 1.5rem; border-radius: 8px; font-family: 'DM Sans', sans-serif;
-    font-size: 0.9rem; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s;
-    display: flex; align-items: center; justify-content: center; gap: 0.4rem; letter-spacing: 0.05em; }
-  .ff-btn-secondary { background: rgba(255,255,255,0.06); color: rgba(190,205,235,0.8); border: 1px solid rgba(255,255,255,0.1); }
-  .ff-btn-secondary:hover { background: rgba(255,255,255,0.1); }
-  .ff-btn-primary { background: #ea6b14; color: #fff; }
-  .ff-btn-primary:hover { background: #f07a28; box-shadow: 0 4px 20px rgba(234,107,20,0.35); }
-  .ff-btn-submit { background: linear-gradient(135deg, #ea6b14, #f09020); color: #fff; }
-  .ff-btn-submit:hover { box-shadow: 0 4px 24px rgba(234,107,20,0.4); }
-  .ff-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-`;
 
 export default function ContractorOnboarding() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState<FormData>({
-    firstName: "", lastName: "", email: "", phone: "",
-    specialties: [], yearsOfExperience: 0, serviceArea: [], availability: {}, photoUrl: "",
-  });
+  const TOTAL = 5;
+  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", password:"", yearsOfExperience:0, photoUrl:"" });
+  const [selectedSpec,  setSelectedSpec]  = useState<string[]>([]);
+  const [selectedArea,  setSelectedArea]  = useState<string[]>([]);
+  const [selectedAvail, setSelectedAvail] = useState<Record<string,string[]>>({});
+  const [errors, setErrors]   = useState<Record<string,string>>({});
+  const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [success, setSuccess] = useState(false);
 
-  const set = (field: keyof FormData, value: any) => {
-    setForm(p => ({ ...p, [field]: value }));
-    setErrors(p => { const n = { ...p }; delete n[field]; return n; });
+  const setF = (key: string, val: string | number) => { setForm(f => ({ ...f, [key]: val })); setErrors(e => ({ ...e, [key]: "" })); };
+  const toggleSpec = (label: string) => { setSelectedSpec(prev => prev.includes(label) ? prev.filter(x => x !== label) : [...prev, label]); setErrors(e => ({ ...e, spec: "" })); };
+  const toggleArea = (zone: string)  => { setSelectedArea(prev => prev.includes(zone)  ? prev.filter(x => x !== zone)  : [...prev, zone]);  setErrors(e => ({ ...e, area: "" })); };
+  const toggleSlot = (day: string, slot: string) => {
+    setSelectedAvail(prev => { const ex = prev[day] ?? []; return { ...prev, [day]: ex.includes(slot) ? ex.filter(s => s !== slot) : [...ex, slot] }; });
+    setErrors(e => ({ ...e, avail: "" }));
   };
 
-  const toggleArr = (field: "specialties" | "serviceArea", val: string) => {
-    setForm(p => ({
-      ...p,
-      [field]: (p[field] as string[]).includes(val)
-        ? (p[field] as string[]).filter(v => v !== val)
-        : [...(p[field] as string[]), val],
-    }));
-  };
-
-  const toggleAvail = (day: string, slot: string) => {
-    setForm(p => {
-      const daySlots = p.availability[day] || [];
-      return {
-        ...p,
-        availability: {
-          ...p.availability,
-          [day]: daySlots.includes(slot) ? daySlots.filter(s => s !== slot) : [...daySlots, slot],
-        },
-      };
-    });
-  };
-
-  const validate = (s: number) => {
-    const e: Record<string, string> = {};
-    if (s === 1) {
-      if (!form.firstName.trim()) e.firstName = "Required";
-      if (!form.lastName.trim()) e.lastName = "Required";
-      if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Valid email required";
-      if (form.phone.replace(/\D/g, "").length < 10) e.phone = "10-digit phone required";
-    } else if (s === 2) {
-      if (form.specialties.length === 0) e.specialties = "Select at least one specialty";
-    } else if (s === 3) {
-      if (form.serviceArea.length === 0) e.serviceArea = "Select at least one area";
-    } else if (s === 4) {
-      const hasAny = Object.values(form.availability).some(sl => sl.length > 0);
-      if (!hasAny) e.availability = "Select at least one time slot";
+  const validate = () => {
+    const errs: Record<string,string> = {};
+    if (step === 1) {
+      if (!form.firstName.trim()) errs.firstName = "Required";
+      if (!form.lastName.trim())  errs.lastName  = "Required";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = "Valid email required";
+      if (form.phone.replace(/\D/g,"").length < 10) errs.phone = "10-digit phone required";
+      if (form.password.length < 8) errs.password = "Minimum 8 characters";
     }
-    setErrors(e);
-    return Object.keys(e).length === 0;
+    if (step === 2 && selectedSpec.length === 0) errs.spec = "Select at least one specialty";
+    if (step === 3 && selectedArea.length === 0) errs.area = "Select at least one area";
+    if (step === 4 && Object.values(selectedAvail).reduce((n,a) => n + a.length, 0) === 0) errs.avail = "Select at least one time slot";
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
   };
 
-  const next = () => { if (validate(step)) setStep(s => s + 1); };
-  const prev = () => { setStep(s => s - 1); setErrors({}); };
+  const next = () => { if (validate()) { setStep(s => s + 1); window.scrollTo(0,0); } };
+  const back = () => { if (step === 1) setLocation("/"); else { setStep(s => s - 1); window.scrollTo(0,0); } };
 
   const handleSubmit = async () => {
-    setIsSubmitting(true);
+    setLoading(true); setSubmitError("");
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await supabase.from("contractors").insert({
-        user_id: user?.id ?? null,
-        first_name: form.firstName,
-        last_name: form.lastName,
-        email: form.email,
-        phone: form.phone,
-        specialties: form.specialties,
-        years_of_experience: form.yearsOfExperience,
-        service_area: form.serviceArea,
-        availability: form.availability,
-        photo_url: form.photoUrl || null,
-        is_approved: false,
-      });
-      if (error) throw error;
-      toast.success("Registration complete!");
-      setLocation("/contractor-success");
-    } catch {
-      toast.error("Something went wrong. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
+      const { data: authData, error: authErr } = await supabase.auth.signUp({ email: form.email, password: form.password });
+      if (authErr) throw authErr;
+      if (!authData.user) throw new Error("Account creation failed.");
+      const userId = authData.user.id;
+      await supabase.from("profiles").insert({ id: userId, email: form.email, first_name: form.firstName, last_name: form.lastName, phone: form.phone, role: "contractor" });
+      await supabase.from("contractors").insert({ id: userId, specialties: selectedSpec, years_of_experience: form.yearsOfExperience, service_area: selectedArea, availability: selectedAvail, photo_url: form.photoUrl || null, status: "pending" });
+      setSuccess(true); window.scrollTo(0,0);
+    } catch (err: any) {
+      setSubmitError(err.message?.includes("already registered") ? "An account with this email already exists. Please sign in instead." : err.message ?? "Something went wrong.");
+    } finally { setLoading(false); }
   };
 
-  const stepTitles = ["Your Details", "Your Specialties", "Service Areas", "Availability", "Profile Photo"];
-  const stepSubs = [
-    "Basic contact information",
-    "What services do you offer?",
-    "Which parts of Calgary do you cover?",
-    "When are you available for jobs?",
-    "Add a profile photo (optional)",
-  ];
+  const inp = { width:"100%", padding:".75rem 1rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.1)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".95rem", outline:"none", boxSizing:"border-box" as const };
+  const s = {
+    wrap: { minHeight:"100vh", background:"#1a2236", padding:"3rem 1rem 4rem", fontFamily:"'DM Sans',sans-serif", color:"#f0f4ff" },
+    inner: { maxWidth:"580px", margin:"0 auto" },
+    card: { background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"14px", padding:"2rem" },
+    label: { display:"block", fontSize:".78rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.6)", marginBottom:".6rem" },
+    err: { fontSize:".78rem", color:"#f87171", marginTop:".35rem" },
+    chip: { display:"flex", alignItems:"center", gap:".5rem", padding:".75rem 1rem", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"8px", color:"rgba(190,205,235,.75)", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", textAlign:"left" as const, width:"100%" },
+    chipSel: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.5)", color:"#f0f4ff" },
+    slot: { padding:".38rem .85rem", borderRadius:"99px", fontSize:".78rem", cursor:"pointer", border:"1px solid rgba(255,255,255,.1)", background:"rgba(255,255,255,.04)", color:"rgba(190,205,235,.7)", fontFamily:"inherit", margin:".2rem" },
+    slotSel: { background:"rgba(234,107,20,.15)", borderColor:"rgba(234,107,20,.5)", color:"#f0f4ff" },
+    navBtn: { flex:1, padding:".85rem 1.5rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer", border:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:".4rem" },
+  };
+
+  if (success) return (
+    <div style={s.wrap}>
+      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+      <div style={{ ...s.inner, textAlign:"center", paddingTop:"4rem" }}>
+        <div style={{ width:"72px", height:"72px", background:"rgba(234,107,20,.15)", border:"2px solid rgba(234,107,20,.4)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 2rem" }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ea6b14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"3rem", letterSpacing:".06em", marginBottom:".5rem" }}>Welcome to <span style={{ color:"#ea6b14" }}>the Team!</span></h1>
+        <p style={{ color:"rgba(190,205,235,.65)", marginBottom:"2rem" }}>Your profile has been submitted. We'll review it within 24 hours.</p>
+        <div style={{ display:"flex", gap:".75rem", justifyContent:"center" }}>
+          <button style={{ ...s.navBtn, background:"rgba(255,255,255,.06)", color:"rgba(190,205,235,.8)", border:"1px solid rgba(255,255,255,.1)" }} onClick={() => setLocation("/")}>← Home</button>
+          <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff" }} onClick={() => setLocation("/contractor-dashboard")}>My Dashboard →</button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="ff-wrap">
-      <style>{sharedStyles}</style>
-      <div className="ff-container">
-        <button className="ff-back-home" onClick={() => setLocation("/")}>← Home</button>
-
-        <p className="ff-step-label">Contractor Registration · Step {step} of {TOTAL_STEPS}</p>
-        <h1 className="ff-heading">{stepTitles[step - 1]}</h1>
-        <p className="ff-subhead">{stepSubs[step - 1]}</p>
-
-        <div className="ff-progress">
-          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-            <div key={i} className={`ff-progress-bar ${i + 1 === step ? "active" : i + 1 < step ? "done" : ""}`} />
-          ))}
+    <div style={s.wrap}>
+      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+      <div style={s.inner}>
+        <button onClick={back} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(190,205,235,.5)", fontFamily:"inherit", fontSize:".82rem", textTransform:"uppercase", letterSpacing:".08em", padding:0, marginBottom:"2rem", display:"block" }}>
+          {step === 1 ? "← Home" : "← Back"}
+        </button>
+        <p style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".15em", color:"#ea6b14", marginBottom:".4rem" }}>Contractor Registration · Step {step} of {TOTAL}</p>
+        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:".4rem" }}>{STEP_TITLES[step-1]}</h1>
+        <p style={{ color:"rgba(190,205,235,.6)", fontSize:".9rem", marginBottom:"2rem" }}>{STEP_SUBS[step-1]}</p>
+        <div style={{ display:"flex", gap:"6px", marginBottom:"2.5rem" }}>
+          {Array.from({length:TOTAL},(_,i) => <div key={i} style={{ height:"3px", flex:1, borderRadius:"99px", background: i+1===step ? "#ea6b14" : i+1<step ? "rgba(234,107,20,.45)" : "rgba(255,255,255,.1)" }} />)}
         </div>
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            initial={{ opacity: 0, x: 24 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -24 }}
-            transition={{ duration: 0.28 }}
-          >
-            <div className="ff-card">
-
-              {step === 1 && (
-                <>
-                  <div className="ff-row">
-                    <div className="ff-field">
-                      <label className="ff-label">First Name</label>
-                      <input className={`ff-input${errors.firstName ? " error" : ""}`} value={form.firstName} onChange={e => set("firstName", e.target.value)} placeholder="Mike" />
-                      {errors.firstName && <p className="ff-error">{errors.firstName}</p>}
-                    </div>
-                    <div className="ff-field">
-                      <label className="ff-label">Last Name</label>
-                      <input className={`ff-input${errors.lastName ? " error" : ""}`} value={form.lastName} onChange={e => set("lastName", e.target.value)} placeholder="Taylor" />
-                      {errors.lastName && <p className="ff-error">{errors.lastName}</p>}
-                    </div>
-                  </div>
-                  <div className="ff-field">
-                    <label className="ff-label">Email</label>
-                    <input className={`ff-input${errors.email ? " error" : ""}`} type="email" value={form.email} onChange={e => set("email", e.target.value)} placeholder="mike@email.com" />
-                    {errors.email && <p className="ff-error">{errors.email}</p>}
-                  </div>
-                  <div className="ff-field">
-                    <label className="ff-label">Phone</label>
-                    <input className={`ff-input${errors.phone ? " error" : ""}`} type="tel" value={form.phone} onChange={e => set("phone", e.target.value)} placeholder="403-555-0100" />
-                    {errors.phone && <p className="ff-error">{errors.phone}</p>}
-                  </div>
-                  <div className="ff-field">
-                    <label className="ff-label">Years of Experience</label>
-                    <input className="ff-input" type="number" min="0" max="50" value={form.yearsOfExperience}
-                      onChange={e => set("yearsOfExperience", parseInt(e.target.value) || 0)} />
-                  </div>
-                </>
-              )}
-
-              {step === 2 && (
-                <div className="ff-field">
-                  <label className="ff-label">Select All That Apply</label>
-                  <div className="ff-grid">
-                    {SPECIALTIES.map(s => (
-                      <button key={s.label} className={`ff-chip${form.specialties.includes(s.label) ? " selected" : ""}`}
-                        onClick={() => toggleArr("specialties", s.label)}>
-                        <span className="ff-chip-icon">{s.icon}</span>{s.label}
-                      </button>
-                    ))}
-                  </div>
-                  {errors.specialties && <p className="ff-error" style={{ marginTop: "1rem" }}>{errors.specialties}</p>}
+        <div style={s.card}>
+          {step === 1 && (
+            <div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+                <div style={{ marginBottom:"1.2rem" }}>
+                  <label style={s.label}>First Name</label>
+                  <input style={{ ...inp, borderColor: errors.firstName ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} placeholder="Mike" value={form.firstName} onChange={e => setF("firstName",e.target.value)} />
+                  {errors.firstName && <p style={s.err}>{errors.firstName}</p>}
                 </div>
-              )}
-
-              {step === 3 && (
-                <div className="ff-field">
-                  <label className="ff-label">Calgary Zones You Serve</label>
-                  <div className="ff-grid">
-                    {CALGARY_ZONES.map(z => (
-                      <button key={z} className={`ff-chip${form.serviceArea.includes(z) ? " selected" : ""}`}
-                        onClick={() => toggleArr("serviceArea", z)}>
-                        📍 {z}
-                      </button>
-                    ))}
-                  </div>
-                  {errors.serviceArea && <p className="ff-error" style={{ marginTop: "1rem" }}>{errors.serviceArea}</p>}
+                <div style={{ marginBottom:"1.2rem" }}>
+                  <label style={s.label}>Last Name</label>
+                  <input style={{ ...inp, borderColor: errors.lastName ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} placeholder="Taylor" value={form.lastName} onChange={e => setF("lastName",e.target.value)} />
+                  {errors.lastName && <p style={s.err}>{errors.lastName}</p>}
                 </div>
-              )}
-
-              {step === 4 && (
-                <div className="ff-field">
-                  {Object.entries(AVAILABILITY_SLOTS).map(([day, slots]) => (
-                    <div className="ff-avail-day" key={day}>
-                      <div className="ff-avail-day-name">{day}</div>
-                      <div className="ff-avail-slots">
-                        {slots.map(slot => (
-                          <button key={slot}
-                            className={`ff-avail-slot${form.availability[day]?.includes(slot) ? " selected" : ""}`}
-                            onClick={() => toggleAvail(day, slot)}>
-                            {slot}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                  {errors.availability && <p className="ff-error">{errors.availability}</p>}
-                </div>
-              )}
-
-              {step === 5 && (
-                <div className="ff-field">
-                  <div className="ff-photo-drop">
-                    <div className="ff-photo-icon">📸</div>
-                    <p className="ff-photo-text">A profile photo builds trust with clients</p>
-                    <p className="ff-photo-sub">Photo upload coming soon — you can add one later from your dashboard</p>
-                    <p className="ff-photo-or">— or paste a photo URL —</p>
-                    <input className="ff-input" value={form.photoUrl} onChange={e => set("photoUrl", e.target.value)}
-                      placeholder="https://your-photo-url.com/photo.jpg" />
-                  </div>
-                  <p style={{ fontSize: "0.8rem", color: "rgba(190,205,235,0.4)", marginTop: "1rem", textAlign: "center" }}>
-                    This step is optional. You can skip and complete your profile later.
-                  </p>
-                </div>
-              )}
-
+              </div>
+              <div style={{ marginBottom:"1.2rem" }}>
+                <label style={s.label}>Email</label>
+                <input style={{ ...inp, borderColor: errors.email ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} type="email" placeholder="mike@email.com" value={form.email} onChange={e => setF("email",e.target.value)} />
+                {errors.email && <p style={s.err}>{errors.email}</p>}
+              </div>
+              <div style={{ marginBottom:"1.2rem" }}>
+                <label style={s.label}>Phone</label>
+                <input style={{ ...inp, borderColor: errors.phone ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} type="tel" placeholder="403-555-0100" value={form.phone} onChange={e => setF("phone",e.target.value)} />
+                {errors.phone && <p style={s.err}>{errors.phone}</p>}
+              </div>
+              <div style={{ marginBottom:"1.2rem" }}>
+                <label style={s.label}>Password (for your account)</label>
+                <input style={{ ...inp, borderColor: errors.password ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} type="password" placeholder="Min 8 characters" value={form.password} onChange={e => setF("password",e.target.value)} />
+                {errors.password && <p style={s.err}>{errors.password}</p>}
+              </div>
+              <div style={{ marginBottom:"1.2rem" }}>
+                <label style={s.label}>Years of Experience</label>
+                <input style={inp} type="number" min={0} max={50} value={form.yearsOfExperience} onChange={e => setF("yearsOfExperience", parseInt(e.target.value) || 0)} />
+              </div>
+              <p style={{ fontSize:".78rem", color:"rgba(190,205,235,.4)", fontWeight:300 }}>We'll create a free account so you can manage your jobs.</p>
             </div>
-          </motion.div>
-        </AnimatePresence>
-
-        <div className="ff-nav">
-          {step > 1 ? (
-            <button className="ff-btn ff-btn-secondary" onClick={prev}><ChevronLeft size={16} /> Back</button>
-          ) : (
-            <button className="ff-btn ff-btn-secondary" onClick={() => setLocation("/")}>← Home</button>
           )}
 
-          {step < TOTAL_STEPS ? (
-            <button className="ff-btn ff-btn-primary" onClick={next}>Next <ChevronRight size={16} /></button>
-          ) : (
-            <button className="ff-btn ff-btn-submit" onClick={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Submitting...</> : "Complete Registration →"}
-            </button>
+          {step === 2 && (
+            <div>
+              <p style={s.label}>Select All That Apply</p>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".7rem" }}>
+                {SPECIALTIES.map(sp => (
+                  <button key={sp.label} style={{ ...s.chip, ...(selectedSpec.includes(sp.label) ? s.chipSel : {}) }} onClick={() => toggleSpec(sp.label)}>
+                    <span style={{ fontSize:"1.1rem", flexShrink:0 }}>{sp.icon}</span>
+                    <span>{sp.label}</span>
+                    {selectedSpec.includes(sp.label) && <span style={{ marginLeft:"auto", color:"#ea6b14" }}>✓</span>}
+                  </button>
+                ))}
+              </div>
+              {errors.spec && <p style={s.err}>{errors.spec}</p>}
+              {selectedSpec.length > 0 && <p style={{ fontSize:".78rem", color:"#ea6b14", marginTop:".75rem" }}>✓ {selectedSpec.length} specialt{selectedSpec.length > 1 ? "ies" : "y"} selected</p>}
+            </div>
+          )}
+
+          {step === 3 && (
+            <div>
+              <p style={s.label}>Calgary Zones You Serve</p>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".7rem" }}>
+                {AREAS.map(z => (
+                  <button key={z} style={{ ...s.chip, ...(selectedArea.includes(z) ? s.chipSel : {}) }} onClick={() => toggleArea(z)}>
+                    <span>📍</span><span>{z}</span>
+                    {selectedArea.includes(z) && <span style={{ marginLeft:"auto", color:"#ea6b14" }}>✓</span>}
+                  </button>
+                ))}
+              </div>
+              {errors.area && <p style={s.err}>{errors.area}</p>}
+              {selectedArea.length > 0 && <p style={{ fontSize:".78rem", color:"#ea6b14", marginTop:".75rem" }}>✓ {selectedArea.length} area{selectedArea.length > 1 ? "s" : ""} selected</p>}
+            </div>
+          )}
+
+          {step === 4 && (
+            <div>
+              {DAYS.map(day => (
+                <div key={day} style={{ marginBottom:"1rem" }}>
+                  <div style={{ fontSize:".78rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.45)", marginBottom:".5rem" }}>{day}</div>
+                  <div style={{ display:"flex", flexWrap:"wrap" }}>
+                    {getSlots(day).map(slot => {
+                      const sel = (selectedAvail[day] ?? []).includes(slot);
+                      return <button key={slot} style={{ ...s.slot, ...(sel ? s.slotSel : {}) }} onClick={() => toggleSlot(day, slot)}>{slot}</button>;
+                    })}
+                  </div>
+                </div>
+              ))}
+              {errors.avail && <p style={s.err}>{errors.avail}</p>}
+            </div>
+          )}
+
+          {step === 5 && (
+            <div>
+              <div style={{ border:"2px dashed rgba(255,255,255,.12)", borderRadius:"12px", padding:"2rem 1.5rem", textAlign:"center", marginBottom:"1rem" }}>
+                <div style={{ fontSize:"2.5rem", marginBottom:"1rem" }}>📸</div>
+                <p style={{ color:"rgba(190,205,235,.6)", fontSize:".9rem", marginBottom:".5rem" }}>A profile photo builds trust with clients</p>
+                <p style={{ color:"rgba(190,205,235,.4)", fontSize:".8rem", margin:"1rem 0 .75rem" }}>Paste a photo URL below</p>
+                <input style={inp} placeholder="https://your-photo-url.com/photo.jpg" value={form.photoUrl} onChange={e => setF("photoUrl",e.target.value)} />
+              </div>
+              <p style={{ fontSize:".78rem", color:"rgba(190,205,235,.4)", textAlign:"center" }}>This step is optional — you can add a photo later from your dashboard.</p>
+              {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"#fca5a5", marginTop:"1rem" }}>{submitError}</div>}
+            </div>
           )}
         </div>
+
+        <div style={{ display:"flex", gap:".75rem", marginTop:"2rem" }}>
+          <button style={{ ...s.navBtn, background:"rgba(255,255,255,.06)", color:"rgba(190,205,235,.8)", border:"1px solid rgba(255,255,255,.1)" }} onClick={back}>{step===1 ? "← Home" : "← Back"}</button>
+          {step < TOTAL
+            ? <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff" }} onClick={next}>Next →</button>
+            : <button style={{ ...s.navBtn, background:"linear-gradient(135deg,#ea6b14,#f09020)", color:"#fff", opacity: loading ? .6 : 1 }} onClick={handleSubmit} disabled={loading}>
+                {loading ? "Submitting…" : "Complete Registration →"}
+              </button>
+          }
+        </div>
+        <p style={{ textAlign:"center", marginTop:"1.25rem", fontSize:".82rem", color:"rgba(190,205,235,.4)" }}>
+          Already have an account? <button onClick={() => setLocation("/login")} style={{ background:"none", border:"none", cursor:"pointer", color:"#ea6b14", fontFamily:"inherit", fontSize:".82rem", padding:0 }}>Sign in</button>
+        </p>
       </div>
     </div>
   );
