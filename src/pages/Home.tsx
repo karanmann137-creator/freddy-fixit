@@ -85,12 +85,12 @@ export default function Home() {
         /* ── How it works ── */
         .ff-how { background: #1a2236; position: relative; overflow: hidden; }
         .ff-how::before { content: ''; position: absolute; inset: 0; background-image: repeating-linear-gradient(0deg, transparent, transparent 60px, rgba(255,255,255,0.01) 60px, rgba(255,255,255,0.01) 61px), repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(255,255,255,0.01) 60px, rgba(255,255,255,0.01) 61px); pointer-events: none; }
-        .ff-how-inner { max-width: 1000px; margin: 0 auto; padding: 6rem 2rem; position: relative; z-index: 1; }
+        .ff-how-inner { max-width: 1000px; margin: 0 auto; padding: 4rem 2rem; position: relative; z-index: 1; }
         .ff-how-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 3rem; }
         @media (max-width: 700px) { .ff-how-grid { grid-template-columns: 1fr; } }
-        .ff-how-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 2rem; position: relative; }
-        .ff-how-step { font-family: 'Bebas Neue', sans-serif; font-size: 3.5rem; letter-spacing: 0.06em; color: rgba(234,107,20,0.15); line-height: 1; margin-bottom: 1rem; }
-        .ff-how-icon { font-size: 2rem; margin-bottom: 1rem; }
+        .ff-how-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 1.25rem 1.5rem; position: relative; }
+        .ff-how-step { font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem; letter-spacing: 0.06em; color: rgba(234,107,20,0.2); line-height: 1; margin-bottom: 0.5rem; }
+        .ff-how-icon { font-size: 1.6rem; margin-bottom: 0.5rem; }
         .ff-how-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 0.06em; color: #f0f4ff; margin-bottom: 0.75rem; }
         .ff-how-desc { font-size: 0.85rem; color: rgba(190,205,235,0.6); font-weight: 300; line-height: 1.7; }
         .ff-how-connector { display: none; }
