@@ -26,7 +26,7 @@ serve(async (req) => {
             <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.6);">Location</td><td style="padding:.5rem 0;">${record.location}</td></tr>
             <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.6);vertical-align:top;">Description</td><td style="padding:.5rem 0;">${record.job_description}</td></tr>
           </table>
-          <a href="https://freddy-fixit.vercel.app/admin-dashboard" style="display:inline-block;margin-top:1.5rem;padding:.75rem 1.5rem;background:#ea6b14;color:#fff;text-decoration:none;border-radius:8px;font-weight:500;">View in Dashboard →</a>
+          <a href="https://freddyfixit.ca/admin-dashboard" style="display:inline-block;margin-top:1.5rem;padding:.75rem 1.5rem;background:#ea6b14;color:#fff;text-decoration:none;border-radius:8px;font-weight:500;">View in Dashboard →</a>
         </div>
       `;
     } else if (table === "contractors") {
@@ -39,7 +39,7 @@ serve(async (req) => {
             <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.6);">Service Area</td><td style="padding:.5rem 0;">${(record.service_area ?? []).join(", ")}</td></tr>
             <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.6);">Experience</td><td style="padding:.5rem 0;">${record.years_of_experience} years</td></tr>
           </table>
-          <a href="https://freddy-fixit.vercel.app/admin-dashboard" style="display:inline-block;margin-top:1.5rem;padding:.75rem 1.5rem;background:#ea6b14;color:#fff;text-decoration:none;border-radius:8px;font-weight:500;">Review Application →</a>
+          <a href="https://freddyfixit.ca/admin-dashboard" style="display:inline-block;margin-top:1.5rem;padding:.75rem 1.5rem;background:#ea6b14;color:#fff;text-decoration:none;border-radius:8px;font-weight:500;">Review Application →</a>
         </div>
       `;
     }
