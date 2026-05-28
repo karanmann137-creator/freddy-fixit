@@ -1,4 +1,3 @@
-cat > src/pages/Login.tsx << 'ENDOFFILE'
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
@@ -136,4 +135,3 @@ export default function Login() {
     </div>
   );
 }
-ENDOFFILE
