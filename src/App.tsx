@@ -12,6 +12,7 @@ import ContractorSuccess from "@/pages/ContractorSuccess";
 import ClientDashboard from "@/pages/ClientDashboard";
 import ContractorDashboard from "@/pages/ContractorDashboard";
 import AdminDashboard from "@/pages/AdminDashboard";
+import BrowseContractors from "@/pages/BrowseContractors";
 
 // Protect routes that require auth + a specific role
 function ProtectedRoute({
@@ -70,6 +71,7 @@ export default function App() {
       <Route path="/login" component={Login} />
       <Route path="/client-onboarding" component={ClientOnboarding} />
       <Route path="/contractor-onboarding" component={ContractorOnboarding} />
+      <Route path="/contractors" component={BrowseContractors} />
       <Route path="/client-success" component={ClientSuccess} />
       <Route path="/contractor-success" component={ContractorSuccess} />
 
