@@ -1,6 +1,5 @@
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import TopNav from "@/components/TopNav";
 
 const SERVICES = [
   { icon:"🔧", label:"General Repairs",      desc:"Handyman services for anything around the house" },
@@ -26,7 +25,6 @@ export default function Home() {
 
   return (
     <div style={{ fontFamily:"'DM Sans', sans-serif", background:"#1a2236", color:"#f0f4ff" }}>
-      <TopNav />
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }

@@ -64,15 +64,6 @@ export default function BrowseContractors() {
         .ff-chip { cursor: pointer; transition: background .15s ease, color .15s ease, border-color .15s ease; }
       `}</style>
 
-      {/* Nav */}
-      <nav style={st.nav}>
-        <div style={st.logo} onClick={() => setLocation("/")}>FREDDY FIX IT</div>
-        <div style={{ display: "flex", gap: "1.5rem", alignItems: "center" }}>
-          <span style={st.navLink} onClick={() => setLocation("/")}>Home</span>
-          <span style={st.navLink} onClick={() => setLocation("/login")}>Login</span>
-        </div>
-      </nav>
-
       <div style={st.inner}>
         <h1 style={st.h1}>Browse Contractors</h1>
         <p style={st.sub}>Find a vetted local pro for exactly the job you need done.</p>
@@ -170,7 +161,7 @@ const st: Record<string, React.CSSProperties> = {
   nav: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.25rem 1.5rem", borderBottom: "1px solid rgba(255,255,255,.07)" },
   logo: { fontFamily: "'Bebas Neue', sans-serif", fontSize: "1.4rem", letterSpacing: ".05em", color: "#ea6b14", cursor: "pointer" },
   navLink: { fontSize: ".9rem", color: "rgba(240,244,255,.75)", cursor: "pointer" },
-  inner: { maxWidth: "1100px", margin: "0 auto", padding: "2.5rem 1.5rem 5rem" },
+  inner: { maxWidth: "1100px", margin: "0 auto", padding: "5.5rem 1.5rem 5rem" },
   h1: { fontFamily: "'Bebas Neue', sans-serif", fontSize: "2.6rem", letterSpacing: ".02em", marginBottom: ".4rem" },
   sub: { color: "rgba(190,205,235,.7)", marginBottom: "2rem", fontSize: "1rem" },
   filters: { display: "flex", flexWrap: "wrap", gap: ".55rem", marginBottom: "2.5rem" },

@@ -12,6 +12,7 @@ import ContractorSuccess from "@/pages/ContractorSuccess";
 import ClientDashboard from "@/pages/ClientDashboard";
 import ContractorDashboard from "@/pages/ContractorDashboard";
 import AdminDashboard from "@/pages/AdminDashboard";
+import TopNav from "@/components/TopNav";
 import BrowseContractors from "@/pages/BrowseContractors";
 
 // Protect routes that require auth + a specific role
@@ -65,7 +66,9 @@ function ProtectedRoute({
 
 export default function App() {
   return (
-    <Switch>
+    <>
+      <TopNav />
+      <Switch>
       {/* Public */}
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
@@ -91,5 +94,6 @@ export default function App() {
         {() => <Redirect to="/" />}
       </Route>
     </Switch>
+    </>
   );
 }
