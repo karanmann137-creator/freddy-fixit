@@ -1,5 +1,6 @@
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
+import TopNav from "@/components/TopNav";
 
 const SERVICES = [
   { icon:"🔧", label:"General Repairs",      desc:"Handyman services for anything around the house" },
@@ -25,6 +26,7 @@ export default function Home() {
 
   return (
     <div style={{ fontFamily:"'DM Sans', sans-serif", background:"#1a2236", color:"#f0f4ff" }}>
+      <TopNav />
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -160,11 +162,6 @@ export default function Home() {
             </svg>
             Chat with us on WhatsApp
           </motion.a>
-
-          <motion.button className="ff-signin" onClick={() => setLocation("/login")}
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.65 }}>
-            Already have an account? Sign in →
-          </motion.button>
         </motion.div>
 
         <div className="ff-scroll-hint">
