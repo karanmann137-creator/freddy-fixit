@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 
 const STATUS_META: Record<string, { icon: string; label: string; color: string }> = {
   pending:     { icon: "⏳", label: "Pending Review",     color: "#f59e0b" },
@@ -159,6 +160,7 @@ export default function ClientDashboard() {
                       <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".4rem" }}>Job Description</div>
                       <div style={{ fontSize:".88rem", color:"rgba(190,205,235,.75)", lineHeight:1.6 }}>{activeReq.job_description}</div>
                     </div>
+                    <RequestPhotoQuote requestId={activeReq.id} photoPath={activeReq.photo_path} estimatedQuote={activeReq.estimated_quote} quoteNotes={activeReq.quote_notes} />
                     <div style={{ display:"inline-block", padding:".4rem .9rem", borderRadius:"99px", fontSize:".78rem", fontWeight:500, color: STATUS_META[activeReq.status]?.color, border:`1px solid ${STATUS_META[activeReq.status]?.color}` }}>
                       {STATUS_META[activeReq.status]?.icon} {STATUS_META[activeReq.status]?.label}
                     </div>

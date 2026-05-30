@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 
 export default function ContractorDashboard() {
   const [, setLocation] = useLocation();
@@ -153,6 +154,7 @@ export default function ContractorDashboard() {
                 </div>
                 {activeJobId === job.id && (
                   <div onClick={e => e.stopPropagation()} style={{ marginTop:"1rem", borderTop:"1px solid rgba(255,255,255,.07)", paddingTop:"1rem" }}>
+                    <RequestPhotoQuote requestId={job.request_id} photoPath={job.request?.photo_path} estimatedQuote={job.request?.estimated_quote} quoteNotes={job.request?.quote_notes} canQuote />
                     <div style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".75rem" }}>💬 Chat with {job.client?.first_name}</div>
                     <div style={{ maxHeight:"200px", overflowY:"auto", display:"flex", flexDirection:"column", gap:".6rem", marginBottom:".75rem" }}>
                       {messages.length === 0 && <p style={{ textAlign:"center", fontSize:".82rem", color:"rgba(190,205,235,.35)" }}>No messages yet</p>}
@@ -191,6 +193,7 @@ export default function ContractorDashboard() {
                 </div>
                 <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.55)", marginBottom:".6rem" }}>📍 {r.location}</div>
                 <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.65)", marginBottom:"1rem", lineHeight:1.5 }}>{r.job_description}</div>
+                <RequestPhotoQuote requestId={r.id} photoPath={r.photo_path} estimatedQuote={r.estimated_quote} quoteNotes={r.quote_notes} />
                 <a href={`https://wa.me/18255618331?text=Hi%2C%20I'd%20like%20to%20accept%20the%20${encodeURIComponent(r.service_needed)}%20job`}
                   target="_blank" rel="noopener noreferrer"
                   style={{ display:"inline-flex", alignItems:"center", gap:".5rem", padding:".6rem 1.1rem", background:"rgba(37,211,102,.1)", border:"1px solid rgba(37,211,102,.25)", borderRadius:"8px", color:"#25d366", fontSize:".82rem", fontWeight:500, textDecoration:"none" }}>

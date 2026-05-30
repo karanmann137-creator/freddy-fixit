@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
@@ -66,6 +67,7 @@ export default function AdminDashboard() {
                 <div style={s.meta}>📍 {r.location} · ⏱ {r.preferred_schedule}</div>
                 <div style={s.meta}>{r.job_description}</div>
                 <div style={{ ...s.badge, marginTop:".5rem" }}>● {r.status}</div>
+                <RequestPhotoQuote requestId={r.id} photoPath={r.photo_path} estimatedQuote={r.estimated_quote} quoteNotes={r.quote_notes} canQuote />
               </div>
             ))}
           </div>
