@@ -123,9 +123,9 @@ export default function Home() {
             initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.6, delay: 0.1 }}>
             <polygon points="40,8 72,28 72,60 40,72 8,60 8,28" fill="none" stroke="#ea6b14" strokeWidth="2" opacity="0.4"/>
             <path d="M40 18 L62 30 L62 58 L40 65 L18 58 L18 30 Z" fill="rgba(234,107,20,0.08)" stroke="#ea6b14" strokeWidth="1.5"/>
-            <path d="M32 48 L32 36 L36 32 L44 32 L48 36 L48 48" stroke="#f0f4ff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-            <path d="M28 48 L52 48" stroke="#ea6b14" strokeWidth="2.5" strokeLinecap="round"/>
-            <circle cx="40" cy="26" r="3" fill="#ea6b14"/>
+            <path d="M28 54 L28 38 L40 28 L52 38 L52 54 Z" stroke="#f0f4ff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+            <path d="M36 54 L36 46 L44 46 L44 54" stroke="#ea6b14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+            
           </motion.svg>
 
           <motion.h1 className="ff-title" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }}>
