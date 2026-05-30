@@ -39,6 +39,7 @@ export default function ClientOnboarding() {
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   const set = (key: string, val: string) => { setForm(f => ({ ...f, [key]: val })); setErrors(e => ({ ...e, [key]: "" })); };
 
@@ -80,7 +81,14 @@ export default function ClientOnboarding() {
       if (!authData.user) throw new Error("Account creation failed.");
       const userId = authData.user.id;
       await supabase.from("profiles").insert({ id: userId, email: form.email, first_name: form.firstName, last_name: form.lastName, phone: form.phone, role: "client" });
-      await supabase.from("client_requests").insert({ user_id: userId, first_name: form.firstName, last_name: form.lastName, email: form.email, phone: form.phone, service_needed: selectedServices.join(", "), preferred_schedule: form.preferredSchedule, location: form.location, job_description: form.jobDescription, status: "pending" });
+      let photoPath: string | null = null;
+      if (photoFile) {
+        const ext = (photoFile.name.split(".").pop() || "jpg").toLowerCase();
+        const path = userId + "/" + crypto.randomUUID() + "." + ext;
+        const up = await supabase.storage.from("problem-photos").upload(path, photoFile, { upsert: false });
+        if (!up.error) photoPath = path;
+      }
+      await supabase.from("client_requests").insert({ user_id: userId, first_name: form.firstName, last_name: form.lastName, email: form.email, phone: form.phone, service_needed: selectedServices.join(", "), preferred_schedule: form.preferredSchedule, location: form.location, job_description: form.jobDescription, photo_path: photoPath, status: "pending" });
       setSuccess(true); window.scrollTo(0,0);
     } catch (err: any) {
       setSubmitError(err.message?.includes("already registered") ? "An account with this email already exists. Please sign in instead." : err.message ?? "Something went wrong.");
@@ -204,6 +212,12 @@ export default function ClientOnboarding() {
                 <label style={s.label}>Describe the Job</label>
                 <textarea style={{ ...inp, resize:"vertical", minHeight:"120px", borderColor: errors.jobDescription ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} placeholder="Tell us what's broken or what you need done." value={form.jobDescription} onChange={e => set("jobDescription",e.target.value)} />
                 {errors.jobDescription && <p style={s.err}>{errors.jobDescription}</p>}
+              </div>
+              <div style={{ marginBottom:"1.2rem" }}>
+                <label style={s.label}>Photo of the Problem <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
+                <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0] ?? null; if (f && f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB."); return; } setSubmitError(""); setPhotoFile(f); }} style={{ ...inp, padding:".6rem", cursor:"pointer" }} />
+                <p style={{ fontSize:".78rem", color:"rgba(190,205,235,.55)", marginTop:".4rem" }}>A photo helps us give you a faster, more accurate quote. Max 5MB.</p>
+                {photoFile && <p style={{ fontSize:".78rem", color:"#9fe6b0", marginTop:".3rem" }}>Attached: {photoFile.name}</p>}
               </div>
               {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"#fca5a5", marginTop:"1rem" }}>{submitError}</div>}
             </div>
