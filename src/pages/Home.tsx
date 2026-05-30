@@ -121,10 +121,10 @@ export default function Home() {
         <motion.div className="ff-inner" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: "easeOut" }}>
           <motion.svg className="ff-logo-mark" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg"
             initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.6, delay: 0.1 }}>
-            <polygon points="40,8 72,28 72,60 40,72 8,60 8,28" fill="none" stroke="#ea6b14" strokeWidth="2" opacity="0.4"/>
-            <path d="M40 18 L62 30 L62 58 L40 65 L18 58 L18 30 Z" fill="rgba(234,107,20,0.08)" stroke="#ea6b14" strokeWidth="1.5"/>
+            
+            <polygon points="65.9,50.7 50.7,65.9 29.3,65.9 14.1,50.7 14.1,29.3 29.3,14.1 50.7,14.1 65.9,29.3" fill="rgba(234,107,20,0.08)" stroke="#ea6b14" strokeWidth="2"/>
             <path d="M28 54 L28 38 L40 28 L52 38 L52 54 Z" stroke="#f0f4ff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-            <path d="M36 54 L36 46 L44 46 L44 54" stroke="#ea6b14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+            <path d="M36 54 L36 43 L44 43 L44 54" stroke="#ea6b14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
             
           </motion.svg>
 
