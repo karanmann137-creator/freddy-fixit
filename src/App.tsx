@@ -12,6 +12,7 @@ import ContractorSuccess from "@/pages/ContractorSuccess";
 import ClientDashboard from "@/pages/ClientDashboard";
 import ContractorDashboard from "@/pages/ContractorDashboard";
 import AdminDashboard from "@/pages/AdminDashboard";
+import UpdatePassword from "@/pages/UpdatePassword";
 import TopNav from "@/components/TopNav";
 import BrowseContractors from "@/pages/BrowseContractors";
 
@@ -72,6 +73,7 @@ export default function App() {
       {/* Public */}
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
+      <Route path="/update-password" component={UpdatePassword} />
       <Route path="/client-onboarding" component={ClientOnboarding} />
       <Route path="/contractor-onboarding" component={ContractorOnboarding} />
       <Route path="/contractors" component={BrowseContractors} />
