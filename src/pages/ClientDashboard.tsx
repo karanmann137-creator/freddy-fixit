@@ -115,14 +115,11 @@ export default function ClientDashboard() {
     <div style={s.wrap}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 
+      <div style={{ height: "3.75rem" }} />
       <div style={s.header}>
-        <div>
-          <div style={s.logo}>FREDDY <span style={{ color:"#ea6b14" }}>FIXIT</span></div>
-          <div style={{ fontSize:".78rem", color:"rgba(190,205,235,.45)" }}>Welcome back, {profile?.first_name}</div>
-        </div>
+        <div style={{ fontSize:".95rem", color:"rgba(190,205,235,.7)" }}>Welcome back, {profile?.first_name}</div>
         <div style={{ display:"flex", gap:".75rem", flexWrap:"wrap" as const }}>
           <button style={s.primaryBtn} onClick={() => setLocation("/client-onboarding")}>+ New Request</button>
-          <button style={s.btn} onClick={handleSignOut}>Sign Out</button>
         </div>
       </div>
 

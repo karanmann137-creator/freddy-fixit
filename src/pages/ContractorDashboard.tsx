@@ -109,14 +109,11 @@ export default function ContractorDashboard() {
   return (
     <div style={s.wrap}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+      <div style={{ height: "3.75rem" }} />
       <div style={s.header}>
-        <div>
-          <div style={s.logo}>FREDDY <span style={{ color:"#ea6b14" }}>FIXIT</span></div>
-          <div style={{ fontSize:".78rem", color:"rgba(190,205,235,.45)" }}>
-            {contractor?.status === "pending" ? "⏳ Profile under review" : contractor?.status === "active" ? "✅ Active" : "Account inactive"}
-          </div>
+        <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.6)" }}>
+          {contractor?.status === "pending" ? "⏳ Profile under review" : contractor?.status === "active" ? "✅ Active" : "Account inactive"}
         </div>
-        <button style={s.btn} onClick={handleSignOut}>Sign Out</button>
       </div>
 
       <div style={s.tabsBar}>

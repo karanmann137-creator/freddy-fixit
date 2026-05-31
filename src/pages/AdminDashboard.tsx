@@ -43,9 +43,9 @@ export default function AdminDashboard() {
   return (
     <div style={s.wrap}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+      <div style={{ height: "3.75rem" }} />
       <div style={s.header}>
-        <div style={s.logo}>FREDDY <span style={{ color:"#ea6b14" }}>FIXIT</span> <span style={{ fontSize:".65rem", background:"#ea6b14", color:"#fff", borderRadius:"4px", padding:".1rem .4rem", verticalAlign:"middle" }}>ADMIN</span></div>
-        <button style={s.btn} onClick={handleSignOut}>Sign Out</button>
+        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.3rem", letterSpacing:".08em", color:"#f0f4ff" }}>ADMIN <span style={{ fontSize:".6rem", background:"#ea6b14", color:"#fff", borderRadius:"4px", padding:".15rem .45rem", verticalAlign:"middle", letterSpacing:".05em" }}>DASHBOARD</span></div>
       </div>
 
       <div style={s.content}>
