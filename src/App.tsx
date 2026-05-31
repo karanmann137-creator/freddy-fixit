@@ -1,4 +1,4 @@
-import { Switch, Route, Redirect } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { UserRole } from "@/lib/supabase";
@@ -15,6 +15,29 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import UpdatePassword from "@/pages/UpdatePassword";
 import TopNav from "@/components/TopNav";
 import BrowseContractors from "@/pages/BrowseContractors";
+
+// When Supabase detects a password-recovery session (fired as the
+// PASSWORD_RECOVERY auth event, or visible as a recovery token in the URL
+// hash), always send the user to the password-reset form — even if the email
+// link dropped them on the home page or anywhere else.
+function RecoveryRedirect() {
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    if (
+      window.location.hash.includes("type=recovery") &&
+      window.location.pathname !== "/update-password"
+    ) {
+      setLocation("/update-password");
+    }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") setLocation("/update-password");
+    });
+    return () => subscription.unsubscribe();
+  }, [setLocation]);
+  return null;
+}
 
 // Protect routes that require auth + a specific role
 function ProtectedRoute({
@@ -40,7 +63,6 @@ function ProtectedRoute({
           .single();
 
         if (!profile || profile.role !== requiredRole) {
-          // Redirect to their correct dashboard
           const dest =
             profile?.role === "admin" ? "/admin-dashboard" :
             profile?.role === "contractor" ? "/contractor-dashboard" :
@@ -68,6 +90,7 @@ function ProtectedRoute({
 export default function App() {
   return (
     <>
+      <RecoveryRedirect />
       <TopNav />
       <Switch>
       {/* Public */}
