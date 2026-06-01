@@ -33,7 +33,9 @@ export default function ClientOnboarding() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
   const TOTAL = 3;
-  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", password:"", preferredSchedule:"", location:"", jobDescription:"" });
+  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", password:"", preferredSchedule:"", location:"", jobDescription:"", businessName:"", businessType:"", locations:"", billingPreference:"" });
+  const [clientType, setClientType] = useState<"individual"|"business">("individual");
+  const [recurring, setRecurring] = useState(false);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string,string>>({});
   const [loading, setLoading] = useState(false);
@@ -88,7 +90,13 @@ export default function ClientOnboarding() {
         const up = await supabase.storage.from("problem-photos").upload(path, photoFile, { upsert: false });
         if (!up.error) photoPath = path;
       }
-      await supabase.from("client_requests").insert({ user_id: userId, first_name: form.firstName, last_name: form.lastName, email: form.email, phone: form.phone, service_needed: selectedServices.join(", "), preferred_schedule: form.preferredSchedule, location: form.location, job_description: form.jobDescription, photo_path: photoPath, status: "pending" });
+      await supabase.from("client_requests").insert({ user_id: userId, first_name: form.firstName, last_name: form.lastName, email: form.email, phone: form.phone, service_needed: selectedServices.join(", "), preferred_schedule: form.preferredSchedule, location: form.location, job_description: form.jobDescription, photo_path: photoPath, status: "pending",
+        client_type: clientType,
+        business_name: clientType === "business" ? (form.businessName || null) : null,
+        business_type: clientType === "business" ? (form.businessType || null) : null,
+        locations: clientType === "business" ? (form.locations || null) : null,
+        recurring: clientType === "business" ? recurring : false,
+        billing_preference: clientType === "business" ? (form.billingPreference || null) : null });
       setSuccess(true); window.scrollTo(0,0);
     } catch (err: any) {
       setSubmitError(err.message?.includes("already registered") ? "An account with this email already exists. Please sign in instead." : err.message ?? "Something went wrong.");
@@ -143,6 +151,18 @@ export default function ClientOnboarding() {
         <div style={s.card}>
           {step === 1 && (
             <div>
+              <div style={{ marginBottom:"1.5rem" }}>
+                <label style={s.label}>I am signing up as</label>
+                <div style={{ display:"flex", gap:".6rem", marginTop:".4rem" }}>
+                  {([["individual","🏠 Just me / household"],["business","🏢 A small business"]] as const).map(([val,lbl]) => (
+                    <button key={val} type="button" onClick={() => setClientType(val)}
+                      style={{ flex:1, padding:".7rem .5rem", borderRadius:"10px", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem", fontWeight:500,
+                        background: clientType===val ? "rgba(234,107,20,.15)" : "rgba(255,255,255,.04)",
+                        border: clientType===val ? "1px solid #ea6b14" : "1px solid rgba(255,255,255,.12)",
+                        color: clientType===val ? "#f0f4ff" : "rgba(190,205,235,.7)" }}>{lbl}</button>
+                  ))}
+                </div>
+              </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
                 <div style={{ marginBottom:"1.2rem" }}>
                   <label style={s.label}>First Name</label>
@@ -203,6 +223,33 @@ export default function ClientOnboarding() {
 
           {step === 3 && (
             <div>
+              {clientType === "business" && (
+                <div style={{ marginBottom:"1.75rem", paddingBottom:"1.25rem", borderBottom:"1px solid rgba(255,255,255,.08)" }}>
+                  <div style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".12em", color:"#ea6b14", marginBottom:".9rem" }}>Business details</div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+                    <div style={{ marginBottom:"1.2rem" }}>
+                      <label style={s.label}>Business name</label>
+                      <input style={inp} placeholder="Acme Property Mgmt" value={form.businessName} onChange={e => set("businessName", e.target.value)} />
+                    </div>
+                    <div style={{ marginBottom:"1.2rem" }}>
+                      <label style={s.label}>Business type</label>
+                      <input style={inp} placeholder="e.g. Property mgmt, Cafe" value={form.businessType} onChange={e => set("businessType", e.target.value)} />
+                    </div>
+                  </div>
+                  <div style={{ marginBottom:"1.2rem" }}>
+                    <label style={s.label}>Locations / sites <span style={{ opacity:.5, fontWeight:400 }}>(if more than one)</span></label>
+                    <textarea style={{ ...inp, resize:"vertical", minHeight:"70px" }} placeholder="List the addresses or number of sites we would be servicing." value={form.locations} onChange={e => set("locations", e.target.value)} />
+                  </div>
+                  <div style={{ marginBottom:"1.2rem" }}>
+                    <label style={s.label}>Billing preference</label>
+                    <input style={inp} placeholder="e.g. Net-30 invoicing, PO required" value={form.billingPreference} onChange={e => set("billingPreference", e.target.value)} />
+                  </div>
+                  <label style={{ display:"flex", alignItems:"center", gap:".5rem", cursor:"pointer", fontSize:".88rem", color:"rgba(240,244,255,.85)" }}>
+                    <input type="checkbox" checked={recurring} onChange={e => setRecurring(e.target.checked)} style={{ width:"16px", height:"16px", accentColor:"#ea6b14" }} />
+                    This is recurring / scheduled maintenance
+                  </label>
+                </div>
+              )}
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Your Address / Location in Calgary</label>
                 <input style={{ ...inp, borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} placeholder="e.g. 123 Main St NW, Calgary" value={form.location} onChange={e => set("location",e.target.value)} />

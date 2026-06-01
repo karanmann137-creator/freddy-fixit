@@ -18,6 +18,10 @@ export default function ContractorDashboard() {
   const [proposeForm, setProposeForm] = useState({ when:"", amount:"", notes:"" });
   const [photoFile, setPhotoFile]     = useState<File | null>(null);
   const [busyJob, setBusyJob]         = useState(false);
+  const [portfolio, setPortfolio]     = useState<any[]>([]);
+  const [pfForm, setPfForm]           = useState<{ title:string; description:string; file:File|null }>({ title:"", description:"", file:null });
+  const [googleUrl, setGoogleUrl]     = useState("");
+  const [busyPf, setBusyPf]           = useState(false);
   const msgEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -34,6 +38,9 @@ export default function ContractorDashboard() {
       setProfile(prof);
       const { data: con } = await supabase.from("contractors").select("*").eq("id", user.id).single();
       setContractor(con);
+      setGoogleUrl(con?.google_reviews_url ?? "");
+      const { data: pf } = await supabase.from("portfolio_items").select("*").eq("contractor_id", user.id).order("created_at", { ascending: false });
+      setPortfolio(pf ?? []);
       const { data: jobs } = await supabase.from("jobs").select("*").eq("contractor_id", user.id).order("created_at", { ascending: false });
       const enriched = await Promise.all((jobs ?? []).map(async (job: any) => {
         const [{ data: req }, { data: client }] = await Promise.all([
@@ -128,6 +135,38 @@ export default function ContractorDashboard() {
     if (error) { alert("Couldn't withdraw: " + error.message); return; }
     setMyJobs(prev => prev.filter(j => j.id !== job.id));
     setActiveJobId(null);
+  };
+  const saveGoogleUrl = async () => {
+    setBusyPf(true);
+    const { error } = await supabase.from("contractors").update({ google_reviews_url: googleUrl || null }).eq("id", profile.id);
+    setBusyPf(false);
+    if (error) { alert("Couldn't save link: " + error.message); return; }
+    setContractor((c: any) => ({ ...c, google_reviews_url: googleUrl || null }));
+  };
+  const pfUrl = (path: string) => supabase.storage.from("portfolio-photos").getPublicUrl(path).data.publicUrl;
+  const addPortfolioItem = async () => {
+    if (!pfForm.file) { alert("Choose a photo first."); return; }
+    setBusyPf(true);
+    try {
+      const ext = (pfForm.file.name.split(".").pop() || "jpg").toLowerCase();
+      const path = profile.id + "/" + crypto.randomUUID() + "." + ext;
+      const { error: upErr } = await supabase.storage.from("portfolio-photos").upload(path, pfForm.file);
+      if (upErr) throw upErr;
+      const { data: row, error } = await supabase.from("portfolio_items")
+        .insert({ contractor_id: profile.id, title: pfForm.title || null, description: pfForm.description || null, photo_path: path })
+        .select().single();
+      if (error) throw error;
+      setPortfolio(prev => [row, ...prev]);
+      setPfForm({ title:"", description:"", file:null });
+    } catch (e: any) { alert("Couldn't add: " + (e.message || e)); }
+    finally { setBusyPf(false); }
+  };
+  const deletePortfolioItem = async (item: any) => {
+    if (!window.confirm("Remove this portfolio item?")) return;
+    const { error } = await supabase.from("portfolio_items").delete().eq("id", item.id);
+    if (error) { alert("Couldn't remove: " + error.message); return; }
+    if (item.photo_path) supabase.storage.from("portfolio-photos").remove([item.photo_path]);
+    setPortfolio(prev => prev.filter(p => p.id !== item.id));
   };
 
   const toggleSlot = async (day: string, slot: string) => {
@@ -329,6 +368,38 @@ export default function ContractorDashboard() {
                   {contractor.service_area.map((z: string) => <span key={z} style={s.chip}>📍 {z}</span>)}
                 </div>
               )}
+            </div>
+            <div style={s.card}>
+              <div style={s.cardTitle}>Portfolio &amp; Reviews</div>
+              <div style={{ marginBottom:"1.25rem" }}>
+                <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".35rem" }}>Google reviews link</div>
+                <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
+                  <input value={googleUrl} placeholder="https://g.page/your-business/review" onChange={e => setGoogleUrl(e.target.value)} style={{ flex:"1 1 220px", padding:".55rem .7rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".85rem" }} />
+                  <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyPf} onClick={saveGoogleUrl}>Save link</button>
+                </div>
+              </div>
+              <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".35rem" }}>Past work photos</div>
+              {portfolio.length === 0 && <p style={{ fontSize:".82rem", color:"rgba(190,205,235,.45)", marginBottom:".75rem" }}>No portfolio items yet. Add your best past jobs below.</p>}
+              {portfolio.length > 0 && (
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap:".75rem", marginBottom:"1rem" }}>
+                  {portfolio.map(item => (
+                    <div key={item.id} style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"10px", overflow:"hidden" }}>
+                      {item.photo_path && <img src={pfUrl(item.photo_path)} alt={item.title || "Past job"} style={{ width:"100%", height:"100px", objectFit:"cover" as const, display:"block" }} />}
+                      <div style={{ padding:".5rem .6rem" }}>
+                        {item.title && <div style={{ fontSize:".8rem", fontWeight:600, color:"#f0f4ff" }}>{item.title}</div>}
+                        {item.description && <div style={{ fontSize:".72rem", color:"rgba(190,205,235,.6)", marginTop:".15rem" }}>{item.description}</div>}
+                        <button onClick={() => deletePortfolioItem(item)} style={{ marginTop:".4rem", fontSize:".7rem", color:"#ef4444", background:"none", border:"none", cursor:"pointer", padding:0 }}>Remove</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ display:"flex", flexDirection:"column", gap:".5rem", borderTop:"1px solid rgba(255,255,255,.07)", paddingTop:".9rem" }}>
+                <input value={pfForm.title} placeholder="Title (e.g. Kitchen sink replacement)" onChange={e => setPfForm(f => ({ ...f, title: e.target.value }))} style={{ padding:".55rem .7rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const }} />
+                <textarea value={pfForm.description} rows={2} placeholder="Short description (optional)" onChange={e => setPfForm(f => ({ ...f, description: e.target.value }))} style={{ padding:".55rem .7rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const }} />
+                <input type="file" accept="image/*" onChange={e => setPfForm(f => ({ ...f, file: e.target.files?.[0] ?? null }))} style={{ fontSize:".8rem", color:"rgba(190,205,235,.7)" }} />
+                <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", alignSelf:"flex-start" as const }} disabled={busyPf} onClick={addPortfolioItem}>{busyPf ? "Adding…" : "+ Add portfolio item"}</button>
+              </div>
             </div>
             <div style={s.card}>
               <div style={s.cardTitle}>Availability</div>

@@ -21,6 +21,11 @@ interface DirectoryContractor {
   photo_url: string | null;
   rating: number | null;
   total_jobs: number | null;
+  rating_price: number | null;
+  rating_experience: number | null;
+  rating_result: number | null;
+  rating_count: number | null;
+  google_reviews_url: string | null;
 }
 
 export default function BrowseContractors() {
@@ -29,15 +34,25 @@ export default function BrowseContractors() {
   const [category, setCategory] = useState<string>("All");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [portfolioBy, setPortfolioBy] = useState<Record<string, any[]>>({});
 
   useEffect(() => {
     (async () => {
       const { data, error } = await supabase.from("contractor_directory").select("*");
       if (error) setError("Couldn't load contractors right now — please try again shortly.");
       setContractors(data ?? []);
+      const ids = (data ?? []).map((c: any) => c.id);
+      if (ids.length) {
+        const { data: pf } = await supabase.from("portfolio_items").select("*").in("contractor_id", ids).order("created_at", { ascending: false });
+        const map: Record<string, any[]> = {};
+        (pf ?? []).forEach((p: any) => { if (!map[p.contractor_id]) map[p.contractor_id] = []; map[p.contractor_id].push(p); });
+        setPortfolioBy(map);
+      }
       setLoading(false);
     })();
   }, []);
+
+  const pfUrl = (path: string) => supabase.storage.from("portfolio-photos").getPublicUrl(path).data.publicUrl;
 
   const visible = category === "All"
     ? contractors
@@ -142,6 +157,29 @@ export default function BrowseContractors() {
 
                 {(c.service_area ?? []).length > 0 && (
                   <div style={st.meta}>📍 {(c.service_area ?? []).join(", ")}</div>
+                )}
+
+                {(c.rating_count ?? 0) > 0 && (
+                  <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap", margin:".65rem 0 .2rem" }}>
+                    {([["Price", c.rating_price],["Experience", c.rating_experience],["Result", c.rating_result]] as [string, number|null][]).map(([lbl,val]) => (
+                      <div key={lbl} style={{ flex:"1 1 64px", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"8px", padding:".4rem .25rem", textAlign:"center" }}>
+                        <div style={{ fontSize:"1rem", fontWeight:700, color:"#ea6b14" }}>{val != null ? Number(val).toFixed(1) : "—"}<span style={{ fontSize:".62rem", color:"rgba(190,205,235,.5)" }}>/10</span></div>
+                        <div style={{ fontSize:".6rem", textTransform:"uppercase", letterSpacing:".06em", color:"rgba(190,205,235,.5)" }}>{lbl}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {(portfolioBy[c.id] ?? []).length > 0 && (
+                  <div style={{ display:"flex", gap:".4rem", overflowX:"auto", margin:".5rem 0" }}>
+                    {(portfolioBy[c.id] ?? []).slice(0,6).map((p: any) => (
+                      p.photo_path ? <img key={p.id} src={pfUrl(p.photo_path)} alt={p.title || "Past work"} title={p.title || ""} style={{ width:"64px", height:"64px", objectFit:"cover", borderRadius:"8px", flexShrink:0 }} /> : null
+                    ))}
+                  </div>
+                )}
+
+                {c.google_reviews_url && (
+                  <a href={c.google_reviews_url} target="_blank" rel="noopener noreferrer" style={{ display:"inline-block", fontSize:".8rem", color:"#ea6b14", textDecoration:"none", margin:".3rem 0 .1rem" }}>★ See Google reviews →</a>
                 )}
 
                 <button style={st.cta} onClick={() => setLocation("/client-onboarding")}>
