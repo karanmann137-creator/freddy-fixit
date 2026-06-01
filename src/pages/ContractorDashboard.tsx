@@ -15,7 +15,8 @@ export default function ContractorDashboard() {
   const [sendingMsg, setSendingMsg]   = useState(false);
   const [loading, setLoading]         = useState(true);
   const [activeTab, setActiveTab]     = useState<"jobs"|"available"|"profile"|"earnings">("jobs");
-  const [jobForm, setJobForm]         = useState({ status:"", scheduled_date:"", notes:"" });
+  const [proposeForm, setProposeForm] = useState({ when:"", amount:"", notes:"" });
+  const [photoFile, setPhotoFile]     = useState<File | null>(null);
   const [busyJob, setBusyJob]         = useState(false);
   const msgEndRef = useRef<HTMLDivElement>(null);
 
@@ -76,19 +77,48 @@ export default function ContractorDashboard() {
   const openJob = (job: any) => {
     if (activeJobId === job.id) { setActiveJobId(null); return; }
     setActiveJobId(job.id);
-    setJobForm({ status: job.status, scheduled_date: job.scheduled_date ?? "", notes: job.notes ?? "" });
+    setPhotoFile(null);
+    setProposeForm({
+      when: job.scheduled_at ? new Date(job.scheduled_at).toISOString().slice(0,16) : "",
+      amount: job.amount != null ? String(job.amount) : "",
+      notes: job.notes ?? "",
+    });
   };
-  const saveJob = async (job: any) => {
+  const proposeSchedule = async (job: any) => {
+    if (!proposeForm.when) { alert("Pick a date and time first."); return; }
     setBusyJob(true);
-    const { error } = await supabase.rpc("update_job", {
+    const whenIso = new Date(proposeForm.when).toISOString();
+    const { error } = await supabase.rpc("propose_job_schedule", {
       p_job_id: job.id,
-      p_status: jobForm.status || null,
-      p_scheduled_date: jobForm.scheduled_date || null,
-      p_notes: jobForm.notes || null,
+      p_scheduled_at: whenIso,
+      p_amount: proposeForm.amount ? Number(proposeForm.amount) : null,
+      p_notes: proposeForm.notes || null,
     });
     setBusyJob(false);
-    if (error) { alert("Couldn't update job: " + error.message); return; }
-    setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: jobForm.status || j.status, scheduled_date: jobForm.scheduled_date || j.scheduled_date, notes: jobForm.notes || j.notes } : j));
+    if (error) { alert("Couldn't send proposal: " + error.message); return; }
+    setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, scheduled_at: whenIso, amount: proposeForm.amount ? Number(proposeForm.amount) : j.amount, schedule_proposed_at: new Date().toISOString(), client_approved_at: null } : j));
+  };
+  const markComplete = async (job: any) => {
+    if (!window.confirm("Mark this job complete? The client will be asked to confirm.")) return;
+    setBusyJob(true);
+    let photoPath: string | null = null;
+    try {
+      if (photoFile) {
+        const ext = (photoFile.name.split(".").pop() || "jpg").toLowerCase();
+        const path = job.id + "/" + crypto.randomUUID() + "." + ext;
+        const { error: upErr } = await supabase.storage.from("completion-photos").upload(path, photoFile);
+        if (upErr) throw upErr;
+        photoPath = path;
+      }
+      const { error } = await supabase.rpc("mark_job_complete", { p_job_id: job.id, p_photo_path: photoPath });
+      if (error) throw error;
+      setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: "pending_confirmation", contractor_completed_at: new Date().toISOString(), completion_photo_path: photoPath ?? j.completion_photo_path } : j));
+      setPhotoFile(null);
+    } catch (e: any) {
+      alert("Couldn't mark complete: " + (e.message || e));
+    } finally {
+      setBusyJob(false);
+    }
   };
   const withdrawJob = async (job: any) => {
     if (!window.confirm("Withdraw from this job? It goes back to the open pool and the chat history is removed.")) return;
@@ -182,32 +212,48 @@ export default function ContractorDashboard() {
                   <div onClick={e => e.stopPropagation()} style={{ marginTop:"1rem", borderTop:"1px solid rgba(255,255,255,.07)", paddingTop:"1rem" }}>
                     <RequestPhotoQuote requestId={job.request_id} photoPath={job.request?.photo_path} estimatedQuote={job.request?.estimated_quote} quoteNotes={job.request?.quote_notes} canQuote />
 
-                    <div style={{ display:"flex", flexDirection:"column", gap:".6rem", marginBottom:"1.25rem" }}>
-                      <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
-                        <div style={{ flex:"1 1 140px" }}>
-                          <div style={{ fontSize:".7rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".25rem" }}>Status</div>
-                          <select value={jobForm.status} onChange={e => setJobForm(f => ({ ...f, status: e.target.value }))}
-                            style={{ width:"100%", padding:".55rem .7rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".85rem" }}>
-                            <option value="assigned">Assigned</option>
-                            <option value="in_progress">In progress</option>
-                            <option value="completed">Completed</option>
-                          </select>
-                        </div>
-                        <div style={{ flex:"1 1 140px" }}>
-                          <div style={{ fontSize:".7rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".25rem" }}>Scheduled date</div>
-                          <input type="date" value={jobForm.scheduled_date} onChange={e => setJobForm(f => ({ ...f, scheduled_date: e.target.value }))}
-                            style={{ width:"100%", padding:".5rem .7rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const }} />
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize:".7rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".25rem" }}>Notes</div>
-                        <textarea value={jobForm.notes} rows={2} onChange={e => setJobForm(f => ({ ...f, notes: e.target.value }))}
-                          style={{ width:"100%", padding:".55rem .7rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const }} />
-                      </div>
-                      <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
-                        <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyJob} onClick={() => saveJob(job)}>{busyJob ? "Saving…" : "Save"}</button>
-                        <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJob} onClick={() => withdrawJob(job)}>Withdraw</button>
-                      </div>
+                    <div style={{ display:"flex", flexDirection:"column", gap:".7rem", marginBottom:"1.25rem" }}>
+                      {job.status === "assigned" && (
+                        <>
+                          {job.schedule_proposed_at && !job.client_approved_at && (
+                            <div style={{ fontSize:".8rem", color:"#fbbf24" }}>⏳ Waiting for the client to approve {job.scheduled_at ? new Date(job.scheduled_at).toLocaleString() : "your proposed time"}. You can update it below.</div>
+                          )}
+                          <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
+                            <div style={{ flex:"1 1 190px" }}>
+                              <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".25rem" }}>Proposed date &amp; time</div>
+                              <input type="datetime-local" value={proposeForm.when} onChange={e => setProposeForm(f => ({ ...f, when: e.target.value }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const }} />
+                            </div>
+                            <div style={{ flex:"1 1 110px" }}>
+                              <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".25rem" }}>Price ($)</div>
+                              <input type="number" min="0" value={proposeForm.amount} placeholder="e.g. 250" onChange={e => setProposeForm(f => ({ ...f, amount: e.target.value }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const }} />
+                            </div>
+                          </div>
+                          <textarea value={proposeForm.notes} rows={2} placeholder="Notes for the client (optional)" onChange={e => setProposeForm(f => ({ ...f, notes: e.target.value }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const }} />
+                          <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
+                            <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyJob} onClick={() => proposeSchedule(job)}>{busyJob ? "Sending…" : (job.schedule_proposed_at ? "Update proposal" : "Propose time & price")}</button>
+                            <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJob} onClick={() => withdrawJob(job)}>Withdraw</button>
+                          </div>
+                        </>
+                      )}
+                      {(job.status === "scheduled" || job.status === "in_progress") && (
+                        <>
+                          <div style={{ fontSize:".85rem", color:"#86efac" }}>📅 Booked for {job.scheduled_at ? new Date(job.scheduled_at).toLocaleString() : "the agreed time"}{job.amount ? " · $" + job.amount : ""}.</div>
+                          <div>
+                            <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".25rem" }}>Completion photo (optional)</div>
+                            <input type="file" accept="image/*" onChange={e => setPhotoFile(e.target.files?.[0] ?? null)} style={{ fontSize:".8rem", color:"rgba(190,205,235,.7)" }} />
+                          </div>
+                          <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
+                            <button style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none", fontWeight:600 }} disabled={busyJob} onClick={() => markComplete(job)}>{busyJob ? "Working…" : "✓ Mark complete"}</button>
+                            <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJob} onClick={() => withdrawJob(job)}>Withdraw</button>
+                          </div>
+                        </>
+                      )}
+                      {job.status === "pending_confirmation" && (
+                        <div style={{ fontSize:".85rem", color:"#fbbf24" }}>⏳ You marked this complete — waiting for the client to confirm.</div>
+                      )}
+                      {job.status === "completed" && (
+                        <div style={{ fontSize:".85rem", color:"#86efac" }}>✅ Job completed and confirmed.</div>
+                      )}
                     </div>
 
                     <div style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".75rem" }}>💬 Chat with {job.client?.first_name}</div>

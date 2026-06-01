@@ -25,6 +25,7 @@ export default function ClientDashboard() {
   const [editingId, setEditingId]   = useState<string|null>(null);
   const [editForm, setEditForm]     = useState({ service:"", schedule:"", location:"", description:"" });
   const [busyReq, setBusyReq]       = useState(false);
+  const [completionPhotoUrl, setCompletionPhotoUrl] = useState<string|null>(null);
   const msgEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -120,6 +121,31 @@ export default function ClientDashboard() {
     else setRequests(prev => prev.map(x => x.id === r.id ? { ...x, status: "cancelled" } : x));
   };
 
+  const approveSchedule = async () => {
+    if (!activeJob) return;
+    setBusyReq(true);
+    const { error } = await supabase.rpc("approve_job_schedule", { p_job_id: activeJob.id });
+    setBusyReq(false);
+    if (error) { alert("Couldn't approve: " + error.message); return; }
+    setActiveJob({ ...activeJob, status: "scheduled", client_approved_at: new Date().toISOString() });
+  };
+  const confirmCompletion = async () => {
+    if (!activeJob) return;
+    setBusyReq(true);
+    const { error } = await supabase.rpc("confirm_job_completion", { p_job_id: activeJob.id });
+    setBusyReq(false);
+    if (error) { alert("Couldn't confirm: " + error.message); return; }
+    setActiveJob({ ...activeJob, status: "completed", client_confirmed_at: new Date().toISOString() });
+    setRequests(prev => prev.map(r => r.id === activeJob.request_id ? { ...r, status: "completed" } : r));
+  };
+
+  useEffect(() => {
+    if (activeJob?.completion_photo_path) {
+      supabase.storage.from("completion-photos").createSignedUrl(activeJob.completion_photo_path, 3600)
+        .then(({ data }) => setCompletionPhotoUrl(data?.signedUrl ?? null));
+    } else { setCompletionPhotoUrl(null); }
+  }, [activeJob?.completion_photo_path]);
+
   const activeReq = requests.find(r => r.status !== "completed" && r.status !== "cancelled") ?? requests[0];
 
   const s = {
@@ -194,6 +220,35 @@ export default function ClientDashboard() {
                     <div style={{ display:"inline-block", padding:".4rem .9rem", borderRadius:"99px", fontSize:".78rem", fontWeight:500, color: STATUS_META[activeReq.status]?.color, border:`1px solid ${STATUS_META[activeReq.status]?.color}` }}>
                       {STATUS_META[activeReq.status]?.icon} {STATUS_META[activeReq.status]?.label}
                     </div>
+
+                    {activeJob && (
+                      <div style={{ marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)" }}>
+                        {activeJob.status === "assigned" && activeJob.schedule_proposed_at && !activeJob.client_approved_at && (
+                          <>
+                            <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}>Your contractor proposed a time</div>
+                            <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.8)", marginBottom:".75rem" }}>📅 {activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "—"}{activeJob.amount ? " · 💵 $" + activeJob.amount : ""}</div>
+                            <button style={s.primaryBtn} disabled={busyReq} onClick={approveSchedule}>{busyReq ? "…" : "Approve & schedule"}</button>
+                          </>
+                        )}
+                        {activeJob.status === "assigned" && !activeJob.schedule_proposed_at && (
+                          <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.75)" }}>✅ Matched! Waiting for your contractor to propose a time and price.</div>
+                        )}
+                        {activeJob.status === "scheduled" && (
+                          <div style={{ fontSize:".85rem", color:"#86efac" }}>📅 Scheduled for {activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "the agreed time"}{activeJob.amount ? " · $" + activeJob.amount : ""}.</div>
+                        )}
+                        {activeJob.status === "pending_confirmation" && (
+                          <>
+                            <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}>Your contractor marked this complete</div>
+                            {completionPhotoUrl && <img src={completionPhotoUrl} alt="Completed work" style={{ width:"100%", maxWidth:"320px", borderRadius:"10px", margin:".5rem 0", display:"block" }} />}
+                            <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.7)", marginBottom:".75rem" }}>Please confirm the work is done. If you don't, it auto-confirms in a few days.</div>
+                            <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm completion"}</button>
+                          </>
+                        )}
+                        {activeJob.status === "completed" && (
+                          <div style={{ fontSize:".85rem", color:"#86efac" }}>✅ Completed — thanks for using Freddy Fix It!</div>
+                        )}
+                      </div>
+                    )}
 
                     {editingId === activeReq.id ? (
                       <div style={{ marginTop:"1rem", borderTop:"1px solid rgba(255,255,255,.07)", paddingTop:"1rem", display:"flex", flexDirection:"column", gap:".6rem" }}>

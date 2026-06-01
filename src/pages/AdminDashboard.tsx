@@ -10,6 +10,9 @@ export default function AdminDashboard() {
   const [jobs, setJobs] = useState<any[]>([]);
   const [tab, setTab] = useState<"requests"|"contractors"|"jobs">("requests");
   const [loading, setLoading] = useState(true);
+  const [activeContractors, setActiveContractors] = useState<any[]>([]);
+  const [assignSel, setAssignSel] = useState<Record<string,string>>({});
+  const [busyAssign, setBusyAssign] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -20,20 +23,32 @@ export default function AdminDashboard() {
 
   const loadAll = async () => {
     setLoading(true);
-    const [{ data: reqs }, { data: cons }, { data: js }] = await Promise.all([
+    const [{ data: reqs }, { data: cons }, { data: js }, { data: dir }] = await Promise.all([
       supabase.from("client_requests").select("*").order("created_at", { ascending: false }),
       supabase.from("contractors").select("*").order("created_at", { ascending: false }),
       supabase.from("jobs").select("*").order("created_at", { ascending: false }),
+      supabase.from("contractor_directory").select("id, first_name, last_name, specialties"),
     ]);
     setRequests(reqs ?? []);
     setContractors(cons ?? []);
     setJobs(js ?? []);
+    setActiveContractors(dir ?? []);
     setLoading(false);
   };
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setLocation("/");
+  };
+
+  const assignContractor = async (requestId: string) => {
+    const cid = assignSel[requestId];
+    if (!cid) { alert("Pick a contractor first."); return; }
+    setBusyAssign(true);
+    const { error } = await supabase.rpc("assign_job", { p_request_id: requestId, p_contractor_id: cid });
+    setBusyAssign(false);
+    if (error) { alert("Couldn't assign: " + error.message); return; }
+    await loadAll();
   };
 
   const s = { wrap: { minHeight:"100vh", background:"#1a2236", fontFamily:"'DM Sans',sans-serif", color:"#f0f4ff" }, header: { background:"rgba(255,255,255,.03)", borderBottom:"1px solid rgba(255,255,255,.07)", padding:"1rem 1.5rem", display:"flex", justifyContent:"space-between", alignItems:"center" }, logo: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.4rem", letterSpacing:".1em" }, content: { maxWidth:"1000px", margin:"0 auto", padding:"2rem 1.5rem" }, tabs: { display:"flex", gap:".5rem", marginBottom:"1.5rem" }, tab: { padding:".6rem 1.2rem", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"8px", color:"rgba(190,205,235,.6)", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem" }, activeTab: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.4)", color:"#f0f4ff" }, card: { background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"12px", padding:"1.25rem", marginBottom:"1rem" }, title: { fontSize:".95rem", fontWeight:500, color:"#f0f4ff", marginBottom:".35rem" }, meta: { fontSize:".78rem", color:"rgba(190,205,235,.5)", marginBottom:".2rem" }, badge: { fontSize:".75rem", fontWeight:500, color:"#ea6b14" }, btn: { padding:".5rem 1rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.1)", borderRadius:"6px", color:"rgba(190,205,235,.7)", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer" } };
@@ -67,6 +82,21 @@ export default function AdminDashboard() {
                 <div style={s.meta}>📍 {r.location} · ⏱ {r.preferred_schedule}</div>
                 <div style={s.meta}>{r.job_description}</div>
                 <div style={{ ...s.badge, marginTop:".5rem" }}>● {r.status}</div>
+                {r.status === "pending" && (
+                  <div style={{ display:"flex", gap:".5rem", marginTop:".75rem", flexWrap:"wrap" as const, alignItems:"center" }}>
+                    <select value={assignSel[r.id] ?? ""} onChange={e => setAssignSel(p => ({ ...p, [r.id]: e.target.value }))}
+                      style={{ padding:".5rem .7rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"6px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".82rem" }}>
+                      <option value="">Select contractor…</option>
+                      {activeContractors.map(c => (
+                        <option key={c.id} value={c.id}>{c.first_name} {c.last_name ? c.last_name[0] + "." : ""}{(c.specialties && c.specialties.length) ? " — " + c.specialties[0] : ""}</option>
+                      ))}
+                    </select>
+                    <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyAssign} onClick={() => assignContractor(r.id)}>{busyAssign ? "Assigning…" : "Assign"}</button>
+                  </div>
+                )}
+                {r.status !== "pending" && r.assigned_contractor_id && (
+                  <div style={{ ...s.meta, marginTop:".5rem", color:"#86efac" }}>Assigned ✓</div>
+                )}
                 <RequestPhotoQuote requestId={r.id} photoPath={r.photo_path} estimatedQuote={r.estimated_quote} quoteNotes={r.quote_notes} canQuote />
               </div>
             ))}
