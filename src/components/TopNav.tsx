@@ -2,18 +2,23 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 
-// Right-side links. Add more clickable sections here later — each appears automatically.
-const NAV_LINKS: { label: string; to: string; accent?: boolean }[] = [
-  { label: "Browse Contractors", to: "/contractors", accent: true },
-];
+// Right-side links shown to everyone. Add more here later — each appears automatically.
+const NAV_LINKS: { label: string; to: string; accent?: boolean }[] = [];
 
 export default function TopNav() {
   const [, setLocation] = useLocation();
   const [authed, setAuthed] = useState<boolean | null>(null);
+  const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => setAuthed(!!session));
+    const sync = async (userId: string | null) => {
+      if (!userId) { setAuthed(false); setRole(null); return; }
+      setAuthed(true);
+      const { data } = await supabase.from("profiles").select("role").eq("id", userId).single();
+      setRole(data?.role ?? null);
+    };
+    supabase.auth.getUser().then(({ data }) => sync(data.user?.id ?? null));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => sync(session?.user?.id ?? null));
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -21,6 +26,11 @@ export default function TopNav() {
     await supabase.auth.signOut();
     setLocation("/");
   };
+
+  const dashboardPath =
+    role === "admin" ? "/admin-dashboard" :
+    role === "contractor" ? "/contractor-dashboard" :
+    "/client-dashboard";
 
   return (
     <div className="ff-nav-wrap" style={wrap}>
@@ -53,9 +63,14 @@ export default function TopNav() {
             {l.label}
           </button>
         ))}
-        {authed
-          ? <button onClick={logOut} className="ff-nav-btn ff-nav-btn-ghost" style={{ ...btn, ...ghostBtn }}>Log out</button>
-          : <button onClick={() => setLocation("/login")} className="ff-nav-btn ff-nav-btn-ghost" style={{ ...btn, ...ghostBtn }}>Sign In</button>}
+        {authed ? (
+          <>
+            <button onClick={() => setLocation(dashboardPath)} className="ff-nav-btn ff-nav-btn-accent" style={{ ...btn, ...accentBtn }}>My Dashboard</button>
+            <button onClick={logOut} className="ff-nav-btn ff-nav-btn-ghost" style={{ ...btn, ...ghostBtn }}>Log out</button>
+          </>
+        ) : (
+          <button onClick={() => setLocation("/login")} className="ff-nav-btn ff-nav-btn-ghost" style={{ ...btn, ...ghostBtn }}>Sign In</button>
+        )}
       </div>
     </div>
   );
