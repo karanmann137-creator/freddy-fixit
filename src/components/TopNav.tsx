@@ -8,19 +8,32 @@ const NAV_LINKS: { label: string; to: string; accent?: boolean }[] = [];
 export default function TopNav() {
   const [, setLocation] = useLocation();
   const [authed, setAuthed] = useState<boolean | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
 
+  // Track auth state ONLY. Never call other supabase methods inside the
+  // onAuthStateChange callback — it runs while supabase holds an internal auth
+  // lock, and any query needs that same lock, which deadlocks the whole app.
   useEffect(() => {
-    const sync = async (userId: string | null) => {
-      if (!userId) { setAuthed(false); setRole(null); return; }
-      setAuthed(true);
-      const { data } = await supabase.from("profiles").select("role").eq("id", userId).single();
-      setRole(data?.role ?? null);
-    };
-    supabase.auth.getUser().then(({ data }) => sync(data.user?.id ?? null));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => sync(session?.user?.id ?? null));
+    supabase.auth.getUser().then(({ data }) => {
+      setAuthed(!!data.user);
+      setUserId(data.user?.id ?? null);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setAuthed(!!session);
+      setUserId(session?.user?.id ?? null);
+    });
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  // Role lookup happens here, outside the auth callback, so the lock is free.
+  useEffect(() => {
+    if (!userId) { setRole(null); return; }
+    let cancelled = false;
+    supabase.from("profiles").select("role").eq("id", userId).single()
+      .then(({ data }) => { if (!cancelled) setRole(data?.role ?? null); });
+    return () => { cancelled = true; };
+  }, [userId]);
 
   const logOut = async () => {
     await supabase.auth.signOut();
