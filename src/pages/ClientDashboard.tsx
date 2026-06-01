@@ -26,6 +26,8 @@ export default function ClientDashboard() {
   const [editForm, setEditForm]     = useState({ service:"", schedule:"", location:"", description:"" });
   const [busyReq, setBusyReq]       = useState(false);
   const [completionPhotoUrl, setCompletionPhotoUrl] = useState<string|null>(null);
+  const [hasReviewed, setHasReviewed] = useState(false);
+  const [ratingForm, setRatingForm] = useState<{ price:number; experience:number; result:number; comment:string }>({ price:8, experience:8, result:8, comment:"" });
   const msgEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -146,6 +148,28 @@ export default function ClientDashboard() {
     } else { setCompletionPhotoUrl(null); }
   }, [activeJob?.completion_photo_path]);
 
+  useEffect(() => {
+    if (activeJob?.status === "completed") {
+      supabase.from("reviews").select("id").eq("job_id", activeJob.id).maybeSingle()
+        .then(({ data }) => setHasReviewed(!!data));
+    } else { setHasReviewed(false); }
+  }, [activeJob?.id, activeJob?.status]);
+
+  const submitReview = async () => {
+    if (!activeJob) return;
+    setBusyReq(true);
+    const { error } = await supabase.rpc("submit_review", {
+      p_job_id: activeJob.id,
+      p_price: ratingForm.price,
+      p_experience: ratingForm.experience,
+      p_result: ratingForm.result,
+      p_comment: ratingForm.comment || null,
+    });
+    setBusyReq(false);
+    if (error) { alert("Couldn't submit rating: " + error.message); return; }
+    setHasReviewed(true);
+  };
+
   const activeReq = requests.find(r => r.status !== "completed" && r.status !== "cancelled") ?? requests[0];
 
   const s = {
@@ -245,7 +269,24 @@ export default function ClientDashboard() {
                           </>
                         )}
                         {activeJob.status === "completed" && (
-                          <div style={{ fontSize:".85rem", color:"#86efac" }}>✅ Completed — thanks for using Freddy Fix It!</div>
+                          hasReviewed ? (
+                            <div style={{ fontSize:".85rem", color:"#86efac" }}>✅ Completed — thanks for rating your contractor!</div>
+                          ) : (
+                            <div>
+                              <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".5rem" }}>Rate your contractor (out of 10)</div>
+                              {(["price","experience","result"] as const).map(k => (
+                                <div key={k} style={{ marginBottom:".55rem" }}>
+                                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:".8rem", color:"rgba(190,205,235,.8)", marginBottom:".2rem" }}>
+                                    <span style={{ textTransform:"capitalize" as const }}>{k === "result" ? "End result" : k}</span>
+                                    <span style={{ color:"#ea6b14", fontWeight:600 }}>{ratingForm[k]}/10</span>
+                                  </div>
+                                  <input type="range" min={1} max={10} value={ratingForm[k]} onChange={e => setRatingForm(f => ({ ...f, [k]: Number(e.target.value) }))} style={{ width:"100%", accentColor:"#ea6b14" }} />
+                                </div>
+                              ))}
+                              <textarea value={ratingForm.comment} rows={2} placeholder="Optional comment" onChange={e => setRatingForm(f => ({ ...f, comment: e.target.value }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const, margin:".25rem 0 .6rem" }} />
+                              <button style={s.primaryBtn} disabled={busyReq} onClick={submitReview}>{busyReq ? "…" : "Submit rating"}</button>
+                            </div>
+                          )
                         )}
                       </div>
                     )}

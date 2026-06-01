@@ -13,6 +13,7 @@ export default function AdminDashboard() {
   const [activeContractors, setActiveContractors] = useState<any[]>([]);
   const [assignSel, setAssignSel] = useState<Record<string,string>>({});
   const [busyAssign, setBusyAssign] = useState(false);
+  const [busyDelete, setBusyDelete] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -41,6 +42,14 @@ export default function AdminDashboard() {
     setLocation("/");
   };
 
+  const deleteRequest = async (r: any) => {
+    if (!window.confirm("Delete this request permanently? This also removes any assigned job and its messages.")) return;
+    setBusyDelete(true);
+    const { error } = await supabase.rpc("admin_delete_request", { p_request_id: r.id });
+    setBusyDelete(false);
+    if (error) { alert("Couldn't delete: " + error.message); return; }
+    setRequests(prev => prev.filter(x => x.id !== r.id));
+  };
   const assignContractor = async (requestId: string) => {
     const cid = assignSel[requestId];
     if (!cid) { alert("Pick a contractor first."); return; }
@@ -98,6 +107,9 @@ export default function AdminDashboard() {
                   <div style={{ ...s.meta, marginTop:".5rem", color:"#86efac" }}>Assigned ✓</div>
                 )}
                 <RequestPhotoQuote requestId={r.id} photoPath={r.photo_path} estimatedQuote={r.estimated_quote} quoteNotes={r.quote_notes} canQuote />
+                <div style={{ marginTop:".75rem" }}>
+                  <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyDelete} onClick={() => deleteRequest(r)}>🗑 Delete request</button>
+                </div>
               </div>
             ))}
           </div>
