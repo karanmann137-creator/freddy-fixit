@@ -28,6 +28,9 @@ export default function ClientDashboard() {
   const [completionPhotoUrl, setCompletionPhotoUrl] = useState<string|null>(null);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [ratingForm, setRatingForm] = useState<{ price:number; experience:number; result:number; comment:string }>({ price:8, experience:8, result:8, comment:"" });
+  const [clientBids, setClientBids] = useState<any[]>([]);
+  const [bidNames, setBidNames] = useState<Record<string,string>>({});
+  const [busyPick, setBusyPick] = useState<string|null>(null);
   const msgEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -155,6 +158,32 @@ export default function ClientDashboard() {
     } else { setHasReviewed(false); }
   }, [activeJob?.id, activeJob?.status]);
 
+  useEffect(() => {
+    const ar = requests.find((r: any) => r.status !== "completed" && r.status !== "cancelled") ?? requests[0];
+    if (ar && ar.status === "pending") {
+      supabase.from("bids").select("*").eq("request_id", ar.id).eq("status", "pending").order("amount", { ascending: true })
+        .then(async ({ data }) => {
+          setClientBids(data ?? []);
+          const ids = Array.from(new Set((data ?? []).map((b: any) => b.contractor_id)));
+          if (ids.length) {
+            const { data: dir } = await supabase.from("contractor_directory").select("id, first_name, last_name").in("id", ids);
+            const m: Record<string,string> = {};
+            (dir ?? []).forEach((c: any) => { m[c.id] = ((c.first_name ?? "") + " " + (c.last_name ? c.last_name[0] + "." : "")).trim() || "Contractor"; });
+            setBidNames(m);
+          }
+        });
+    } else { setClientBids([]); }
+  }, [requests]);
+
+  const pickBid = async (bidId: string) => {
+    if (!window.confirm("Choose this contractor for your job?")) return;
+    setBusyPick(bidId);
+    const { error } = await supabase.rpc("accept_bid", { p_bid_id: bidId });
+    setBusyPick(null);
+    if (error) { alert("Couldn't select: " + error.message); return; }
+    window.location.reload();
+  };
+
   const submitReview = async () => {
     if (!activeJob) return;
     setBusyReq(true);
@@ -244,6 +273,21 @@ export default function ClientDashboard() {
                     <div style={{ display:"inline-block", padding:".4rem .9rem", borderRadius:"99px", fontSize:".78rem", fontWeight:500, color: STATUS_META[activeReq.status]?.color, border:`1px solid ${STATUS_META[activeReq.status]?.color}` }}>
                       {STATUS_META[activeReq.status]?.icon} {STATUS_META[activeReq.status]?.label}
                     </div>
+
+                    {activeReq.status === "pending" && clientBids.length > 0 && (
+                      <div style={{ marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)" }}>
+                        <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".6rem" }}>Choose your contractor ({clientBids.length} bid{clientBids.length === 1 ? "" : "s"})</div>
+                        {clientBids.map(b => (
+                          <div key={b.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", padding:".6rem .7rem", marginBottom:".5rem", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"8px", flexWrap:"wrap" as const }}>
+                            <div style={{ flex:"1 1 160px" }}>
+                              <div style={{ fontSize:".88rem", color:"#f0f4ff" }}>{bidNames[b.contractor_id] ?? "Contractor"}{b.amount != null ? " — $" + b.amount : ""}</div>
+                              {b.message && <div style={{ fontSize:".78rem", color:"rgba(190,205,235,.65)", marginTop:".15rem" }}>{b.message}</div>}
+                            </div>
+                            <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f", padding:".5rem 1rem" }} disabled={busyPick === b.id} onClick={() => pickBid(b.id)}>{busyPick === b.id ? "…" : "Choose"}</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     {activeJob && (
                       <div style={{ marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)" }}>
