@@ -43,7 +43,7 @@ export default function ContractorOnboarding() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
   const TOTAL = 5;
-  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", password:"", yearsOfExperience:"", photoUrl:"" });
+  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", companyName:"", password:"", yearsOfExperience:"", photoUrl:"" });
   const [selectedSpec,  setSelectedSpec]  = useState<string[]>([]);
   const [selectedArea,  setSelectedArea]  = useState<string[]>([]);
   const [selectedAvail, setSelectedAvail] = useState<string[]>([]);
@@ -84,7 +84,7 @@ export default function ContractorOnboarding() {
       if (!authData.user) throw new Error("Account creation failed.");
       const userId = authData.user.id;
       await supabase.from("profiles").insert({ id: userId, email: form.email, first_name: form.firstName, last_name: form.lastName, phone: form.phone, role: "contractor" });
-      await supabase.from("contractors").insert({ id: userId, specialties: selectedSpec, years_of_experience: form.yearsOfExperience === "" ? null : Number(form.yearsOfExperience), service_area: selectedArea, availability: { windows: selectedAvail }, photo_url: form.photoUrl || null, status: "pending" });
+      await supabase.from("contractors").insert({ id: userId, company_name: form.companyName || null, specialties: selectedSpec, years_of_experience: form.yearsOfExperience === "" ? null : Number(form.yearsOfExperience), service_area: selectedArea, availability: { windows: selectedAvail }, photo_url: form.photoUrl || null, status: "pending" });
       setSuccess(true); window.scrollTo(0,0);
     } catch (err: any) {
       setSubmitError(err.message?.includes("already registered") ? "An account with this email already exists. Please sign in instead." : err.message ?? "Something went wrong.");
@@ -172,6 +172,10 @@ export default function ContractorOnboarding() {
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Years of Experience</label>
                 <input style={inp} type="number" min={0} max={50} value={form.yearsOfExperience} placeholder="e.g. 5" onChange={e => setF("yearsOfExperience", e.target.value)} />
+              </div>
+              <div style={{ marginBottom:"1.2rem" }}>
+                <label style={s.label}>Company Name <span style={{ color:"rgba(190,205,235,.45)", fontWeight:300 }}>(optional)</span></label>
+                <input style={inp} placeholder="e.g. Kelly Home Repairs" value={form.companyName} onChange={e => setF("companyName",e.target.value)} />
               </div>
               <p style={{ fontSize:".78rem", color:"rgba(190,205,235,.4)", fontWeight:300 }}>We'll create a free account so you can manage your jobs.</p>
             </div>

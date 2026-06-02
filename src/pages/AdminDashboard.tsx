@@ -152,7 +152,8 @@ export default function AdminDashboard() {
             {contractors.length === 0 && <p style={{ color:"rgba(190,205,235,.45)" }}>No contractors yet.</p>}
             {contractors.map(c => (
               <div key={c.id} style={s.card}>
-                <div style={s.title}>{[c.profile?.first_name, c.profile?.last_name].filter(Boolean).join(" ") || "Unnamed contractor"}</div>
+                <div style={s.title}>{c.company_name || [c.profile?.first_name, c.profile?.last_name].filter(Boolean).join(" ") || "Unnamed contractor"}</div>
+                {c.company_name && [c.profile?.first_name, c.profile?.last_name].filter(Boolean).join(" ") ? <div style={s.meta}>{[c.profile?.first_name, c.profile?.last_name].filter(Boolean).join(" ")}</div> : null}
                 {(c.profile?.email || c.profile?.phone) && <div style={s.meta}>{[c.profile?.email, c.profile?.phone].filter(Boolean).join(" · ")}</div>}
                 <div style={s.meta}>Specialties: {(c.specialties ?? []).join(", ") || "—"}</div>
                 <div style={s.meta}>Area: {(c.service_area ?? []).join(", ") || "—"}</div>
