@@ -181,7 +181,13 @@ export default function ClientDashboard() {
     const { error } = await supabase.rpc("accept_bid", { p_bid_id: bidId });
     setBusyPick(null);
     if (error) { alert("Couldn't select: " + error.message); return; }
-    window.location.reload();
+    const ar = requests.find(r => r.status !== "completed" && r.status !== "cancelled") ?? requests[0];
+    if (ar) {
+      const { data: job } = await supabase.from("jobs").select("*").eq("request_id", ar.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      setActiveJob(job);
+      setRequests(prev => prev.map(r => r.id === ar.id ? { ...r, status: "matched" } : r));
+      setClientBids([]);
+    }
   };
 
   const submitReview = async () => {

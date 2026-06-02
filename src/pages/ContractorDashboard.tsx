@@ -22,6 +22,8 @@ export default function ContractorDashboard() {
   const [pfForm, setPfForm]           = useState<{ title:string; description:string; file:File|null }>({ title:"", description:"", file:null });
   const [googleUrl, setGoogleUrl]     = useState("");
   const [busyPf, setBusyPf]           = useState(false);
+  const [bidForm, setBidForm]         = useState<Record<string,{amount:string;message:string}>>({});
+  const [busyBid, setBusyBid]         = useState<string|null>(null);
   const msgEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,17 +43,13 @@ export default function ContractorDashboard() {
       setGoogleUrl(con?.google_reviews_url ?? "");
       const { data: pf } = await supabase.from("portfolio_items").select("*").eq("contractor_id", user.id).order("created_at", { ascending: false });
       setPortfolio(pf ?? []);
-      const { data: jobs } = await supabase.from("jobs").select("*").eq("contractor_id", user.id).order("created_at", { ascending: false });
-      const enriched = await Promise.all((jobs ?? []).map(async (job: any) => {
-        const [{ data: req }, { data: client }] = await Promise.all([
-          supabase.from("client_requests").select("*").eq("id", job.request_id).single(),
-          supabase.from("profiles").select("*").eq("id", job.client_id).single(),
-        ]);
-        return { ...job, request: req, client };
-      }));
+      const { data: jobs } = await supabase.from("jobs")
+        .select("*, request:client_requests!jobs_request_id_fkey(*), client:profiles!jobs_client_id_fkey(*)")
+        .eq("contractor_id", user.id).order("created_at", { ascending: false });
+      const enriched = jobs ?? [];
       setMyJobs(enriched);
       if (enriched.length > 0) setActiveJobId(enriched[0].id);
-      const { data: open } = await supabase.from("client_requests").select("*").eq("status", "pending").order("created_at", { ascending: false }).limit(20);
+      const { data: open } = await supabase.rpc("list_open_jobs");
       setAvailableJobs(open ?? []);
       setLoading(false);
     };
@@ -167,6 +165,19 @@ export default function ContractorDashboard() {
     if (error) { alert("Couldn't remove: " + error.message); return; }
     if (item.photo_path) supabase.storage.from("portfolio-photos").remove([item.photo_path]);
     setPortfolio(prev => prev.filter(p => p.id !== item.id));
+  };
+  const placeBid = async (r: any) => {
+    const f = bidForm[r.id] || { amount:"", message:"" };
+    const amt = f.amount !== undefined && f.amount !== "" ? f.amount : (r.my_amount != null ? String(r.my_amount) : "");
+    if (!amt) { alert("Enter your bid amount."); return; }
+    setBusyBid(r.id);
+    const msg = f.message !== undefined ? f.message : (r.my_message ?? "");
+    const { error } = await supabase.rpc("place_bid", { p_request_id: r.id, p_amount: Number(amt), p_message: msg || null });
+    setBusyBid(null);
+    if (error) { alert("Couldn't place bid: " + error.message); return; }
+    setAvailableJobs(prev => prev.map(x => x.id === r.id
+      ? { ...x, my_amount: Number(amt), my_message: msg || null, bid_count: x.my_amount != null ? x.bid_count : (x.bid_count ?? 0) + 1 }
+      : x));
   };
 
   const toggleSlot = async (day: string, slot: string) => {
@@ -334,6 +345,21 @@ export default function ContractorDashboard() {
                 <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.55)", marginBottom:".6rem" }}>📍 {r.location}</div>
                 <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.65)", marginBottom:"1rem", lineHeight:1.5 }}>{r.job_description}</div>
                 <RequestPhotoQuote requestId={r.id} photoPath={r.photo_path} estimatedQuote={r.estimated_quote} quoteNotes={r.quote_notes} />
+                <div style={{ margin:".75rem 0", padding:".75rem", borderRadius:"10px", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.08)" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:".5rem" }}>
+                    <span style={{ fontSize:".75rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.5)" }}>Bids</span>
+                    <span style={{ fontSize:".78rem", fontWeight:600, color: (r.bid_count ?? 0) >= 3 ? "#ef4444" : "#86efac" }}>{r.bid_count ?? 0}/3</span>
+                  </div>
+                  {r.my_amount != null && <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.75)", marginBottom:".5rem" }}>✅ You bid {"$" + r.my_amount}. You can update it below.</div>}
+                  {r.my_amount == null && (r.bid_count ?? 0) >= 3 && <div style={{ fontSize:".82rem", color:"#fbbf24" }}>This job already has 3 bids.</div>}
+                  {(r.my_amount != null || (r.bid_count ?? 0) < 3) && (
+                    <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center" }}>
+                      <input type="number" min="0" placeholder="Price $" value={bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "")} onChange={e => setBidForm(p => ({ ...p, [r.id]: { amount: e.target.value, message: p[r.id]?.message ?? (r.my_message ?? "") } }))} style={{ width:"100px", padding:".5rem .6rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".85rem" }} />
+                      <input placeholder="Short message (optional)" value={bidForm[r.id]?.message ?? (r.my_message ?? "")} onChange={e => setBidForm(p => ({ ...p, [r.id]: { message: e.target.value, amount: p[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "") } }))} style={{ flex:"1 1 150px", padding:".5rem .6rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".85rem" }} />
+                      <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyBid === r.id} onClick={() => placeBid(r)}>{busyBid === r.id ? "…" : (r.my_amount != null ? "Update bid" : "Place bid")}</button>
+                    </div>
+                  )}
+                </div>
                 <a href={`https://wa.me/18255618331?text=Hi%2C%20I'd%20like%20to%20accept%20the%20${encodeURIComponent(r.service_needed)}%20job`}
                   target="_blank" rel="noopener noreferrer"
                   style={{ display:"inline-flex", alignItems:"center", gap:".5rem", padding:".6rem 1.1rem", background:"rgba(37,211,102,.1)", border:"1px solid rgba(37,211,102,.25)", borderRadius:"8px", color:"#25d366", fontSize:".82rem", fontWeight:500, textDecoration:"none" }}>
@@ -359,7 +385,7 @@ export default function ContractorDashboard() {
               {(contractor?.specialties?.length ?? 0) > 0 && (
                 <div style={{ marginBottom:"1rem" }}>
                   <div style={{ fontSize:".7rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".5rem" }}>Specialties</div>
-                  {contractor.specialties.map((s: string) => <span key={s} style={s.chip}>{s}</span>)}
+                  {contractor.specialties.map((sp: string) => <span key={sp} style={s.chip}>{sp}</span>)}
                 </div>
               )}
               {(contractor?.service_area?.length ?? 0) > 0 && (
