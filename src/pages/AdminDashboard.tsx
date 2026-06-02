@@ -14,6 +14,8 @@ export default function AdminDashboard() {
   const [assignSel, setAssignSel] = useState<Record<string,string>>({});
   const [busyAssign, setBusyAssign] = useState(false);
   const [busyDelete, setBusyDelete] = useState(false);
+  const [bidsBy, setBidsBy] = useState<Record<string, any[]>>({});
+  const [busyAcceptBid, setBusyAcceptBid] = useState<string|null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -24,16 +26,20 @@ export default function AdminDashboard() {
 
   const loadAll = async () => {
     setLoading(true);
-    const [{ data: reqs }, { data: cons }, { data: js }, { data: dir }] = await Promise.all([
+    const [{ data: reqs }, { data: cons }, { data: js }, { data: dir }, { data: bids }] = await Promise.all([
       supabase.from("client_requests").select("*").order("created_at", { ascending: false }),
-      supabase.from("contractors").select("*").order("created_at", { ascending: false }),
+      supabase.from("contractors").select("*, profile:profiles!contractors_id_fkey(first_name,last_name,email,phone)").order("created_at", { ascending: false }),
       supabase.from("jobs").select("*").order("created_at", { ascending: false }),
       supabase.from("contractor_directory").select("id, first_name, last_name, specialties"),
+      supabase.from("bids").select("*").eq("status", "pending").order("amount", { ascending: true }),
     ]);
     setRequests(reqs ?? []);
     setContractors(cons ?? []);
     setJobs(js ?? []);
     setActiveContractors(dir ?? []);
+    const bb: Record<string, any[]> = {};
+    (bids ?? []).forEach((b: any) => { if (!bb[b.request_id]) bb[b.request_id] = []; bb[b.request_id].push(b); });
+    setBidsBy(bb);
     setLoading(false);
   };
 
@@ -57,6 +63,14 @@ export default function AdminDashboard() {
     const { error } = await supabase.rpc("assign_job", { p_request_id: requestId, p_contractor_id: cid });
     setBusyAssign(false);
     if (error) { alert("Couldn't assign: " + error.message); return; }
+    await loadAll();
+  };
+  const acceptBid = async (bidId: string) => {
+    if (!window.confirm("Accept this bid and assign this contractor?")) return;
+    setBusyAcceptBid(bidId);
+    const { error } = await supabase.rpc("accept_bid", { p_bid_id: bidId });
+    setBusyAcceptBid(null);
+    if (error) { alert("Couldn't accept bid: " + error.message); return; }
     await loadAll();
   };
 
@@ -91,6 +105,24 @@ export default function AdminDashboard() {
                 <div style={s.meta}>📍 {r.location} · ⏱ {r.preferred_schedule}</div>
                 <div style={s.meta}>{r.job_description}</div>
                 <div style={{ ...s.badge, marginTop:".5rem" }}>● {r.status}</div>
+                {r.status === "pending" && (bidsBy[r.id]?.length ?? 0) > 0 && (
+                  <div style={{ marginTop:".75rem" }}>
+                    <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.45)", marginBottom:".4rem" }}>Bids ({bidsBy[r.id].length}/3)</div>
+                    {bidsBy[r.id].map((b: any) => {
+                      const con = activeContractors.find(c => c.id === b.contractor_id);
+                      const nm = con ? ((con.first_name ?? "") + " " + (con.last_name ? con.last_name[0] + "." : "")).trim() : "Contractor";
+                      return (
+                        <div key={b.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", padding:".5rem .6rem", marginBottom:".4rem", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"8px", flexWrap:"wrap" as const }}>
+                          <div style={{ flex:"1 1 160px" }}>
+                            <div style={{ fontSize:".85rem", color:"#f0f4ff" }}>{nm}{b.amount != null ? " — $" + b.amount : ""}</div>
+                            {b.message && <div style={{ fontSize:".75rem", color:"rgba(190,205,235,.6)" }}>{b.message}</div>}
+                          </div>
+                          <button style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none" }} disabled={busyAcceptBid === b.id} onClick={() => acceptBid(b.id)}>{busyAcceptBid === b.id ? "…" : "Accept"}</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
                 {r.status === "pending" && (
                   <div style={{ display:"flex", gap:".5rem", marginTop:".75rem", flexWrap:"wrap" as const, alignItems:"center" }}>
                     <select value={assignSel[r.id] ?? ""} onChange={e => setAssignSel(p => ({ ...p, [r.id]: e.target.value }))}
@@ -120,7 +152,8 @@ export default function AdminDashboard() {
             {contractors.length === 0 && <p style={{ color:"rgba(190,205,235,.45)" }}>No contractors yet.</p>}
             {contractors.map(c => (
               <div key={c.id} style={s.card}>
-                <div style={s.title}>{c.id}</div>
+                <div style={s.title}>{[c.profile?.first_name, c.profile?.last_name].filter(Boolean).join(" ") || "Unnamed contractor"}</div>
+                {(c.profile?.email || c.profile?.phone) && <div style={s.meta}>{[c.profile?.email, c.profile?.phone].filter(Boolean).join(" · ")}</div>}
                 <div style={s.meta}>Specialties: {(c.specialties ?? []).join(", ") || "—"}</div>
                 <div style={s.meta}>Area: {(c.service_area ?? []).join(", ") || "—"}</div>
                 <div style={{ ...s.badge, marginTop:".5rem" }}>● {c.status}</div>
