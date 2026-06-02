@@ -12,12 +12,26 @@ const SERVICES = [
   { icon:"🚗", label:"Vehicle Maintenance",   desc:"Oil changes, tires, brakes and more" },
   { icon:"🌳", label:"Landscaping",           desc:"Lawn care, cleanup, and yard work" },
   { icon:"❄️", label:"Snow Removal",          desc:"Residential and commercial snow clearing" },
+  { icon:"🌧️", label:"Gutters",               desc:"Cleaning, repair, and new installs to protect your home" },
+  { icon:"🚪", label:"Windows & Doors",        desc:"Repairs, replacements, and weatherproofing" },
 ];
 
 const HOW_IT_WORKS = [
   { step:"01", icon:"📋", title:"Submit a Request",    desc:"Tell us what needs fixing — takes less than 2 minutes. Choose your service, location, and preferred timing." },
   { step:"02", icon:"🔗", title:"Get Matched",         desc:"We match you with a vetted local contractor in your area based on your service needs and schedule." },
   { step:"03", icon:"🔧", title:"Job Done",            desc:"Your contractor shows up and gets it done. Simple, reliable, no hassle." },
+];
+
+const FAQS = [
+  { q:"How does Freddy Fix It work?", a:"Tell us what you need, add a photo and a few details, and we'll match you with a local pro. You approve the price and timing, the work gets done, and you confirm and rate it when you're happy." },
+  { q:"Is it free to post a job?", a:"Yes — posting a request is completely free. You only pay for the work itself, once a contractor is scheduled and the job is complete." },
+  { q:"Are your contractors vetted?", a:"Yes. Every contractor on the platform has been reviewed and approved by our team, and we collect their qualifications and insurance details during onboarding." },
+  { q:"How do I pay for the work?", a:"You settle payment once the job is scheduled and completed. We're rolling out secure in-platform payments so your money is only released to the contractor after you confirm the work is done." },
+  { q:"What areas do you serve?", a:"Calgary and the surrounding communities, including Airdrie, Cochrane, and Chestermere." },
+  { q:"What kinds of jobs can I request?", a:"General repairs and handyman work, carpentry, painting, drywall, landscaping, snow removal, gutters, windows & doors, and more." },
+  { q:"How fast will I hear back?", a:"You'll get a response within 24 hours — often sooner." },
+  { q:"What if I'm not happy with the work?", a:"Reach out to us at hello@freddyfixit.ca and we'll help make it right." },
+  { q:"I'm a contractor — how do I join, and what does it cost?", a:"Signing up is free, with no monthly charges and no upfront cost. We take a 7% fee from completed jobs. Once you're approved, you'll be notified about nearby jobs that match your trade, bid or get assigned, agree on price and timing, and get paid when the work's done." },
 ];
 
 export default function Home() {
@@ -272,7 +286,30 @@ export default function Home() {
             </div>
           </div>
         </div>
-      </div>      <div className="ff-footer-bar">
+      </div>
+
+      {/* ── FAQ ── */}
+      <div style={{ background:"#1a2236", padding:"6rem 2rem" }}>
+        <style>{"details.ff-faq>summary::-webkit-details-marker{display:none}details.ff-faq>summary{list-style:none}details.ff-faq .ff-faq-icon{transition:transform .2s ease;display:inline-block}details.ff-faq[open] .ff-faq-icon{transform:rotate(45deg)}details.ff-faq[open]{border-color:rgba(234,107,20,.3)}"}</style>
+        <div style={{ maxWidth:"800px", margin:"0 auto" }}>
+          <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" }}>Good to Know</p>
+          <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:".06em", color:"#f0f4ff", textAlign:"center", marginBottom:"3rem" }}>Frequently Asked <span style={{ color:"#ea6b14" }}>Questions.</span></h2>
+          <div style={{ display:"flex", flexDirection:"column", gap:".75rem" }}>
+            {FAQS.map((f, i) => (
+              <details key={i} className="ff-faq" style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"12px", padding:"1.2rem 1.5rem" }}>
+                <summary style={{ cursor:"pointer", fontSize:".98rem", fontWeight:500, color:"#f0f4ff", display:"flex", justifyContent:"space-between", alignItems:"center", gap:"1rem" }}>
+                  <span>{f.q}</span>
+                  <span className="ff-faq-icon" style={{ color:"#ea6b14", fontSize:"1.4rem", lineHeight:1, fontWeight:300 }}>+</span>
+                </summary>
+                <p style={{ fontSize:".9rem", color:"rgba(190,205,235,.75)", fontWeight:300, lineHeight:1.7, marginTop:"1rem", marginBottom:0 }}>{f.a}</p>
+              </details>
+            ))}
+          </div>
+          <p style={{ textAlign:"center", marginTop:"2.5rem", fontSize:".9rem", color:"rgba(190,205,235,.6)", fontWeight:300 }}>Still have questions? <a href="mailto:hello@freddyfixit.ca" style={{ color:"#ea6b14", textDecoration:"none" }}>Get in touch.</a></p>
+        </div>
+      </div>
+
+      <div className="ff-footer-bar">
         <div style={{ fontSize:"1rem", fontWeight:500, color:"rgba(190,205,235,0.6)", marginBottom:"0.75rem" }}>
           Contact us: <a href="mailto:hello@freddyfixit.ca" style={{ color:"#ea6b14", textDecoration:"none" }}>hello@freddyfixit.ca</a>
         </div>

@@ -17,6 +17,8 @@ const SPECIALTIES = [
   { icon: "🧰", label: "Vehicle Maintenance" },
   { icon: "🌳", label: "Landscaping" },
   { icon: "❄️", label: "Snow Removal" },
+  { icon: "🌧️", label: "Gutters" },
+  { icon: "🚪", label: "Windows & Doors" },
 ];
 
 const AREAS = ["NW Calgary","NE Calgary","SW Calgary","SE Calgary","Downtown / Beltline","Airdrie","Cochrane","Chestermere"];

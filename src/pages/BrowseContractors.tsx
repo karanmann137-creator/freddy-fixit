@@ -9,6 +9,7 @@ const CATEGORIES = [
   "General Repairs", "Plumbing", "Electrical", "HVAC", "Carpentry", "Painting",
   "Drywall", "Flooring / Tile", "Tire Swap / Rotation", "Oil Change",
   "Battery / Brakes", "Vehicle Maintenance", "Landscaping", "Snow Removal",
+  "Gutters", "Windows & Doors",
 ];
 
 interface DirectoryContractor {
