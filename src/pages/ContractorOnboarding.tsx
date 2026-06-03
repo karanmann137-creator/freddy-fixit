@@ -45,7 +45,7 @@ export default function ContractorOnboarding() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
   const TOTAL = 5;
-  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", companyName:"", password:"", yearsOfExperience:"", photoUrl:"" });
+  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", companyName:"", password:"", yearsOfExperience:"", photoUrl:"", licensed:false, licenseNumber:"", hasInsurance:false, insuranceProvider:"", insuranceExpiry:"", hasWcb:false, workReferences:"" });
   const [selectedSpec,  setSelectedSpec]  = useState<string[]>([]);
   const [selectedArea,  setSelectedArea]  = useState<string[]>([]);
   const [selectedAvail, setSelectedAvail] = useState<string[]>([]);
@@ -55,6 +55,7 @@ export default function ContractorOnboarding() {
   const [success, setSuccess] = useState(false);
 
   const setF = (key: string, val: string | number) => { setForm(f => ({ ...f, [key]: val })); setErrors(e => ({ ...e, [key]: "" })); };
+  const setFB = (key: string, val: boolean) => { setForm(f => ({ ...f, [key]: val })); };
   const toggleSpec  = (l: string) => { setSelectedSpec(prev  => prev.includes(l)  ? prev.filter(x => x !== l)  : [...prev, l]);  setErrors(e => ({ ...e, spec: "" })); };
   const toggleArea  = (z: string) => { setSelectedArea(prev  => prev.includes(z)  ? prev.filter(x => x !== z)  : [...prev, z]);  setErrors(e => ({ ...e, area: "" })); };
   const toggleAvail = (a: string) => { setSelectedAvail(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]); setErrors(e => ({ ...e, avail: "" })); };
@@ -86,7 +87,7 @@ export default function ContractorOnboarding() {
       if (!authData.user) throw new Error("Account creation failed.");
       const userId = authData.user.id;
       await supabase.from("profiles").insert({ id: userId, email: form.email, first_name: form.firstName, last_name: form.lastName, phone: form.phone, role: "contractor" });
-      await supabase.from("contractors").insert({ id: userId, company_name: form.companyName || null, specialties: selectedSpec, years_of_experience: form.yearsOfExperience === "" ? null : Number(form.yearsOfExperience), service_area: selectedArea, availability: { windows: selectedAvail }, photo_url: form.photoUrl || null, status: "pending" });
+      await supabase.from("contractors").insert({ id: userId, company_name: form.companyName || null, specialties: selectedSpec, years_of_experience: form.yearsOfExperience === "" ? null : Number(form.yearsOfExperience), service_area: selectedArea, availability: { windows: selectedAvail }, photo_url: form.photoUrl || null, licensed: form.licensed, license_number: form.licenseNumber || null, has_liability_insurance: form.hasInsurance, insurance_provider: form.insuranceProvider || null, insurance_expiry: form.insuranceExpiry || null, has_wcb: form.hasWcb, work_references: form.workReferences || null, status: "pending" });
       setSuccess(true); window.scrollTo(0,0);
     } catch (err: any) {
       setSubmitError(err.message?.includes("already registered") ? "An account with this email already exists. Please sign in instead." : err.message ?? "Something went wrong.");
@@ -178,6 +179,32 @@ export default function ContractorOnboarding() {
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Company Name <span style={{ color:"rgba(190,205,235,.45)", fontWeight:300 }}>(optional)</span></label>
                 <input style={inp} placeholder="e.g. Kelly Home Repairs" value={form.companyName} onChange={e => setF("companyName",e.target.value)} />
+              </div>
+              <div style={{ marginBottom:"1.2rem", paddingTop:".9rem", borderTop:"1px solid rgba(255,255,255,.08)" }}>
+                <label style={{ ...s.label, display:"block", marginBottom:".75rem" }}>Credentials</label>
+                <label style={{ display:"flex", alignItems:"center", gap:".6rem", cursor:"pointer", fontSize:".9rem", color:"rgba(190,205,235,.85)" }}>
+                  <input type="checkbox" checked={form.licensed} onChange={e=>setFB("licensed",e.target.checked)} style={{ width:"18px", height:"18px", accentColor:"#ea6b14", cursor:"pointer", flexShrink:0 }} />
+                  <span>I'm a licensed contractor</span>
+                </label>
+                {form.licensed && <input style={{ ...inp, marginTop:".5rem" }} placeholder="License number" value={form.licenseNumber} onChange={e=>setF("licenseNumber",e.target.value)} />}
+                <label style={{ display:"flex", alignItems:"center", gap:".6rem", cursor:"pointer", fontSize:".9rem", color:"rgba(190,205,235,.85)", marginTop:".9rem" }}>
+                  <input type="checkbox" checked={form.hasInsurance} onChange={e=>setFB("hasInsurance",e.target.checked)} style={{ width:"18px", height:"18px", accentColor:"#ea6b14", cursor:"pointer", flexShrink:0 }} />
+                  <span>I carry liability insurance</span>
+                </label>
+                {form.hasInsurance && (
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".75rem", marginTop:".5rem" }}>
+                    <input style={inp} placeholder="Insurance provider" value={form.insuranceProvider} onChange={e=>setF("insuranceProvider",e.target.value)} />
+                    <input style={inp} placeholder="Expiry (e.g. 2026-12)" value={form.insuranceExpiry} onChange={e=>setF("insuranceExpiry",e.target.value)} />
+                  </div>
+                )}
+                <label style={{ display:"flex", alignItems:"center", gap:".6rem", cursor:"pointer", fontSize:".9rem", color:"rgba(190,205,235,.85)", marginTop:".9rem" }}>
+                  <input type="checkbox" checked={form.hasWcb} onChange={e=>setFB("hasWcb",e.target.checked)} style={{ width:"18px", height:"18px", accentColor:"#ea6b14", cursor:"pointer", flexShrink:0 }} />
+                  <span>I have WCB / WorkSafe coverage</span>
+                </label>
+                <div style={{ marginTop:"1rem" }}>
+                  <label style={s.label}>References or past-work links <span style={{ color:"rgba(190,205,235,.45)", fontWeight:300 }}>(optional)</span></label>
+                  <textarea style={{ ...inp, minHeight:"70px", resize:"vertical", fontFamily:"inherit" }} placeholder="Links to past work, or names/numbers of references" value={form.workReferences} onChange={e=>setF("workReferences",e.target.value)} />
+                </div>
               </div>
               <p style={{ fontSize:".78rem", color:"rgba(190,205,235,.4)", fontWeight:300 }}>We'll create a free account so you can manage your jobs.</p>
             </div>

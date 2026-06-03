@@ -157,6 +157,12 @@ export default function AdminDashboard() {
                 {(c.profile?.email || c.profile?.phone) && <div style={s.meta}>{[c.profile?.email, c.profile?.phone].filter(Boolean).join(" · ")}</div>}
                 <div style={s.meta}>Specialties: {(c.specialties ?? []).join(", ") || "—"}</div>
                 <div style={s.meta}>Area: {(c.service_area ?? []).join(", ") || "—"}</div>
+                <div style={{ ...s.meta, marginTop:".4rem", color:"rgba(190,205,235,.55)" }}>
+                  {"Licensed: "}{c.licensed === true ? ("Yes" + (c.license_number ? " (#" + c.license_number + ")" : "")) : c.licensed === false ? "No" : "—"}
+                  {"  ·  Insurance: "}{c.has_liability_insurance === true ? ("Yes" + (c.insurance_provider ? " (" + c.insurance_provider + (c.insurance_expiry ? ", exp " + c.insurance_expiry : "") + ")" : "")) : c.has_liability_insurance === false ? "No" : "—"}
+                  {"  ·  WCB: "}{c.has_wcb === true ? "Yes" : c.has_wcb === false ? "No" : "—"}
+                </div>
+                {c.work_references ? <div style={s.meta}>References: {c.work_references}</div> : null}
                 <div style={{ ...s.badge, marginTop:".5rem" }}>● {c.status}</div>
                 <div style={{ display:"flex", gap:".5rem", marginTop:".75rem" }}>
                   {c.status !== "active" && (
