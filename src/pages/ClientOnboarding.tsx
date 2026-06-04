@@ -1,36 +1,37 @@
+import { Ic } from "@/components/Ic";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import NewRequest from "@/components/NewRequest";
 
 export const SERVICES = [
-  { icon: "🔧", label: "General Handyman" },
-  { icon: "🚿", label: "Plumbing Repair" },
-  { icon: "⚡", label: "Electrical Work" },
-  { icon: "🌡️", label: "HVAC Maintenance" },
-  { icon: "🪵", label: "Carpentry" },
-  { icon: "🎨", label: "Painting" },
-  { icon: "🏠", label: "Drywall / Flooring" },
-  { icon: "🚗", label: "Oil Change" },
-  { icon: "🛞", label: "Tire Swap / Rotation" },
-  { icon: "🔋", label: "Battery / Brakes" },
-  { icon: "🧰", label: "Vehicle Maintenance" },
-  { icon: "🌳", label: "Landscaping" },
-  { icon: "❄️", label: "Snow Removal" },
-  { icon: "🌧️", label: "Gutters" },
-  { icon: "🚪", label: "Windows & Doors" },
-  { icon: "🏚️", label: "Siding & Roofing" },
-  { icon: "🚙", label: "Garage" },
-  { icon: "🌬️", label: "Air Conditioning" },
-  { icon: "🧹", label: "Cleaning Services" },
-  { icon: "📦", label: "Other" },
+  { iconName: "wrench", label: "General Handyman" },
+  { iconName: "droplet", label: "Plumbing Repair" },
+  { iconName: "zap", label: "Electrical Work" },
+  { iconName: "thermometer", label: "HVAC Maintenance" },
+  { iconName: "hammer", label: "Carpentry" },
+  { iconName: "paint-roller", label: "Painting" },
+  { iconName: "layers", label: "Drywall / Flooring" },
+  { iconName: "car", label: "Oil Change" },
+  { iconName: "circle-dashed", label: "Tire Swap / Rotation" },
+  { iconName: "battery", label: "Battery / Brakes" },
+  { iconName: "toolbox", label: "Vehicle Maintenance" },
+  { iconName: "tree", label: "Landscaping" },
+  { iconName: "snowflake", label: "Snow Removal" },
+  { iconName: "cloud-rain", label: "Gutters" },
+  { iconName: "door", label: "Windows & Doors" },
+  { iconName: "building", label: "Siding & Roofing" },
+  { iconName: "car", label: "Garage" },
+  { iconName: "wind", label: "Air Conditioning" },
+  { iconName: "sparkles", label: "Cleaning Services" },
+  { iconName: "package", label: "Other" },
 ];
 
 export const SCHEDULES = [
-  { icon: "⚡", label: "Urgent / ASAP",  sub: "Within 24 hours" },
-  { icon: "📅", label: "This Week",       sub: "Next 2–5 days" },
-  { icon: "🗓️", label: "Flexible",        sub: "I'm not in a rush" },
-  { icon: "🔁", label: "Recurring",       sub: "Regular maintenance" },
+  { iconName: "zap", label: "Urgent / ASAP",  sub: "Within 24 hours" },
+  { iconName: "calendar", label: "This Week",       sub: "Next 2–5 days" },
+  { iconName: "calendar", label: "Flexible",        sub: "I'm not in a rush" },
+  { iconName: "refresh", label: "Recurring",       sub: "Regular maintenance" },
 ];
 
 const STEP_TITLES = ["Your Details", "What Do You Need?", "Job Details"];
@@ -173,7 +174,7 @@ export default function ClientOnboarding() {
               <div style={{ marginBottom:"1.5rem" }}>
                 <label style={s.label}>I am signing up as</label>
                 <div style={{ display:"flex", gap:".6rem", marginTop:".4rem" }}>
-                  {([["individual","🏠 Just me / household"],["business","🏢 A small business"]] as const).map(([val,lbl]) => (
+                  {([["individual","Just me / household"],["business","A small business"]] as const).map(([val,lbl]) => (
                     <button key={val} type="button" onClick={() => setClientType(val)}
                       style={{ flex:1, padding:".7rem .5rem", borderRadius:"10px", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem", fontWeight:500,
                         background: clientType===val ? "rgba(234,107,20,.15)" : "rgba(255,255,255,.04)",
@@ -219,7 +220,7 @@ export default function ClientOnboarding() {
               <div style={{ maxWidth:"100%", overflowX:"hidden", display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:".75rem", marginBottom:"1.5rem" }}>
                 {SERVICES.map(sv => (
                   <button key={sv.label} style={{ ...s.svcBtn, ...(selectedServices.includes(sv.label) ? s.svcBtnSel : {}) }} onClick={() => toggleService(sv.label)}>
-                    <span style={{ fontSize:"1.2rem", flexShrink:0 }}>{sv.icon}</span>
+                    <span style={{ fontSize:"1.2rem", flexShrink:0 }}><Ic name={sv.iconName as any} size={20} color="#ea6b14" style={{ marginRight:8, flexShrink:0 }} /></span>
                     <span>{sv.label}</span>
                     {selectedServices.includes(sv.label) && <span style={{ marginLeft:"auto", color:"#ea6b14", fontSize:"1rem" }}>✓</span>}
                   </button>
@@ -232,7 +233,7 @@ export default function ClientOnboarding() {
               <p style={{ ...s.label, marginTop:"1.5rem" }}>When Do You Need It?</p>
               {SCHEDULES.map(sc => (
                 <button key={sc.label} style={{ ...s.schedBtn, ...(form.preferredSchedule===sc.label ? s.schedBtnSel : {}) }} onClick={() => set("preferredSchedule",sc.label)}>
-                  <span style={{ fontSize:"1.5rem" }}>{sc.icon}</span>
+                  <span style={{ fontSize:"1.5rem" }}><Ic name={sc.iconName as any} size={20} color="#ea6b14" style={{ marginRight:8, flexShrink:0 }} /></span>
                   <div><div style={{ fontSize:".95rem", fontWeight:500 }}>{sc.label}</div><div style={{ fontSize:".78rem", color:"rgba(190,205,235,.5)" }}>{sc.sub}</div></div>
                 </button>
               ))}

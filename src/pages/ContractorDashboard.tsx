@@ -1,3 +1,4 @@
+import { Ic } from "@/components/Ic";
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
@@ -222,7 +223,7 @@ export default function ContractorDashboard() {
       <div style={{ height: "3.75rem" }} />
       <div style={s.header}>
         <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.6)" }}>
-          {contractor?.status === "pending" ? "⏳ Profile under review" : contractor?.status === "active" ? "✅ Active" : "Account inactive"}
+          {contractor?.status === "pending" ? "Profile under review" : contractor?.status === "active" ? "Active" : "Account inactive"}
         </div>
       </div>
 
@@ -242,7 +243,7 @@ export default function ContractorDashboard() {
           <div>
             {myJobs.length === 0 ? (
               <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
-                <div style={{ fontSize:"3rem", marginBottom:"1rem" }}>📋</div>
+                <div style={{ marginBottom:"1rem" }}><Ic name="clipboard-list" size={48} color="#ea6b14" /></div>
                 <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", marginBottom:".5rem" }}>No Jobs Yet</h2>
                 <p style={{ color:"rgba(190,205,235,.5)" }}>Once matched with a client, your jobs appear here.</p>
               </div>
@@ -251,8 +252,8 @@ export default function ContractorDashboard() {
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:".75rem" }}>
                   <div>
                     <div style={{ fontSize:"1rem", fontWeight:500, marginBottom:".3rem" }}>{job.request?.service_needed ?? "Job"}</div>
-                    <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.6)", marginBottom:".2rem" }}>👤 {job.client?.first_name} {job.client?.last_name} · 📞 {job.client?.phone}</div>
-                    <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.5)" }}>📍 {job.request?.location}</div>
+                    <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.6)", marginBottom:".2rem" }}><Ic name="user" size={13} style={{ marginRight:4 }} />{job.client?.first_name} {job.client?.last_name} · <Ic name="phone" size={13} style={{ marginRight:4, marginLeft:4 }} />{job.client?.phone}</div>
+                    <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.5)" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{job.request?.location}</div>
                   </div>
                   <div style={{ textAlign:"right" }}>
                     <div style={{ fontSize:".78rem", fontWeight:500, color: STATUS_COLORS[job.status] }}>● {job.status.replace("_"," ")}</div>
@@ -267,7 +268,7 @@ export default function ContractorDashboard() {
                       {job.status === "assigned" && (
                         <>
                           {job.schedule_proposed_at && !job.client_approved_at && (
-                            <div style={{ fontSize:".8rem", color:"#fbbf24" }}>⏳ Waiting for the client to approve {job.scheduled_at ? new Date(job.scheduled_at).toLocaleString() : "your proposed time"}. You can update it below.</div>
+                            <div style={{ fontSize:".8rem", color:"#fbbf24" }}><Ic name="clock" size={13} style={{ marginRight:4 }} />Waiting for the client to approve {job.scheduled_at ? new Date(job.scheduled_at).toLocaleString() : "your proposed time"}. You can update it below.</div>
                           )}
                           <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                             <div style={{ flex:"1 1 190px" }}>
@@ -288,7 +289,7 @@ export default function ContractorDashboard() {
                       )}
                       {(job.status === "scheduled" || job.status === "in_progress") && (
                         <>
-                          <div style={{ fontSize:".85rem", color:"#86efac" }}>📅 Booked for {job.scheduled_at ? new Date(job.scheduled_at).toLocaleString() : "the agreed time"}{job.amount ? " · $" + job.amount : ""}.</div>
+                          <div style={{ fontSize:".85rem", color:"#86efac" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Booked for {job.scheduled_at ? new Date(job.scheduled_at).toLocaleString() : "the agreed time"}{job.amount ? " · $" + job.amount : ""}.</div>
                           <div>
                             <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".25rem" }}>Completion photo (optional)</div>
                             <input type="file" accept="image/*" onChange={e => setPhotoFile(e.target.files?.[0] ?? null)} style={{ fontSize:".8rem", color:"rgba(190,205,235,.7)" }} />
@@ -300,14 +301,14 @@ export default function ContractorDashboard() {
                         </>
                       )}
                       {job.status === "pending_confirmation" && (
-                        <div style={{ fontSize:".85rem", color:"#fbbf24" }}>⏳ You marked this complete — waiting for the client to confirm.</div>
+                        <div style={{ fontSize:".85rem", color:"#fbbf24" }}><Ic name="clock" size={13} style={{ marginRight:4 }} />You marked this complete — waiting for the client to confirm.</div>
                       )}
                       {job.status === "completed" && (
-                        <div style={{ fontSize:".85rem", color:"#86efac" }}>✅ Job completed and confirmed.</div>
+                        <div style={{ fontSize:".85rem", color:"#86efac" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Job completed and confirmed.</div>
                       )}
                     </div>
 
-                    <div style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".75rem" }}>💬 Chat with {job.client?.first_name}</div>
+                    <div style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".75rem" }}><Ic name="message-square" size={14} style={{ marginRight:6 }} />Chat with {job.client?.first_name}</div>
                     <div style={{ maxHeight:"200px", overflowY:"auto", display:"flex", flexDirection:"column", gap:".6rem", marginBottom:".75rem" }}>
                       {messages.length === 0 && <p style={{ textAlign:"center", fontSize:".82rem", color:"rgba(190,205,235,.35)" }}>No messages yet</p>}
                       {messages.map(m => {
@@ -341,9 +342,9 @@ export default function ContractorDashboard() {
               <div key={r.id} style={s.jobCard}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:".5rem" }}>
                   <div style={{ fontSize:"1rem", fontWeight:500 }}>{r.service_needed}</div>
-                  <div style={{ fontSize:".78rem", color:"#ea6b14" }}>⏱ {r.preferred_schedule}</div>
+                  <div style={{ fontSize:".78rem", color:"#ea6b14" }}><Ic name="timer" size={12} style={{ marginRight:4 }} />{r.preferred_schedule}</div>
                 </div>
-                <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.55)", marginBottom:".6rem" }}>📍 {r.location}</div>
+                <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.55)", marginBottom:".6rem" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{r.location}</div>
                 <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.65)", marginBottom:"1rem", lineHeight:1.5 }}>{r.job_description}</div>
                 <RequestPhotoQuote requestId={r.id} photoPath={r.photo_path} estimatedQuote={r.estimated_quote} quoteNotes={r.quote_notes} />
                 <div style={{ margin:".75rem 0", padding:".75rem", borderRadius:"10px", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.08)" }}>
@@ -351,7 +352,7 @@ export default function ContractorDashboard() {
                     <span style={{ fontSize:".75rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.5)" }}>Bids</span>
                     <span style={{ fontSize:".78rem", fontWeight:600, color: (r.bid_count ?? 0) >= 3 ? "#ef4444" : "#86efac" }}>{r.bid_count ?? 0}/3</span>
                   </div>
-                  {r.my_amount != null && <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.75)", marginBottom:".5rem" }}>✅ You bid {"$" + r.my_amount}. You can update it below.</div>}
+                  {r.my_amount != null && <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.75)", marginBottom:".5rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />You bid {"$" + r.my_amount}. You can update it below.</div>}
                   {r.my_amount == null && (r.bid_count ?? 0) >= 3 && <div style={{ fontSize:".82rem", color:"#fbbf24" }}>This job already has 3 bids.</div>}
                   {(r.my_amount != null || (r.bid_count ?? 0) < 3) && (
                     <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center" }}>
@@ -392,7 +393,7 @@ export default function ContractorDashboard() {
               {(contractor?.service_area?.length ?? 0) > 0 && (
                 <div>
                   <div style={{ fontSize:".7rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".5rem" }}>Service Area</div>
-                  {contractor.service_area.map((z: string) => <span key={z} style={s.chip}>📍 {z}</span>)}
+                  {contractor.service_area.map((z: string) => <span key={z} style={s.chip}><Ic name="map-pin" size={11} style={{ marginRight:3 }} />{z}</span>)}
                 </div>
               )}
             </div>

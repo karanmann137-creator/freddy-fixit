@@ -1,3 +1,4 @@
+import { Ic } from "@/components/Ic";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
@@ -111,7 +112,7 @@ export default function TopNav() {
             <button onClick={toggleBell} aria-label="Notifications"
               className="ff-nav-btn ff-nav-btn-ghost"
               style={{ ...btn, ...ghostBtn, padding: ".5rem .7rem", position: "relative" }}>
-              🔔
+              <Ic name="bell" size={18} />
               {unread > 0 && (
                 <span style={{ position: "absolute", top: "-4px", right: "-4px", background: "#ef4444", color: "#fff", borderRadius: "999px", fontSize: ".62rem", fontWeight: 700, minWidth: "16px", height: "16px", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
                   {unread > 9 ? "9+" : unread}

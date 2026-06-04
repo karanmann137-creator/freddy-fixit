@@ -1,14 +1,15 @@
 import { useLocation } from "wouter";
+import { Ic } from "@/components/Ic";
 import { motion } from "framer-motion";
 
 export default function ClientSuccess() {
   const [, setLocation] = useLocation();
 
   const steps = [
-    { icon: "📋", title: "Request Received", desc: "Your job request is in our system and we're on it." },
-    { icon: "📞", title: "We'll Call You", desc: "A Freddy Fix It coordinator will reach out within a few hours to confirm details." },
-    { icon: "🔧", title: "Contractor Matched", desc: "We'll match you with a vetted pro in your area and confirm the visit time." },
-    { icon: "✅", title: "Job Done", desc: "Your contractor shows up, fixes the problem. Simple as that." },
+    { iconName: "clipboard-list", title: "Request Received", desc: "Your job request is in our system and we're on it." },
+    { iconName: "phone", title: "We'll Call You", desc: "A Freddy Fix It coordinator will reach out within a few hours to confirm details." },
+    { iconName: "wrench", title: "Contractor Matched", desc: "We'll match you with a vetted pro in your area and confirm the visit time." },
+    { iconName: "check-circle", title: "Job Done", desc: "Your contractor shows up, fixes the problem. Simple as that." },
   ];
 
   return (
@@ -76,7 +77,7 @@ export default function ClientSuccess() {
             <div className="ff-card-title">What Happens Next</div>
             {steps.map((s, i) => (
               <motion.div key={s.title} className="ff-step" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 + i * 0.08 }}>
-                <span className="ff-step-icon">{s.icon}</span>
+                <span className="ff-step-icon"><Ic name={s.iconName as any} size={28} color="#ea6b14" /></span>
                 <div>
                   <div className="ff-step-title">{s.title}</div>
                   <div className="ff-step-desc">{s.desc}</div>
@@ -86,7 +87,7 @@ export default function ClientSuccess() {
           </div>
 
           <div className="ff-notice">
-            <div className="ff-notice-title">⏱ Typical Response Time</div>
+            <div className="ff-notice-title"><Ic name="timer" size={14} style={{ marginRight:6 }} /> Typical Response Time</div>
             <div className="ff-notice-text">Most requests are handled within 2–6 hours during business hours. For urgent jobs, use the WhatsApp button below and we'll get to you faster.</div>
           </div>
 

@@ -1,3 +1,4 @@
+import { Ic } from "@/components/Ic";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
@@ -156,7 +157,7 @@ export default function NewRequest() {
           <div style={{ maxWidth:"100%", overflowX:"hidden", display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:".75rem", marginBottom:".5rem" }}>
             {SERVICES.map(sv => (
               <button key={sv.label} style={{ ...s.svcBtn, ...(selectedServices.includes(sv.label) ? s.svcBtnSel : {}) }} onClick={() => toggleService(sv.label)}>
-                <span style={{ fontSize:"1.2rem", flexShrink:0 }}>{sv.icon}</span>
+                <span style={{ fontSize:"1.2rem", flexShrink:0 }}><Ic name={sv.iconName as any} size={20} color="#ea6b14" style={{ marginRight:8, flexShrink:0 }} /></span>
                 <span>{sv.label}</span>
                 {selectedServices.includes(sv.label) && <span style={{ marginLeft:"auto", color:"#ea6b14", fontSize:"1rem" }}>✓</span>}
               </button>
@@ -179,11 +180,11 @@ export default function NewRequest() {
           {prevAddress ? (
             <>
               <button style={{ ...s.addrBtn, ...(sameAddress ? s.addrBtnSel : {}) }} onClick={() => { setSameAddress(true); setErrors(e => ({ ...e, location:"" })); }}>
-                <span>{sameAddress ? "🔘" : "⚪"}</span>
+                <span><Ic name={sameAddress ? "radio-on" : "radio-off"} size={16} color="#ea6b14" /></span>
                 <span>Same address as last time — <span style={{ color:"rgba(190,205,235,.6)" }}>{prevAddress}</span></span>
               </button>
               <button style={{ ...s.addrBtn, ...(!sameAddress ? s.addrBtnSel : {}) }} onClick={() => { setSameAddress(false); setErrors(e => ({ ...e, location:"" })); }}>
-                <span>{!sameAddress ? "🔘" : "⚪"}</span>
+                <span><Ic name={!sameAddress ? "radio-on" : "radio-off"} size={16} color="#ea6b14" /></span>
                 <span>A different address</span>
               </button>
               {!sameAddress && (

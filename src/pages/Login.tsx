@@ -1,3 +1,4 @@
+import { Ic } from "@/components/Ic";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
@@ -66,7 +67,7 @@ export default function Login() {
         <div style={s.card}>
           {resetSent ? (
             <div style={{ textAlign:"center", padding:"1.5rem 0" }}>
-              <div style={{ fontSize:"2.5rem", marginBottom:"1rem" }}>📬</div>
+              <div style={{ marginBottom:"1rem" }}><Ic name="mail" size={48} color="#ea6b14" /></div>
               <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.6rem", letterSpacing:".06em", marginBottom:".5rem" }}>Check Your Email</div>
               <p style={{ fontSize:".85rem", color:"rgba(190,205,235,.6)", fontWeight:300, lineHeight:1.6 }}>
                 We sent a reset link to <strong>{email}</strong>. Check your inbox and follow the link to set a new password.

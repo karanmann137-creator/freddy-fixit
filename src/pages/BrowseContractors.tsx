@@ -1,3 +1,4 @@
+import { Ic } from "@/components/Ic";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
@@ -164,7 +165,7 @@ export default function BrowseContractors() {
                 </div>
 
                 {(c.service_area ?? []).length > 0 && (
-                  <div style={st.meta}>📍 {(c.service_area ?? []).join(", ")}</div>
+                  <div style={st.meta}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{(c.service_area ?? []).join(", ")}</div>
                 )}
 
                 {(c.rating_count ?? 0) > 0 && (

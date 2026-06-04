@@ -1,39 +1,40 @@
+import { Ic } from "@/components/Ic";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 
 const SPECIALTIES = [
-  { icon: "🔧", label: "General Repairs" },
-  { icon: "🚿", label: "Plumbing" },
-  { icon: "⚡", label: "Electrical" },
-  { icon: "🌡️", label: "HVAC" },
-  { icon: "🪵", label: "Carpentry" },
-  { icon: "🎨", label: "Painting" },
-  { icon: "🏠", label: "Drywall" },
-  { icon: "🪟", label: "Flooring / Tile" },
-  { icon: "🛞", label: "Tire Swap / Rotation" },
-  { icon: "🚗", label: "Oil Change" },
-  { icon: "🔋", label: "Battery / Brakes" },
-  { icon: "🧰", label: "Vehicle Maintenance" },
-  { icon: "🌳", label: "Landscaping" },
-  { icon: "❄️", label: "Snow Removal" },
-  { icon: "🌧️", label: "Gutters" },
-  { icon: "🚪", label: "Windows & Doors" },
-  { icon: "🏚️", label: "Siding & Roofing" },
-  { icon: "🚙", label: "Garage" },
-  { icon: "🌬️", label: "Air Conditioning" },
-  { icon: "🧹", label: "Cleaning Services" },
+  { iconName: "wrench", label: "General Repairs" },
+  { iconName: "droplet", label: "Plumbing" },
+  { iconName: "zap", label: "Electrical" },
+  { iconName: "thermometer", label: "HVAC" },
+  { iconName: "hammer", label: "Carpentry" },
+  { iconName: "paint-roller", label: "Painting" },
+  { iconName: "layers", label: "Drywall" },
+  { iconName: "layers", label: "Flooring / Tile" },
+  { iconName: "circle-dashed", label: "Tire Swap / Rotation" },
+  { iconName: "car", label: "Oil Change" },
+  { iconName: "battery", label: "Battery / Brakes" },
+  { iconName: "toolbox", label: "Vehicle Maintenance" },
+  { iconName: "tree", label: "Landscaping" },
+  { iconName: "snowflake", label: "Snow Removal" },
+  { iconName: "cloud-rain", label: "Gutters" },
+  { iconName: "door", label: "Windows & Doors" },
+  { iconName: "building", label: "Siding & Roofing" },
+  { iconName: "car", label: "Garage" },
+  { iconName: "wind", label: "Air Conditioning" },
+  { iconName: "sparkles", label: "Cleaning Services" },
 ];
 
 const AREAS = ["NW Calgary","NE Calgary","SW Calgary","SE Calgary","Downtown / Beltline","Airdrie","Cochrane","Chestermere"];
 
 const AVAILABILITY_OPTIONS = [
-  { icon: "☀️", label: "Weekday Mornings",   sub: "Mon–Fri, 7am–12pm" },
-  { icon: "🌤️", label: "Weekday Afternoons", sub: "Mon–Fri, 12pm–5pm" },
-  { icon: "🌙", label: "Weekday Evenings",   sub: "Mon–Fri, 5pm–9pm" },
-  { icon: "🗓️", label: "Weekends",           sub: "Sat & Sun, flexible hours" },
-  { icon: "⚡", label: "Urgent / On-Call",   sub: "Available for same-day jobs" },
-  { icon: "🔁", label: "Fully Flexible",     sub: "Available anytime" },
+  { iconName: "sun", label: "Weekday Mornings",   sub: "Mon–Fri, 7am–12pm" },
+  { iconName: "cloud-sun", label: "Weekday Afternoons", sub: "Mon–Fri, 12pm–5pm" },
+  { iconName: "moon", label: "Weekday Evenings",   sub: "Mon–Fri, 5pm–9pm" },
+  { iconName: "calendar", label: "Weekends",           sub: "Sat & Sun, flexible hours" },
+  { iconName: "zap", label: "Urgent / On-Call",   sub: "Available for same-day jobs" },
+  { iconName: "refresh", label: "Fully Flexible",     sub: "Available anytime" },
 ];
 
 const STEP_TITLES = ["Your Details", "Your Specialties", "Service Area", "Availability", "Profile Photo"];
@@ -221,7 +222,7 @@ export default function ContractorOnboarding() {
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".7rem" }}>
                 {SPECIALTIES.map(sp => (
                   <button key={sp.label} style={{ ...s.chip, ...(selectedSpec.includes(sp.label) ? s.chipSel : {}) }} onClick={() => toggleSpec(sp.label)}>
-                    <span style={{ fontSize:"1.1rem", flexShrink:0 }}>{sp.icon}</span>
+                    <span style={{ fontSize:"1.1rem", flexShrink:0 }}><Ic name={sp.iconName as any} size={18} color="#ea6b14" style={{ marginRight:6, flexShrink:0 }} /></span>
                     <span>{sp.label}</span>
                     {selectedSpec.includes(sp.label) && <span style={{ marginLeft:"auto", color:"#ea6b14" }}>✓</span>}
                   </button>
@@ -239,7 +240,7 @@ export default function ContractorOnboarding() {
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".7rem" }}>
                 {AREAS.map(z => (
                   <button key={z} style={{ ...s.chip, ...(selectedArea.includes(z) ? s.chipSel : {}) }} onClick={() => toggleArea(z)}>
-                    <span>📍</span><span>{z}</span>
+                    <span><Ic name="map-pin" size={14} color="#ea6b14" /></span><span>{z}</span>
                     {selectedArea.includes(z) && <span style={{ marginLeft:"auto", color:"#ea6b14" }}>✓</span>}
                   </button>
                 ))}
@@ -257,7 +258,7 @@ export default function ContractorOnboarding() {
               </p>
               {AVAILABILITY_OPTIONS.map(a => (
                 <button key={a.label} style={{ ...s.availBtn, ...(selectedAvail.includes(a.label) ? s.availBtnSel : {}) }} onClick={() => toggleAvail(a.label)}>
-                  <span style={{ fontSize:"1.5rem", flexShrink:0 }}>{a.icon}</span>
+                  <span style={{ fontSize:"1.5rem", flexShrink:0 }}><Ic name={a.iconName as any} size={20} color="#ea6b14" style={{ marginRight:8, flexShrink:0 }} /></span>
                   <div style={{ flex:1 }}>
                     <div style={{ fontSize:".95rem", fontWeight:500 }}>{a.label}</div>
                     <div style={{ fontSize:".78rem", color:"rgba(190,205,235,.5)", marginTop:".1rem" }}>{a.sub}</div>
@@ -274,7 +275,7 @@ export default function ContractorOnboarding() {
           {step === 5 && (
             <div>
               <div style={{ border:"2px dashed rgba(255,255,255,.12)", borderRadius:"12px", padding:"2rem 1.5rem", textAlign:"center", marginBottom:"1rem" }}>
-                <div style={{ fontSize:"2.5rem", marginBottom:"1rem" }}>📸</div>
+                <div style={{ marginBottom:"1rem" }}><Ic name="camera" size={48} color="#ea6b14" /></div>
                 <p style={{ color:"rgba(190,205,235,.6)", fontSize:".9rem", marginBottom:".5rem" }}>A profile photo builds trust with clients</p>
                 <p style={{ color:"rgba(190,205,235,.4)", fontSize:".8rem", margin:"1rem 0 .75rem" }}>Paste a photo URL below</p>
                 <input style={inp} placeholder="https://your-photo-url.com/photo.jpg" value={form.photoUrl} onChange={e => setF("photoUrl",e.target.value)} />

@@ -1,3 +1,4 @@
+import { Ic } from "@/components/Ic";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
@@ -149,7 +150,7 @@ export default function AdminDashboard() {
         <div style={s.tabs}>
           {(["requests","contractors","jobs"] as const).map(t => (
             <button key={t} style={{ ...s.tab, ...(tab===t ? s.activeTab : {}) }} onClick={() => setTab(t)}>
-              {t === "requests" ? `📋 Requests (${counts.requests})` : t === "contractors" ? `🔧 Contractors (${counts.contractors})` : `💼 Jobs (${counts.jobs})`}
+              {t === "requests" ? `Requests (${counts.requests})` : t === "contractors" ? `Contractors (${counts.contractors})` : `Jobs (${counts.jobs})`}
             </button>
           ))}
         </div>
@@ -160,8 +161,8 @@ export default function AdminDashboard() {
             {requests.map(r => (
               <div key={r.id} style={s.card}>
                 <div style={s.title}>{r.service_needed}</div>
-                <div style={s.meta}>👤 {r.first_name} {r.last_name} · 📞 {r.phone}</div>
-                <div style={s.meta}>📍 {r.location} · ⏱ {r.preferred_schedule}</div>
+                <div style={s.meta}><Ic name="user" size={13} style={{ marginRight:4 }} />{r.first_name} {r.last_name} · <Ic name="phone" size={13} style={{ marginRight:4, marginLeft:4 }} />{r.phone}</div>
+                <div style={s.meta}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{r.location} · <Ic name="timer" size={13} style={{ marginRight:4, marginLeft:4 }} />{r.preferred_schedule}</div>
                 <div style={s.meta}>{r.job_description}</div>
                 <div style={{ ...s.badge, marginTop:".5rem" }}>● {r.status}</div>
                 {r.status === "pending" && (bidsBy[r.id]?.length ?? 0) > 0 && (
@@ -199,7 +200,7 @@ export default function AdminDashboard() {
                 )}
                 <RequestPhotoQuote requestId={r.id} photoPath={r.photo_path} estimatedQuote={r.estimated_quote} quoteNotes={r.quote_notes} canQuote />
                 <div style={{ marginTop:".75rem" }}>
-                  <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyDelete} onClick={() => deleteRequest(r)}>🗑 Delete request</button>
+                  <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyDelete} onClick={() => deleteRequest(r)}><Ic name="trash" size={13} style={{ marginRight:4 }} />Delete request</button>
                 </div>
               </div>
             ))}
@@ -215,7 +216,7 @@ export default function AdminDashboard() {
                 <div style={s.title}>{c.company_name || [c.profile?.first_name, c.profile?.last_name].filter(Boolean).join(" ") || "Unnamed contractor"}</div>
                 {flagMatches[c.id] && (
                   <div style={{ marginTop:".5rem", padding:".6rem .8rem", background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.4)", borderRadius:"8px", color:"#fca5a5", fontSize:".8rem", lineHeight:1.45 }}>
-                    {"⚠️ Possible re-signup — matches a previously deleted account that had poor reviews (avg "}
+                    {"Possible re-signup — matches a previously deleted account that had poor reviews (avg "}
                     {flagMatches[c.id].avg}{"/10 over "}{flagMatches[c.id].count}{" review"}{flagMatches[c.id].count === 1 ? "" : "s"}{", deleted "}
                     {new Date(flagMatches[c.id].date).toLocaleDateString()}{"). Matched on "}{flagMatches[c.id].fields.join(", ")}{"."}
                   </div>

@@ -1,3 +1,4 @@
+import { Ic } from "@/components/Ic";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 
@@ -5,9 +6,9 @@ export default function ContractorSuccess() {
   const [, setLocation] = useLocation();
 
   const steps = [
-    { icon: "🔍", title: "Profile Review", desc: "We'll review your details and verify your specialties — usually within 24 hours." },
-    { icon: "✅", title: "Account Activated", desc: "You'll get a WhatsApp message or email once your profile is live and visible to clients." },
-    { icon: "📲", title: "Start Getting Jobs", desc: "We'll match you with clients in your area based on your specialties and availability." },
+    { iconName: "search", title: "Profile Review", desc: "We'll review your details and verify your specialties — usually within 24 hours." },
+    { iconName: "user-check", title: "Account Activated", desc: "You'll get a WhatsApp message or email once your profile is live and visible to clients." },
+    { iconName: "smartphone", title: "Start Getting Jobs", desc: "We'll match you with clients in your area based on your specialties and availability." },
     { icon: "⭐", title: "Build Your Reputation", desc: "Complete jobs, collect 5-star reviews, and move to the top of our contractor list." },
   ];
 
@@ -76,7 +77,7 @@ export default function ContractorSuccess() {
             <div className="ff-card-title">What Happens Next</div>
             {steps.map((s, i) => (
               <motion.div key={s.title} className="ff-step" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 + i * 0.08 }}>
-                <span className="ff-step-icon">{s.icon}</span>
+                <span className="ff-step-icon"><Ic name={s.iconName as any} size={28} color="#ea6b14" /></span>
                 <div>
                   <div className="ff-step-title">{s.title}</div>
                   <div className="ff-step-desc">{s.desc}</div>
@@ -86,7 +87,7 @@ export default function ContractorSuccess() {
           </div>
 
           <div className="ff-notice">
-            <div className="ff-notice-title">📲 Stay Reachable</div>
+            <div className="ff-notice-title"><Ic name="smartphone" size={14} style={{ marginRight:6 }} /> Stay Reachable</div>
             <div className="ff-notice-text">We coordinate most jobs over WhatsApp or phone. Make sure the number you provided is active — that's how we'll send you leads.</div>
           </div>
 

@@ -1,29 +1,30 @@
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
+import { Ic } from "@/components/Ic";
 
 const SERVICES = [
-  { icon:"🔧", label:"General Repairs",      desc:"Handyman services for anything around the house" },
-  { icon:"🚿", label:"Plumbing",              desc:"Leaks, installs, and everything in between" },
-  { icon:"⚡", label:"Electrical",            desc:"Safe, certified electrical work done right" },
-  { icon:"🌡️", label:"HVAC",                  desc:"Heating, cooling, and ventilation maintenance" },
-  { icon:"🪵", label:"Carpentry",             desc:"Custom builds, repairs, and finishing work" },
-  { icon:"🎨", label:"Painting",              desc:"Interior and exterior painting services" },
-  { icon:"🏠", label:"Drywall & Flooring",    desc:"From patch jobs to full installs" },
-  { icon:"🚗", label:"Vehicle Maintenance",   desc:"Oil changes, tires, brakes and more" },
-  { icon:"🌳", label:"Landscaping",           desc:"Lawn care, cleanup, and yard work" },
-  { icon:"❄️", label:"Snow Removal",          desc:"Residential and commercial snow clearing" },
-  { icon:"🌧️", label:"Gutters",               desc:"Cleaning, repair, and new installs to protect your home" },
-  { icon:"🚪", label:"Windows & Doors",        desc:"Repairs, replacements, and weatherproofing" },
-  { icon:"🏚️", label:"Siding & Roofing",       desc:"Repairs, replacements, and leak protection" },
-  { icon:"🚙", label:"Garage",                 desc:"Garage doors, openers, builds, and repairs" },
-  { icon:"🌬️", label:"Air Conditioning",       desc:"AC installs, tune-ups, and repairs" },
-  { icon:"🧹", label:"Cleaning Services",       desc:"Deep cleans, move-outs, and regular upkeep" },
+  { iconName:"wrench", label:"General Repairs",      desc:"Handyman services for anything around the house" },
+  { iconName:"droplet", label:"Plumbing",              desc:"Leaks, installs, and everything in between" },
+  { iconName:"zap", label:"Electrical",            desc:"Safe, certified electrical work done right" },
+  { iconName:"thermometer", label:"HVAC",                  desc:"Heating, cooling, and ventilation maintenance" },
+  { iconName:"hammer", label:"Carpentry",             desc:"Custom builds, repairs, and finishing work" },
+  { iconName:"paint-roller", label:"Painting",              desc:"Interior and exterior painting services" },
+  { iconName:"layers", label:"Drywall & Flooring",    desc:"From patch jobs to full installs" },
+  { iconName:"car", label:"Vehicle Maintenance",   desc:"Oil changes, tires, brakes and more" },
+  { iconName:"tree", label:"Landscaping",           desc:"Lawn care, cleanup, and yard work" },
+  { iconName:"snowflake", label:"Snow Removal",          desc:"Residential and commercial snow clearing" },
+  { iconName:"cloud-rain", label:"Gutters",               desc:"Cleaning, repair, and new installs to protect your home" },
+  { iconName:"door", label:"Windows & Doors",        desc:"Repairs, replacements, and weatherproofing" },
+  { iconName:"building", label:"Siding & Roofing",       desc:"Repairs, replacements, and leak protection" },
+  { iconName:"car", label:"Garage",                 desc:"Garage doors, openers, builds, and repairs" },
+  { iconName:"wind", label:"Air Conditioning",       desc:"AC installs, tune-ups, and repairs" },
+  { iconName:"sparkles", label:"Cleaning Services",       desc:"Deep cleans, move-outs, and regular upkeep" },
 ];
 
 const HOW_IT_WORKS = [
-  { step:"01", icon:"📋", title:"Submit a Request",    desc:"Tell us what needs fixing — takes less than 2 minutes. Choose your service, location, and preferred timing." },
-  { step:"02", icon:"🔗", title:"Get Matched",         desc:"We match you with a vetted local contractor in your area based on your service needs and schedule." },
-  { step:"03", icon:"🔧", title:"Job Done",            desc:"Your contractor shows up and gets it done. Simple, reliable, no hassle." },
+  { step:"01", iconName:"clipboard-list", title:"Submit a Request",    desc:"Tell us what needs fixing — takes less than 2 minutes. Choose your service, location, and preferred timing." },
+  { step:"02", iconName:"link", title:"Get Matched",         desc:"We match you with a vetted local contractor in your area based on your service needs and schedule." },
+  { step:"03", iconName:"wrench", title:"Job Done",            desc:"Your contractor shows up and gets it done. Simple, reliable, no hassle." },
 ];
 
 const FAQS = [
@@ -158,13 +159,13 @@ export default function Home() {
 
           <motion.div className="ff-cards" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.45 }}>
             <div className="ff-card ff-card-contractor" onClick={() => setLocation("/contractor-onboarding")}>
-              <div className="ff-card-icon">🔧</div>
+              <div className="ff-card-icon"><Ic name="wrench" size={32} color="#ea6b14" /></div>
               <div className="ff-card-title">I'm a Contractor</div>
               <div className="ff-card-sub">Join our network and get more clients in Calgary</div>
               <div className="ff-card-cta">Get started →</div>
             </div>
             <div className="ff-card ff-card-client" onClick={() => setLocation("/client-onboarding")}>
-              <div className="ff-card-icon">🏠</div>
+              <div className="ff-card-icon"><Ic name="home" size={32} color="#ea6b14" /></div>
               <div className="ff-card-title">I Need a Fix</div>
               <div className="ff-card-sub">Home repairs, vehicle maintenance — we've got you</div>
               <div className="ff-card-cta">Book now →</div>
@@ -199,7 +200,7 @@ export default function Home() {
             {SERVICES.map((s, i) => (
               <motion.div key={s.label} className="ff-service-card" onClick={() => window.location.href="/client-onboarding"} style={{ cursor:"pointer" }}
                 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.05 }}>
-                <div className="ff-service-icon">{s.icon}</div>
+                <div className="ff-service-icon"><Ic name={s.iconName as any} size={28} color="#ea6b14" /></div>
                 <div className="ff-service-label">{s.label}</div>
                 <div className="ff-service-desc">{s.desc}</div>
               </motion.div>
@@ -222,6 +223,7 @@ export default function Home() {
                 <div style={{ display:"flex", alignItems:"baseline", gap:"0.75rem", marginBottom:"0.75rem" }}>
                   <div className="ff-how-step">{h.step}</div><div className="ff-how-title">{h.title}</div>
                 </div>
+                <div className="ff-how-icon" style={{ marginBottom:".5rem" }}><Ic name={h.iconName as any} size={22} color="#ea6b14" /></div>
                 <div className="ff-how-desc">{h.desc}</div>
                 {i < HOW_IT_WORKS.length - 1 && <div className="ff-how-connector" />}
               </motion.div>

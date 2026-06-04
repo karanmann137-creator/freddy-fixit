@@ -1,3 +1,4 @@
+import { Ic } from "@/components/Ic";
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
@@ -5,11 +6,11 @@ import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import DeleteAccount from "@/components/DeleteAccount";
 
 const STATUS_META: Record<string, { icon: string; label: string; color: string }> = {
-  pending:     { icon: "⏳", label: "Pending Review",     color: "#f59e0b" },
-  matched:     { icon: "🔗", label: "Contractor Matched", color: "#3b82f6" },
-  in_progress: { icon: "🔧", label: "Work In Progress",   color: "#ea6b14" },
-  completed:   { icon: "✅", label: "Completed",          color: "#22c55e" },
-  cancelled:   { icon: "❌", label: "Cancelled",          color: "#ef4444" },
+  pending:     { icon: "clock", label: "Pending Review",     color: "#f59e0b" },
+  matched:     { icon: "link", label: "Contractor Matched", color: "#3b82f6" },
+  in_progress: { icon: "wrench", label: "Work In Progress",   color: "#ea6b14" },
+  completed:   { icon: "check-circle", label: "Completed",          color: "#22c55e" },
+  cancelled:   { icon: "x-circle", label: "Cancelled",          color: "#ef4444" },
 };
 
 export default function ClientDashboard() {
@@ -227,7 +228,7 @@ export default function ClientDashboard() {
   if (loading) return (
     <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ textAlign:"center", color:"rgba(190,205,235,.5)" }}>
-        <div style={{ fontSize:"2rem", marginBottom:"1rem" }}>⚙️</div>Loading your dashboard…
+        <div style={{ marginBottom:"1rem" }}><Ic name="settings" size={36} color="#ea6b14" /></div>Loading your dashboard…
       </div>
     </div>
   );
@@ -248,7 +249,7 @@ export default function ClientDashboard() {
         {activeJob && (
           <div style={s.tabs}>
             <button style={{ ...s.tab, ...(activeTab==="overview" ? s.activeTab : {}) }} onClick={() => setActiveTab("overview")}>Overview</button>
-            <button style={{ ...s.tab, ...(activeTab==="chat" ? s.activeTab : {}) }} onClick={() => setActiveTab("chat")}>💬 Chat with Contractor</button>
+            <button style={{ ...s.tab, ...(activeTab==="chat" ? s.activeTab : {}) }} onClick={() => setActiveTab("chat")}><Ic name="message-square" size={14} style={{ marginRight:6 }} />Chat with Contractor</button>
           </div>
         )}
 
@@ -256,7 +257,7 @@ export default function ClientDashboard() {
           <>
             {requests.length === 0 ? (
               <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
-                <div style={{ fontSize:"3rem", marginBottom:"1rem" }}>🏠</div>
+                <div style={{ marginBottom:"1rem" }}><Ic name="home" size={48} color="#ea6b14" /></div>
                 <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", marginBottom:".5rem" }}>No Requests Yet</h2>
                 <p style={{ color:"rgba(190,205,235,.5)", marginBottom:"1.5rem" }}>Submit your first job request and we'll get you sorted.</p>
                 <button style={s.primaryBtn} onClick={() => setLocation("/client-onboarding")}>Submit a Request →</button>
@@ -303,15 +304,15 @@ export default function ClientDashboard() {
                         {activeJob.status === "assigned" && activeJob.schedule_proposed_at && !activeJob.client_approved_at && (
                           <>
                             <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}>Your contractor proposed a time</div>
-                            <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.8)", marginBottom:".75rem" }}>📅 {activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "—"}{activeJob.amount ? " · 💵 $" + activeJob.amount : ""}</div>
+                            <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.8)", marginBottom:".75rem" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />{activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "—"}{activeJob.amount ? " · $" + activeJob.amount : ""}</div>
                             <button style={s.primaryBtn} disabled={busyReq} onClick={approveSchedule}>{busyReq ? "…" : "Approve & schedule"}</button>
                           </>
                         )}
                         {activeJob.status === "assigned" && !activeJob.schedule_proposed_at && (
-                          <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.75)" }}>✅ Matched! Waiting for your contractor to propose a time and price.</div>
+                          <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.75)" }}><Ic name="check-circle" size={14} style={{ marginRight:4 }} />Matched! Waiting for your contractor to propose a time and price.</div>
                         )}
                         {activeJob.status === "scheduled" && (
-                          <div style={{ fontSize:".85rem", color:"#86efac" }}>📅 Scheduled for {activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "the agreed time"}{activeJob.amount ? " · $" + activeJob.amount : ""}.</div>
+                          <div style={{ fontSize:".85rem", color:"#86efac" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Scheduled for {activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "the agreed time"}{activeJob.amount ? " · $" + activeJob.amount : ""}.</div>
                         )}
                         {activeJob.status === "pending_confirmation" && (
                           <>
@@ -323,7 +324,7 @@ export default function ClientDashboard() {
                         )}
                         {activeJob.status === "completed" && (
                           hasReviewed ? (
-                            <div style={{ fontSize:".85rem", color:"#86efac" }}>✅ Completed — thanks for rating your contractor!</div>
+                            <div style={{ fontSize:".85rem", color:"#86efac" }}><Ic name="check-circle" size={14} style={{ marginRight:4 }} />Completed — thanks for rating your contractor!</div>
                           ) : (
                             <div>
                               <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".5rem" }}>Rate your contractor (out of 10)</div>
@@ -365,8 +366,8 @@ export default function ClientDashboard() {
                       </div>
                     ) : (
                       <div style={{ display:"flex", gap:".6rem", marginTop:"1rem" }}>
-                        <button style={s.btn} onClick={() => startEdit(activeReq)}>✏️ Edit</button>
-                        <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyReq} onClick={() => removeRequest(activeReq)}>🗑 Delete</button>
+                        <button style={s.btn} onClick={() => startEdit(activeReq)}><Ic name="pencil" size={13} style={{ marginRight:4 }} />Edit</button>
+                        <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyReq} onClick={() => removeRequest(activeReq)}><Ic name="trash" size={13} style={{ marginRight:4 }} />Delete</button>
                       </div>
                     )}
                   </div>
@@ -381,7 +382,7 @@ export default function ClientDashboard() {
                       </div>
                       <div>
                         <div style={{ fontSize:"1rem", fontWeight:500 }}>{contractor.first_name} {contractor.last_name}</div>
-                        <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.5)" }}>📞 {contractor.phone}</div>
+                        <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.5)" }}><Ic name="phone" size={13} style={{ marginRight:4 }} />{contractor.phone}</div>
                       </div>
                       {activeJob && (
                         <button style={{ ...s.btn, marginLeft:"auto", color:"#25d366", borderColor:"rgba(37,211,102,.25)", background:"rgba(37,211,102,.1)" }} onClick={() => setActiveTab("chat")}>
@@ -406,7 +407,7 @@ export default function ClientDashboard() {
                             {STATUS_META[r.status]?.icon} {STATUS_META[r.status]?.label}
                           </div>
                           {r.status !== "cancelled" && (
-                            <button style={{ ...s.btn, padding:".3rem .55rem", color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyReq} onClick={() => removeRequest(r)}>🗑</button>
+                            <button style={{ ...s.btn, padding:".3rem .55rem", color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyReq} onClick={() => removeRequest(r)}><Ic name="trash" size={13} /></button>
                           )}
                         </div>
                       </div>
@@ -424,7 +425,7 @@ export default function ClientDashboard() {
               💬 Chat with {contractor?.first_name ?? "your contractor"}
             </div>
             <div style={{ flex:1, overflowY:"auto", padding:"1.25rem", display:"flex", flexDirection:"column", gap:".75rem" }}>
-              {messages.length === 0 && <p style={{ textAlign:"center", color:"rgba(190,205,235,.35)", fontSize:".85rem", margin:"auto" }}>No messages yet. Say hi! 👋</p>}
+              {messages.length === 0 && <p style={{ textAlign:"center", color:"rgba(190,205,235,.35)", fontSize:".85rem", margin:"auto" }}>No messages yet. Say hi!</p>}
               {messages.map(m => {
                 const mine = m.sender_id === profile?.id;
                 return (
