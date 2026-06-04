@@ -14,6 +14,10 @@ const SERVICES = [
   { icon:"❄️", label:"Snow Removal",          desc:"Residential and commercial snow clearing" },
   { icon:"🌧️", label:"Gutters",               desc:"Cleaning, repair, and new installs to protect your home" },
   { icon:"🚪", label:"Windows & Doors",        desc:"Repairs, replacements, and weatherproofing" },
+  { icon:"🏚️", label:"Siding & Roofing",       desc:"Repairs, replacements, and leak protection" },
+  { icon:"🚙", label:"Garage",                 desc:"Garage doors, openers, builds, and repairs" },
+  { icon:"🌬️", label:"Air Conditioning",       desc:"AC installs, tune-ups, and repairs" },
+  { icon:"🧹", label:"Cleaning Services",       desc:"Deep cleans, move-outs, and regular upkeep" },
 ];
 
 const HOW_IT_WORKS = [

@@ -19,6 +19,10 @@ const SPECIALTIES = [
   { icon: "❄️", label: "Snow Removal" },
   { icon: "🌧️", label: "Gutters" },
   { icon: "🚪", label: "Windows & Doors" },
+  { icon: "🏚️", label: "Siding & Roofing" },
+  { icon: "🚙", label: "Garage" },
+  { icon: "🌬️", label: "Air Conditioning" },
+  { icon: "🧹", label: "Cleaning Services" },
 ];
 
 const AREAS = ["NW Calgary","NE Calgary","SW Calgary","SE Calgary","Downtown / Beltline","Airdrie","Cochrane","Chestermere"];

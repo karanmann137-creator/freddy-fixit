@@ -18,6 +18,10 @@ const SERVICES = [
   { icon: "❄️", label: "Snow Removal" },
   { icon: "🌧️", label: "Gutters" },
   { icon: "🚪", label: "Windows & Doors" },
+  { icon: "🏚️", label: "Siding & Roofing" },
+  { icon: "🚙", label: "Garage" },
+  { icon: "🌬️", label: "Air Conditioning" },
+  { icon: "🧹", label: "Cleaning Services" },
   { icon: "📦", label: "Other" },
 ];
 

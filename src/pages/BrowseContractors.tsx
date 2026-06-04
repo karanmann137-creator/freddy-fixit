@@ -10,6 +10,7 @@ const CATEGORIES = [
   "Drywall", "Flooring / Tile", "Tire Swap / Rotation", "Oil Change",
   "Battery / Brakes", "Vehicle Maintenance", "Landscaping", "Snow Removal",
   "Gutters", "Windows & Doors",
+  "Siding & Roofing", "Garage", "Air Conditioning", "Cleaning Services",
 ];
 
 interface DirectoryContractor {
