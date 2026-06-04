@@ -3,6 +3,18 @@ import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 
+// Re-signup flagging. These MUST stay byte-identical to the helpers in the
+// delete-account edge function so the hashes line up.
+async function sha256Hex(input: string): Promise<string> {
+  const bytes = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+const normEmail = (e?: string | null) => (e ?? "").trim().toLowerCase();
+const normPhone = (p?: string | null) => (p ?? "").replace(/\D/g, "");
+const normName  = (f?: string | null, l?: string | null) =>
+  [f ?? "", l ?? ""].join(" ").trim().toLowerCase().replace(/\s+/g, " ");
+
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const [requests, setRequests] = useState<any[]>([]);
@@ -16,6 +28,7 @@ export default function AdminDashboard() {
   const [busyDelete, setBusyDelete] = useState(false);
   const [bidsBy, setBidsBy] = useState<Record<string, any[]>>({});
   const [busyAcceptBid, setBusyAcceptBid] = useState<string|null>(null);
+  const [flagMatches, setFlagMatches] = useState<Record<string, { fields: string[]; avg: number; count: number; date: string }>>({});
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -26,12 +39,13 @@ export default function AdminDashboard() {
 
   const loadAll = async () => {
     setLoading(true);
-    const [{ data: reqs }, { data: cons }, { data: js }, { data: dir }, { data: bids }] = await Promise.all([
+    const [{ data: reqs }, { data: cons }, { data: js }, { data: dir }, { data: bids }, { data: flags }] = await Promise.all([
       supabase.from("client_requests").select("*").order("created_at", { ascending: false }),
       supabase.from("contractors").select("*, profile:profiles!contractors_id_fkey(first_name,last_name,email,phone)").order("created_at", { ascending: false }),
       supabase.from("jobs").select("*").order("created_at", { ascending: false }),
       supabase.from("contractor_directory").select("id, first_name, last_name, specialties"),
       supabase.from("bids").select("*").eq("status", "pending").order("amount", { ascending: true }),
+      supabase.from("deleted_account_flags").select("*").eq("was_poor", true),
     ]);
     setRequests(reqs ?? []);
     setContractors(cons ?? []);
@@ -40,6 +54,29 @@ export default function AdminDashboard() {
     const bb: Record<string, any[]> = {};
     (bids ?? []).forEach((b: any) => { if (!bb[b.request_id]) bb[b.request_id] = []; bb[b.request_id].push(b); });
     setBidsBy(bb);
+
+    // Match current contractors against tombstones of deleted, poorly-rated
+    // accounts (by hashed email / phone / name) to surface likely re-signups.
+    const poorFlags = flags ?? [];
+    const fm: Record<string, { fields: string[]; avg: number; count: number; date: string }> = {};
+    if (poorFlags.length > 0) {
+      for (const c of (cons ?? [])) {
+        const eh = normEmail(c.profile?.email) ? await sha256Hex(normEmail(c.profile?.email)) : null;
+        const ph = normPhone(c.profile?.phone) ? await sha256Hex(normPhone(c.profile?.phone)) : null;
+        const nh = normName(c.profile?.first_name, c.profile?.last_name) ? await sha256Hex(normName(c.profile?.first_name, c.profile?.last_name)) : null;
+        for (const f of poorFlags) {
+          const fields: string[] = [];
+          if (eh && f.email_hash === eh) fields.push("email");
+          if (ph && f.phone_hash === ph) fields.push("phone");
+          if (nh && f.name_hash === nh) fields.push("name");
+          if (fields.length > 0) {
+            fm[c.id] = { fields, avg: f.avg_score, count: f.review_count, date: f.deleted_at };
+            break;
+          }
+        }
+      }
+    }
+    setFlagMatches(fm);
     setLoading(false);
   };
 
@@ -153,6 +190,13 @@ export default function AdminDashboard() {
             {contractors.map(c => (
               <div key={c.id} style={s.card}>
                 <div style={s.title}>{c.company_name || [c.profile?.first_name, c.profile?.last_name].filter(Boolean).join(" ") || "Unnamed contractor"}</div>
+                {flagMatches[c.id] && (
+                  <div style={{ marginTop:".5rem", padding:".6rem .8rem", background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.4)", borderRadius:"8px", color:"#fca5a5", fontSize:".8rem", lineHeight:1.45 }}>
+                    {"⚠️ Possible re-signup — matches a previously deleted account that had poor reviews (avg "}
+                    {flagMatches[c.id].avg}{"/10 over "}{flagMatches[c.id].count}{" review"}{flagMatches[c.id].count === 1 ? "" : "s"}{", deleted "}
+                    {new Date(flagMatches[c.id].date).toLocaleDateString()}{"). Matched on "}{flagMatches[c.id].fields.join(", ")}{"."}
+                  </div>
+                )}
                 {c.company_name && [c.profile?.first_name, c.profile?.last_name].filter(Boolean).join(" ") ? <div style={s.meta}>{[c.profile?.first_name, c.profile?.last_name].filter(Boolean).join(" ")}</div> : null}
                 {(c.profile?.email || c.profile?.phone) && <div style={s.meta}>{[c.profile?.email, c.profile?.phone].filter(Boolean).join(" · ")}</div>}
                 <div style={s.meta}>Specialties: {(c.specialties ?? []).join(", ") || "—"}</div>

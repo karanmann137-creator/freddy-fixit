@@ -1,0 +1,18 @@
+{
+  "agents": {
+    "agent-1780376215838-guqa8v": {
+      "agentId": "agent-1780376215838-guqa8v",
+      "agentType": "architect",
+      "status": "idle",
+      "health": 1,
+      "taskCount": 0,
+      "config": {
+        "provider": "anthropic"
+      },
+      "createdAt": "2026-06-02T04:56:55.838Z",
+      "model": "opus",
+      "modelRoutedBy": "default"
+    }
+  },
+  "version": "3.0.0"
+}
