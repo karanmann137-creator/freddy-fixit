@@ -57,6 +57,7 @@ export default function ContractorOnboarding() {
   const [errors, setErrors]   = useState<Record<string,string>>({});
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const setF = (key: string, val: string | number) => { setForm(f => ({ ...f, [key]: val })); setErrors(e => ({ ...e, [key]: "" })); };
@@ -85,6 +86,7 @@ export default function ContractorOnboarding() {
   const back = () => { if (step === 1) setLocation("/"); else { setStep(s => s - 1); window.scrollTo(0,0); } };
 
   const handleSubmit = async () => {
+    if (!agreedToTerms) { setSubmitError("You must agree to the User Agreement and Privacy Policy to continue."); return; }
     setLoading(true); setSubmitError("");
     try {
       const { data: authData, error: authErr } = await supabase.auth.signUp({ email: form.email, password: form.password });
@@ -281,6 +283,22 @@ export default function ContractorOnboarding() {
                 <input style={inp} placeholder="https://your-photo-url.com/photo.jpg" value={form.photoUrl} onChange={e => setF("photoUrl",e.target.value)} />
               </div>
               <p style={{ fontSize:".78rem", color:"rgba(190,205,235,.4)", textAlign:"center" }}>This step is optional — you can add a photo later from your dashboard.</p>
+              <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", margin:"1.5rem 0 .5rem", padding:"1rem", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"8px" }}>
+                <input
+                  type="checkbox"
+                  id="agreeTerms"
+                  checked={agreedToTerms}
+                  onChange={e => { setAgreedToTerms(e.target.checked); if (e.target.checked) setSubmitError(""); }}
+                  style={{ marginTop:"2px", accentColor:"#ea6b14", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }}
+                />
+                <label htmlFor="agreeTerms" style={{ fontSize:".82rem", color:"rgba(190,205,235,.7)", lineHeight:1.6, cursor:"pointer", fontWeight:300 }}>
+                  I am 18 or older and I agree to Freddy Fix It&rsquo;s{" "}
+                  <a href="/user-agreement" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>User Agreement</a>
+                  {" "}and{" "}
+                  <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>Privacy Policy</a>.
+                  {" "}I confirm that I hold all licences, permits, and insurance required to perform the services I offer in Alberta.
+                </label>
+              </div>
               {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"#fca5a5", marginTop:"1rem" }}>{submitError}</div>}
             </div>
           )}

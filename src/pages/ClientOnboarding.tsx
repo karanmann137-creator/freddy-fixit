@@ -57,6 +57,7 @@ export default function ClientOnboarding() {
   const [errors, setErrors] = useState<Record<string,string>>({});
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [success, setSuccess] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
 
@@ -285,6 +286,21 @@ export default function ClientOnboarding() {
                 <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0] ?? null; if (f && f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB."); return; } setSubmitError(""); setPhotoFile(f); }} style={{ ...inp, padding:".6rem", cursor:"pointer" }} />
                 <p style={{ fontSize:".78rem", color:"rgba(190,205,235,.55)", marginTop:".4rem" }}>A photo helps us give you a faster, more accurate quote. Max 5MB.</p>
                 {photoFile && <p style={{ fontSize:".78rem", color:"#9fe6b0", marginTop:".3rem" }}>Attached: {photoFile.name}</p>}
+              </div>
+              <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", margin:"1.5rem 0 .5rem", padding:"1rem", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"8px" }}>
+                <input
+                  type="checkbox"
+                  id="agreeTerms"
+                  checked={agreedToTerms}
+                  onChange={e => { setAgreedToTerms(e.target.checked); if (e.target.checked) setSubmitError(""); }}
+                  style={{ marginTop:"2px", accentColor:"#ea6b14", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }}
+                />
+                <label htmlFor="agreeTerms" style={{ fontSize:".82rem", color:"rgba(190,205,235,.7)", lineHeight:1.6, cursor:"pointer", fontWeight:300 }}>
+                  I am 18 or older and I agree to Freddy Fix It&rsquo;s{" "}
+                  <a href="/user-agreement" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>User Agreement</a>
+                  {" "}and{" "}
+                  <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>Privacy Policy</a>.
+                </label>
               </div>
               {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"#fca5a5", marginTop:"1rem" }}>{submitError}</div>}
             </div>

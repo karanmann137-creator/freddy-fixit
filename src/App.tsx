@@ -15,6 +15,8 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import UpdatePassword from "@/pages/UpdatePassword";
 import TopNav from "@/components/TopNav";
 import BrowseContractors from "@/pages/BrowseContractors";
+import UserAgreement from "@/pages/UserAgreement";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
 
 // When Supabase detects a password-recovery session (fired as the
 // PASSWORD_RECOVERY auth event, or visible as a recovery token in the URL
@@ -102,6 +104,8 @@ export default function App() {
       <Route path="/contractors" component={BrowseContractors} />
       <Route path="/client-success" component={ClientSuccess} />
       <Route path="/contractor-success" component={ContractorSuccess} />
+      <Route path="/user-agreement" component={UserAgreement} />
+      <Route path="/privacy-policy" component={PrivacyPolicy} />
 
       {/* Protected */}
       <Route path="/client-dashboard">
