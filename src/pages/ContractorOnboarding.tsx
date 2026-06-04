@@ -58,6 +58,7 @@ export default function ContractorOnboarding() {
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [success, setSuccess] = useState(false);
 
   const setF = (key: string, val: string | number) => { setForm(f => ({ ...f, [key]: val })); setErrors(e => ({ ...e, [key]: "" })); };
@@ -94,7 +95,17 @@ export default function ContractorOnboarding() {
       if (!authData.user) throw new Error("Account creation failed.");
       const userId = authData.user.id;
       await supabase.from("profiles").insert({ id: userId, email: form.email, first_name: form.firstName, last_name: form.lastName, phone: form.phone, role: "contractor" });
-      await supabase.from("contractors").insert({ id: userId, company_name: form.companyName || null, specialties: selectedSpec, years_of_experience: form.yearsOfExperience === "" ? null : Number(form.yearsOfExperience), service_area: selectedArea, availability: { windows: selectedAvail }, photo_url: form.photoUrl || null, licensed: form.licensed, license_number: form.licenseNumber || null, has_liability_insurance: form.hasInsurance, insurance_provider: form.insuranceProvider || null, insurance_expiry: form.insuranceExpiry || null, has_wcb: form.hasWcb, work_references: form.workReferences || null, status: "pending" });
+      let photoPublicUrl: string | null = null;
+      if (photoFile) {
+        const ext = (photoFile.name.split(".").pop() || "jpg").toLowerCase();
+        const filePath = userId + "/avatar." + ext;
+        const { error: upErr } = await supabase.storage.from("contractor-photos").upload(filePath, photoFile, { upsert: true });
+        if (!upErr) {
+          const { data: pub } = supabase.storage.from("contractor-photos").getPublicUrl(filePath);
+          photoPublicUrl = pub?.publicUrl ?? null;
+        }
+      }
+      await supabase.from("contractors").insert({ id: userId, company_name: form.companyName || null, specialties: selectedSpec, years_of_experience: form.yearsOfExperience === "" ? null : Number(form.yearsOfExperience), service_area: selectedArea, availability: { windows: selectedAvail }, photo_url: photoPublicUrl, licensed: form.licensed, license_number: form.licenseNumber || null, has_liability_insurance: form.hasInsurance, insurance_provider: form.insuranceProvider || null, insurance_expiry: form.insuranceExpiry || null, has_wcb: form.hasWcb, work_references: form.workReferences || null, status: "pending" });
       setSuccess(true); window.scrollTo(0,0);
     } catch (err: any) {
       setSubmitError(err.message?.includes("already registered") ? "An account with this email already exists. Please sign in instead." : err.message ?? "Something went wrong.");
@@ -279,8 +290,11 @@ export default function ContractorOnboarding() {
               <div style={{ border:"2px dashed rgba(255,255,255,.12)", borderRadius:"12px", padding:"2rem 1.5rem", textAlign:"center", marginBottom:"1rem" }}>
                 <div style={{ marginBottom:"1rem" }}><Ic name="camera" size={48} color="#ea6b14" /></div>
                 <p style={{ color:"rgba(190,205,235,.6)", fontSize:".9rem", marginBottom:".5rem" }}>A profile photo builds trust with clients</p>
-                <p style={{ color:"rgba(190,205,235,.4)", fontSize:".8rem", margin:"1rem 0 .75rem" }}>Paste a photo URL below</p>
-                <input style={inp} placeholder="https://your-photo-url.com/photo.jpg" value={form.photoUrl} onChange={e => setF("photoUrl",e.target.value)} />
+                <label htmlFor="co-photo-upload" style={{ display:"inline-flex", alignItems:"center", gap:".5rem", marginTop:".75rem", padding:".6rem 1.25rem", background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.3)", borderRadius:"8px", cursor:"pointer", fontSize:".85rem", color:"#ea6b14", fontWeight:500 }}>
+                  <Ic name="camera" size={16} color="#ea6b14" />
+                  {photoFile ? photoFile.name : "Choose a photo"}
+                  <input id="co-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0] ?? null; if (f && f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB."); return; } setPhotoFile(f); }} style={{ display:"none" }} />
+                </label>
               </div>
               <p style={{ fontSize:".78rem", color:"rgba(190,205,235,.4)", textAlign:"center" }}>This step is optional — you can add a photo later from your dashboard.</p>
               <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", margin:"1.5rem 0 .5rem", padding:"1rem", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"8px" }}>

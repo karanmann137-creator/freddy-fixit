@@ -135,7 +135,14 @@ export default function ClientOnboarding() {
     navBtn: { flex:1, padding:".85rem 1.5rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer", border:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:".4rem" },
   };
 
-  if (mode === "loading") return <div style={{ minHeight:"100vh", background:"#1a2236" }} />;
+  if (mode === "loading") return (
+    <>
+      <style>{`@keyframes ff-spin{to{transform:rotate(360deg)}}`}</style>
+      <div style={{ minHeight:"100vh", background:"#1a2236", display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <Ic name="refresh" size={40} color="#ea6b14" style={{ animation:"ff-spin .8s linear infinite" }} />
+      </div>
+    </>
+  );
   if (mode === "new") return <NewRequest />;
 
   if (success) return (

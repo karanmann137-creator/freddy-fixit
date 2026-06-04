@@ -213,9 +213,18 @@ export default function NewRequest() {
           {/* Photo */}
           <div style={{ marginBottom:"1.2rem" }}>
             <label style={s.label}>Photo of the problem <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
-            <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0] ?? null; if (f && f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB."); return; } setSubmitError(""); setPhotoFile(f); }} style={{ ...inp, padding:".6rem", cursor:"pointer" }} />
-            <p style={{ fontSize:".78rem", color:"rgba(190,205,235,.55)", marginTop:".4rem" }}>A photo helps us give you a faster, more accurate quote. Max 5MB.</p>
-            {photoFile && <p style={{ fontSize:".78rem", color:"#9fe6b0", marginTop:".3rem" }}>Attached: {photoFile.name}</p>}
+            <label htmlFor="nr-photo-upload" style={{ display:"flex", alignItems:"center", gap:".75rem", border:"2px dashed " + (photoFile ? "rgba(234,107,20,.5)" : "rgba(255,255,255,.12)"), borderRadius:"10px", padding:"1rem 1.25rem", cursor:"pointer", background: photoFile ? "rgba(234,107,20,.05)" : "transparent", transition:"border-color .2s,background .2s" }}>
+              <Ic name="camera" size={22} color="#ea6b14" style={{ flexShrink:0 }} />
+              <div>
+                <p style={{ margin:0, fontSize:".85rem", color: photoFile ? "#ea6b14" : "rgba(190,205,235,.7)", fontWeight:500 }}>
+                  {photoFile ? photoFile.name : "Attach a photo"}
+                </p>
+                <p style={{ margin:".2rem 0 0", fontSize:".74rem", color:"rgba(190,205,235,.4)" }}>
+                  {photoFile ? "Tap to change" : "Tap to choose — max 5 MB"}
+                </p>
+              </div>
+              <input id="nr-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0] ?? null; if (f && f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB."); return; } setSubmitError(""); setPhotoFile(f); }} style={{ display:"none" }} />
+            </label>
           </div>
 
           {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"#fca5a5", marginTop:"1rem" }}>{submitError}</div>}

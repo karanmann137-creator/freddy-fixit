@@ -321,7 +321,7 @@ export default function Home() {
         </div>
         <div>Calgary, AB · Home Repairs · Vehicle Maintenance · Trusted Tradespeople</div>
         <div style={{ marginTop:"0.75rem", fontSize:"0.65rem", color:"rgba(190,205,235,0.2)", maxWidth:"700px", margin:"0.75rem auto 0", lineHeight:1.6 }}>
-          Freddy Fix It is a platform that connects clients with independent contractors. We are not liable for any damages, defects, injury, or loss arising from services booked through this platform. All contractors are independent professionals. Use of this platform constitutes acceptance of our terms.
+          Freddy Fix It is a platform that connects clients with independent contractors. We are not liable for any damages, defects, injury, or loss arising from services booked through this platform. All contractors are independent professionals. Use of this platform constitutes acceptance of our{" "}<a href="/user-agreement" target="_blank" rel="noopener noreferrer" style={{ color:"rgba(190,205,235,.45)", textDecoration:"underline" }}>User Agreement</a>{" "}and{" "}<a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color:"rgba(190,205,235,.45)", textDecoration:"underline" }}>Privacy Policy</a>.
         </div>
       </div>
     </div>
