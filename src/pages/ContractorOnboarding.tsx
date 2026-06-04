@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 
 const SPECIALTIES = [
   { iconName: "wrench", label: "General Repairs" },
-  { iconName: "droplet", label: "Plumbing" },
+  { iconName: "pipe", label: "Plumbing" },
   { iconName: "zap", label: "Electrical" },
   { iconName: "thermometer", label: "HVAC" },
   { iconName: "hammer", label: "Carpentry" },
@@ -15,13 +15,13 @@ const SPECIALTIES = [
   { iconName: "circle-dashed", label: "Tire Swap / Rotation" },
   { iconName: "car", label: "Oil Change" },
   { iconName: "battery", label: "Battery / Brakes" },
-  { iconName: "toolbox", label: "Vehicle Maintenance" },
+  { iconName: "car", label: "Vehicle Maintenance" },
   { iconName: "tree", label: "Landscaping" },
   { iconName: "snowflake", label: "Snow Removal" },
   { iconName: "cloud-rain", label: "Gutters" },
   { iconName: "door", label: "Windows & Doors" },
   { iconName: "building", label: "Siding & Roofing" },
-  { iconName: "car", label: "Garage" },
+  { iconName: "garage-door", label: "Garage" },
   { iconName: "wind", label: "Air Conditioning" },
   { iconName: "sparkles", label: "Cleaning Services" },
 ];
