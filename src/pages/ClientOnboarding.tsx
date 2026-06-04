@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import NewRequest from "@/components/NewRequest";
 
-const SERVICES = [
+export const SERVICES = [
   { icon: "🔧", label: "General Handyman" },
   { icon: "🚿", label: "Plumbing Repair" },
   { icon: "⚡", label: "Electrical Work" },
@@ -25,7 +26,7 @@ const SERVICES = [
   { icon: "📦", label: "Other" },
 ];
 
-const SCHEDULES = [
+export const SCHEDULES = [
   { icon: "⚡", label: "Urgent / ASAP",  sub: "Within 24 hours" },
   { icon: "📅", label: "This Week",       sub: "Next 2–5 days" },
   { icon: "🗓️", label: "Flexible",        sub: "I'm not in a rush" },
@@ -37,6 +38,15 @@ const STEP_SUBS   = ["Tell us a bit about yourself", "Choose your services and p
 
 export default function ClientOnboarding() {
   const [, setLocation] = useLocation();
+  // A signed-in user starting a new request gets the streamlined returning-user
+  // flow (no re-signup); only logged-out visitors get the account-creation form.
+  const [mode, setMode] = useState<"loading"|"signup"|"new">("loading");
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setMode(user ? "new" : "signup");
+    })();
+  }, []);
   const [step, setStep] = useState(1);
   const TOTAL = 3;
   const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", password:"", preferredSchedule:"", location:"", jobDescription:"", businessName:"", businessType:"", locations:"", billingPreference:"" });
@@ -122,6 +132,9 @@ export default function ClientOnboarding() {
     schedBtnSel: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.5)", color:"#f0f4ff" },
     navBtn: { flex:1, padding:".85rem 1.5rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer", border:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:".4rem" },
   };
+
+  if (mode === "loading") return <div style={{ minHeight:"100vh", background:"#1a2236" }} />;
+  if (mode === "new") return <NewRequest />;
 
   if (success) return (
     <div style={s.wrap}>
