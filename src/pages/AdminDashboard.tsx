@@ -29,20 +29,28 @@ export default function AdminDashboard() {
   const [bidsBy, setBidsBy] = useState<Record<string, any[]>>({});
   const [busyAcceptBid, setBusyAcceptBid] = useState<string|null>(null);
   const [flagMatches, setFlagMatches] = useState<Record<string, { fields: string[]; avg: number; count: number; date: string }>>({});
+  const PAGE_SIZE = 20;
+  const [page, setPage] = useState<{ requests: number; contractors: number; jobs: number }>({ requests: 0, contractors: 0, jobs: 0 });
+  const [counts, setCounts] = useState<{ requests: number; contractors: number; jobs: number }>({ requests: 0, contractors: 0, jobs: 0 });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (!data.session) setLocation("/login");
     });
-    loadAll();
   }, []);
+
+  // Reload whenever any tab's page changes (also fires once on mount).
+  useEffect(() => { loadAll(); }, [page]);
 
   const loadAll = async () => {
     setLoading(true);
-    const [{ data: reqs }, { data: cons }, { data: js }, { data: dir }, { data: bids }, { data: flags }] = await Promise.all([
-      supabase.from("client_requests").select("*").order("created_at", { ascending: false }),
-      supabase.from("contractors").select("*, profile:profiles!contractors_id_fkey(first_name,last_name,email,phone)").order("created_at", { ascending: false }),
-      supabase.from("jobs").select("*").order("created_at", { ascending: false }),
+    const rRange: [number, number] = [page.requests * PAGE_SIZE, page.requests * PAGE_SIZE + PAGE_SIZE - 1];
+    const cRange: [number, number] = [page.contractors * PAGE_SIZE, page.contractors * PAGE_SIZE + PAGE_SIZE - 1];
+    const jRange: [number, number] = [page.jobs * PAGE_SIZE, page.jobs * PAGE_SIZE + PAGE_SIZE - 1];
+    const [{ data: reqs, count: reqCount }, { data: cons, count: conCount }, { data: js, count: jobCount }, { data: dir }, { data: bids }, { data: flags }] = await Promise.all([
+      supabase.from("client_requests").select("*", { count: "exact" }).order("created_at", { ascending: false }).range(rRange[0], rRange[1]),
+      supabase.from("contractors").select("*, profile:profiles!contractors_id_fkey(first_name,last_name,email,phone)", { count: "exact" }).order("created_at", { ascending: false }).range(cRange[0], cRange[1]),
+      supabase.from("jobs").select("*", { count: "exact" }).order("created_at", { ascending: false }).range(jRange[0], jRange[1]),
       supabase.from("contractor_directory").select("id, first_name, last_name, specialties"),
       supabase.from("bids").select("*").eq("status", "pending").order("amount", { ascending: true }),
       supabase.from("deleted_account_flags").select("*").eq("was_poor", true),
@@ -50,6 +58,7 @@ export default function AdminDashboard() {
     setRequests(reqs ?? []);
     setContractors(cons ?? []);
     setJobs(js ?? []);
+    setCounts({ requests: reqCount ?? 0, contractors: conCount ?? 0, jobs: jobCount ?? 0 });
     setActiveContractors(dir ?? []);
     const bb: Record<string, any[]> = {};
     (bids ?? []).forEach((b: any) => { if (!bb[b.request_id]) bb[b.request_id] = []; bb[b.request_id].push(b); });
@@ -79,6 +88,19 @@ export default function AdminDashboard() {
     setFlagMatches(fm);
     setLoading(false);
   };
+
+  const pageCount = (which: "requests"|"contractors"|"jobs") => Math.max(1, Math.ceil((counts[which] || 0) / PAGE_SIZE));
+  const pager = (which: "requests"|"contractors"|"jobs") => (
+    counts[which] > PAGE_SIZE ? (
+      <div style={{ display:"flex", gap:".75rem", alignItems:"center", justifyContent:"center", marginTop:"1.25rem" }}>
+        <button style={{ ...s.btn, opacity: page[which] <= 0 ? .4 : 1 }} disabled={page[which] <= 0}
+          onClick={() => setPage(p => ({ ...p, [which]: Math.max(0, p[which] - 1) }))}>← Prev</button>
+        <span style={{ color:"rgba(190,205,235,.6)", fontSize:".82rem" }}>Page {page[which] + 1} of {pageCount(which)}</span>
+        <button style={{ ...s.btn, opacity: page[which] >= pageCount(which) - 1 ? .4 : 1 }} disabled={page[which] >= pageCount(which) - 1}
+          onClick={() => setPage(p => ({ ...p, [which]: p[which] + 1 }))}>Next →</button>
+      </div>
+    ) : null
+  );
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -127,7 +149,7 @@ export default function AdminDashboard() {
         <div style={s.tabs}>
           {(["requests","contractors","jobs"] as const).map(t => (
             <button key={t} style={{ ...s.tab, ...(tab===t ? s.activeTab : {}) }} onClick={() => setTab(t)}>
-              {t === "requests" ? `📋 Requests (${requests.length})` : t === "contractors" ? `🔧 Contractors (${contractors.length})` : `💼 Jobs (${jobs.length})`}
+              {t === "requests" ? `📋 Requests (${counts.requests})` : t === "contractors" ? `🔧 Contractors (${counts.contractors})` : `💼 Jobs (${counts.jobs})`}
             </button>
           ))}
         </div>
@@ -181,6 +203,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
             ))}
+            {pager("requests")}
           </div>
         )}
 
@@ -211,19 +234,20 @@ export default function AdminDashboard() {
                 <div style={{ display:"flex", gap:".5rem", marginTop:".75rem" }}>
                   {c.status !== "active" && (
                     <button style={{ ...s.btn, color:"#86efac", borderColor:"rgba(34,197,94,.35)" }}
-                      onClick={() => supabase.from("contractors").update({ status:"active" }).eq("id", c.id).then(loadAll)}>
+                      onClick={() => supabase.rpc("admin_set_contractor_status", { p_id: c.id, p_status: "active" }).then(loadAll)}>
                       Approve
                     </button>
                   )}
                   {c.status === "active" && (
                     <button style={{ ...s.btn, color:"#fca5a5", borderColor:"rgba(239,68,68,.3)" }}
-                      onClick={() => supabase.from("contractors").update({ status:"inactive" }).eq("id", c.id).then(loadAll)}>
+                      onClick={() => supabase.rpc("admin_set_contractor_status", { p_id: c.id, p_status: "inactive" }).then(loadAll)}>
                       Deactivate
                     </button>
                   )}
                 </div>
               </div>
             ))}
+            {pager("contractors")}
           </div>
         )}
 
@@ -238,6 +262,7 @@ export default function AdminDashboard() {
                 {j.scheduled_date && <div style={s.meta}>Date: {j.scheduled_date}</div>}
               </div>
             ))}
+            {pager("jobs")}
           </div>
         )}
       </div>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
+import DeleteAccount from "@/components/DeleteAccount";
 
 const STATUS_META: Record<string, { icon: string; label: string; color: string }> = {
   pending:     { icon: "⏳", label: "Pending Review",     color: "#f59e0b" },
@@ -44,29 +45,31 @@ export default function ClientDashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+      // profile + requests have no inter-dependency — fetch them together.
+      const [{ data: prof }, { data: reqs }] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", user.id).single(),
+        supabase.from("client_requests").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+      ]);
       setProfile(prof);
-
-      const { data: reqs } = await supabase
-        .from("client_requests")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
       setRequests(reqs ?? []);
 
       const activeReq = (reqs ?? []).find((r: any) => r.status !== "completed" && r.status !== "cancelled");
 
-      if (activeReq?.assigned_contractor_id) {
-        const { data: con } = await supabase.from("profiles").select("*").eq("id", activeReq.assigned_contractor_id).single();
-        setContractor(con);
-      }
-
       if (activeReq) {
-        const { data: job } = await supabase.from("jobs").select("*").eq("request_id", activeReq.id).maybeSingle();
+        // assigned contractor + the job (with its messages embedded) are
+        // independent of each other — fetch them together, and pull messages
+        // in the same round-trip instead of a third sequential query.
+        const [{ data: con }, { data: job }] = await Promise.all([
+          activeReq.assigned_contractor_id
+            ? supabase.from("profiles").select("*").eq("id", activeReq.assigned_contractor_id).single()
+            : Promise.resolve({ data: null }),
+          supabase.from("jobs").select("*, messages(*)").eq("request_id", activeReq.id).maybeSingle(),
+        ]);
+        if (con) setContractor(con);
         setActiveJob(job);
         if (job) {
-          const { data: msgs } = await supabase.from("messages").select("*").eq("job_id", job.id).order("created_at", { ascending: true });
-          setMessages(msgs ?? []);
+          const msgs = [...((job as any).messages ?? [])].sort((a: any, b: any) => (a.created_at < b.created_at ? -1 : 1));
+          setMessages(msgs);
         }
       }
 
@@ -442,6 +445,8 @@ export default function ClientDashboard() {
             </div>
           </div>
         )}
+
+        <DeleteAccount />
       </div>
     </div>
   );

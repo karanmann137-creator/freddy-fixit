@@ -39,8 +39,14 @@ export default function BrowseContractors() {
 
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase.from("contractor_directory").select("*");
+      setLoading(true);
+      // Server-side filter: .contains uses the GIN index on contractors.specialties,
+      // so only matching rows come back instead of filtering the whole list client-side.
+      let query = supabase.from("contractor_directory").select("*");
+      if (category !== "All") query = query.contains("specialties", [category]);
+      const { data, error } = await query;
       if (error) setError("Couldn't load contractors right now — please try again shortly.");
+      else setError("");
       setContractors(data ?? []);
       const ids = (data ?? []).map((c: any) => c.id);
       if (ids.length) {
@@ -48,16 +54,16 @@ export default function BrowseContractors() {
         const map: Record<string, any[]> = {};
         (pf ?? []).forEach((p: any) => { if (!map[p.contractor_id]) map[p.contractor_id] = []; map[p.contractor_id].push(p); });
         setPortfolioBy(map);
+      } else {
+        setPortfolioBy({});
       }
       setLoading(false);
     })();
-  }, []);
+  }, [category]);
 
   const pfUrl = (path: string) => supabase.storage.from("portfolio-photos").getPublicUrl(path).data.publicUrl;
 
-  const visible = category === "All"
-    ? contractors
-    : contractors.filter(c => (c.specialties ?? []).includes(category));
+  const visible = contractors;
 
   const displayName = (c: DirectoryContractor) => {
     const f = (c.first_name ?? "").trim();

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
+import DeleteAccount from "@/components/DeleteAccount";
 
 export default function ContractorDashboard() {
   const [, setLocation] = useLocation();
@@ -189,7 +190,7 @@ export default function ContractorDashboard() {
     setContractor((c: any) => ({ ...c, availability: avail }));
   };
 
-  const totalEarned = myJobs.filter(j => j.status === "completed").reduce((n, j) => n + (j.amount ?? 0), 0);
+  const totalEarned = Number(contractor?.total_earned ?? 0);
   const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   const getSlots = (day: string) => ["Saturday","Sunday"].includes(day) ? ["Morning","Afternoon"] : ["Morning","Afternoon","Evening"];
   const STATUS_COLORS: Record<string,string> = { pending:"#f59e0b", matched:"#3b82f6", in_progress:"#ea6b14", completed:"#22c55e", cancelled:"#ef4444", assigned:"#3b82f6" };
@@ -445,7 +446,7 @@ export default function ContractorDashboard() {
         {activeTab === "earnings" && (
           <div>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"1rem", marginBottom:"1.5rem" }}>
-              {[["$" + totalEarned.toFixed(2), "Total Earned"], [myJobs.filter(j=>j.status==="completed").length, "Jobs Completed"], [myJobs.filter(j=>j.status==="assigned"||j.status==="in_progress").length, "Active Jobs"], [contractor?.rating ? `⭐ ${contractor.rating}` : "—", "Avg Rating"]].map(([v,l]) => (
+              {[["$" + totalEarned.toFixed(2), "Total Earned"], [contractor?.total_jobs ?? 0, "Jobs Completed"], [myJobs.filter(j=>j.status==="assigned"||j.status==="in_progress").length, "Active Jobs"], [contractor?.rating ? `⭐ ${contractor.rating}` : "—", "Avg Rating"]].map(([v,l]) => (
                 <div key={String(l)} style={s.earnCard}>
                   <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", letterSpacing:".06em", color:"#ea6b14", marginBottom:".25rem" }}>{v}</div>
                   <div style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.45)" }}>{l}</div>
@@ -469,6 +470,8 @@ export default function ContractorDashboard() {
             </div>
           </div>
         )}
+
+        <DeleteAccount />
 
       </div>
     </div>
