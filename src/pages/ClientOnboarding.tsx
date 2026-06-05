@@ -53,7 +53,23 @@ export default function ClientOnboarding() {
   const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", password:"", preferredSchedule:"", location:"", jobDescription:"", businessName:"", businessType:"", locations:"", billingPreference:"" });
   const [clientType, setClientType] = useState<"individual"|"business">("individual");
   const [recurring, setRecurring] = useState(false);
-  const [recurringFrequency, setRecurringFrequency] = useState<"weekly"|"biweekly"|"monthly"|"">("");
+  const [recurringFrequency, setRecurringFrequency] = useState<"weekly"|"biweekly"|"monthly"|"seasonal"|"">("");
+  const [recurringStartDate, setRecurringStartDate] = useState("");
+  const [recurringEndDate, setRecurringEndDate]     = useState("");
+
+  const SEASON_PRESETS = [
+    { label: "Spring", start: "-04-01", end: "-06-30" },
+    { label: "Summer", start: "-07-01", end: "-09-30" },
+    { label: "Fall",   start: "-10-01", end: "-11-30" },
+    { label: "Winter", start: "-12-01", end: "-03-31" },
+  ];
+  const applySeason = (s: typeof SEASON_PRESETS[0]) => {
+    const yr = new Date().getFullYear();
+    const startYr = s.label === "Winter" && new Date().getMonth() >= 11 ? yr + 1 : yr;
+    const endYr   = s.label === "Winter" ? startYr + 1 : startYr;
+    setRecurringStartDate(startYr + s.start);
+    setRecurringEndDate(endYr + s.end);
+  };
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string,string>>({});
   const [loading, setLoading] = useState(false);
@@ -116,6 +132,8 @@ export default function ClientOnboarding() {
         locations: clientType === "business" ? (form.locations || null) : null,
         recurring: recurring || form.preferredSchedule === "Recurring",
         recurring_frequency: recurringFrequency || null,
+        recurring_start_date: recurringStartDate || null,
+        recurring_end_date: recurringEndDate || null,
         billing_preference: clientType === "business" ? (form.billingPreference || null) : null });
       setSuccess(true); window.scrollTo(0,0);
     } catch (err: any) {
@@ -250,19 +268,46 @@ export default function ClientOnboarding() {
               {errors.preferredSchedule && <p style={s.err}>{errors.preferredSchedule}</p>}
 
               {form.preferredSchedule === "Recurring" && (
-                <div style={{ marginTop:"1rem", padding:"1rem", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"10px" }}>
-                  <p style={{ ...s.label, marginBottom:".75rem" }}>How often?</p>
-                  <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
-                    {(["weekly","biweekly","monthly"] as const).map(f => (
-                      <button key={f} type="button"
-                        onClick={() => setRecurringFrequency(f)}
-                        style={{ padding:".6rem 1.1rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", border:"1px solid",
-                          background: recurringFrequency===f ? "rgba(234,107,20,.2)" : "rgba(255,255,255,.04)",
-                          borderColor: recurringFrequency===f ? "#ea6b14" : "rgba(255,255,255,.12)",
-                          color: recurringFrequency===f ? "#f0f4ff" : "rgba(190,205,235,.7)" }}>
-                        {{ weekly:"Every Week", biweekly:"Every 2 Weeks", monthly:"Once a Month" }[f]}
-                      </button>
-                    ))}
+                <div style={{ marginTop:"1rem", padding:"1rem", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"10px", display:"flex", flexDirection:"column" as const, gap:"1rem" }}>
+                  <div>
+                    <p style={{ ...s.label, marginBottom:".6rem" }}>How often?</p>
+                    <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
+                      {(["weekly","biweekly","monthly","seasonal"] as const).map(f => (
+                        <button key={f} type="button"
+                          onClick={() => setRecurringFrequency(f)}
+                          style={{ padding:".6rem 1.1rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", border:"1px solid",
+                            background: recurringFrequency===f ? "rgba(234,107,20,.2)" : "rgba(255,255,255,.04)",
+                            borderColor: recurringFrequency===f ? "#ea6b14" : "rgba(255,255,255,.12)",
+                            color: recurringFrequency===f ? "#f0f4ff" : "rgba(190,205,235,.7)" }}>
+                          {{ weekly:"Every Week", biweekly:"Every 2 Weeks", monthly:"Once a Month", seasonal:"Seasonal" }[f]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {recurringFrequency === "seasonal" && (
+                    <div>
+                      <p style={{ ...s.label, marginBottom:".6rem" }}>Quick season presets</p>
+                      <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
+                        {SEASON_PRESETS.map(sp => (
+                          <button key={sp.label} type="button" onClick={() => applySeason(sp)}
+                            style={{ padding:".5rem .9rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer", border:"1px solid rgba(255,255,255,.15)", background:"rgba(255,255,255,.05)", color:"rgba(190,205,235,.8)" }}>
+                            {sp.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div style={{ display:"flex", gap:".75rem", flexWrap:"wrap" as const }}>
+                    <div style={{ flex:"1 1 140px" }}>
+                      <label style={{ ...s.label, marginBottom:".35rem" }}>Start date <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
+                      <input type="date" value={recurringStartDate} onChange={e => setRecurringStartDate(e.target.value)}
+                        style={{ ...inp, padding:".6rem .8rem", fontSize:".88rem" }} />
+                    </div>
+                    <div style={{ flex:"1 1 140px" }}>
+                      <label style={{ ...s.label, marginBottom:".35rem" }}>End date <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
+                      <input type="date" value={recurringEndDate} onChange={e => setRecurringEndDate(e.target.value)}
+                        style={{ ...inp, padding:".6rem .8rem", fontSize:".88rem" }} />
+                    </div>
                   </div>
                 </div>
               )}

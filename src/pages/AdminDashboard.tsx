@@ -232,7 +232,10 @@ export default function AdminDashboard() {
                 </div>
                 {c.work_references ? <div style={s.meta}>References: {c.work_references}</div> : null}
                 <div style={{ ...s.badge, marginTop:".5rem" }}>● {c.status}</div>
-                <div style={{ display:"flex", gap:".5rem", marginTop:".75rem" }}>
+                <div style={{ display:"flex", gap:".5rem", marginTop:".75rem", flexWrap:"wrap" as const }}>
+                  <button style={s.btn} onClick={() => window.open("/contractors/" + c.id, "_blank")}>
+                    View Profile ↗
+                  </button>
                   {c.status !== "active" && (
                     <button style={{ ...s.btn, color:"#86efac", borderColor:"rgba(34,197,94,.35)" }}
                       onClick={() => supabase.rpc("admin_set_contractor_status", { p_id: c.id, p_status: "active" }).then(loadAll)}>
