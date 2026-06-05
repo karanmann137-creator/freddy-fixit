@@ -17,6 +17,7 @@ const SERVICES = [
   { iconName:"door", label:"Windows & Doors",        desc:"Repairs, replacements, and weatherproofing" },
   { iconName:"building", label:"Siding & Roofing",       desc:"Repairs, replacements, and leak protection" },
   { iconName:"garage-door", label:"Garage",                 desc:"Garage doors, openers, builds, and repairs" },
+  { iconName:"trowel", label:"Concrete / Masonry",   desc:"Driveways, patios, foundations, and masonry work" },
   { iconName:"wind", label:"Air Conditioning",       desc:"AC installs, tune-ups, and repairs" },
   { iconName:"sparkles", label:"Cleaning Services",       desc:"Deep cleans, move-outs, and regular upkeep" },
 ];
