@@ -21,6 +21,7 @@ export default function NewRequest() {
   const [description, setDescription] = useState("");
   const [recurring, setRecurring] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [vehicleDetails, setVehicleDetails] = useState({ make: "", year: "", problem: "" });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState("");
@@ -96,6 +97,7 @@ export default function NewRequest() {
         locations: isBusiness ? (lastReq?.locations ?? null) : null,
         recurring: isBusiness ? recurring : false,
         billing_preference: isBusiness ? (lastReq?.billing_preference ?? null) : null,
+        vehicle_details: selectedServices.some(s => ["Oil Change","Tire Swap / Rotation","Battery / Brakes","Vehicle Maintenance"].includes(s)) ? vehicleDetails : null,
       });
       if (error) throw error;
       setLocation("/client-dashboard");
@@ -226,6 +228,25 @@ export default function NewRequest() {
               <input id="nr-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0] ?? null; if (f && f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB."); return; } setSubmitError(""); setPhotoFile(f); }} style={{ display:"none" }} />
             </label>
           </div>
+
+          {/* Vehicle details */}
+          {selectedServices.some(s => ["Oil Change","Tire Swap / Rotation","Battery / Brakes","Vehicle Maintenance"].includes(s)) && (
+            <div style={{ marginTop:"1.5rem", padding:"1.25rem", borderRadius:"12px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)" }}>
+              <p style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:".06em", color:"#ea6b14", margin:"0 0 1rem" }}>Vehicle Details</p>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".75rem", marginBottom:".75rem" }}>
+                <div>
+                  <label style={s.label}>Make / Model</label>
+                  <input style={inp} placeholder="e.g. Honda Civic" value={vehicleDetails.make} onChange={e => setVehicleDetails(v => ({ ...v, make: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={s.label}>Year</label>
+                  <input style={inp} type="number" placeholder="e.g. 2019" value={vehicleDetails.year} onChange={e => setVehicleDetails(v => ({ ...v, year: e.target.value }))} />
+                </div>
+              </div>
+              <label style={s.label}>Specific Problem</label>
+              <input style={inp} placeholder="e.g. oil leak, won't start, brake squeal" value={vehicleDetails.problem} onChange={e => setVehicleDetails(v => ({ ...v, problem: e.target.value }))} />
+            </div>
+          )}
 
           {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"#fca5a5", marginTop:"1rem" }}>{submitError}</div>}
         </div>

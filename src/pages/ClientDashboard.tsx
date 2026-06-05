@@ -5,6 +5,39 @@ import { supabase } from "@/lib/supabase";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import DeleteAccount from "@/components/DeleteAccount";
 
+
+const VEHICLE_SERVICES = ["Oil Change","Tire Swap / Rotation","Battery / Brakes","Vehicle Maintenance"];
+
+function calcJobScore(r: any): { score: number; max: number; label: string; color: string } {
+  let score = 0;
+  // Description quality
+  const desc = (r.job_description ?? "").trim();
+  if (desc.length >= 50) score += 3;
+  else if (desc.length >= 20) score += 2;
+  else if (desc.length >= 5) score += 1;
+  // Photo
+  if (r.photo_path) score += 2;
+  // Location
+  if ((r.location ?? "").trim().length > 3) score += 1;
+  // Vehicle details (if vehicle job)
+  const isVehicle = VEHICLE_SERVICES.some(s => (r.service_needed ?? "").includes(s));
+  if (isVehicle) {
+    const vd = r.vehicle_details ?? {};
+    if (vd.make) score += 1;
+    if (vd.year) score += 1;
+    if (vd.problem) score += 1;
+  }
+  // Schedule urgency
+  const sched = (r.preferred_schedule ?? "").toLowerCase();
+  if (sched.includes("urgent")) score += 2;
+  else if (sched.includes("week")) score += 1;
+  const max = isVehicle ? 10 : 8;
+  const pct = score / max;
+  const label = pct >= 0.75 ? "Strong listing" : pct >= 0.45 ? "Good listing" : "Add more details";
+  const color = pct >= 0.75 ? "#86efac" : pct >= 0.45 ? "#fbbf24" : "#f87171";
+  return { score, max, label, color };
+}
+
 const STATUS_META: Record<string, { icon: string; label: string; color: string }> = {
   pending:     { icon: "clock", label: "Pending Review",     color: "#f59e0b" },
   matched:     { icon: "link", label: "Contractor Matched", color: "#3b82f6" },
@@ -280,8 +313,17 @@ export default function ClientDashboard() {
                       <div style={{ fontSize:".88rem", color:"rgba(190,205,235,.75)", lineHeight:1.6 }}>{activeReq.job_description}</div>
                     </div>
                     <RequestPhotoQuote requestId={activeReq.id} photoPath={activeReq.photo_path} estimatedQuote={activeReq.estimated_quote} quoteNotes={activeReq.quote_notes} />
-                    <div style={{ display:"inline-block", padding:".4rem .9rem", borderRadius:"99px", fontSize:".78rem", fontWeight:500, color: STATUS_META[activeReq.status]?.color, border:`1px solid ${STATUS_META[activeReq.status]?.color}` }}>
-                      <Ic name={STATUS_META[activeReq.status]?.icon as any} size={13} color={STATUS_META[activeReq.status]?.color} style={{ marginRight:4 }} />{STATUS_META[activeReq.status]?.label}
+                    <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" }}>
+                      <div style={{ display:"inline-block", padding:".4rem .9rem", borderRadius:"99px", fontSize:".78rem", fontWeight:500, color: STATUS_META[activeReq.status]?.color, border:`1px solid ${STATUS_META[activeReq.status]?.color}` }}>
+                        <Ic name={STATUS_META[activeReq.status]?.icon as any} size={13} color={STATUS_META[activeReq.status]?.color} style={{ marginRight:4 }} />{STATUS_META[activeReq.status]?.label}
+                      </div>
+                      {(() => { const { score, max, label, color } = calcJobScore(activeReq); return (
+                        <div title={`Listing score: ${score}/${max}`} style={{ display:"inline-flex", alignItems:"center", gap:".4rem", padding:".4rem .9rem", borderRadius:"99px", fontSize:".78rem", fontWeight:500, color, border:`1px solid ${color}44`, background:`${color}11` }}>
+                          <span style={{ fontWeight:700 }}>{score}/{max}</span>
+                          <span>{label}</span>
+                          {label === "Add more details" && <span style={{ fontSize:".72rem", opacity:.7 }}>— add photo or description</span>}
+                        </div>
+                      ); })()}
                     </div>
 
                     {activeReq.status === "pending" && clientBids.length > 0 && (
