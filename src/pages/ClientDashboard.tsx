@@ -281,7 +281,7 @@ export default function ClientDashboard() {
                     </div>
                     <RequestPhotoQuote requestId={activeReq.id} photoPath={activeReq.photo_path} estimatedQuote={activeReq.estimated_quote} quoteNotes={activeReq.quote_notes} />
                     <div style={{ display:"inline-block", padding:".4rem .9rem", borderRadius:"99px", fontSize:".78rem", fontWeight:500, color: STATUS_META[activeReq.status]?.color, border:`1px solid ${STATUS_META[activeReq.status]?.color}` }}>
-                      {STATUS_META[activeReq.status]?.icon} {STATUS_META[activeReq.status]?.label}
+                      <Ic name={STATUS_META[activeReq.status]?.icon as any} size={13} color={STATUS_META[activeReq.status]?.color} style={{ marginRight:4 }} />{STATUS_META[activeReq.status]?.label}
                     </div>
 
                     {activeReq.status === "pending" && clientBids.length > 0 && (
@@ -404,7 +404,7 @@ export default function ClientDashboard() {
                         </div>
                         <div style={{ display:"flex", alignItems:"center", gap:".75rem" }}>
                           <div style={{ fontSize:".78rem", fontWeight:500, color: STATUS_META[r.status]?.color, whiteSpace:"nowrap" as const }}>
-                            {STATUS_META[r.status]?.icon} {STATUS_META[r.status]?.label}
+                            <Ic name={STATUS_META[r.status]?.icon as any} size={13} color={STATUS_META[r.status]?.color} style={{ marginRight:4 }} />{STATUS_META[r.status]?.label}
                           </div>
                           {r.status !== "cancelled" && (
                             <button style={{ ...s.btn, padding:".3rem .55rem", color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyReq} onClick={() => removeRequest(r)}><Ic name="trash" size={13} /></button>

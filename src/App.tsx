@@ -92,6 +92,7 @@ function ProtectedRoute({
 export default function App() {
   return (
     <>
+      <style>{`html,body{margin:0;padding:0;background:#1a2236;}`}</style>
       <RecoveryRedirect />
       <TopNav />
       <Switch>
