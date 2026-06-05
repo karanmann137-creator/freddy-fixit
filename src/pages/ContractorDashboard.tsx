@@ -16,7 +16,7 @@ export default function ContractorDashboard() {
   const [newMsg, setNewMsg]           = useState("");
   const [sendingMsg, setSendingMsg]   = useState(false);
   const [loading, setLoading]         = useState(true);
-  const [activeTab, setActiveTab]     = useState<"jobs"|"available"|"profile"|"earnings">("jobs");
+  const [activeTab, setActiveTab]     = useState<"jobs"|"available"|"profile"|"earnings"|"reviews">("jobs");
   const [proposeForm, setProposeForm] = useState({ when:"", amount:"", notes:"" });
   const [photoFile, setPhotoFile]     = useState<File | null>(null);
   const [busyJob, setBusyJob]         = useState(false);
@@ -26,6 +26,7 @@ export default function ContractorDashboard() {
   const [busyPf, setBusyPf]           = useState(false);
   const [bidForm, setBidForm]         = useState<Record<string,{amount:string;message:string}>>({});
   const [busyBid, setBusyBid]         = useState<string|null>(null);
+  const [myReviews, setMyReviews]     = useState<any[]>([]);
   const msgEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,6 +54,12 @@ export default function ContractorDashboard() {
       if (enriched.length > 0) setActiveJobId(enriched[0].id);
       const { data: open } = await supabase.rpc("list_open_jobs");
       setAvailableJobs(open ?? []);
+      const { data: revs } = await supabase
+        .from("reviews")
+        .select("*, client:profiles!reviews_client_id_fkey(first_name)")
+        .eq("contractor_id", user.id)
+        .order("created_at", { ascending: false });
+      setMyReviews(revs ?? []);
       setLoading(false);
     };
     load();
@@ -229,9 +236,9 @@ export default function ContractorDashboard() {
 
       <div style={s.tabsBar}>
         <div style={s.tabsInner}>
-          {(["jobs","available","profile","earnings"] as const).map(t => (
+          {(["jobs","available","profile","earnings","reviews"] as const).map(t => (
             <button key={t} style={{ ...s.tab, ...(activeTab===t ? s.activeTab : {}) }} onClick={() => setActiveTab(t)}>
-              {{ jobs:"My Jobs", available:"Available Jobs", profile:"My Profile", earnings:"Earnings" }[t]}
+              {{ jobs:"My Jobs", available:"Available Jobs", profile:"My Profile", earnings:"Earnings", reviews:"My Reviews" }[t]}
             </button>
           ))}
         </div>
@@ -345,14 +352,7 @@ export default function ContractorDashboard() {
                   <div style={{ fontSize:".78rem", color:"#ea6b14" }}><Ic name="timer" size={12} style={{ marginRight:4 }} />{r.preferred_schedule}</div>
                 </div>
                 <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.55)", marginBottom:".6rem" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{r.location}</div>
-                <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.65)", marginBottom:".5rem", lineHeight:1.5 }}>{r.job_description}</div>
-                {r.vehicle_details && (r.vehicle_details.make || r.vehicle_details.year || r.vehicle_details.problem) && (
-                  <div style={{ display:"flex", flexWrap:"wrap", gap:".4rem", marginBottom:"1rem" }}>
-                    {r.vehicle_details.make && <span style={{ fontSize:".74rem", background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.25)", borderRadius:"6px", padding:".2rem .55rem", color:"#ea6b14" }}>{r.vehicle_details.make}</span>}
-                    {r.vehicle_details.year && <span style={{ fontSize:".74rem", background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.25)", borderRadius:"6px", padding:".2rem .55rem", color:"#ea6b14" }}>{r.vehicle_details.year}</span>}
-                    {r.vehicle_details.problem && <span style={{ fontSize:".74rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.1)", borderRadius:"6px", padding:".2rem .55rem", color:"rgba(190,205,235,.8)" }}>{r.vehicle_details.problem}</span>}
-                  </div>
-                )}
+                <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.65)", marginBottom:"1rem", lineHeight:1.5 }}>{r.job_description}</div>
                 <RequestPhotoQuote requestId={r.id} photoPath={r.photo_path} estimatedQuote={r.estimated_quote} quoteNotes={r.quote_notes} />
                 <div style={{ margin:".75rem 0", padding:".75rem", borderRadius:"10px", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.08)" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:".5rem" }}>
@@ -476,6 +476,47 @@ export default function ContractorDashboard() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {activeTab === "reviews" && (
+          <div>
+            {myReviews.length === 0 ? (
+              <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
+                <div style={{ marginBottom:"1rem" }}><Ic name="star" size={48} color="#ea6b14" /></div>
+                <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", marginBottom:".5rem" }}>No Reviews Yet</h2>
+                <p style={{ color:"rgba(190,205,235,.5)" }}>Reviews from clients appear here after jobs are completed.</p>
+              </div>
+            ) : (
+              <>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"1rem", marginBottom:"1.5rem" }}>
+                  {[
+                    ["Price", myReviews.reduce((a,r)=>a+(r.price_score??0),0)/myReviews.length || 0],
+                    ["Experience", myReviews.reduce((a,r)=>a+(r.experience_score??0),0)/myReviews.length || 0],
+                    ["Results", myReviews.reduce((a,r)=>a+(r.result_score??0),0)/myReviews.length || 0],
+                  ].map(([label, avg]) => (
+                    <div key={String(label)} style={s.earnCard}>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"#ea6b14", marginBottom:".25rem" }}>{(avg as number).toFixed(1)}<span style={{ fontSize:"1rem", color:"rgba(190,205,235,.4)" }}>/10</span></div>
+                      <div style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.45)" }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+                {myReviews.map(r => (
+                  <div key={r.id} style={{ ...s.card, marginBottom:"1rem" }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:".75rem" }}>
+                      <div style={{ fontWeight:500, color:"#f0f4ff" }}>{r.client?.first_name ?? "Client"}</div>
+                      <div style={{ fontSize:".75rem", color:"rgba(190,205,235,.4)" }}>{new Date(r.created_at).toLocaleDateString()}</div>
+                    </div>
+                    <div style={{ display:"flex", gap:".5rem", marginBottom:".75rem", flexWrap:"wrap" as const }}>
+                      {[["Price", r.price_score], ["Experience", r.experience_score], ["Results", r.result_score]].map(([l, v]) => v != null && (
+                        <span key={String(l)} style={{ ...s.chip, background:"rgba(234,107,20,.08)", fontSize:".76rem" }}>{l}: <strong style={{ color:"#ea6b14" }}>{v}/10</strong></span>
+                      ))}
+                    </div>
+                    {r.comment && <p style={{ fontSize:".88rem", color:"rgba(190,205,235,.75)", lineHeight:1.6, margin:0 }}>{r.comment}</p>}
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         )}
 

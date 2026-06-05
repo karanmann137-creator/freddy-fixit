@@ -1,4 +1,3 @@
-import { Ic } from "@/components/Ic";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
@@ -10,8 +9,6 @@ const CATEGORIES = [
   "General Repairs", "Plumbing", "Electrical", "HVAC", "Carpentry", "Painting",
   "Drywall", "Flooring / Tile", "Tire Swap / Rotation", "Oil Change",
   "Battery / Brakes", "Vehicle Maintenance", "Landscaping", "Snow Removal",
-  "Gutters", "Windows & Doors",
-  "Siding & Roofing", "Garage", "Air Conditioning", "Cleaning Services",
 ];
 
 interface DirectoryContractor {
@@ -24,11 +21,6 @@ interface DirectoryContractor {
   photo_url: string | null;
   rating: number | null;
   total_jobs: number | null;
-  rating_price: number | null;
-  rating_experience: number | null;
-  rating_result: number | null;
-  rating_count: number | null;
-  google_reviews_url: string | null;
 }
 
 export default function BrowseContractors() {
@@ -37,35 +29,19 @@ export default function BrowseContractors() {
   const [category, setCategory] = useState<string>("All");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [portfolioBy, setPortfolioBy] = useState<Record<string, any[]>>({});
 
   useEffect(() => {
     (async () => {
-      setLoading(true);
-      // Server-side filter: .contains uses the GIN index on contractors.specialties,
-      // so only matching rows come back instead of filtering the whole list client-side.
-      let query = supabase.from("contractor_directory").select("*");
-      if (category !== "All") query = query.contains("specialties", [category]);
-      const { data, error } = await query;
+      const { data, error } = await supabase.from("contractor_directory").select("*");
       if (error) setError("Couldn't load contractors right now — please try again shortly.");
-      else setError("");
       setContractors(data ?? []);
-      const ids = (data ?? []).map((c: any) => c.id);
-      if (ids.length) {
-        const { data: pf } = await supabase.from("portfolio_items").select("*").in("contractor_id", ids).order("created_at", { ascending: false });
-        const map: Record<string, any[]> = {};
-        (pf ?? []).forEach((p: any) => { if (!map[p.contractor_id]) map[p.contractor_id] = []; map[p.contractor_id].push(p); });
-        setPortfolioBy(map);
-      } else {
-        setPortfolioBy({});
-      }
       setLoading(false);
     })();
-  }, [category]);
+  }, []);
 
-  const pfUrl = (path: string) => supabase.storage.from("portfolio-photos").getPublicUrl(path).data.publicUrl;
-
-  const visible = contractors;
+  const visible = category === "All"
+    ? contractors
+    : contractors.filter(c => (c.specialties ?? []).includes(category));
 
   const displayName = (c: DirectoryContractor) => {
     const f = (c.first_name ?? "").trim();
@@ -87,6 +63,15 @@ export default function BrowseContractors() {
         .ff-card:hover { transform: translateY(-3px); border-color: rgba(234,107,20,.45); }
         .ff-chip { cursor: pointer; transition: background .15s ease, color .15s ease, border-color .15s ease; }
       `}</style>
+
+      {/* Nav */}
+      <nav style={st.nav}>
+        <div style={st.logo} onClick={() => setLocation("/")}>FREDDY FIX IT</div>
+        <div style={{ display: "flex", gap: "1.5rem", alignItems: "center" }}>
+          <span style={st.navLink} onClick={() => setLocation("/")}>Home</span>
+          <span style={st.navLink} onClick={() => setLocation("/login")}>Login</span>
+        </div>
+      </nav>
 
       <div style={st.inner}>
         <h1 style={st.h1}>Browse Contractors</h1>
@@ -165,35 +150,17 @@ export default function BrowseContractors() {
                 </div>
 
                 {(c.service_area ?? []).length > 0 && (
-                  <div style={st.meta}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{(c.service_area ?? []).join(", ")}</div>
+                  <div style={st.meta}>📍 {(c.service_area ?? []).join(", ")}</div>
                 )}
 
-                {(c.rating_count ?? 0) > 0 && (
-                  <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap", margin:".65rem 0 .2rem" }}>
-                    {([["Price", c.rating_price],["Experience", c.rating_experience],["Result", c.rating_result]] as [string, number|null][]).map(([lbl,val]) => (
-                      <div key={lbl} style={{ flex:"1 1 64px", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"8px", padding:".4rem .25rem", textAlign:"center" }}>
-                        <div style={{ fontSize:"1rem", fontWeight:700, color:"#ea6b14" }}>{val != null ? Number(val).toFixed(1) : "—"}<span style={{ fontSize:".62rem", color:"rgba(190,205,235,.5)" }}>/10</span></div>
-                        <div style={{ fontSize:".6rem", textTransform:"uppercase", letterSpacing:".06em", color:"rgba(190,205,235,.5)" }}>{lbl}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {(portfolioBy[c.id] ?? []).length > 0 && (
-                  <div style={{ display:"flex", gap:".4rem", overflowX:"auto", margin:".5rem 0" }}>
-                    {(portfolioBy[c.id] ?? []).slice(0,6).map((p: any) => (
-                      p.photo_path ? <img key={p.id} src={pfUrl(p.photo_path)} alt={p.title || "Past work"} title={p.title || ""} style={{ width:"64px", height:"64px", objectFit:"cover", borderRadius:"8px", flexShrink:0 }} /> : null
-                    ))}
-                  </div>
-                )}
-
-                {c.google_reviews_url && (
-                  <a href={c.google_reviews_url} target="_blank" rel="noopener noreferrer" style={{ display:"inline-block", fontSize:".8rem", color:"#ea6b14", textDecoration:"none", margin:".3rem 0 .1rem" }}>★ See Google reviews →</a>
-                )}
-
-                <button style={st.cta} onClick={() => setLocation("/client-onboarding")}>
-                  Request a Job
-                </button>
+                <div style={{ display:"flex", gap:".6rem", marginTop:".4rem" }}>
+                  <button style={{ ...st.cta, flex:1, marginTop:0, background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.1)", color:"rgba(190,205,235,.8)" }} onClick={() => setLocation("/contractors/" + c.id)}>
+                    View Profile
+                  </button>
+                  <button style={{ ...st.cta, flex:1, marginTop:0 }} onClick={() => setLocation("/client-onboarding")}>
+                    Request a Job
+                  </button>
+                </div>
               </motion.div>
             ))}
           </div>
@@ -208,7 +175,7 @@ const st: Record<string, React.CSSProperties> = {
   nav: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.25rem 1.5rem", borderBottom: "1px solid rgba(255,255,255,.07)" },
   logo: { fontFamily: "'Bebas Neue', sans-serif", fontSize: "1.4rem", letterSpacing: ".05em", color: "#ea6b14", cursor: "pointer" },
   navLink: { fontSize: ".9rem", color: "rgba(240,244,255,.75)", cursor: "pointer" },
-  inner: { maxWidth: "1100px", margin: "0 auto", padding: "5.5rem 1.5rem 5rem" },
+  inner: { maxWidth: "1100px", margin: "0 auto", padding: "2.5rem 1.5rem 5rem" },
   h1: { fontFamily: "'Bebas Neue', sans-serif", fontSize: "2.6rem", letterSpacing: ".02em", marginBottom: ".4rem" },
   sub: { color: "rgba(190,205,235,.7)", marginBottom: "2rem", fontSize: "1rem" },
   filters: { display: "flex", flexWrap: "wrap", gap: ".55rem", marginBottom: "2.5rem" },

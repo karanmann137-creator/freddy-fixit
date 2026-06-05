@@ -23,7 +23,6 @@ export const SERVICES = [
   { iconName: "building", label: "Siding & Roofing" },
   { iconName: "garage-door", label: "Garage" },
   { iconName: "wind", label: "Air Conditioning" },
-  { iconName: "trowel", label: "Concrete / Masonry" },
   { iconName: "sparkles", label: "Cleaning Services" },
   { iconName: "package", label: "Other" },
 ];
@@ -54,6 +53,7 @@ export default function ClientOnboarding() {
   const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", password:"", preferredSchedule:"", location:"", jobDescription:"", businessName:"", businessType:"", locations:"", billingPreference:"" });
   const [clientType, setClientType] = useState<"individual"|"business">("individual");
   const [recurring, setRecurring] = useState(false);
+  const [recurringFrequency, setRecurringFrequency] = useState<"weekly"|"biweekly"|"monthly"|"">("");
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string,string>>({});
   const [loading, setLoading] = useState(false);
@@ -61,7 +61,6 @@ export default function ClientOnboarding() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [success, setSuccess] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [vehicleDetails, setVehicleDetails] = useState({ make: "", year: "", problem: "" });
 
   const set = (key: string, val: string) => { setForm(f => ({ ...f, [key]: val })); setErrors(e => ({ ...e, [key]: "" })); };
 
@@ -115,7 +114,8 @@ export default function ClientOnboarding() {
         business_name: clientType === "business" ? (form.businessName || null) : null,
         business_type: clientType === "business" ? (form.businessType || null) : null,
         locations: clientType === "business" ? (form.locations || null) : null,
-        recurring: clientType === "business" ? recurring : false,
+        recurring: recurring || form.preferredSchedule === "Recurring",
+        recurring_frequency: recurringFrequency || null,
         billing_preference: clientType === "business" ? (form.billingPreference || null) : null });
       setSuccess(true); window.scrollTo(0,0);
     } catch (err: any) {
@@ -248,6 +248,24 @@ export default function ClientOnboarding() {
                 </button>
               ))}
               {errors.preferredSchedule && <p style={s.err}>{errors.preferredSchedule}</p>}
+
+              {form.preferredSchedule === "Recurring" && (
+                <div style={{ marginTop:"1rem", padding:"1rem", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"10px" }}>
+                  <p style={{ ...s.label, marginBottom:".75rem" }}>How often?</p>
+                  <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
+                    {(["weekly","biweekly","monthly"] as const).map(f => (
+                      <button key={f} type="button"
+                        onClick={() => setRecurringFrequency(f)}
+                        style={{ padding:".6rem 1.1rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", border:"1px solid",
+                          background: recurringFrequency===f ? "rgba(234,107,20,.2)" : "rgba(255,255,255,.04)",
+                          borderColor: recurringFrequency===f ? "#ea6b14" : "rgba(255,255,255,.12)",
+                          color: recurringFrequency===f ? "#f0f4ff" : "rgba(190,205,235,.7)" }}>
+                        {{ weekly:"Every Week", biweekly:"Every 2 Weeks", monthly:"Once a Month" }[f]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -311,26 +329,7 @@ export default function ClientOnboarding() {
                   <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>Privacy Policy</a>.
                 </label>
               </div>
-              {/* Vehicle details — shown when a vehicle service is selected */}
-          {selectedServices.some(s => ["Oil Change","Tire Swap / Rotation","Battery / Brakes","Vehicle Maintenance"].includes(s)) && (
-            <div style={{ marginTop:"1.5rem", padding:"1.25rem", borderRadius:"12px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)" }}>
-              <p style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:".06em", color:"#ea6b14", margin:"0 0 1rem" }}>Vehicle Details</p>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".75rem", marginBottom:".75rem" }}>
-                <div>
-                  <label style={s.label}>Make / Model</label>
-                  <input style={inp} placeholder="e.g. Honda Civic" value={vehicleDetails.make} onChange={e => setVehicleDetails(v => ({ ...v, make: e.target.value }))} />
-                </div>
-                <div>
-                  <label style={s.label}>Year</label>
-                  <input style={inp} type="number" placeholder="e.g. 2019" value={vehicleDetails.year} onChange={e => setVehicleDetails(v => ({ ...v, year: e.target.value }))} />
-                </div>
-              </div>
-              <label style={s.label}>Specific Problem</label>
-              <input style={inp} placeholder="e.g. oil leak, won't start, brake squeal" value={vehicleDetails.problem} onChange={e => setVehicleDetails(v => ({ ...v, problem: e.target.value }))} />
-            </div>
-          )}
-
-          {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"#fca5a5", marginTop:"1rem" }}>{submitError}</div>}
+              {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"#fca5a5", marginTop:"1rem" }}>{submitError}</div>}
             </div>
           )}
         </div>
