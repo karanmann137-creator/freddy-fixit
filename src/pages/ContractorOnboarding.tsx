@@ -22,8 +22,8 @@ const SPECIALTIES = [
   { iconName: "door", label: "Windows & Doors" },
   { iconName: "building", label: "Siding & Roofing" },
   { iconName: "garage-door", label: "Garage" },
-  { iconName: "wind", label: "Air Conditioning" },
   { iconName: "trowel", label: "Concrete / Masonry" },
+  { iconName: "wind", label: "Air Conditioning" },
   { iconName: "sparkles", label: "Cleaning Services" },
 ];
 
@@ -107,8 +107,6 @@ export default function ContractorOnboarding() {
         }
       }
       await supabase.from("contractors").insert({ id: userId, company_name: form.companyName || null, specialties: selectedSpec, years_of_experience: form.yearsOfExperience === "" ? null : Number(form.yearsOfExperience), service_area: selectedArea, availability: { windows: selectedAvail }, photo_url: photoPublicUrl, licensed: form.licensed, license_number: form.licenseNumber || null, has_liability_insurance: form.hasInsurance, insurance_provider: form.insuranceProvider || null, insurance_expiry: form.insuranceExpiry || null, has_wcb: form.hasWcb, work_references: form.workReferences || null, status: "pending" });
-      // Fire-and-forget welcome email + SMS
-      supabase.functions.invoke("send-welcome", { body: { email: form.email, phone: form.phone, name: form.firstName, role: "contractor" } }).catch(() => {});
       setSuccess(true); window.scrollTo(0,0);
     } catch (err: any) {
       setSubmitError(err.message?.includes("already registered") ? "An account with this email already exists. Please sign in instead." : err.message ?? "Something went wrong.");
