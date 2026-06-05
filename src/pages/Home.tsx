@@ -4,7 +4,7 @@ import { Ic } from "@/components/Ic";
 
 const SERVICES = [
   { iconName:"wrench", label:"General Repairs",      desc:"Handyman services for anything around the house" },
-  { iconName:"droplet", label:"Plumbing",              desc:"Leaks, installs, and everything in between" },
+  { iconName:"pipe", label:"Plumbing",              desc:"Leaks, installs, and everything in between" },
   { iconName:"zap", label:"Electrical",            desc:"Safe, certified electrical work done right" },
   { iconName:"thermometer", label:"HVAC",                  desc:"Heating, cooling, and ventilation maintenance" },
   { iconName:"hammer", label:"Carpentry",             desc:"Custom builds, repairs, and finishing work" },
@@ -16,7 +16,7 @@ const SERVICES = [
   { iconName:"cloud-rain", label:"Gutters",               desc:"Cleaning, repair, and new installs to protect your home" },
   { iconName:"door", label:"Windows & Doors",        desc:"Repairs, replacements, and weatherproofing" },
   { iconName:"building", label:"Siding & Roofing",       desc:"Repairs, replacements, and leak protection" },
-  { iconName:"car", label:"Garage",                 desc:"Garage doors, openers, builds, and repairs" },
+  { iconName:"garage-door", label:"Garage",                 desc:"Garage doors, openers, builds, and repairs" },
   { iconName:"wind", label:"Air Conditioning",       desc:"AC installs, tune-ups, and repairs" },
   { iconName:"sparkles", label:"Cleaning Services",       desc:"Deep cleans, move-outs, and regular upkeep" },
 ];
