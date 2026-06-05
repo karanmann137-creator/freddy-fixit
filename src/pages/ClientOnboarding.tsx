@@ -23,6 +23,7 @@ export const SERVICES = [
   { iconName: "building", label: "Siding & Roofing" },
   { iconName: "garage-door", label: "Garage" },
   { iconName: "wind", label: "Air Conditioning" },
+  { iconName: "trowel", label: "Concrete / Masonry" },
   { iconName: "sparkles", label: "Cleaning Services" },
   { iconName: "package", label: "Other" },
 ];
