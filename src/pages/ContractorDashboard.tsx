@@ -345,7 +345,14 @@ export default function ContractorDashboard() {
                   <div style={{ fontSize:".78rem", color:"#ea6b14" }}><Ic name="timer" size={12} style={{ marginRight:4 }} />{r.preferred_schedule}</div>
                 </div>
                 <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.55)", marginBottom:".6rem" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{r.location}</div>
-                <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.65)", marginBottom:"1rem", lineHeight:1.5 }}>{r.job_description}</div>
+                <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.65)", marginBottom:".5rem", lineHeight:1.5 }}>{r.job_description}</div>
+                {r.vehicle_details && (r.vehicle_details.make || r.vehicle_details.year || r.vehicle_details.problem) && (
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:".4rem", marginBottom:"1rem" }}>
+                    {r.vehicle_details.make && <span style={{ fontSize:".74rem", background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.25)", borderRadius:"6px", padding:".2rem .55rem", color:"#ea6b14" }}>{r.vehicle_details.make}</span>}
+                    {r.vehicle_details.year && <span style={{ fontSize:".74rem", background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.25)", borderRadius:"6px", padding:".2rem .55rem", color:"#ea6b14" }}>{r.vehicle_details.year}</span>}
+                    {r.vehicle_details.problem && <span style={{ fontSize:".74rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.1)", borderRadius:"6px", padding:".2rem .55rem", color:"rgba(190,205,235,.8)" }}>{r.vehicle_details.problem}</span>}
+                  </div>
+                )}
                 <RequestPhotoQuote requestId={r.id} photoPath={r.photo_path} estimatedQuote={r.estimated_quote} quoteNotes={r.quote_notes} />
                 <div style={{ margin:".75rem 0", padding:".75rem", borderRadius:"10px", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.08)" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:".5rem" }}>
