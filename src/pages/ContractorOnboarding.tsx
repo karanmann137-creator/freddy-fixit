@@ -38,19 +38,22 @@ const AVAILABILITY_OPTIONS = [
   { iconName: "refresh", label: "Fully Flexible",     sub: "Available anytime" },
 ];
 
-const STEP_TITLES = ["Your Details", "Your Specialties", "Service Area", "Availability", "Profile Photo"];
+const STEP_TITLES = ["Your Details", "Your Specialties", "Service Area", "Availability", "Profile Photo", "Upload Documents"];
 const STEP_SUBS   = [
   "Basic contact information",
   "What services do you offer? Select all that apply",
   "Which parts of Calgary do you cover?",
   "When are you generally available?",
   "Add a profile photo (optional)",
+  "Upload your credentials for automated verification",
 ];
+
+type DocFiles = { insurance: File|null; wcb: File|null; certification: File|null; gov_id: File|null };
 
 export default function ContractorOnboarding() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
-  const TOTAL = 5;
+  const TOTAL = 6;
   const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", companyName:"", password:"", yearsOfExperience:"", photoUrl:"", licensed:false, licenseNumber:"", hasInsurance:false, insuranceProvider:"", insuranceExpiry:"", hasWcb:false, workReferences:"" });
   const [selectedSpec,  setSelectedSpec]  = useState<string[]>([]);
   const [selectedArea,  setSelectedArea]  = useState<string[]>([]);
@@ -61,6 +64,7 @@ export default function ContractorOnboarding() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [success, setSuccess] = useState(false);
+  const [docFiles, setDocFiles] = useState<DocFiles>({ insurance: null, wcb: null, certification: null, gov_id: null });
 
   const setF = (key: string, val: string | number) => { setForm(f => ({ ...f, [key]: val })); setErrors(e => ({ ...e, [key]: "" })); };
   const setFB = (key: string, val: boolean) => { setForm(f => ({ ...f, [key]: val })); };
@@ -106,7 +110,25 @@ export default function ContractorOnboarding() {
           photoPublicUrl = pub?.publicUrl ?? null;
         }
       }
-      await supabase.from("contractors").insert({ id: userId, company_name: form.companyName || null, specialties: selectedSpec, years_of_experience: form.yearsOfExperience === "" ? null : Number(form.yearsOfExperience), service_area: selectedArea, availability: { windows: selectedAvail }, photo_url: photoPublicUrl, licensed: form.licensed, license_number: form.licenseNumber || null, has_liability_insurance: form.hasInsurance, insurance_provider: form.insuranceProvider || null, insurance_expiry: form.insuranceExpiry || null, has_wcb: form.hasWcb, work_references: form.workReferences || null, status: "pending" });
+      // Upload verification documents
+      const docUrls: Record<string, string> = {};
+      const docKeys: Array<keyof DocFiles> = ["insurance", "wcb", "certification", "gov_id"];
+      for (const key of docKeys) {
+        const file = docFiles[key];
+        if (!file) continue;
+        const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+        const path = `${userId}/${key}.${ext}`;
+        const { error: docErr } = await supabase.storage.from("contractor-docs").upload(path, file, { upsert: true });
+        if (!docErr) docUrls[key] = path;
+      }
+
+      await supabase.from("contractors").insert({ id: userId, company_name: form.companyName || null, specialties: selectedSpec, years_of_experience: form.yearsOfExperience === "" ? null : Number(form.yearsOfExperience), service_area: selectedArea, availability: { windows: selectedAvail }, photo_url: photoPublicUrl, licensed: form.licensed, license_number: form.licenseNumber || null, has_liability_insurance: form.hasInsurance, insurance_provider: form.insuranceProvider || null, insurance_expiry: form.insuranceExpiry || null, has_wcb: form.hasWcb, work_references: form.workReferences || null, status: "pending", doc_urls: docUrls });
+
+      // Trigger automated document review (non-blocking)
+      if (Object.keys(docUrls).length > 0) {
+        supabase.functions.invoke("review-contractor", { body: { contractor_id: userId } }).catch(() => {});
+      }
+
       setSuccess(true); window.scrollTo(0,0);
     } catch (err: any) {
       setSubmitError(err.message?.includes("already registered") ? "An account with this email already exists. Please sign in instead." : err.message ?? "Something went wrong.");
@@ -285,19 +307,58 @@ export default function ContractorOnboarding() {
             </div>
           )}
 
-          {/* Step 5 — Photo */}
-          {step === 5 && (
+          {/* Step 6 — Documents */}
+          {step === 6 && (
             <div>
-              <div style={{ border:"2px dashed rgba(255,255,255,.12)", borderRadius:"12px", padding:"2rem 1.5rem", textAlign:"center", marginBottom:"1rem" }}>
-                <div style={{ marginBottom:"1rem" }}><Ic name="camera" size={48} color="#ea6b14" /></div>
-                <p style={{ color:"rgba(190,205,235,.6)", fontSize:".9rem", marginBottom:".5rem" }}>A profile photo builds trust with clients</p>
-                <label htmlFor="co-photo-upload" style={{ display:"inline-flex", alignItems:"center", gap:".5rem", marginTop:".75rem", padding:".6rem 1.25rem", background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.3)", borderRadius:"8px", cursor:"pointer", fontSize:".85rem", color:"#ea6b14", fontWeight:500 }}>
-                  <Ic name="camera" size={16} color="#ea6b14" />
-                  {photoFile ? photoFile.name : "Choose a photo"}
-                  <input id="co-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0] ?? null; if (f && f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB."); return; } setPhotoFile(f); }} style={{ display:"none" }} />
-                </label>
+              <p style={{ fontSize:".85rem", color:"rgba(190,205,235,.55)", marginBottom:"1.5rem", fontWeight:300, lineHeight:1.6 }}>
+                Upload your credentials and our AI will review them instantly. Approved accounts can start taking jobs right away.
+              </p>
+              {([
+                { key:"insurance",    label:"Liability Insurance Certificate", required:true,  hint:"Certificate of Insurance showing min. $1M coverage in Alberta" },
+                { key:"wcb",          label:"WCB / Workers Comp Certificate",  required:true,  hint:"WCB clearance letter issued within the last 90 days" },
+                { key:"certification",label:"Trade Certification",             required:false, hint:"Red Seal, provincial licence, or other trade credential" },
+                { key:"gov_id",       label:"Government-Issued Photo ID",      required:true,  hint:"Driver's licence or passport — name must be clearly visible" },
+              ] as Array<{ key: keyof DocFiles; label: string; required: boolean; hint: string }>).map(doc => (
+                <div key={doc.key} style={{ marginBottom:"1.25rem" }}>
+                  <label style={{ ...s.label, display:"flex", alignItems:"center", gap:".4rem" }}>
+                    {doc.label}
+                    {doc.required
+                      ? <span style={{ color:"#ea6b14", fontSize:".7rem" }}>Required for approval</span>
+                      : <span style={{ color:"rgba(190,205,235,.35)", fontSize:".7rem" }}>Optional</span>
+                    }
+                  </label>
+                  <p style={{ fontSize:".75rem", color:"rgba(190,205,235,.4)", marginBottom:".5rem" }}>{doc.hint}</p>
+                  <label style={{
+                    display:"flex", alignItems:"center", gap:".75rem",
+                    padding:".75rem 1rem",
+                    background: docFiles[doc.key] ? "rgba(234,107,20,.08)" : "rgba(255,255,255,.04)",
+                    border: `1px solid ${docFiles[doc.key] ? "rgba(234,107,20,.4)" : "rgba(255,255,255,.1)"}`,
+                    borderRadius:"8px", cursor:"pointer", transition:"all .2s",
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={docFiles[doc.key] ? "#ea6b14" : "rgba(190,205,235,.5)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    <span style={{ fontSize:".88rem", color: docFiles[doc.key] ? "#ea6b14" : "rgba(190,205,235,.6)", flex:1 }}>
+                      {docFiles[doc.key] ? docFiles[doc.key]!.name : "Choose file (PDF, JPG, PNG — max 10MB)"}
+                    </span>
+                    {docFiles[doc.key] && <span style={{ color:"#22c55e", fontSize:"1rem" }}>✓</span>}
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.webp"
+                      onChange={e => {
+                        const f = e.target.files?.[0] ?? null;
+                        if (f && f.size > 10*1024*1024) { setSubmitError("File must be under 10MB."); return; }
+                        setDocFiles(prev => ({ ...prev, [doc.key]: f }));
+                        setSubmitError("");
+                      }}
+                      style={{ display:"none" }}
+                    />
+                  </label>
+                </div>
+              ))}
+              <div style={{ background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.15)", borderRadius:"8px", padding:".9rem 1rem", fontSize:".8rem", color:"rgba(190,205,235,.65)", lineHeight:1.6 }}>
+                🔒 Documents are stored securely and only used for verification. They are never shared with clients.
               </div>
-              <p style={{ fontSize:".78rem", color:"rgba(190,205,235,.4)", textAlign:"center" }}>This step is optional — you can add a photo later from your dashboard.</p>
               <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", margin:"1.5rem 0 .5rem", padding:"1rem", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"8px" }}>
                 <input
                   type="checkbox"
@@ -317,6 +378,22 @@ export default function ContractorOnboarding() {
               {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"#fca5a5", marginTop:"1rem" }}>{submitError}</div>}
             </div>
           )}
+
+          {/* Step 5 — Photo */}
+          {step === 5 && (
+            <div>
+              <div style={{ border:"2px dashed rgba(255,255,255,.12)", borderRadius:"12px", padding:"2rem 1.5rem", textAlign:"center", marginBottom:"1rem" }}>
+                <div style={{ marginBottom:"1rem" }}><Ic name="camera" size={48} color="#ea6b14" /></div>
+                <p style={{ color:"rgba(190,205,235,.6)", fontSize:".9rem", marginBottom:".5rem" }}>A profile photo builds trust with clients</p>
+                <label htmlFor="co-photo-upload" style={{ display:"inline-flex", alignItems:"center", gap:".5rem", marginTop:".75rem", padding:".6rem 1.25rem", background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.3)", borderRadius:"8px", cursor:"pointer", fontSize:".85rem", color:"#ea6b14", fontWeight:500 }}>
+                  <Ic name="camera" size={16} color="#ea6b14" />
+                  {photoFile ? photoFile.name : "Choose a photo"}
+                  <input id="co-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0] ?? null; if (f && f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB."); return; } setPhotoFile(f); }} style={{ display:"none" }} />
+                </label>
+              </div>
+              <p style={{ fontSize:".78rem", color:"rgba(190,205,235,.4)", textAlign:"center" }}>This step is optional — you can add a photo later from your dashboard.</p>
+            </div>
+          )}
         </div>
 
         <div style={{ display:"flex", gap:".75rem", marginTop:"2rem" }}>
@@ -329,6 +406,7 @@ export default function ContractorOnboarding() {
                 {loading ? "Submitting…" : "Complete Registration →"}
               </button>
           }
+
         </div>
 
         <p style={{ textAlign:"center", marginTop:"1.25rem", fontSize:".82rem", color:"rgba(190,205,235,.4)" }}>

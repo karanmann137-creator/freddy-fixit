@@ -14,6 +14,7 @@ import ContractorDashboard from "@/pages/ContractorDashboard";
 import AdminDashboard from "@/pages/AdminDashboard";
 import UpdatePassword from "@/pages/UpdatePassword";
 import TopNav from "@/components/TopNav";
+import ChatWidget from "@/components/ChatWidget";
 import BrowseContractors from "@/pages/BrowseContractors";
 import UserAgreement from "@/pages/UserAgreement";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
@@ -92,9 +93,9 @@ function ProtectedRoute({
 export default function App() {
   return (
     <>
-      <style>{`html,body{margin:0;padding:0;background:#1a2236;}`}</style>
       <RecoveryRedirect />
       <TopNav />
+      <ChatWidget />
       <Switch>
       {/* Public */}
       <Route path="/" component={Home} />
