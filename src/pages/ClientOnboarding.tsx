@@ -24,6 +24,7 @@ export const SERVICES = [
   { iconName: "garage-door", label: "Garage" },
   { iconName: "wind", label: "Air Conditioning" },
   { iconName: "sparkles", label: "Cleaning Services" },
+  { iconName: "trowel", label: "Concrete / Masonry" },
   { iconName: "key", label: "Locksmith" },
   { iconName: "refrigerator", label: "Appliance Repair / Install" },
   { iconName: "package", label: "Other" },
