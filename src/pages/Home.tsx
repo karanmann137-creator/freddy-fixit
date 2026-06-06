@@ -39,7 +39,7 @@ const FAQS = [
   { q:"What kinds of jobs can I request?", a:"General repairs and handyman work, carpentry, painting, drywall, landscaping, snow removal, gutters, windows & doors, and more." },
   { q:"How fast will I hear back?", a:"You'll get a response within 24 hours — often sooner." },
   { q:"What if I'm not happy with the work?", a:"Reach out to us at hello@freddyfixit.ca and we'll help make it right." },
-  { q:"I'm a contractor — how do I join, and what does it cost?", a:"Signing up is free, with no monthly charges and no upfront cost. We take a 7% fee from completed jobs. Once you're approved, you'll be notified about nearby jobs that match your trade, bid or get assigned, agree on price and timing, and get paid when the work's done." },
+  { q:"I'm a contractor — how do I join, and what does it cost?", a:"Signing up is free, with no monthly charges and no upfront cost. We take a small service fee from completed jobs. Once you're approved, you'll be notified about nearby jobs that match your trade, bid or get assigned, agree on price and timing, and get paid when the work's done." },
 ];
 
 export default function Home() {
