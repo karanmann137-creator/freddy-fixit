@@ -20,6 +20,8 @@ const SERVICES = [
   { iconName:"trowel", label:"Concrete / Masonry",   desc:"Driveways, patios, foundations, and masonry work" },
   { iconName:"wind", label:"Air Conditioning",       desc:"AC installs, tune-ups, and repairs" },
   { iconName:"sparkles", label:"Cleaning Services",       desc:"Deep cleans, move-outs, and regular upkeep" },
+  { iconName:"key", label:"Locksmith",               desc:"Lock changes, rekeying, lockouts, and security installs" },
+  { iconName:"refrigerator", label:"Appliance Repair / Install", desc:"Repairs and installations for all major appliances" },
 ];
 
 const HOW_IT_WORKS = [

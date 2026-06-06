@@ -2,142 +2,247 @@ export default function UserAgreement() {
   return (
     <div style={{ fontFamily:"'DM Sans',sans-serif", background:"#1a2236", color:"#f0f4ff", minHeight:"100vh", padding:"6rem 1.5rem 4rem" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-      <style>{"h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em} h2{color:#ea6b14} p,li{line-height:1.8;color:rgba(190,205,235,.85);font-weight:300} strong{color:#f0f4ff;font-weight:500} a{color:#ea6b14} ul,ol{padding-left:1.5rem;margin:.5rem 0} li{margin:.3rem 0}"}</style>
+      <style>{"h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em} h2{color:#ea6b14} h3{color:#f0f4ff;font-size:1.05rem;margin-top:1.4rem;margin-bottom:.4rem} p,li{line-height:1.8;color:rgba(190,205,235,.85);font-weight:300} strong{color:#f0f4ff;font-weight:500} a{color:#ea6b14} ul,ol{padding-left:1.5rem;margin:.5rem 0} li{margin:.3rem 0} .divider{border:none;border-top:1px solid rgba(255,255,255,.08);margin:3rem 0}"}</style>
       <div style={{ maxWidth:"800px", margin:"0 auto" }}>
 
+        {/* ─── PART I: GENERAL USER AGREEMENT ─── */}
         <h1 style={{ fontSize:"clamp(2.5rem,6vw,4rem)", color:"#f0f4ff", marginBottom:".5rem" }}>User Agreement</h1>
         <p style={{ fontSize:".82rem", color:"rgba(190,205,235,.4)", marginBottom:"3rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 4, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
 
         <section style={{ marginBottom:"2.5rem" }}>
           <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>1. Agreement to Terms</h2>
-          <p>By creating an account on the Freddy Fix It platform (&ldquo;Platform&rdquo;), operated by <strong>Freddy FixIt Contractors Inc.</strong> (&ldquo;Company,&rdquo; &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;), you (&ldquo;User&rdquo;) agree to be legally bound by this User Agreement (&ldquo;Agreement&rdquo;) and our <a href="/privacy-policy">Privacy Policy</a>. If you do not agree to these terms, do not create an account or use the Platform.</p>
+          <p>By creating an account on the Freddy Fix It platform (&ldquo;Platform&rdquo;), operated by <strong>Freddy FixIt Contractors Inc.</strong> (&ldquo;Company,&rdquo; &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;), you (&ldquo;User&rdquo;) agree to be legally bound by this User Agreement (&ldquo;Agreement&rdquo;) and our <a href="/privacy-policy">Privacy Policy</a>. If you do not agree, do not create an account or use the Platform.</p>
         </section>
 
         <section style={{ marginBottom:"2.5rem" }}>
           <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>2. Definitions</h2>
           <ul>
             <li><strong>&ldquo;Platform&rdquo;</strong> means the Freddy Fix It website (freddyfixit.ca) and all related services and features.</li>
-            <li><strong>&ldquo;Client&rdquo;</strong> means a User who posts service requests seeking home repair, maintenance, or vehicle services.</li>
+            <li><strong>&ldquo;Client&rdquo;</strong> means a User who posts service requests seeking home repair, maintenance, or related services.</li>
             <li><strong>&ldquo;Contractor&rdquo;</strong> means a User who offers and performs services through the Platform.</li>
-            <li><strong>&ldquo;Services&rdquo;</strong> means the home repair, maintenance, vehicle, and related services listed and performed through the Platform.</li>
+            <li><strong>&ldquo;Services&rdquo;</strong> means the home repair, maintenance, and related services listed and performed through the Platform.</li>
             <li><strong>&ldquo;Job&rdquo;</strong> means an agreed-upon scope of work between a Client and a Contractor facilitated through the Platform.</li>
           </ul>
         </section>
 
         <section style={{ marginBottom:"2.5rem" }}>
           <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>3. Eligibility</h2>
-          <p>You must be at least <strong>18 years of age</strong> to use the Platform. By registering, you represent and warrant that you are 18 or older and have the full legal capacity to enter into this Agreement. If you are registering on behalf of a business entity, you represent that you have the authority to bind that entity to this Agreement.</p>
+          <p>You must be at least <strong>18 years of age</strong> to use the Platform. By registering, you represent that you are 18 or older and have full legal capacity to enter into this Agreement. If registering on behalf of a business entity, you represent that you have authority to bind that entity.</p>
         </section>
 
         <section style={{ marginBottom:"2.5rem" }}>
           <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>4. Account Registration and Security</h2>
-          <p>You agree to provide accurate, current, and complete information during registration and to keep your account information up to date. You are solely responsible for maintaining the confidentiality of your login credentials and for all activity that occurs under your account. You agree to notify us immediately at <a href="mailto:hello@freddyfixit.ca">hello@freddyfixit.ca</a> if you suspect unauthorized access to your account. We are not liable for any loss resulting from unauthorized use of your account.</p>
+          <p>You agree to provide accurate, current, and complete information during registration and to keep your account information up to date. You are solely responsible for maintaining the confidentiality of your login credentials and for all activity under your account. Notify us immediately at <a href="mailto:hello@freddyfixit.ca">hello@freddyfixit.ca</a> if you suspect unauthorized access. We are not liable for any loss resulting from unauthorized use of your account.</p>
         </section>
 
         <section style={{ marginBottom:"2.5rem" }}>
           <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>5. Platform Role — We Are a Connector, Not a Service Provider</h2>
-          <p>Freddy FixIt Contractors Inc. is a technology platform that connects Clients seeking home and vehicle services with independent Contractors who provide those services. The Company is <strong>not a party</strong> to any service agreement between a Client and a Contractor. Contractors are independent professionals — not employees, agents, or representatives of the Company. The Company does not perform, supervise, direct, or control the work performed by any Contractor, and is not responsible for the outcome of any Job.</p>
+          <p>Freddy FixIt Contractors Inc. is a technology platform that connects Clients with independent Contractors. The Company is <strong>not a party</strong> to any service agreement between a Client and a Contractor. Contractors are independent professionals — not employees, agents, or representatives of the Company. The Company does not perform, supervise, direct, or control the work performed by any Contractor and is not responsible for the outcome of any Job.</p>
         </section>
 
         <section style={{ marginBottom:"2.5rem" }}>
           <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>6. Client Terms</h2>
-          <p><strong>6.1 Service Requests.</strong> Clients may post requests describing work they need done. By submitting a request, you represent that all information provided is accurate and that you have lawful authority over the property or vehicle where services will be performed.</p>
-          <p><strong>6.2 Approval.</strong> Clients must approve the proposed schedule and price before a Job begins. By approving, you enter a direct service agreement with the Contractor for those services at the agreed terms.</p>
+          <p><strong>6.1 Service Requests.</strong> Clients may post requests describing work they need done. By submitting a request, you represent that all information provided is accurate and that you have lawful authority over the property where services will be performed.</p>
+          <p><strong>6.2 Approval.</strong> Clients must approve the proposed schedule and price before a Job begins. By approving, you enter a direct service agreement with the Contractor.</p>
           <p><strong>6.3 Payment.</strong> Clients agree to pay the full agreed Job price through the Platform. Payment is due upon Job completion and Client confirmation. By using the Platform, you authorize the Company to collect payment on the Contractor&rsquo;s behalf.</p>
-          <p><strong>6.4 Auto-Confirmation.</strong> After a Contractor marks a Job complete, Clients have <strong>3 calendar days</strong> to confirm completion or raise a concern. If no action is taken within that period, the Job is automatically confirmed and payment is released to the Contractor.</p>
-          <p><strong>6.5 Ratings.</strong> Clients may rate Contractors following Job completion. Ratings must be honest, based on your direct experience, and must not contain false or defamatory statements.</p>
-          <p><strong>6.6 Safety.</strong> You are responsible for ensuring safe access to your property for the Contractor. You agree not to ask Contractors to perform work that violates applicable building codes, safety standards, or the law.</p>
+          <p><strong>6.4 Auto-Confirmation.</strong> After a Contractor marks a Job complete, Clients have <strong>3 calendar days</strong> to confirm or raise a concern. If no action is taken, the Job is automatically confirmed and payment is released to the Contractor.</p>
+          <p><strong>6.5 Ratings.</strong> Clients may rate Contractors following Job completion. Ratings must be honest, based on direct experience, and must not contain false or defamatory statements.</p>
+          <p><strong>6.6 Safety.</strong> You are responsible for ensuring safe access to your property. You agree not to ask Contractors to perform work that violates applicable building codes, safety standards, or the law.</p>
         </section>
 
         <section style={{ marginBottom:"2.5rem" }}>
-          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>7. Contractor Terms</h2>
-          <p><strong>7.1 Independent Contractor Status.</strong> You are an independent contractor. Nothing in this Agreement creates an employment, partnership, joint venture, franchise, or agency relationship between you and the Company. You are solely responsible for your own tools, equipment, workers, subcontractors, tax filings, and compliance with applicable law.</p>
-          <p><strong>7.2 Vetting and Approval.</strong> Contractor accounts are subject to review and approval by the Company. Approval is at the Company&rsquo;s sole discretion and may be revoked at any time.</p>
-          <p><strong>7.3 Qualifications and Compliance.</strong> You represent and warrant that you hold all licences, permits, certifications, and insurance required by applicable law in Alberta to perform the services you offer. You agree to maintain adequate general liability insurance and, where required by Alberta law, valid <strong>Workers&rsquo; Compensation Board (WCB)</strong> coverage throughout the duration of your use of the Platform.</p>
-          <p><strong>7.4 Accurate Information.</strong> You must provide accurate information about your qualifications, specialties, availability, service areas, and company details. Misrepresentation may result in immediate account termination.</p>
-          <p><strong>7.5 Professional Conduct.</strong> You agree to: conduct yourself professionally; complete agreed Jobs to industry standards and in compliance with applicable codes; communicate clearly and promptly with Clients; and arrive at the agreed time or provide reasonable advance notice of delay.</p>
-          <p><strong>7.6 No Circumvention.</strong> You agree not to solicit Clients to pay for services outside the Platform in order to avoid Platform fees. Any such conduct may result in permanent account suspension.</p>
-          <p><strong>7.7 Bidding.</strong> Contractors may submit up to <strong>3 bids</strong> per Client request. Submitting a bid constitutes a firm offer to perform the described work at the stated price if accepted by the Client.</p>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>7. Content and Photos</h2>
+          <p>By uploading photos, descriptions, or other content to the Platform (&ldquo;User Content&rdquo;), you grant the Company a <strong>non-exclusive, royalty-free, worldwide licence</strong> to use, store, display, and reproduce that content solely for the purpose of operating and improving the Platform. You retain ownership of your User Content and represent that you have all rights necessary to upload it.</p>
         </section>
 
         <section style={{ marginBottom:"2.5rem" }}>
-          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>8. Payment Terms</h2>
-          <p><strong>8.1 On-Platform Payments.</strong> The Platform collects and disburses payments between Clients and Contractors. By using the payment features, you authorize the Company to act as payment agent and to collect, hold, and disburse funds on your behalf in accordance with this Agreement.</p>
-          <p><strong>8.2 Platform Fee.</strong> The Company charges Contractors a fee of <strong>7% of the total agreed Job price</strong> (&ldquo;Platform Fee&rdquo;). This fee is automatically deducted from the payment before disbursement to the Contractor. No Platform Fee is charged to Clients.</p>
-          <p><strong>8.3 Disbursement.</strong> Payment is released to the Contractor following Client confirmation of Job completion, or upon automatic confirmation after the 3-day window described in Section 6.4.</p>
-          <p><strong>8.4 Payment Disputes.</strong> Payment disputes must be raised within <strong>7 days of Job completion</strong> by contacting <a href="mailto:hello@freddyfixit.ca">hello@freddyfixit.ca</a>. The Company will make reasonable efforts to assist in resolving disputes but makes no guarantee of any particular outcome. The Company&rsquo;s dispute determination is final.</p>
-          <p><strong>8.5 Taxes.</strong> Each User is solely responsible for their own tax obligations arising from transactions on the Platform. Contractors are responsible for reporting and remitting all applicable income tax, GST/HST, and other taxes on earnings received through the Platform.</p>
-          <p><strong>8.6 Payment Processor.</strong> Payment processing services are provided by <strong>Stripe, Inc.</strong> By using the Platform&rsquo;s payment features, you also agree to <a href="https://stripe.com/en-ca/legal/ssa" target="_blank" rel="noopener noreferrer">Stripe&rsquo;s Services Agreement</a>. The Company is not responsible for errors or delays caused by Stripe.</p>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>8. Disclaimer of Warranties</h2>
+          <p>THE PLATFORM IS PROVIDED <strong>&ldquo;AS IS&rdquo;</strong> AND <strong>&ldquo;AS AVAILABLE&rdquo;</strong> WITHOUT WARRANTIES OF ANY KIND. THE COMPANY DOES NOT WARRANT THAT THE PLATFORM WILL BE UNINTERRUPTED OR ERROR-FREE, NOR DOES IT GUARANTEE THE QUALITY, SAFETY, OR LEGALITY OF ANY SERVICES PROVIDED BY CONTRACTORS.</p>
         </section>
 
         <section style={{ marginBottom:"2.5rem" }}>
-          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>9. Prohibited Conduct</h2>
-          <p>You agree not to:</p>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>9. Limitation of Liability</h2>
+          <p>TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, FREDDY FIXIT CONTRACTORS INC. AND ITS OFFICERS, DIRECTORS, EMPLOYEES, AND AGENTS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, PUNITIVE, OR EXEMPLARY DAMAGES ARISING OUT OF OR RELATED TO YOUR USE OF THE PLATFORM OR ANY SERVICES ARRANGED THROUGH IT.</p>
+          <p>THE COMPANY&rsquo;S TOTAL CUMULATIVE LIABILITY SHALL NOT EXCEED THE GREATER OF: (A) THE TOTAL PLATFORM FEES PAID IN CONNECTION WITH YOUR ACCOUNT IN THE PRECEDING 12 MONTHS; OR (B) <strong>ONE HUNDRED CANADIAN DOLLARS ($100 CAD)</strong>.</p>
+        </section>
+
+        <section style={{ marginBottom:"2.5rem" }}>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>10. Indemnification</h2>
+          <p>You agree to defend, indemnify, and hold harmless Freddy FixIt Contractors Inc. and its officers, directors, employees, and agents from any claims, damages, losses, and expenses (including legal fees) arising from: (a) your use of the Platform; (b) your breach of this Agreement; (c) services you perform or receive through the Platform; (d) your User Content; or (e) your violation of any third-party rights.</p>
+        </section>
+
+        <section style={{ marginBottom:"2.5rem" }}>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>11. Changes to This Agreement</h2>
+          <p>We may update this Agreement from time to time. For material changes, we will provide at least <strong>14 days&rsquo; advance notice</strong> by email. Your continued use of the Platform after the effective date constitutes acceptance of the revised Agreement.</p>
+        </section>
+
+        <section style={{ marginBottom:"2.5rem" }}>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>12. Governing Law</h2>
+          <p>This Agreement is governed by the laws of the <strong>Province of Alberta</strong> and the federal laws of Canada. Any dispute shall be submitted exclusively to the courts of <strong>Calgary, Alberta</strong>.</p>
+        </section>
+
+        <section style={{ marginBottom:"3rem" }}>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>13. General Provisions</h2>
+          <p><strong>13.1 Entire Agreement.</strong> This Agreement, together with the Privacy Policy, constitutes the entire agreement between you and the Company and supersedes all prior agreements.</p>
+          <p><strong>13.2 Severability.</strong> If any provision is found invalid or unenforceable, the remaining provisions continue in full force.</p>
+          <p><strong>13.3 No Waiver.</strong> The Company&rsquo;s failure to enforce any right shall not constitute a waiver.</p>
+          <p><strong>13.4 Assignment.</strong> You may not assign your rights without prior written consent. The Company may assign its rights freely.</p>
+          <p><strong>13.5 Language.</strong> This Agreement is written in English. In any conflict with a translation, the English version prevails.</p>
+        </section>
+
+        <hr className="divider" />
+
+        {/* ─── PART II: CONTRACTOR PROFESSIONAL TERMS ─── */}
+        <h1 style={{ fontSize:"clamp(2.2rem,5vw,3.5rem)", color:"#f0f4ff", marginBottom:".5rem" }}>Contractor Professional Terms</h1>
+        <p style={{ fontSize:".82rem", color:"rgba(190,205,235,.4)", marginBottom:"1rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 4, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
+        <p style={{ marginBottom:"3rem" }}>These Contractor Professional Terms (&ldquo;Contractor Terms&rdquo;) apply to every User who registers as a Contractor on the Platform. They form part of and are incorporated into the User Agreement above. In the event of conflict, these Contractor Terms prevail with respect to Contractor obligations. By registering as a Contractor, you agree to be bound by these Contractor Terms.</p>
+
+        {/* Section 1 */}
+        <section style={{ marginBottom:"2.5rem" }}>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>1. Becoming a Contractor</h2>
+
+          <h3>a. Customer Service &amp; Professionalism</h3>
+          <p>As a Contractor on the Freddy Fix It Platform, you agree to conduct yourself with the highest standard of professionalism at all times. This includes, but is not limited to: responding to Client messages promptly; arriving at appointments on time or providing reasonable advance notice of any delay; treating Clients, their property, and all other persons with courtesy and respect; presenting yourself and your work in a clean and professional manner; and resolving any Client concerns or complaints in good faith and without hostility. The Company reserves the right to remove any Contractor whose conduct is deemed unprofessional, harmful, or detrimental to the Platform&rsquo;s reputation.</p>
+
+          <h3>b. Qualified</h3>
+          <p>You represent and warrant that you are fully qualified to perform each category of service you offer through the Platform. You must hold all licences, trade certifications, permits, and government-issued credentials required by applicable law in Alberta for the trades and services you advertise. You agree to provide copies of all relevant credentials to the Company upon request and to keep those credentials current throughout the duration of your use of the Platform. Offering services for which you are not lawfully qualified is grounds for immediate account termination.</p>
+
+          <h3>c. Insurance</h3>
+          <p>You must maintain, at your own expense and at all times while active on the Platform: (i) <strong>commercial general liability insurance</strong> of not less than <strong>$2,000,000 CAD per occurrence</strong> covering bodily injury, property damage, and completed operations; and (ii) valid <strong>Workers&rsquo; Compensation Board (WCB) of Alberta</strong> coverage for yourself and any workers or subcontractors you engage, to the extent required by Alberta law. You agree to provide proof of insurance to the Company or to a Client upon request. If your insurance lapses or is cancelled, you must notify the Company immediately and cease accepting new Jobs until valid coverage is reinstated.</p>
+
+          <h3>d. Quality of Work Standards</h3>
+          <p>You agree to perform all Services in a <strong>good and workmanlike manner</strong>, consistent with industry standards and best practices for the applicable trade. All work must comply with the Alberta Building Code, the National Building Code, and all other applicable codes, regulations, and standards. You are responsible for obtaining any required permits before work commences. Substandard work, code violations, or repeated Client complaints regarding quality may result in account suspension or termination.</p>
+        </section>
+
+        {/* Section 2 */}
+        <section style={{ marginBottom:"2.5rem" }}>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>2. Accepting Jobs</h2>
+
+          <h3>a. Agreement with Client</h3>
+          <p>When you accept a Job through the Platform, you enter into a direct service agreement with the Client for the scope of work, price, and schedule as confirmed through the Platform. You acknowledge that the Company is not a party to this service agreement and is not responsible for any dispute, liability, or outcome arising from it. You agree to perform the Job in accordance with the confirmed terms and not to request additional compensation beyond the agreed price without Client consent and Platform documentation.</p>
+
+          <h3>b. Procedure</h3>
+          <p>Once a Job is assigned to you: (i) you must confirm your acceptance within the timeframe indicated in the dispatch notification; (ii) you must propose a specific appointment date and time through the Platform prior to attending the property; (iii) you must not attend the Client&rsquo;s property without a confirmed appointment; and (iv) you must update the Job status on the Platform when you arrive on site, when work is in progress, and when work is complete. Failure to follow the required procedure may result in the Job being reassigned and may affect your standing on the Platform.</p>
+
+          <h3>c. Responsibilities</h3>
+          <p>You are solely responsible for: (i) assessing the scope of work and confirming that you are able to complete it before accepting the Job; (ii) supplying all labour, tools, equipment, and materials required to complete the Job unless otherwise agreed with the Client in writing through the Platform; (iii) ensuring that any workers or subcontractors you bring on site are qualified, insured, and compliant with applicable law; (iv) leaving the work area clean and in at least as good a condition as it was found; and (v) any damage caused to the Client&rsquo;s property or to third parties arising from your work.</p>
+
+          <h3>d. Completing the Job</h3>
+          <p>A Job is considered complete when you have performed all Services in the confirmed scope of work and have marked the Job as &ldquo;complete&rdquo; in the Platform. Upon marking a Job complete, the Client will have <strong>3 calendar days</strong> to confirm completion or raise a concern. If no action is taken within that period, the Job is automatically confirmed and payment is released to you. You must not mark a Job complete until all work in the scope has been performed to a satisfactory standard. Marking a Job complete prematurely or without Client knowledge is a material breach of these Contractor Terms.</p>
+        </section>
+
+        {/* Section 3 */}
+        <section style={{ marginBottom:"2.5rem" }}>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>3. Cancellation</h2>
+
+          <h3>a. Cancellation by Client</h3>
+          <p>A Client may cancel a confirmed Job at any time before the scheduled appointment. If the Client cancels with less than <strong>24 hours&rsquo; notice</strong>, you may be entitled to a cancellation fee as set out in the applicable Job posting or as otherwise agreed through the Platform. The Company will make reasonable efforts to facilitate payment of any applicable cancellation fee but does not guarantee collection from the Client. The Company reserves the right to modify cancellation fee policies from time to time upon notice.</p>
+
+          <h3>b. Cancellation by Contractor</h3>
+          <p>You may cancel a confirmed Job only in exceptional circumstances, such as a genuine emergency, illness, or force majeure event. Cancellations must be communicated to the Client and recorded through the Platform as soon as possible. <strong>If you cancel a confirmed Job less than 24 hours before the scheduled appointment without a valid reason acceptable to the Company, you agree that a cancellation fee of up to $50 CAD may be charged against your account balance or deducted from a future payment.</strong> Repeated or chronic cancellations may result in your account being suspended or permanently terminated. The Company tracks cancellation rates and uses this data in calculating your reliability score visible to Clients.</p>
+        </section>
+
+        {/* Section 4 */}
+        <section style={{ marginBottom:"2.5rem" }}>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>4. Fees &amp; Payment Terms</h2>
+
+          <h3>a. No Additional Charges</h3>
+          <p>You agree that the price confirmed through the Platform is the total amount you are entitled to charge the Client for the agreed scope of work. You must not charge the Client any additional fees, surcharges, materials markups, or other amounts not documented and agreed through the Platform prior to commencement of work. If you identify additional work beyond the original scope, you must submit a change-order request through the Platform and obtain Client approval before performing that additional work or billing for it.</p>
+
+          <h3>b. Platform Rates</h3>
+          <p>By accepting Jobs through the Platform, you agree that the rates you charge are competitive and reflect fair market value for the Calgary area. The Company reserves the right to remove listings or Job bids where rates are determined to be unreasonable, predatory, or inconsistent with market norms. The Company may, from time to time, publish recommended rate guidelines for common services; these are advisory only.</p>
+
+          <h3>c. Invoicing</h3>
+          <p>The Platform generates an invoice on your behalf upon Job completion. You agree that the Platform-generated invoice constitutes a valid commercial invoice for the services rendered. You must not issue a separate invoice to the Client for the same services. You may request a copy of any invoice through your Contractor dashboard. You are solely responsible for ensuring that all invoice details (services performed, amounts, dates) are accurate and consistent with the confirmed scope of work.</p>
+
+          <h3>d. Service Fee</h3>
+          <p>The Company charges a <strong>service fee of 7% of the total agreed Job price</strong> (&ldquo;Service Fee&rdquo;) on each completed Job. The Service Fee is automatically deducted from the Job payment before disbursement to you. The Service Fee compensates the Company for providing the Platform, dispatch services, payment processing, and Client acquisition. The Service Fee applies to the full Job amount including any agreed change orders. The Company reserves the right to modify the Service Fee upon 30 days&rsquo; written notice.</p>
+
+          <h3>e. Payment Processing</h3>
+          <p>Payment processing services are provided by <strong>Stripe, Inc.</strong> By using the Platform&rsquo;s payment features, you also agree to <a href="https://stripe.com/en-ca/legal/ssa" target="_blank" rel="noopener noreferrer">Stripe&rsquo;s Services Agreement</a>. Payment processing fees charged by Stripe are separate from and in addition to the Service Fee, and are disclosed at the time of account setup. The Company is not responsible for errors, delays, or failures caused by Stripe. Funds are disbursed to your registered bank account or payout method within the timeframe specified on your Contractor dashboard, following Job confirmation.</p>
+
+          <h3>f. Homeowner Protection Promise Obligations</h3>
+          <p>The Company offers Clients a <strong>Homeowner Protection Promise</strong>: if a Contractor&rsquo;s work results in damage to the Client&rsquo;s property due to negligence, and the Contractor fails to remedy the damage within a reasonable time, the Company may, at its sole discretion, facilitate a resolution between the parties or provide limited compensation to the Client. In the event the Company makes any payment to a Client arising from your work, you agree to fully reimburse the Company for that amount. You authorize the Company to deduct any such reimbursement from your future earnings or to pursue recovery by other lawful means.</p>
+
+          <h3>g. Taxes</h3>
+          <p>You are solely responsible for all tax obligations arising from income earned through the Platform. This includes, without limitation: reporting and remitting federal and provincial income tax; collecting, reporting, and remitting <strong>GST/HST</strong> if you are a registrant or required to be a registrant under the <em>Excise Tax Act</em>; and any other applicable provincial or municipal taxes. The Company does not withhold taxes on your behalf and does not provide tax advice. You should consult a qualified accountant or tax advisor regarding your obligations. The Company will provide annual earnings summaries upon request to assist with your tax filings.</p>
+
+          <h3>h. Contractor Credits</h3>
+          <p>The Company may, from time to time, issue promotional credits to your Contractor account (&ldquo;Credits&rdquo;). Credits have no cash value, are non-transferable, cannot be redeemed for cash, and may only be applied toward Service Fees on future Jobs. Credits expire 12 months from the date of issuance unless otherwise specified. The Company reserves the right to modify, suspend, or discontinue any Credits program at any time.</p>
+        </section>
+
+        {/* Section 5 */}
+        <section style={{ marginBottom:"2.5rem" }}>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>5. Professional Conduct — Things You Must Not Do</h2>
+          <p>In addition to the general Prohibited Conduct in the User Agreement, as a Contractor you specifically agree that you will not:</p>
           <ol type="a">
-            <li>Use the Platform for any unlawful purpose or in violation of any applicable law or regulation;</li>
-            <li>Post false, misleading, fraudulent, or defamatory information;</li>
-            <li>Harass, threaten, intimidate, or harm other Users;</li>
-            <li>Circumvent, disable, or interfere with any security feature of the Platform;</li>
-            <li>Use automated scripts, bots, or scrapers to access the Platform;</li>
-            <li>Impersonate another person or entity;</li>
-            <li>Use the Platform if your account has been previously suspended or terminated;</li>
-            <li>Upload or transmit malware, viruses, or any other harmful code;</li>
-            <li>Collect personal information of other Users without their consent;</li>
-            <li>Re-register after account deletion if prohibited from doing so under Section 12.</li>
+            <li><strong>Misrepresent your qualifications.</strong> Claim to hold any licence, certification, insurance, or credential that you do not currently and validly hold;</li>
+            <li><strong>Circumvent the Platform.</strong> Solicit, accept, or arrange payment from a Client outside the Platform for any services introduced through the Platform, whether during or after a Job engagement (see Section 6 for full Non-Circumvention terms);</li>
+            <li><strong>Conduct yourself unsafely.</strong> Perform work that you know or reasonably ought to know poses a safety risk to the Client, occupants, neighbouring properties, or the public;</li>
+            <li><strong>Abandon a Job.</strong> Leave a Job incomplete without Client agreement and without arranging an appropriate remedy, including referral to another qualified contractor;</li>
+            <li><strong>Overcharge or upsell deceptively.</strong> Inflate the scope of work, recommend unnecessary repairs, or charge for work not performed;</li>
+            <li><strong>Damage or misuse property.</strong> Intentionally or recklessly damage Client property, or use the Client&rsquo;s property, tools, or materials for any purpose other than the agreed Job;</li>
+            <li><strong>Harass or intimidate.</strong> Use abusive, threatening, discriminatory, or harassing language or conduct toward Clients, Company staff, or any other person in connection with the Platform;</li>
+            <li><strong>Operate without insurance.</strong> Accept or begin a Job when your required insurance coverage has lapsed, been cancelled, or is otherwise not in force;</li>
+            <li><strong>Falsify records.</strong> Submit false, altered, or fabricated invoices, completion records, photos, certifications, or other documentation to the Company or to any Client.</li>
           </ol>
+          <p>Breach of any item in this section is a <strong>material breach</strong> of these Contractor Terms and may result in immediate account suspension, termination, recovery of damages, and referral to applicable regulatory or law enforcement authorities.</p>
+        </section>
+
+        {/* Section 6 */}
+        <section style={{ marginBottom:"2.5rem" }}>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>6. Non-Circumvention</h2>
+          <p>The Platform invests significantly in Client acquisition and matching. In consideration of access to the Platform and its Client base, you agree that:</p>
+          <p><strong>6.1</strong> For a period of <strong>36 months</strong> following the date on which you are first introduced to a Client through the Platform (the &ldquo;Exclusivity Period&rdquo;), you will not, directly or indirectly, provide the same or similar services to that Client outside the Platform, whether for payment or otherwise, without the Company&rsquo;s prior written consent.</p>
+          <p><strong>6.2</strong> During the Exclusivity Period, if a Client contacts you directly and requests that you perform services outside the Platform, you must decline and direct the Client to use the Platform to book those services.</p>
+          <p><strong>6.3</strong> In the event of a breach of this Section, the Company may, in addition to any other remedies, charge a <strong>circumvention fee equal to 20% of the estimated value of the circumvented services</strong>, as determined by the Company in good faith, and deduct that amount from any amounts owed to you or recover it by other lawful means.</p>
+          <p><strong>6.4</strong> Nothing in this Section prevents you from servicing existing customers who were your customers prior to, and independently of, any introduction through the Platform, provided you can demonstrate that prior relationship.</p>
+        </section>
+
+        {/* Section 7 */}
+        <section style={{ marginBottom:"2.5rem" }}>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>7. Step-In Rights</h2>
+          <p><strong>7.1</strong> If, in the Company&rsquo;s reasonable judgment, you have: (a) abandoned a Job; (b) performed work that is unsafe, non-compliant, or substandard; (c) become unreachable after accepting a Job; or (d) failed to remedy a Client complaint within a reasonable time; the Company reserves the right to <strong>step in</strong> by arranging for another Contractor to complete or remediate the work.</p>
+          <p><strong>7.2</strong> The cost of any step-in contractor, including any premium or expedited pricing, shall be <strong>deducted from amounts owed to you</strong> or recovered from you directly. If the step-in cost exceeds the Job value, you are liable for the difference.</p>
+          <p><strong>7.3</strong> Exercise of step-in rights does not waive any other remedy available to the Company or to the Client, and does not limit your liability for any damages arising from your failure to perform.</p>
+        </section>
+
+        {/* Section 8 */}
+        <section style={{ marginBottom:"2.5rem" }}>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>8. Termination</h2>
+          <p><strong>8.1 By You.</strong> You may close your Contractor account at any time through your account settings. All Jobs in progress must be completed or transferred to another contractor with Client consent before deletion. Outstanding payments for completed Jobs will still be processed following account closure.</p>
+          <p><strong>8.2 By Us.</strong> The Company may suspend or permanently terminate your Contractor account at any time, with or without notice, for: violation of these Contractor Terms or the User Agreement; fraudulent, abusive, or unsafe conduct; failure to maintain required insurance or licences; a pattern of poor performance, Client complaints, or low ratings; or any conduct we determine, in our sole discretion, to be detrimental to Clients, other Users, or the Platform.</p>
+          <p><strong>8.3 Re-registration.</strong> If your account is terminated by the Company for cause, you may not re-register as a Contractor without the Company&rsquo;s prior written consent. The Company may use identifying information to prevent re-registration by terminated Contractors.</p>
+          <p><strong>8.4 Effect of Termination.</strong> Upon termination: your right to access the Platform and accept new Jobs ceases immediately; the Company will process payment for any Jobs completed prior to termination in the ordinary course; and Sections 4(f), 4(g), 5, 6, 7, 9, and 10 of these Contractor Terms survive termination indefinitely.</p>
+        </section>
+
+        {/* Section 9 */}
+        <section style={{ marginBottom:"2.5rem" }}>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>9. Disputes and Release</h2>
+          <p><strong>9.1 Contractor-Client Disputes.</strong> Disputes between Contractors and Clients regarding quality, payment, or scope of work must first be submitted to the Company at <a href="mailto:hello@freddyfixit.ca">hello@freddyfixit.ca</a> within <strong>7 days of Job completion</strong>. The Company will attempt to mediate disputes in good faith but does not guarantee any particular outcome. The Company&rsquo;s determination on dispute matters is final and binding on both parties for amounts within the Platform&rsquo;s control.</p>
+          <p><strong>9.2 Release.</strong> To the fullest extent permitted by law, you hereby release the Company and its officers, directors, employees, and agents from any and all claims, demands, liabilities, and damages (actual and consequential) of every kind and nature, known and unknown, arising out of or in any way connected with disputes between you and any Client. You acknowledge that the Company is a neutral marketplace and that you assume all risks associated with Jobs arranged through the Platform.</p>
+          <p><strong>9.3 Indemnification by Contractor.</strong> You agree to defend, indemnify, and hold harmless the Company from any third-party claims arising from: (a) your performance or non-performance of Services; (b) your breach of these Contractor Terms; (c) damage to property or injury to persons caused by you or your workers; or (d) your failure to comply with applicable laws, codes, or regulations.</p>
+        </section>
+
+        {/* Section 10 */}
+        <section style={{ marginBottom:"2.5rem" }}>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>10. No Guarantee</h2>
+          <p><strong>10.1</strong> The Company makes no guarantee that: (a) you will receive any minimum number of Job dispatches; (b) any particular volume of work will be available in your trade or service area; (c) any Job you are dispatched to will result in a confirmed booking; or (d) Client demand on the Platform will remain at any particular level.</p>
+          <p><strong>10.2</strong> Your use of the Platform is entirely at-will. The Company may at any time modify dispatch criteria, expand or contract the Contractor pool, adjust service areas, or otherwise change the Platform in ways that affect the volume or type of work available to you, without liability to you.</p>
+          <p><strong>10.3</strong> The Company does not guarantee payment from Clients beyond the amounts held or processed through the Platform. The Company is not responsible for Client non-payment where funds have not been collected through the Platform.</p>
+        </section>
+
+        {/* Section 11 */}
+        <section style={{ marginBottom:"2.5rem" }}>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>11. Notifications</h2>
+          <p><strong>11.1 Consent to Receive Communications.</strong> By registering as a Contractor, you expressly consent to receive communications from the Company by email, SMS, or push notification. These communications may include: new Job dispatch alerts; scheduling and appointment reminders; payment confirmations and receipts; policy updates and amendments to these Contractor Terms; promotional offers and Platform updates; and account status notices.</p>
+          <p><strong>11.2 Dispatch Alerts.</strong> Job dispatch notifications are time-sensitive. You acknowledge that the Company cannot guarantee delivery of dispatch alerts and that delays caused by your email provider, device settings, or connectivity are not the Company&rsquo;s responsibility. You agree to maintain a valid, regularly monitored email address on your account at all times.</p>
+          <p><strong>11.3 Opt-Out.</strong> You may opt out of non-essential marketing communications at any time by using the unsubscribe link in any email or by updating your notification preferences in your Contractor dashboard. You may not opt out of transactional or legal communications (such as payment receipts, account notices, and policy updates) while your account is active.</p>
+          <p><strong>11.4 Legal Notices.</strong> Any notice required under these Contractor Terms must be sent by email to <a href="mailto:hello@freddyfixit.ca">hello@freddyfixit.ca</a> (if to the Company) or to your registered email address (if to you). Legal notices are deemed received: (a) if sent by email, 24 hours after transmission; and (b) if sent by registered mail to the address on file, 5 business days after mailing.</p>
         </section>
 
         <section style={{ marginBottom:"2.5rem" }}>
-          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>10. User Content and Photos</h2>
-          <p>By uploading photos, descriptions, or other content to the Platform (&ldquo;User Content&rdquo;), you grant the Company a <strong>non-exclusive, royalty-free, worldwide licence</strong> to use, store, display, and reproduce that content solely for the purpose of operating and improving the Platform. You retain ownership of your User Content. You represent that you have all necessary rights to upload the content and that it does not infringe any third-party intellectual property, privacy, or other rights.</p>
-        </section>
-
-        <section style={{ marginBottom:"2.5rem" }}>
-          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>11. Disclaimer of Warranties</h2>
-          <p>THE PLATFORM IS PROVIDED <strong>&ldquo;AS IS&rdquo;</strong> AND <strong>&ldquo;AS AVAILABLE&rdquo;</strong> WITHOUT ANY WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT. THE COMPANY DOES NOT WARRANT THAT THE PLATFORM WILL BE UNINTERRUPTED, ERROR-FREE, OR FREE OF VIRUSES OR OTHER HARMFUL COMPONENTS.</p>
-          <p>THE COMPANY DOES NOT VET, GUARANTEE, WARRANT, OR REPRESENT THE QUALITY, SAFETY, LEGALITY, TIMELINESS, OR ACCURACY OF ANY SERVICES PROVIDED BY CONTRACTORS, OR THE TRUTH OR ACCURACY OF ANY CONTENT POSTED BY USERS. YOUR USE OF THE PLATFORM AND ANY SERVICES ARRANGED THROUGH IT IS ENTIRELY AT YOUR OWN RISK.</p>
-        </section>
-
-        <section style={{ marginBottom:"2.5rem" }}>
-          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>12. Limitation of Liability</h2>
-          <p>TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, FREDDY FIXIT CONTRACTORS INC., ITS OFFICERS, DIRECTORS, EMPLOYEES, AND AGENTS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, PUNITIVE, OR EXEMPLARY DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF PROFITS, DATA, GOODWILL, OR PROPERTY DAMAGE, ARISING OUT OF OR RELATED TO YOUR USE OF THE PLATFORM OR ANY SERVICES ARRANGED THROUGH IT, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.</p>
-          <p>IN NO EVENT SHALL THE COMPANY&rsquo;S TOTAL CUMULATIVE LIABILITY TO YOU FOR ANY AND ALL CLAIMS ARISING UNDER THIS AGREEMENT EXCEED THE GREATER OF: (A) THE TOTAL PLATFORM FEES PAID BY OR IN CONNECTION WITH YOUR ACCOUNT IN THE TWELVE (12) MONTHS PRECEDING THE CLAIM; OR (B) <strong>ONE HUNDRED CANADIAN DOLLARS ($100 CAD)</strong>.</p>
-        </section>
-
-        <section style={{ marginBottom:"2.5rem" }}>
-          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>13. Indemnification</h2>
-          <p>You agree to defend, indemnify, and hold harmless Freddy FixIt Contractors Inc. and its officers, directors, employees, affiliates, and agents from and against any and all claims, damages, losses, liabilities, and expenses (including reasonable legal fees) arising from or related to: (a) your use of the Platform; (b) your breach of this Agreement or applicable law; (c) services you perform or receive through the Platform; (d) your User Content; or (e) your violation of any third-party rights.</p>
-        </section>
-
-        <section style={{ marginBottom:"2.5rem" }}>
-          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>14. Account Termination</h2>
-          <p><strong>14.1 By You.</strong> You may delete your account at any time through your account settings. Deletion is permanent and cannot be undone. Any outstanding payments for completed Jobs will still be processed following deletion.</p>
-          <p><strong>14.2 By Us.</strong> We reserve the right to suspend or permanently terminate your account at any time, with or without notice, for: violation of this Agreement; fraudulent, harmful, or abusive conduct; or any conduct we determine, in our sole discretion, to be detrimental to other Users or the integrity of the Platform.</p>
-          <p><strong>14.3 Re-registration.</strong> If your account is terminated by the Company for cause, you may not re-register without the Company&rsquo;s prior written consent. Accounts flagged for poor performance or policy violations may be identified if you attempt to re-register.</p>
-          <p><strong>14.4 Effect of Termination.</strong> Upon termination, your right to use the Platform ceases immediately. Sections 10&ndash;13 and 16&ndash;17 survive termination.</p>
-        </section>
-
-        <section style={{ marginBottom:"2.5rem" }}>
-          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>15. Changes to This Agreement</h2>
-          <p>We may update this Agreement from time to time. When we do, we will post the revised version on the Platform with an updated effective date. For material changes, we will provide at least <strong>14 days&rsquo; advance notice</strong> by email to your registered address. Your continued use of the Platform after the effective date of any changes constitutes your acceptance of the revised Agreement. If you do not agree to the revised terms, you must stop using the Platform and delete your account.</p>
-        </section>
-
-        <section style={{ marginBottom:"2.5rem" }}>
-          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>16. Governing Law and Disputes</h2>
-          <p>This Agreement is governed by and construed in accordance with the laws of the <strong>Province of Alberta</strong> and the federal laws of Canada applicable therein, without regard to conflict of law principles. Any dispute, claim, or controversy arising out of or relating to this Agreement or your use of the Platform shall be submitted exclusively to the courts of <strong>Calgary, Alberta</strong>. Both parties irrevocably consent to the personal jurisdiction and venue of those courts.</p>
-        </section>
-
-        <section style={{ marginBottom:"2.5rem" }}>
-          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>17. General Provisions</h2>
-          <p><strong>17.1 Entire Agreement.</strong> This Agreement, together with the Privacy Policy and any additional terms applicable to specific features, constitutes the entire agreement between you and the Company regarding the Platform and supersedes all prior agreements.</p>
-          <p><strong>17.2 Severability.</strong> If any provision of this Agreement is found to be invalid or unenforceable, that provision shall be modified to the minimum extent necessary to make it enforceable, and the remaining provisions shall continue in full force and effect.</p>
-          <p><strong>17.3 No Waiver.</strong> The Company&rsquo;s failure to enforce any right or provision of this Agreement shall not constitute a waiver of that right or provision.</p>
-          <p><strong>17.4 Assignment.</strong> You may not assign or transfer your rights under this Agreement without the Company&rsquo;s prior written consent. The Company may assign its rights freely, including in connection with a merger, acquisition, or sale of assets.</p>
-          <p><strong>17.5 Language.</strong> This Agreement is written in English. In the event of any conflict between the English version and any translation, the English version shall prevail.</p>
-        </section>
-
-        <section style={{ marginBottom:"2.5rem" }}>
-          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>18. Contact Us</h2>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>12. Contact Us</h2>
           <p>
             <strong>Freddy FixIt Contractors Inc.</strong><br />
             20 Whiteram Mews NE<br />

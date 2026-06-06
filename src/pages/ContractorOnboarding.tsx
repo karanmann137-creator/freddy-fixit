@@ -25,6 +25,8 @@ const SPECIALTIES = [
   { iconName: "trowel", label: "Concrete / Masonry" },
   { iconName: "wind", label: "Air Conditioning" },
   { iconName: "sparkles", label: "Cleaning Services" },
+  { iconName: "key", label: "Locksmith" },
+  { iconName: "refrigerator", label: "Appliance Repair / Install" },
 ];
 
 const AREAS = ["NW Calgary","NE Calgary","SW Calgary","SE Calgary","Downtown / Beltline","Airdrie","Cochrane","Chestermere"];

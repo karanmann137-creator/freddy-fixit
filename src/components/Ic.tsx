@@ -11,7 +11,8 @@ export type IconName =
   | "pencil" | "trash" | "mail" | "camera" | "smartphone"
   | "settings" | "bell" | "search" | "alert-triangle" | "briefcase"
   | "user" | "user-check" | "radio-on" | "radio-off" | "wave"
-  | "building2" | "garage-door" | "pipe" | "trowel";
+  | "building2" | "garage-door" | "pipe"
+  | "key" | "refrigerator";
 
 type IcProps = {
   name: IconName;
@@ -72,9 +73,10 @@ const ICONS: Record<IconName, React.ReactNode> = {
   "radio-off": <circle cx="12" cy="12" r="10" />,
   wave: <path d="M2 12c1.5-3 3.5-4.5 6-4.5s4.5 2 6 2 4-2 6-3" />,
   building2: <><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" /><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" /><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" /><path d="M10 6h4" /><path d="M10 10h4" /><path d="M10 14h4" /><path d="M10 18h4" /></>,
-  trowel: <><line x1="21" y1="3" x2="15" y2="9" /><path d="M15 9 L5 13 L11 19 Z" /></>,
   "garage-door": <><rect x="2" y="4" width="20" height="16" rx="1" /><line x1="2" y1="8" x2="22" y2="8" /><line x1="2" y1="12" x2="22" y2="12" /><line x1="2" y1="16" x2="22" y2="16" /><line x1="10" y1="18" x2="14" y2="18" /></>,
   pipe: <><line x1="2" y1="8" x2="14" y2="8" /><path d="M14 8 Q20 8 20 14" /><line x1="20" y1="14" x2="20" y2="22" /><path d="M2 14 L14 14 L14 22" /></>,
+  key: <><circle cx="7.5" cy="15.5" r="5.5" /><path d="M21 2l-9.6 9.6" /><path d="M15.5 7.5l3 3L22 7l-3-3" /></>,
+  refrigerator: <><rect x="4" y="2" width="16" height="20" rx="2" /><path d="M4 10h16" /><line x1="9" y1="6" x2="9" y2="9" /><line x1="9" y1="14" x2="9" y2="18" /></>,
 };
 
 export function Ic({ name, size = 18, color = "currentColor", style }: IcProps) {
