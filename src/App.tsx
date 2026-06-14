@@ -57,6 +57,12 @@ function ProtectedRoute({
   const [redirectTo, setRedirectTo] = useState("/login");
 
   useEffect(() => {
+    let settled = false;
+    // Safety net: if any auth call ever hangs (e.g. an auth-lock deadlock),
+    // don't spin forever — give up after 8s and send the user to login.
+    const timeout = setTimeout(() => {
+      if (!settled) { setRedirectTo("/login"); setStatus("redirect"); }
+    }, 8000);
     (async () => {
       try {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -86,8 +92,12 @@ function ProtectedRoute({
         console.error("ProtectedRoute auth check failed:", err);
         setRedirectTo("/login");
         setStatus("redirect");
+      } finally {
+        settled = true;
+        clearTimeout(timeout);
       }
     })();
+    return () => clearTimeout(timeout);
   }, [requiredRole]);
 
   if (status === "loading") return (

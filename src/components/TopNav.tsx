@@ -20,13 +20,29 @@ export default function TopNav() {
       setRole(data?.role ?? null);
     };
     supabase.auth.getUser().then(({ data }) => sync(data.user?.id ?? null));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => sync(session?.user?.id ?? null));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      // CRITICAL: never call Supabase queries directly inside this callback.
+      // The callback runs while the auth lock is held; a query here waits for
+      // that same lock and deadlocks every later getUser/getSession/signOut
+      // (symptom: dashboards spin forever, log out does nothing). Defer with
+      // setTimeout so the callback returns and releases the lock first.
+      const uid = session?.user?.id ?? null;
+      setTimeout(() => { sync(uid); }, 0);
+    });
     return () => sub.subscription.unsubscribe();
   }, []);
 
   const logOut = async () => {
-    await supabase.auth.signOut();
+    // Clear local auth state and navigate first so the UI always responds,
+    // even if the network signOut is slow or the session is already wedged.
+    setAuthed(false);
+    setRole(null);
     setLocation("/");
+    try {
+      await supabase.auth.signOut({ scope: "local" });
+    } catch (err) {
+      console.error("signOut failed:", err);
+    }
   };
 
   const dashboardPath =
