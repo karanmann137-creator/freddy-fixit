@@ -58,27 +58,35 @@ function ProtectedRoute({
 
   useEffect(() => {
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setRedirectTo("/login"); setStatus("redirect"); return; }
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) { setRedirectTo("/login"); setStatus("redirect"); return; }
 
-      if (requiredRole) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .single();
+        if (requiredRole) {
+          const { data: profile, error: profileError } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", user.id)
+            .single();
 
-        if (!profile || profile.role !== requiredRole) {
-          const dest =
-            profile?.role === "admin" ? "/admin-dashboard" :
-            profile?.role === "contractor" ? "/contractor-dashboard" :
-            "/client-dashboard";
-          setRedirectTo(dest);
-          setStatus("redirect");
-          return;
+          if (profileError || !profile || profile.role !== requiredRole) {
+            const dest =
+              profile?.role === "admin" ? "/admin-dashboard" :
+              profile?.role === "contractor" ? "/contractor-dashboard" :
+              "/client-dashboard";
+            setRedirectTo(dest);
+            setStatus("redirect");
+            return;
+          }
         }
+        setStatus("ok");
+      } catch (err) {
+        // Never leave the route stuck on the loading spinner — on any
+        // unexpected error (network failure, auth throw, etc.) send to login.
+        console.error("ProtectedRoute auth check failed:", err);
+        setRedirectTo("/login");
+        setStatus("redirect");
       }
-      setStatus("ok");
     })();
   }, [requiredRole]);
 
