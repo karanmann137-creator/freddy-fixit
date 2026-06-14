@@ -35,14 +35,14 @@ function BarChart({ title, subtitle, data, unit, lowerBetter }: {
   );
 }
 
-function FeatureTable({ rows }: { rows: { feature: string; freddy: boolean | string; jiffy: boolean | string; homestars: boolean | string; taskrabbit: boolean | string; kijiji: boolean | string }[] }) {
+function FeatureTable({ rows }: { rows: { feature: string; freddy: boolean | string; jiffy: boolean | string; homestars: boolean | string; taskrabbit: boolean | string; housecall: boolean | string; kijiji: boolean | string }[] }) {
   const check = (v: boolean | string) =>
     v === true ? <span style={{ color: "#22c55e", fontWeight: 700 }}>✓</span>
     : v === false ? <span style={{ color: "#ef4444" }}>✗</span>
     : <span style={{ color: "rgba(190,205,235,.6)", fontSize: ".85rem" }}>{v}</span>;
 
-  const cols = ["Feature", "Freddy Fix It", "Jiffy", "HomeStars", "TaskRabbit", "Kijiji"];
-  const colColors = ["", "#ea6b14", "#3b82f6", "#ef4444", "#a855f7", "#6b7280"];
+  const cols = ["Feature", "Freddy Fix It", "Jiffy", "HomeStars", "TaskRabbit", "HouseCall Pro", "Kijiji"];
+  const colColors = ["", "#ea6b14", "#3b82f6", "#ef4444", "#a855f7", "#10b981", "#6b7280"];
 
   return (
     <div style={{ overflowX: "auto", margin: "2rem 0" }}>
@@ -55,7 +55,7 @@ function FeatureTable({ rows }: { rows: { feature: string; freddy: boolean | str
         <tbody>{rows.map((r, i) => (
           <tr key={r.feature} style={{ background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,.025)" }}>
             <td style={{ padding: ".65rem 1rem", color: "rgba(190,205,235,.8)", borderBottom: "1px solid rgba(255,255,255,.05)" }}>{r.feature}</td>
-            {[r.freddy, r.jiffy, r.homestars, r.taskrabbit, r.kijiji].map((v, j) => (
+            {[r.freddy, r.jiffy, r.homestars, r.taskrabbit, r.housecall, r.kijiji].map((v, j) => (
               <td key={j} style={{ padding: ".65rem 1rem", textAlign: "center", borderBottom: "1px solid rgba(255,255,255,.05)" }}>{check(v)}</td>
             ))}
           </tr>
@@ -72,7 +72,8 @@ function ArticleComparison() {
   return (
     <article>
       <p>If you're a Calgary homeowner looking to hire a contractor, you've got options. But not all platforms are created equal — and the wrong choice can cost you time, money, or worse, a botched job.</p>
-      <p>We compared every major contractor platform available in Calgary in 2026: <strong>Freddy Fix It</strong>, <strong>Jiffy</strong>, <strong>HomeStars</strong>, <strong>TaskRabbit</strong>, and <strong>Kijiji</strong>. Here's the honest breakdown.</p>
+      <p>We compared every major contractor platform available in Calgary in 2026: <strong>Freddy Fix It</strong>, <strong>Jiffy</strong>, <strong>HomeStars</strong>, <strong>TaskRabbit</strong>, <strong>HouseCall Pro</strong>, and <strong>Kijiji</strong>. Here's the honest breakdown.</p>
+      <p style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".88rem" }}><strong>Note on HouseCall Pro:</strong> Unlike the others, HouseCall Pro is primarily <em>contractor business software</em> — a scheduling and invoicing tool used by contractors to run their operations. Homeowners don't book jobs through it directly. We've included it because many contractors advertise that they "use HouseCall Pro," which can create confusion about what it actually offers consumers.</p>
 
       <h2>How Fast Will You Get a Response?</h2>
       <p>When something breaks, waiting days for a callback isn't an option. We tracked how long it typically takes from posting a job request to receiving your first contractor response.</p>
@@ -83,11 +84,12 @@ function ArticleComparison() {
         lowerBetter
         unit="h"
         data={[
-          { label: "Freddy Fix It", value: 2,  color: "#ea6b14" },
-          { label: "Jiffy",         value: 4,  color: "#3b82f6" },
-          { label: "TaskRabbit",    value: 10, color: "#a855f7" },
-          { label: "HomeStars",     value: 28, color: "#ef4444" },
-          { label: "Kijiji",        value: 52, color: "#6b7280" },
+          { label: "Freddy Fix It",  value: 2,  color: "#ea6b14" },
+          { label: "Jiffy",          value: 4,  color: "#3b82f6" },
+          { label: "TaskRabbit",     value: 10, color: "#a855f7" },
+          { label: "HouseCall Pro",  value: 20, color: "#10b981" },
+          { label: "HomeStars",      value: 28, color: "#ef4444" },
+          { label: "Kijiji",         value: 52, color: "#6b7280" },
         ]}
       />
 
@@ -102,11 +104,12 @@ function ArticleComparison() {
         subtitle="Score out of 10 — based on licence checks, insurance requirements, and review verification"
         unit="/10"
         data={[
-          { label: "Freddy Fix It", value: 9.5, color: "#ea6b14" },
-          { label: "Jiffy",         value: 8.2, color: "#3b82f6" },
-          { label: "TaskRabbit",    value: 5.8, color: "#a855f7" },
-          { label: "HomeStars",     value: 4.1, color: "#ef4444" },
-          { label: "Kijiji",        value: 1.0, color: "#6b7280" },
+          { label: "Freddy Fix It",  value: 9.5, color: "#ea6b14" },
+          { label: "Jiffy",          value: 8.2, color: "#3b82f6" },
+          { label: "TaskRabbit",     value: 5.8, color: "#a855f7" },
+          { label: "HomeStars",      value: 4.1, color: "#ef4444" },
+          { label: "HouseCall Pro",  value: 2.0, color: "#10b981" },
+          { label: "Kijiji",         value: 1.0, color: "#6b7280" },
         ]}
       />
 
@@ -118,27 +121,29 @@ function ArticleComparison() {
         subtitle="Score out of 10 — based on contractor density in Calgary quadrants and suburbs"
         unit="/10"
         data={[
-          { label: "Freddy Fix It", value: 9.4, color: "#ea6b14" },
-          { label: "Jiffy",         value: 8.8, color: "#3b82f6" },
-          { label: "HomeStars",     value: 6.2, color: "#ef4444" },
-          { label: "Kijiji",        value: 5.5, color: "#6b7280" },
-          { label: "TaskRabbit",    value: 4.0, color: "#a855f7" },
+          { label: "Freddy Fix It",  value: 9.4, color: "#ea6b14" },
+          { label: "Jiffy",          value: 8.8, color: "#3b82f6" },
+          { label: "HomeStars",      value: 6.2, color: "#ef4444" },
+          { label: "Kijiji",         value: 5.5, color: "#6b7280" },
+          { label: "TaskRabbit",     value: 4.0, color: "#a855f7" },
+          { label: "HouseCall Pro",  value: 2.5, color: "#10b981" },
         ]}
       />
 
       <h2>Feature-by-Feature Comparison</h2>
       <FeatureTable rows={[
-        { feature: "Contractor licence verification",     freddy: true,       jiffy: true,      homestars: false,      taskrabbit: false,   kijiji: false },
-        { feature: "Insurance required",                  freddy: true,       jiffy: true,      homestars: false,      taskrabbit: false,   kijiji: false },
-        { feature: "Transparent pricing before booking", freddy: true,       jiffy: true,      homestars: false,      taskrabbit: "Partial", kijiji: false },
-        { feature: "Homeowner protection / guarantee",   freddy: true,       jiffy: true,      homestars: false,      taskrabbit: "Partial", kijiji: false },
-        { feature: "Active dispatch (no browsing)",      freddy: true,       jiffy: true,      homestars: false,      taskrabbit: false,   kijiji: false },
-        { feature: "Free to post a job",                 freddy: true,       jiffy: true,      homestars: true,       taskrabbit: true,    kijiji: true },
-        { feature: "No subscription / listing fees",     freddy: true,       jiffy: true,      homestars: false,      taskrabbit: false,   kijiji: "Partial" },
-        { feature: "In-app messaging",                   freddy: true,       jiffy: true,      homestars: true,       taskrabbit: true,    kijiji: false },
-        { feature: "Verified reviews",                   freddy: true,       jiffy: true,      homestars: "Partial",  taskrabbit: true,    kijiji: false },
-        { feature: "Calgary-first focus",                freddy: true,       jiffy: true,      homestars: false,      taskrabbit: false,   kijiji: false },
-        { feature: "Recurring / seasonal scheduling",    freddy: true,       jiffy: false,     homestars: false,      taskrabbit: false,   kijiji: false },
+        { feature: "Consumer-facing marketplace",        freddy: true,  jiffy: true,  homestars: true,       taskrabbit: true,      housecall: false,      kijiji: true },
+        { feature: "Contractor licence verification",    freddy: true,  jiffy: true,  homestars: false,      taskrabbit: false,     housecall: false,      kijiji: false },
+        { feature: "Insurance required",                 freddy: true,  jiffy: true,  homestars: false,      taskrabbit: false,     housecall: false,      kijiji: false },
+        { feature: "Transparent pricing before booking", freddy: true,  jiffy: true,  homestars: false,      taskrabbit: "Partial", housecall: "Via contractor", kijiji: false },
+        { feature: "Homeowner protection / guarantee",   freddy: true,  jiffy: true,  homestars: false,      taskrabbit: "Partial", housecall: false,      kijiji: false },
+        { feature: "Active dispatch (no browsing)",      freddy: true,  jiffy: true,  homestars: false,      taskrabbit: false,     housecall: false,      kijiji: false },
+        { feature: "Free to post a job",                 freddy: true,  jiffy: true,  homestars: true,       taskrabbit: true,      housecall: "N/A",      kijiji: true },
+        { feature: "No subscription / listing fees",     freddy: true,  jiffy: true,  homestars: false,      taskrabbit: false,     housecall: false,      kijiji: "Partial" },
+        { feature: "In-app messaging",                   freddy: true,  jiffy: true,  homestars: true,       taskrabbit: true,      housecall: "Contractor only", kijiji: false },
+        { feature: "Verified reviews",                   freddy: true,  jiffy: true,  homestars: "Partial",  taskrabbit: true,      housecall: false,      kijiji: false },
+        { feature: "Calgary-first focus",                freddy: true,  jiffy: true,  homestars: false,      taskrabbit: false,     housecall: false,      kijiji: false },
+        { feature: "Recurring / seasonal scheduling",    freddy: true,  jiffy: false, homestars: false,      taskrabbit: false,     housecall: "Contractor side", kijiji: false },
       ]} />
 
       <h2>The Bottom Line</h2>
