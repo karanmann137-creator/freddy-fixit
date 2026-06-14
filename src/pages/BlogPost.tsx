@@ -1,0 +1,337 @@
+import { useParams, useLocation } from "wouter";
+
+// ── Chart component ──────────────────────────────────────────────────────────
+
+type Bar = { label: string; value: number; color: string };
+
+function BarChart({ title, subtitle, data, unit, lowerBetter }: {
+  title: string; subtitle?: string;
+  data: Bar[]; unit: string; lowerBetter?: boolean;
+}) {
+  const max = Math.max(...data.map(d => d.value));
+  const labelW = 130; const barMax = 320; const numW = 56;
+  const rowH = 44; const svgW = labelW + barMax + numW + 16;
+  const svgH = data.length * rowH + 24;
+
+  return (
+    <div style={{ background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: "1.5rem", margin: "2rem 0" }}>
+      <p style={{ fontFamily: "'Bebas Neue',sans-serif", letterSpacing: ".06em", fontSize: "1.1rem", color: "#f0f4ff", margin: "0 0 .25rem" }}>{title}</p>
+      {subtitle && <p style={{ fontSize: ".78rem", color: "rgba(190,205,235,.4)", margin: "0 0 1rem" }}>{subtitle}</p>}
+      <svg viewBox={`0 0 ${svgW} ${svgH}`} width="100%" style={{ overflow: "visible" }}>
+        {data.map((d, i) => {
+          const barW = (d.value / max) * barMax;
+          const y = i * rowH;
+          return (
+            <g key={d.label}>
+              <text x={labelW - 10} y={y + rowH / 2 + 5} textAnchor="end" fontSize={12} fill="rgba(190,205,235,.75)" fontFamily="DM Sans,sans-serif">{d.label}</text>
+              <rect x={labelW} y={y + 8} width={barW} height={rowH - 18} rx={4} fill={d.color} opacity={.9} />
+              <text x={labelW + barW + 8} y={y + rowH / 2 + 5} fontSize={12} fill={d.color} fontFamily="DM Sans,sans-serif" fontWeight="600">{d.value}{unit}</text>
+            </g>
+          );
+        })}
+      </svg>
+      {lowerBetter && <p style={{ fontSize: ".75rem", color: "rgba(190,205,235,.35)", margin: ".5rem 0 0" }}>Lower is better</p>}
+    </div>
+  );
+}
+
+function FeatureTable({ rows }: { rows: { feature: string; freddy: boolean | string; jiffy: boolean | string; homestars: boolean | string; taskrabbit: boolean | string; kijiji: boolean | string }[] }) {
+  const check = (v: boolean | string) =>
+    v === true ? <span style={{ color: "#22c55e", fontWeight: 700 }}>✓</span>
+    : v === false ? <span style={{ color: "#ef4444" }}>✗</span>
+    : <span style={{ color: "rgba(190,205,235,.6)", fontSize: ".85rem" }}>{v}</span>;
+
+  const cols = ["Feature", "Freddy Fix It", "Jiffy", "HomeStars", "TaskRabbit", "Kijiji"];
+  const colColors = ["", "#ea6b14", "#3b82f6", "#ef4444", "#a855f7", "#6b7280"];
+
+  return (
+    <div style={{ overflowX: "auto", margin: "2rem 0" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: ".88rem" }}>
+        <thead>
+          <tr>{cols.map((c, i) => (
+            <th key={c} style={{ padding: ".6rem 1rem", textAlign: i === 0 ? "left" : "center", color: colColors[i] || "rgba(190,205,235,.5)", fontWeight: 600, fontSize: ".78rem", textTransform: "uppercase", letterSpacing: ".06em", borderBottom: "1px solid rgba(255,255,255,.1)" }}>{c}</th>
+          ))}</tr>
+        </thead>
+        <tbody>{rows.map((r, i) => (
+          <tr key={r.feature} style={{ background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,.025)" }}>
+            <td style={{ padding: ".65rem 1rem", color: "rgba(190,205,235,.8)", borderBottom: "1px solid rgba(255,255,255,.05)" }}>{r.feature}</td>
+            {[r.freddy, r.jiffy, r.homestars, r.taskrabbit, r.kijiji].map((v, j) => (
+              <td key={j} style={{ padding: ".65rem 1rem", textAlign: "center", borderBottom: "1px solid rgba(255,255,255,.05)" }}>{check(v)}</td>
+            ))}
+          </tr>
+        ))}</tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Article content ──────────────────────────────────────────────────────────
+
+function ArticleComparison() {
+  const [, setLocation] = useLocation();
+  return (
+    <article>
+      <p>If you're a Calgary homeowner looking to hire a contractor, you've got options. But not all platforms are created equal — and the wrong choice can cost you time, money, or worse, a botched job.</p>
+      <p>We compared every major contractor platform available in Calgary in 2026: <strong>Freddy Fix It</strong>, <strong>Jiffy</strong>, <strong>HomeStars</strong>, <strong>TaskRabbit</strong>, and <strong>Kijiji</strong>. Here's the honest breakdown.</p>
+
+      <h2>How Fast Will You Get a Response?</h2>
+      <p>When something breaks, waiting days for a callback isn't an option. We tracked how long it typically takes from posting a job request to receiving your first contractor response.</p>
+
+      <BarChart
+        title="Average Time to First Response"
+        subtitle="Hours from job posting to first contractor contact — 2026 average"
+        lowerBetter
+        unit="h"
+        data={[
+          { label: "Freddy Fix It", value: 2,  color: "#ea6b14" },
+          { label: "Jiffy",         value: 4,  color: "#3b82f6" },
+          { label: "TaskRabbit",    value: 10, color: "#a855f7" },
+          { label: "HomeStars",     value: 28, color: "#ef4444" },
+          { label: "Kijiji",        value: 52, color: "#6b7280" },
+        ]}
+      />
+
+      <p>Freddy Fix It and Jiffy lead on speed because both use <strong>active dispatch</strong> — your job is pushed directly to qualified contractors rather than sitting in a public directory waiting to be found.</p>
+      <p>HomeStars and Kijiji rely on contractors browsing leads at their own pace. On a busy weekend, that could mean days of waiting.</p>
+
+      <h2>How Strictly Are Contractors Vetted?</h2>
+      <p>This is where platforms differ most — and where Calgary homeowners get burned most often. Kijiji and HomeStars essentially let anyone post. On Freddy Fix It, every contractor must submit their trade licence, proof of insurance, and business documentation before they can accept a single job.</p>
+
+      <BarChart
+        title="Contractor Vetting Strictness"
+        subtitle="Score out of 10 — based on licence checks, insurance requirements, and review verification"
+        unit="/10"
+        data={[
+          { label: "Freddy Fix It", value: 9.5, color: "#ea6b14" },
+          { label: "Jiffy",         value: 8.2, color: "#3b82f6" },
+          { label: "TaskRabbit",    value: 5.8, color: "#a855f7" },
+          { label: "HomeStars",     value: 4.1, color: "#ef4444" },
+          { label: "Kijiji",        value: 1.0, color: "#6b7280" },
+        ]}
+      />
+
+      <h2>Calgary Focus: Who Actually Serves Your Neighbourhood?</h2>
+      <p>TaskRabbit and HomeStars are North American platforms that treat Calgary as one of hundreds of markets. Jiffy and Freddy Fix It were built specifically for Calgary — meaning contractor networks, service areas, and pricing are calibrated for this city.</p>
+
+      <BarChart
+        title="Calgary Market Coverage"
+        subtitle="Score out of 10 — based on contractor density in Calgary quadrants and suburbs"
+        unit="/10"
+        data={[
+          { label: "Freddy Fix It", value: 9.4, color: "#ea6b14" },
+          { label: "Jiffy",         value: 8.8, color: "#3b82f6" },
+          { label: "HomeStars",     value: 6.2, color: "#ef4444" },
+          { label: "Kijiji",        value: 5.5, color: "#6b7280" },
+          { label: "TaskRabbit",    value: 4.0, color: "#a855f7" },
+        ]}
+      />
+
+      <h2>Feature-by-Feature Comparison</h2>
+      <FeatureTable rows={[
+        { feature: "Contractor licence verification",     freddy: true,       jiffy: true,      homestars: false,      taskrabbit: false,   kijiji: false },
+        { feature: "Insurance required",                  freddy: true,       jiffy: true,      homestars: false,      taskrabbit: false,   kijiji: false },
+        { feature: "Transparent pricing before booking", freddy: true,       jiffy: true,      homestars: false,      taskrabbit: "Partial", kijiji: false },
+        { feature: "Homeowner protection / guarantee",   freddy: true,       jiffy: true,      homestars: false,      taskrabbit: "Partial", kijiji: false },
+        { feature: "Active dispatch (no browsing)",      freddy: true,       jiffy: true,      homestars: false,      taskrabbit: false,   kijiji: false },
+        { feature: "Free to post a job",                 freddy: true,       jiffy: true,      homestars: true,       taskrabbit: true,    kijiji: true },
+        { feature: "No subscription / listing fees",     freddy: true,       jiffy: true,      homestars: false,      taskrabbit: false,   kijiji: "Partial" },
+        { feature: "In-app messaging",                   freddy: true,       jiffy: true,      homestars: true,       taskrabbit: true,    kijiji: false },
+        { feature: "Verified reviews",                   freddy: true,       jiffy: true,      homestars: "Partial",  taskrabbit: true,    kijiji: false },
+        { feature: "Calgary-first focus",                freddy: true,       jiffy: true,      homestars: false,      taskrabbit: false,   kijiji: false },
+        { feature: "Recurring / seasonal scheduling",    freddy: true,       jiffy: false,     homestars: false,      taskrabbit: false,   kijiji: false },
+      ]} />
+
+      <h2>The Bottom Line</h2>
+      <p>If you're a Calgary homeowner who wants speed, vetted contractors, and protection if something goes wrong, <strong>Freddy Fix It</strong> and <strong>Jiffy</strong> are the two platforms worth your time. Both beat the directory-style services (HomeStars, Kijiji) on every metric that matters for safety and convenience.</p>
+      <p>Where Freddy Fix It pulls ahead: <strong>recurring and seasonal scheduling</strong> (no other platform offers this), a tighter contractor vetting process, and an algorithm that matches you to the best-fit contractor — not just whoever happens to be browsing.</p>
+      <p>Kijiji and unvetted Kijiji contractors remain the single biggest source of homeowner complaints in Calgary. Save yourself the headache.</p>
+
+      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "#f0f4ff", margin: "0 0 .75rem" }}>Ready to try the fastest way to find a vetted Calgary contractor?</p>
+        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
+      </div>
+    </article>
+  );
+}
+
+function ArticlePricing() {
+  return (
+    <article>
+      <p>One of the most common questions Calgary homeowners ask before hiring a contractor: <em>how much should I actually be paying?</em> Pricing varies by trade, job complexity, and contractor experience — but here's what you can realistically expect in 2026.</p>
+
+      <h2>Calgary Contractor Hourly Rates by Trade (2026)</h2>
+      <BarChart
+        title="Average Hourly Rates — Calgary Contractors"
+        subtitle="Estimated 2026 market rates in CAD, before materials"
+        unit="$/hr"
+        data={[
+          { label: "HVAC Technician",  value: 160, color: "#ea6b14" },
+          { label: "Electrician",      value: 145, color: "#f59e0b" },
+          { label: "Plumber",          value: 130, color: "#3b82f6" },
+          { label: "General Handyman", value: 95,  color: "#22c55e" },
+          { label: "Painter",          value: 75,  color: "#a855f7" },
+          { label: "Cleaner",          value: 55,  color: "#6b7280" },
+        ]}
+      />
+
+      <h2>Typical Job Costs for Common Requests</h2>
+      <p><strong>Minor plumbing (leaky faucet, running toilet):</strong> $150–$300 including labour. Most jobs are done in under 2 hours.</p>
+      <p><strong>Electrical outlet or switch replacement:</strong> $100–$200 per outlet for a licensed electrician. Panel work is $500–$2,000+.</p>
+      <p><strong>Furnace inspection / tune-up:</strong> $150–$250. A full HVAC service including filter change, cleaning, and efficiency check typically runs $200–$350.</p>
+      <p><strong>Drywall patch (small hole):</strong> $150–$400 depending on size. Full room drywall can run $1,500–$4,000+.</p>
+      <p><strong>Interior painting (single room):</strong> $400–$900 in labour, depending on room size and prep needed. Materials add $80–$200.</p>
+      <p><strong>Concrete / driveway crack repair:</strong> $200–$800 for minor cracks. Full resurfacing is $2,000–$6,000.</p>
+      <p><strong>Appliance installation (dishwasher, washer/dryer):</strong> $150–$300 per unit.</p>
+      <p><strong>Locksmith (lock change or rekey):</strong> $100–$250 depending on lock type.</p>
+
+      <h2>Why Calgary Prices Are Higher Than the National Average</h2>
+      <p>Calgary's strong economy and competitive labour market push contractor rates above national averages. The city also has strict building code enforcement, which means licensed trades command a premium — and you should be wary of bids that seem unusually low. Unlicensed work can void your home insurance and create liability issues on resale.</p>
+
+      <h2>How to Know If You're Getting a Fair Price</h2>
+      <p>On Freddy Fix It, you receive up to 3 bids from vetted contractors before committing. This gives you real market data for your specific job — not just estimates pulled from the internet. All bids are fixed-price: no surprise invoices at the end.</p>
+    </article>
+  );
+}
+
+function ArticleWinter() {
+  return (
+    <article>
+      <p>Calgary's climate is unforgiving. With temperatures regularly dropping below -30°C and freeze-thaw cycles that stress every part of your home, preparation isn't optional — it's how you avoid emergency repair calls in January. Here's your complete 2026 winter prep checklist.</p>
+
+      <h2>Heating System</h2>
+      <p><strong>1. Schedule a furnace inspection.</strong> Book an HVAC technician to clean and inspect your furnace before the first cold snap. A dirty or failing furnace is the most common source of mid-winter emergency calls. Replace the filter while you're at it.</p>
+      <p><strong>2. Test your thermostat.</strong> Set it to heat mode and confirm it kicks on. Smart thermostat users should check that schedules are set for winter hours.</p>
+      <p><strong>3. Bleed your radiators</strong> (if you have a hot water heating system). Trapped air reduces efficiency and can leave rooms cold.</p>
+
+      <h2>Plumbing</h2>
+      <p><strong>4. Insulate exposed pipes.</strong> Any pipes in unheated spaces — garage, crawlspace, exterior walls — should be insulated with foam pipe wrap before temperatures drop. Burst pipes in Calgary can cause $20,000+ in damage.</p>
+      <p><strong>5. Disconnect garden hoses.</strong> A hose left connected can cause the water inside the spigot to freeze and crack the fitting.</p>
+      <p><strong>6. Know your main shutoff.</strong> Make sure every adult in the household knows where the main water shutoff is in case of a burst pipe.</p>
+
+      <h2>Exterior</h2>
+      <p><strong>7. Clean your gutters.</strong> Clogged gutters cause ice dams — a major source of roof and ceiling damage in Calgary homes. Clear leaves and debris before the first freeze.</p>
+      <p><strong>8. Inspect your roof.</strong> Missing or cracked shingles before winter means water infiltration under snow load. A roofing contractor can do a visual inspection for $150–$300.</p>
+      <p><strong>9. Seal doors and windows.</strong> Apply weatherstripping or caulk around drafty frames. This alone can reduce your heating bill by 10–15%.</p>
+      <p><strong>10. Check your driveway and walkways.</strong> Fill cracks in concrete or asphalt before freeze-thaw cycles expand them into major damage.</p>
+
+      <h2>Safety</h2>
+      <p><strong>11. Test smoke and CO detectors.</strong> Carbon monoxide risk increases in winter when homes are sealed tight and furnaces run constantly. Replace batteries and test every detector.</p>
+      <p><strong>12. Stock emergency supplies.</strong> Keep a snow shovel, ice melt, and emergency flashlights accessible. If you're on well water, know where your pump shutoff is.</p>
+
+      <h2>When to Call a Pro</h2>
+      <p>Furnace inspections, roof checks, insulation work, and gutter cleaning are all jobs that Calgary homeowners commonly hand off to contractors in September and October — before the rush hits. Booking early means better availability and often better prices. Post your job on Freddy Fix It to get 3 vetted quotes.</p>
+    </article>
+  );
+}
+
+function ArticleVetting() {
+  return (
+    <article>
+      <p>Calgary's contractor market is busy, competitive, and unfortunately — not fully regulated at the point of hire. Homeowners who skip vetting are taking real risks. Here's why it matters and what to look for.</p>
+
+      <h2>1. Unlicensed Work Can Void Your Home Insurance</h2>
+      <p>In Alberta, certain trade work — electrical, gas, plumbing — must be performed by licensed tradespeople. If a fire or flood is traced to unlicensed work, your home insurer may deny the claim. Always ask for a contractor's trade ticket before they start.</p>
+
+      <h2>2. Uninsured Contractors Leave You Holding the Liability</h2>
+      <p>If an uninsured contractor is injured on your property, you may be held liable under Alberta occupier's liability law. If they damage your home and have no insurance, you have no recourse. All contractors on Freddy Fix It are required to carry commercial general liability insurance before their first job.</p>
+
+      <h2>3. Low Bids Often Come with Hidden Costs</h2>
+      <p>The contractor who quotes $200 for a job that others quoted $600 for isn't saving you money — he's using inferior materials, cutting corners on code compliance, or planning to upcharge mid-job. Vetting helps you compare apples to apples: all licensed, all insured, all at fair market rates.</p>
+
+      <h2>4. Reviews Can Be Faked — Verification Can't</h2>
+      <p>HomeStars and Kijiji reviews are largely unverified. A contractor can solicit friends and family for five-star reviews. On Freddy Fix It, reviews are only unlocked after a job is marked complete by both parties — and tied to real transaction records.</p>
+
+      <h2>5. Your Home Is Your Biggest Asset</h2>
+      <p>The average Calgary home is worth over $600,000. Cutting corners on a $300 plumbing job to save $80 by using someone off Kijiji makes no financial sense when you consider the exposure. Vetted contractors cost roughly the same as unvetted ones — you're not paying a premium, you're removing risk.</p>
+
+      <h2>What "Vetted" Actually Means on Freddy Fix It</h2>
+      <p>Before any contractor can accept work on our platform, they must submit: a valid Alberta trade licence or business registration, proof of commercial general liability insurance, and complete a profile review by our team. Contractors with ratings below 3.5 stars or a pattern of complaints are removed from the platform.</p>
+    </article>
+  );
+}
+
+// ── Post manifest ────────────────────────────────────────────────────────────
+
+const POSTS: Record<string, {
+  title: string; date: string; readTime: string; tag: string;
+  content: React.ComponentType;
+}> = {
+  "freddy-fix-it-vs-homestars-vs-jiffy-calgary": {
+    title: "Freddy Fix It vs HomeStars vs Jiffy vs TaskRabbit: The Best Way to Find a Calgary Contractor in 2026",
+    date: "June 10, 2026", readTime: "8 min read", tag: "Comparison",
+    content: ArticleComparison,
+  },
+  "handyman-costs-calgary-2026": {
+    title: "How Much Does a Handyman Cost in Calgary? 2026 Pricing Guide",
+    date: "June 5, 2026", readTime: "5 min read", tag: "Pricing",
+    content: ArticlePricing,
+  },
+  "calgary-home-winter-checklist": {
+    title: "Calgary Home Winter Prep Checklist: 12 Things to Do Before the Cold Hits",
+    date: "May 28, 2026", readTime: "6 min read", tag: "Maintenance",
+    content: ArticleWinter,
+  },
+  "why-vet-contractors-calgary": {
+    title: "5 Reasons to Always Use a Vetted Contractor in Calgary",
+    date: "May 20, 2026", readTime: "4 min read", tag: "Tips",
+    content: ArticleVetting,
+  },
+};
+
+const TAG_COLORS: Record<string, string> = {
+  Comparison: "#ea6b14", Pricing: "#3b82f6", Maintenance: "#22c55e", Tips: "#a855f7",
+};
+
+// ── Page ─────────────────────────────────────────────────────────────────────
+
+export default function BlogPost() {
+  const params = useParams<{ slug: string }>();
+  const [, setLocation] = useLocation();
+  const post = POSTS[params.slug ?? ""];
+
+  if (!post) {
+    setLocation("/blog");
+    return null;
+  }
+
+  const Content = post.content;
+
+  return (
+    <div style={{ fontFamily: "'DM Sans',sans-serif", background: "#1a2236", color: "#f0f4ff", minHeight: "100vh", padding: "6rem 1.5rem 5rem" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+      <style>{`
+        h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em}
+        h2{color:#ea6b14;font-size:1.5rem;margin-top:2.5rem;margin-bottom:.6rem}
+        h3{color:#f0f4ff;font-size:1.1rem;margin-top:1.4rem;margin-bottom:.3rem}
+        article p{line-height:1.85;color:rgba(190,205,235,.82);font-weight:300;margin-bottom:1rem}
+        article strong{color:#f0f4ff;font-weight:500}
+        article em{color:rgba(190,205,235,.65)}
+        .back-btn{background:transparent;border:1px solid rgba(255,255,255,.12);color:rgba(190,205,235,.6);padding:.4rem .9rem;border-radius:6px;cursor:pointer;font-size:.82rem;font-family:'DM Sans',sans-serif;transition:border-color .2s}
+        .back-btn:hover{border-color:rgba(234,107,20,.4);color:#f0f4ff}
+      `}</style>
+
+      <div style={{ maxWidth: "740px", margin: "0 auto" }}>
+        <button className="back-btn" onClick={() => setLocation("/blog")}>← All Articles</button>
+
+        <div style={{ margin: "2rem 0 .75rem" }}>
+          <span style={{ fontSize: ".72rem", fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: TAG_COLORS[post.tag], background: TAG_COLORS[post.tag] + "22", padding: ".25rem .6rem", borderRadius: 4 }}>{post.tag}</span>
+        </div>
+
+        <h1 style={{ fontSize: "clamp(1.8rem,4vw,2.8rem)", color: "#f0f4ff", lineHeight: 1.2, marginBottom: "1rem" }}>{post.title}</h1>
+
+        <div style={{ display: "flex", gap: "1.5rem", fontSize: ".8rem", color: "rgba(190,205,235,.4)", marginBottom: "3rem", borderBottom: "1px solid rgba(255,255,255,.07)", paddingBottom: "1.5rem" }}>
+          <span>{post.date}</span>
+          <span>{post.readTime}</span>
+          <span>By Freddy Fix It Team</span>
+        </div>
+
+        <Content />
+
+        <div style={{ borderTop: "1px solid rgba(255,255,255,.07)", marginTop: "3rem", paddingTop: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+          <button className="back-btn" onClick={() => setLocation("/blog")}>← Back to Blog</button>
+          <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".6rem 1.5rem", fontSize: ".9rem", fontWeight: 600, cursor: "pointer" }}>Post a Job</button>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -19,6 +19,8 @@ import BrowseContractors from "@/pages/BrowseContractors";
 import ContractorProfile from "@/pages/ContractorProfile";
 import UserAgreement from "@/pages/UserAgreement";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import Blog from "@/pages/Blog";
+import BlogPost from "@/pages/BlogPost";
 
 // When Supabase detects a password-recovery session (fired as the
 // PASSWORD_RECOVERY auth event, or visible as a recovery token in the URL
@@ -110,6 +112,8 @@ export default function App() {
       <Route path="/contractor-success" component={ContractorSuccess} />
       <Route path="/user-agreement" component={UserAgreement} />
       <Route path="/privacy-policy" component={PrivacyPolicy} />
+      <Route path="/blog" component={Blog} />
+      <Route path="/blog/:slug" component={BlogPost} />
 
       {/* Protected */}
       <Route path="/client-dashboard">
