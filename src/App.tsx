@@ -57,36 +57,29 @@ function ProtectedRoute({
   const [redirectTo, setRedirectTo] = useState("/login");
 
   useEffect(() => {
-    const run = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) { setRedirectTo("/login"); setStatus("redirect"); return; }
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setRedirectTo("/login"); setStatus("redirect"); return; }
 
-        if (requiredRole) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("role")
-            .eq("id", user.id)
-            .single();
+      if (requiredRole) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
 
-          if (!profile || profile.role !== requiredRole) {
-            const dest =
-              profile?.role === "admin" ? "/admin-dashboard" :
-              profile?.role === "contractor" ? "/contractor-dashboard" :
-              "/client-dashboard";
-            setRedirectTo(dest);
-            setStatus("redirect");
-            return;
-          }
+        if (!profile || profile.role !== requiredRole) {
+          const dest =
+            profile?.role === "admin" ? "/admin-dashboard" :
+            profile?.role === "contractor" ? "/contractor-dashboard" :
+            "/client-dashboard";
+          setRedirectTo(dest);
+          setStatus("redirect");
+          return;
         }
-        setStatus("ok");
-      } catch (err) {
-        console.error("ProtectedRoute auth error:", err);
-        setRedirectTo("/login");
-        setStatus("redirect");
       }
-    };
-    run();
+      setStatus("ok");
+    })();
   }, [requiredRole]);
 
   if (status === "loading") return (
