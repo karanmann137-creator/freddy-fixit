@@ -45,6 +45,7 @@ export default function AdminDashboard() {
 
   const loadAll = async () => {
     setLoading(true);
+    try {
     const rRange: [number, number] = [page.requests * PAGE_SIZE, page.requests * PAGE_SIZE + PAGE_SIZE - 1];
     const cRange: [number, number] = [page.contractors * PAGE_SIZE, page.contractors * PAGE_SIZE + PAGE_SIZE - 1];
     const jRange: [number, number] = [page.jobs * PAGE_SIZE, page.jobs * PAGE_SIZE + PAGE_SIZE - 1];
@@ -87,7 +88,11 @@ export default function AdminDashboard() {
       }
     }
     setFlagMatches(fm);
-    setLoading(false);
+    } catch (e) {
+      console.error("AdminDashboard loadAll error:", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const pageCount = (which: "requests"|"contractors"|"jobs") => Math.max(1, Math.ceil((counts[which] || 0) / PAGE_SIZE));

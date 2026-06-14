@@ -255,6 +255,116 @@ function ArticleVetting() {
   );
 }
 
+function ArticlePlumberCost() {
+  const [, setLocation] = useLocation();
+  return (
+    <article>
+      <p>Plumbing problems don't wait for a convenient time — and neither should you. Whether it's a leaky faucet, a burst pipe, or a water heater replacement, knowing what Calgary plumbers charge in 2026 helps you spot a fair deal and avoid getting overcharged.</p>
+
+      <h2>Calgary Plumber Rates by Job Type (2026)</h2>
+      <BarChart
+        title="Typical Plumbing Job Costs — Calgary 2026"
+        subtitle="All-in cost estimates in CAD including labour; materials extra where noted"
+        unit="$"
+        data={[
+          { label: "Water heater replacement", value: 1800, color: "#ea6b14" },
+          { label: "Main shutoff valve",        value: 650,  color: "#f59e0b" },
+          { label: "Toilet install/replace",    value: 350,  color: "#3b82f6" },
+          { label: "Sump pump replacement",     value: 900,  color: "#22c55e" },
+          { label: "Leaky faucet repair",       value: 200,  color: "#a855f7" },
+          { label: "Drain clog clearing",       value: 175,  color: "#6b7280" },
+        ]}
+      />
+
+      <h2>Hourly Rate vs Flat-Fee Jobs</h2>
+      <p>Most Calgary plumbers charge <strong>$120–$160/hour</strong> with a 1-hour minimum. Simple jobs like clearing a slow drain or replacing a toilet fill valve are often quoted at a flat fee — usually $150–$250 all-in. Bigger jobs (water heater, main line repair) are typically flat-fee or time-and-materials.</p>
+      <p><strong>Emergency / after-hours calls</strong> add a $75–$150 surcharge on top of the standard rate. If you can wait until Monday morning, you'll pay significantly less.</p>
+
+      <h2>What Affects the Final Price?</h2>
+      <p><strong>Access difficulty</strong> is the biggest variable. A toilet in a finished basement with tight clearances costs more to replace than one in an open main-floor bathroom. <strong>Pipe age and material</strong> matters too — old galvanized pipes are harder to work with than modern PEX.</p>
+      <p><strong>Permit requirements</strong>: In Calgary, any work on the main water line or water heater requires a permit through the City. Licensed plumbers handle this automatically; unlicensed ones skip it — putting you at risk when you sell.</p>
+
+      <h2>Red Flags to Watch For</h2>
+      <p>Be cautious of any plumber who gives you a rock-bottom quote over the phone without seeing the job, asks for full payment upfront, or can't provide a trade licence number. All plumbers on Freddy Fix It are licensed and insured — you get a fixed-price quote before anyone touches your pipes.</p>
+
+      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "#f0f4ff", margin: "0 0 .75rem" }}>Need a plumber in Calgary? Get 3 fixed-price quotes from licensed pros.</p>
+        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
+      </div>
+    </article>
+  );
+}
+
+function ArticleRoofCost() {
+  const [, setLocation] = useLocation();
+  return (
+    <article>
+      <p>Replacing a roof is one of the largest home maintenance expenses a Calgary homeowner will face. Hail seasons, heavy snow loads, and UV exposure mean Calgary roofs work harder than most. Here's what a replacement actually costs in 2026 — and what drives the price up or down.</p>
+
+      <h2>Calgary Roof Replacement Cost by Size</h2>
+      <BarChart
+        title="Roof Replacement Cost — Calgary 2026"
+        subtitle="Full removal and replace with standard 30-year asphalt shingles, labour + materials"
+        unit="k$"
+        data={[
+          { label: "Small bungalow (1,000 sq ft)", value: 8,  color: "#ea6b14" },
+          { label: "Average home (1,500 sq ft)",   value: 12, color: "#3b82f6" },
+          { label: "Large home (2,200 sq ft)",     value: 17, color: "#22c55e" },
+          { label: "Two-storey (2,800 sq ft)",     value: 22, color: "#a855f7" },
+        ]}
+      />
+
+      <h2>What Drives the Price?</h2>
+      <p><strong>Shingle type</strong> is the biggest lever. Standard 3-tab shingles cost $80–$100 per square (100 sq ft). Architectural/dimensional shingles run $110–$140 per square. Impact-resistant shingles (which can qualify for insurance discounts after Calgary hailstorms) cost $140–$180 per square.</p>
+      <p><strong>Pitch and complexity</strong>: Steep roofs and those with multiple valleys, dormers, or skylights require more labour and safety equipment — adding 15–30% to the base cost.</p>
+      <p><strong>Decking replacement</strong>: If the plywood sheathing underneath is rotted or damaged, it needs to be replaced at $3–$5 per sq ft. This is only discoverable once shingles are removed — a reputable contractor will show you the damage before proceeding.</p>
+
+      <h2>Insurance Claims After Hail</h2>
+      <p>Calgary is one of Canada's most hail-prone cities. If your roof was damaged in a storm, file an insurance claim before getting quotes — most policies cover replacement minus your deductible. Hire a contractor <em>after</em> the adjuster's visit, not before. Legitimate roofers will work with your insurer; those who pressure you to sign contracts first are a red flag.</p>
+
+      <h2>Repair vs. Replace</h2>
+      <p>If your roof is under 15 years old and damage is isolated (a few cracked shingles, one flashing failure), repair may be the right call — typically $300–$800. Over 20 years old or more than 30% damaged, replacement is almost always more cost-effective than patching.</p>
+
+      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "#f0f4ff", margin: "0 0 .75rem" }}>Get quotes from vetted Calgary roofers — no obligation.</p>
+        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Roofing Job</button>
+      </div>
+    </article>
+  );
+}
+
+function ArticleSpring() {
+  const [, setLocation] = useLocation();
+  return (
+    <article>
+      <p>When Calgary's snow finally melts — usually late March through May — your home has been through months of freeze-thaw cycles, heavy snow loads, and sub-zero temperatures. Spring is the best time to assess the damage and get ahead of repairs before the summer rush drives up contractor wait times.</p>
+
+      <h2>Start Outside: Exterior Inspection</h2>
+      <p><strong>1. Walk your roof line.</strong> Look for missing, curled, or cracked shingles. Check that flashing around chimneys and vents is still sealed. Binoculars work fine — you don't need to climb up.</p>
+      <p><strong>2. Clean your gutters and downspouts.</strong> Winter debris and ice can leave gutters packed solid. Clogged gutters cause foundation water infiltration and basement flooding — one of the most expensive problems Calgary homeowners face.</p>
+      <p><strong>3. Inspect your foundation.</strong> Walk the perimeter and look for new cracks, heaving, or areas where soil has pulled away from the foundation wall. Spring is when freeze-thaw damage becomes visible.</p>
+      <p><strong>4. Check your driveway and walkways.</strong> Fill asphalt and concrete cracks now, before summer heat cycles expand them further.</p>
+
+      <h2>Inside: What Winter Reveals</h2>
+      <p><strong>5. Look for water stains on ceilings.</strong> Ice dams and roof damage often leave staining that only becomes visible after spring melt. Light brown rings on drywall mean water got in — find the source before it happens again next winter.</p>
+      <p><strong>6. Test your sump pump.</strong> Pour a bucket of water into the sump pit to confirm the pump kicks on. Spring is peak season for basement flooding in Calgary.</p>
+      <p><strong>7. Switch your furnace filter.</strong> It's been running hard all winter. Replace the filter and consider an HVAC tune-up to restore efficiency before the A/C season begins.</p>
+
+      <h2>Landscaping and Drainage</h2>
+      <p><strong>8. Check your yard grading.</strong> The ground around your foundation should slope away from the house. Settled soil that now slopes toward the foundation is a common cause of basement water issues.</p>
+      <p><strong>9. Reconnect and inspect hose bibs.</strong> Confirm your outdoor taps weren't damaged by winter freeze. A cracked fitting can leak inside the wall undetected for weeks.</p>
+
+      <h2>Book Contractors Early</h2>
+      <p>May and June are the busiest months for Calgary contractors — roofers, painters, and landscapers are booked solid by mid-April. If you identified issues this spring, post your job on Freddy Fix It now to get in the queue before wait times stretch to July.</p>
+
+      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "#f0f4ff", margin: "0 0 .75rem" }}>Book spring maintenance contractors before the rush — post a job today.</p>
+        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
+      </div>
+    </article>
+  );
+}
+
 // ── Post manifest ────────────────────────────────────────────────────────────
 
 const POSTS: Record<string, {
@@ -280,6 +390,21 @@ const POSTS: Record<string, {
     title: "5 Reasons to Always Use a Vetted Contractor in Calgary",
     date: "May 20, 2026", readTime: "4 min read", tag: "Tips",
     content: ArticleVetting,
+  },
+  "calgary-plumber-cost-2026": {
+    title: "How Much Does a Plumber Cost in Calgary? 2026 Pricing Guide",
+    date: "June 14, 2026", readTime: "5 min read", tag: "Pricing",
+    content: ArticlePlumberCost,
+  },
+  "calgary-roof-replacement-cost-2026": {
+    title: "Calgary Roof Replacement Cost: What You'll Actually Pay in 2026",
+    date: "June 14, 2026", readTime: "6 min read", tag: "Pricing",
+    content: ArticleRoofCost,
+  },
+  "calgary-spring-home-maintenance-checklist": {
+    title: "Calgary Spring Home Maintenance Checklist: What to Do When the Snow Melts",
+    date: "June 14, 2026", readTime: "5 min read", tag: "Maintenance",
+    content: ArticleSpring,
   },
 };
 

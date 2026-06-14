@@ -33,6 +33,30 @@ const POSTS = [
     readTime: "4 min read",
     tag: "Tips",
   },
+  {
+    slug: "calgary-plumber-cost-2026",
+    title: "How Much Does a Plumber Cost in Calgary? 2026 Pricing Guide",
+    excerpt: "Leaky faucet or full water heater replacement — here's what Calgary plumbers actually charge in 2026, plus the red flags that mean you're about to get overcharged.",
+    date: "June 14, 2026",
+    readTime: "5 min read",
+    tag: "Pricing",
+  },
+  {
+    slug: "calgary-roof-replacement-cost-2026",
+    title: "Calgary Roof Replacement Cost: What You'll Actually Pay in 2026",
+    excerpt: "Hail damage, age, or just time — a new roof is one of Calgary's biggest home expenses. Here's a full cost breakdown by home size, shingle type, and what to know about insurance claims.",
+    date: "June 14, 2026",
+    readTime: "6 min read",
+    tag: "Pricing",
+  },
+  {
+    slug: "calgary-spring-home-maintenance-checklist",
+    title: "Calgary Spring Home Maintenance Checklist: What to Do When the Snow Melts",
+    excerpt: "After a Calgary winter, your home needs attention. This spring checklist covers roof inspection, gutters, foundation checks, sump pumps, and why you should book contractors now before the summer rush.",
+    date: "June 14, 2026",
+    readTime: "5 min read",
+    tag: "Maintenance",
+  },
 ];
 
 const TAG_COLORS: Record<string, string> = {
