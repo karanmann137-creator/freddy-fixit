@@ -22,3 +22,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+apply-auth-oauth.sh
+AUTH_SETUP.md

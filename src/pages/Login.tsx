@@ -2,6 +2,7 @@ import { Ic } from "@/components/Ic";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import OAuthButtons from "@/components/OAuthButtons";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -11,11 +12,29 @@ export default function Login() {
   const [loading, setLoading]   = useState(false);
   const [mode, setMode]         = useState<"signin"|"forgot">("signin");
   const [resetSent, setResetSent] = useState(false);
+  const [needsConfirm, setNeedsConfirm] = useState(false);
+  const [resendNote, setResendNote] = useState("");
+
+  const resendConfirmation = async () => {
+    if (!email) { setError("Enter your email above first."); return; }
+    setResendNote(""); setLoading(true);
+    try {
+      const { error: rErr } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (rErr) throw rErr;
+      setResendNote("Confirmation email sent — check your inbox.");
+    } catch (err: any) {
+      setError(err.message ?? "Could not resend the confirmation email.");
+    } finally { setLoading(false); }
+  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) { setError("Please enter your email and password."); return; }
-    setError(""); setLoading(true);
+    setError(""); setNeedsConfirm(false); setResendNote(""); setLoading(true);
     try {
       const { data, error: authErr } = await supabase.auth.signInWithPassword({ email, password });
       if (authErr) throw authErr;
@@ -24,7 +43,13 @@ export default function Login() {
       else if (profile?.role === "contractor") setLocation("/contractor-dashboard");
       else                                     setLocation("/client-dashboard");
     } catch (err: any) {
-      setError(err.message ?? "Sign in failed. Please check your credentials.");
+      const m = (err?.message ?? "").toLowerCase();
+      if (m.includes("not confirmed") || m.includes("email_not_confirmed") || err?.code === "email_not_confirmed") {
+        setNeedsConfirm(true);
+        setError("Please confirm your email before signing in. Check your inbox for the verification link.");
+      } else {
+        setError(err.message ?? "Sign in failed. Please check your credentials.");
+      }
     } finally { setLoading(false); }
   };
 
@@ -81,6 +106,15 @@ export default function Login() {
               <div style={s.heading}>Welcome Back</div>
               <p style={s.sub}>Sign in to your Freddy Fix It account</p>
               {error && <div style={s.err}>{error}</div>}
+              {needsConfirm && (
+                <div style={{ marginBottom:"1rem" }}>
+                  <button type="button" onClick={resendConfirmation} disabled={loading}
+                    style={{ ...s.btn, background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.4)", color:"#ea6b14" }}>
+                    {loading ? "Sending…" : "Resend confirmation email"}
+                  </button>
+                  {resendNote && <p style={{ fontSize:".8rem", color:"#22c55e", marginTop:".5rem", textAlign:"center" }}>{resendNote}</p>}
+                </div>
+              )}
               <form onSubmit={handleSignIn}>
                 <div style={{ marginBottom:"1rem" }}>
                   <label style={s.label}>Email</label>
@@ -99,6 +133,7 @@ export default function Login() {
                   {loading ? "Signing in…" : "Sign In →"}
                 </button>
               </form>
+              <OAuthButtons />
               <div style={{ display:"flex", alignItems:"center", gap:".75rem", margin:"1.5rem 0" }}>
                 <div style={{ flex:1, height:"1px", background:"rgba(255,255,255,.08)" }} />
                 <span style={{ fontSize:".75rem", color:"rgba(190,205,235,.35)" }}>No account yet?</span>

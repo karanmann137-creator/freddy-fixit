@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import NewRequest from "@/components/NewRequest";
+import OAuthButtons from "@/components/OAuthButtons";
 
 export const SERVICES = [
   { iconName: "wrench", label: "General Handyman" },
@@ -79,6 +80,7 @@ export default function ClientOnboarding() {
   const [submitError, setSubmitError] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [verifyEmail, setVerifyEmail] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   const set = (key: string, val: string) => { setForm(f => ({ ...f, [key]: val })); setErrors(e => ({ ...e, [key]: "" })); };
@@ -116,28 +118,48 @@ export default function ClientOnboarding() {
     if (!validate()) return;
     setLoading(true); setSubmitError("");
     try {
-      const { data: authData, error: authErr } = await supabase.auth.signUp({ email: form.email, password: form.password });
+      // Pass the whole request as signup metadata so a DB trigger creates the
+      // profile + client_request even when email confirmation is on (no session
+      // is returned until the email is verified).
+      const metadata: Record<string, any> = {
+        role: "client",
+        first_name: form.firstName, last_name: form.lastName, phone: form.phone,
+        service_needed: selectedServices.join(", "),
+        preferred_schedule: form.preferredSchedule,
+        location: form.location,
+        job_description: form.jobDescription,
+        client_type: clientType,
+        business_name: clientType === "business" ? form.businessName : "",
+        business_type: clientType === "business" ? form.businessType : "",
+        locations: clientType === "business" ? form.locations : "",
+        recurring: recurring || form.preferredSchedule === "Recurring",
+        recurring_frequency: recurringFrequency,
+        recurring_start_date: recurringStartDate,
+        recurring_end_date: recurringEndDate,
+        billing_preference: clientType === "business" ? form.billingPreference : "",
+      };
+      const { data: authData, error: authErr } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: { data: metadata, emailRedirectTo: `${window.location.origin}/auth/callback?role=client` },
+      });
       if (authErr) throw authErr;
       if (!authData.user) throw new Error("Account creation failed.");
       const userId = authData.user.id;
-      await supabase.from("profiles").insert({ id: userId, email: form.email, first_name: form.firstName, last_name: form.lastName, phone: form.phone, role: "client" });
-      let photoPath: string | null = null;
+      // No session => email confirmation required. The trigger saved their
+      // request already; show the verify screen.
+      if (!authData.session) { setVerifyEmail(true); window.scrollTo(0,0); setLoading(false); return; }
+
+      // Session exists: attach the optional photo to the request the trigger made.
       if (photoFile) {
         const ext = (photoFile.name.split(".").pop() || "jpg").toLowerCase();
         const path = userId + "/" + crypto.randomUUID() + "." + ext;
         const up = await supabase.storage.from("problem-photos").upload(path, photoFile, { upsert: false });
-        if (!up.error) photoPath = path;
+        if (!up.error) {
+          const { data: reqRow } = await supabase.from("client_requests").select("id").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+          if (reqRow) await supabase.from("client_requests").update({ photo_path: path }).eq("id", reqRow.id);
+        }
       }
-      await supabase.from("client_requests").insert({ user_id: userId, first_name: form.firstName, last_name: form.lastName, email: form.email, phone: form.phone, service_needed: selectedServices.join(", "), preferred_schedule: form.preferredSchedule, location: form.location, job_description: form.jobDescription, photo_path: photoPath, status: "pending",
-        client_type: clientType,
-        business_name: clientType === "business" ? (form.businessName || null) : null,
-        business_type: clientType === "business" ? (form.businessType || null) : null,
-        locations: clientType === "business" ? (form.locations || null) : null,
-        recurring: recurring || form.preferredSchedule === "Recurring",
-        recurring_frequency: recurringFrequency || null,
-        recurring_start_date: recurringStartDate || null,
-        recurring_end_date: recurringEndDate || null,
-        billing_preference: clientType === "business" ? (form.billingPreference || null) : null });
       setSuccess(true); window.scrollTo(0,0);
     } catch (err: any) {
       setSubmitError(err.message?.includes("already registered") ? "An account with this email already exists. Please sign in instead." : err.message ?? "Something went wrong.");
@@ -167,6 +189,21 @@ export default function ClientOnboarding() {
     </>
   );
   if (mode === "new") return <NewRequest />;
+
+  if (verifyEmail) return (
+    <div style={s.wrap}>
+      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+      <div style={{ ...s.inner, textAlign:"center", paddingTop:"4rem" }}>
+        <div style={{ width:"72px", height:"72px", background:"rgba(234,107,20,.15)", border:"2px solid rgba(234,107,20,.4)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 2rem" }}>
+          <Ic name="mail" size={32} color="#ea6b14" />
+        </div>
+        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:".5rem" }}>Check Your <span style={{ color:"#ea6b14" }}>Email</span></h1>
+        <p style={{ color:"rgba(190,205,235,.7)", marginBottom:".5rem", lineHeight:1.6 }}>We sent a confirmation link to <strong>{form.email}</strong>. Click it to activate your account.</p>
+        <p style={{ color:"rgba(190,205,235,.5)", fontSize:".85rem", marginBottom:"2rem", fontWeight:300 }}>Your request is saved — we'll start matching you with contractors right away.</p>
+        <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff", maxWidth:"260px", margin:"0 auto" }} onClick={() => setLocation("/login")}>Go to Sign In →</button>
+      </div>
+    </div>
+  );
 
   if (success) return (
     <div style={s.wrap}>
@@ -242,6 +279,7 @@ export default function ClientOnboarding() {
                 {errors.password && <p style={s.err}>{errors.password}</p>}
               </div>
               <p style={{ fontSize:".78rem", color:"rgba(190,205,235,.4)", fontWeight:300 }}>We'll create a free account so you can track your request.</p>
+              <OAuthButtons role="client" label="or sign up with" />
             </div>
           )}
 

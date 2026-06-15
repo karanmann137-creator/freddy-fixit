@@ -1,7 +1,8 @@
 import { Ic } from "@/components/Ic";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import OAuthButtons from "@/components/OAuthButtons";
 
 const SPECIALTIES = [
   { iconName: "wrench", label: "General Repairs" },
@@ -66,7 +67,19 @@ export default function ContractorOnboarding() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [success, setSuccess] = useState(false);
+  const [verifyEmail, setVerifyEmail] = useState(false);
   const [docFiles, setDocFiles] = useState<DocFiles>({ insurance: null, wcb: null, certification: null, gov_id: null });
+  // If the visitor is already signed in (e.g. they just used Google/Apple), we
+  // skip account creation and simply complete their contractor profile.
+  const [authedUserId, setAuthedUserId] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        setAuthedUserId(data.user.id);
+        setForm(f => ({ ...f, email: data.user!.email ?? f.email }));
+      }
+    });
+  }, []);
 
   const setF = (key: string, val: string | number) => { setForm(f => ({ ...f, [key]: val })); setErrors(e => ({ ...e, [key]: "" })); };
   const setFB = (key: string, val: boolean) => { setForm(f => ({ ...f, [key]: val })); };
@@ -79,9 +92,9 @@ export default function ContractorOnboarding() {
     if (step === 1) {
       if (!form.firstName.trim()) errs.firstName = "Required";
       if (!form.lastName.trim())  errs.lastName  = "Required";
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = "Valid email required";
+      if (!authedUserId && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = "Valid email required";
       if (form.phone.replace(/\D/g,"").length < 10) errs.phone = "10-digit phone required";
-      if (form.password.length < 8) errs.password = "Minimum 8 characters";
+      if (!authedUserId && form.password.length < 8) errs.password = "Minimum 8 characters";
     }
     if (step === 2 && selectedSpec.length === 0)  errs.spec  = "Select at least one specialty";
     if (step === 3 && selectedArea.length === 0)  errs.area  = "Select at least one area";
@@ -97,11 +110,40 @@ export default function ContractorOnboarding() {
     if (!agreedToTerms) { setSubmitError("You must agree to the User Agreement and Privacy Policy to continue."); return; }
     setLoading(true); setSubmitError("");
     try {
-      const { data: authData, error: authErr } = await supabase.auth.signUp({ email: form.email, password: form.password });
-      if (authErr) throw authErr;
-      if (!authData.user) throw new Error("Account creation failed.");
-      const userId = authData.user.id;
-      await supabase.from("profiles").insert({ id: userId, email: form.email, first_name: form.firstName, last_name: form.lastName, phone: form.phone, role: "contractor" });
+      // All onboarding answers are passed as signup metadata so a database
+      // trigger can create the profile + contractor row even when email
+      // confirmation is on (no session is returned until the email is verified).
+      const metadata: Record<string, any> = {
+        role: "contractor",
+        first_name: form.firstName, last_name: form.lastName, phone: form.phone,
+        company_name: form.companyName,
+        specialties: selectedSpec,
+        service_area: selectedArea,
+        availability: { windows: selectedAvail },
+        years_of_experience: form.yearsOfExperience,
+        licensed: form.licensed, license_number: form.licenseNumber,
+        has_liability_insurance: form.hasInsurance, insurance_provider: form.insuranceProvider,
+        insurance_expiry: form.insuranceExpiry, has_wcb: form.hasWcb,
+        work_references: form.workReferences,
+      };
+
+      let userId = authedUserId;
+      if (!userId) {
+        const { data: authData, error: authErr } = await supabase.auth.signUp({
+          email: form.email,
+          password: form.password,
+          options: { data: metadata, emailRedirectTo: `${window.location.origin}/auth/callback?role=contractor` },
+        });
+        if (authErr) throw authErr;
+        if (!authData.user) throw new Error("Account creation failed.");
+        userId = authData.user.id;
+        // No session => email confirmation is required. The trigger has already
+        // saved their profile + contractor details; show the verify screen.
+        if (!authData.session) { setVerifyEmail(true); window.scrollTo(0,0); setLoading(false); return; }
+      } else {
+        // Already signed in (OAuth): set their role so the trigger's default doesn't stick.
+        await supabase.from("profiles").update({ role: "contractor", first_name: form.firstName, last_name: form.lastName, phone: form.phone }).eq("id", userId);
+      }
       let photoPublicUrl: string | null = null;
       if (photoFile) {
         const ext = (photoFile.name.split(".").pop() || "jpg").toLowerCase();
@@ -124,7 +166,7 @@ export default function ContractorOnboarding() {
         if (!docErr) docUrls[key] = path;
       }
 
-      await supabase.from("contractors").insert({ id: userId, company_name: form.companyName || null, specialties: selectedSpec, years_of_experience: form.yearsOfExperience === "" ? null : Number(form.yearsOfExperience), service_area: selectedArea, availability: { windows: selectedAvail }, photo_url: photoPublicUrl, licensed: form.licensed, license_number: form.licenseNumber || null, has_liability_insurance: form.hasInsurance, insurance_provider: form.insuranceProvider || null, insurance_expiry: form.insuranceExpiry || null, has_wcb: form.hasWcb, work_references: form.workReferences || null, status: "pending", doc_urls: docUrls });
+      await supabase.from("contractors").upsert({ id: userId, company_name: form.companyName || null, specialties: selectedSpec, years_of_experience: form.yearsOfExperience === "" ? null : Number(form.yearsOfExperience), service_area: selectedArea, availability: { windows: selectedAvail }, photo_url: photoPublicUrl, licensed: form.licensed, license_number: form.licenseNumber || null, has_liability_insurance: form.hasInsurance, insurance_provider: form.insuranceProvider || null, insurance_expiry: form.insuranceExpiry || null, has_wcb: form.hasWcb, work_references: form.workReferences || null, status: "pending", doc_urls: docUrls });
 
       // Trigger automated document review (non-blocking)
       if (Object.keys(docUrls).length > 0) {
@@ -150,6 +192,21 @@ export default function ContractorOnboarding() {
     availBtnSel: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.5)", color:"#f0f4ff" },
     navBtn: { flex:1, padding:".85rem 1.5rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer", border:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:".4rem" },
   };
+
+  if (verifyEmail) return (
+    <div style={s.wrap}>
+      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+      <div style={{ ...s.inner, textAlign:"center", paddingTop:"4rem" }}>
+        <div style={{ width:"72px", height:"72px", background:"rgba(234,107,20,.15)", border:"2px solid rgba(234,107,20,.4)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 2rem" }}>
+          <Ic name="mail" size={32} color="#ea6b14" />
+        </div>
+        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.6rem", letterSpacing:".06em", marginBottom:".5rem" }}>Verify Your <span style={{ color:"#ea6b14" }}>Email</span></h1>
+        <p style={{ color:"rgba(190,205,235,.7)", marginBottom:".5rem", lineHeight:1.6 }}>We sent a confirmation link to <strong>{form.email}</strong>. Click it to activate your account and sign in.</p>
+        <p style={{ color:"rgba(190,205,235,.5)", fontSize:".85rem", marginBottom:"2rem", fontWeight:300 }}>Your details are saved. After verifying, sign in and upload any remaining documents from your dashboard.</p>
+        <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff", maxWidth:"260px", margin:"0 auto" }} onClick={() => setLocation("/login")}>Go to Sign In →</button>
+      </div>
+    </div>
+  );
 
   if (success) return (
     <div style={s.wrap}>
@@ -210,11 +267,13 @@ export default function ContractorOnboarding() {
                 <input style={{ ...inp, borderColor: errors.phone ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} type="tel" placeholder="403-555-0100" value={form.phone} onChange={e => setF("phone",e.target.value)} />
                 {errors.phone && <p style={s.err}>{errors.phone}</p>}
               </div>
-              <div style={{ marginBottom:"1.2rem" }}>
-                <label style={s.label}>Password (for your account)</label>
-                <input style={{ ...inp, borderColor: errors.password ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} type="password" placeholder="Min 8 characters" value={form.password} onChange={e => setF("password",e.target.value)} />
-                {errors.password && <p style={s.err}>{errors.password}</p>}
-              </div>
+              {!authedUserId && (
+                <div style={{ marginBottom:"1.2rem" }}>
+                  <label style={s.label}>Password (for your account)</label>
+                  <input style={{ ...inp, borderColor: errors.password ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} type="password" placeholder="Min 8 characters" value={form.password} onChange={e => setF("password",e.target.value)} />
+                  {errors.password && <p style={s.err}>{errors.password}</p>}
+                </div>
+              )}
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Years of Experience</label>
                 <input style={inp} type="number" min={0} max={50} value={form.yearsOfExperience} placeholder="e.g. 5" onChange={e => setF("yearsOfExperience", e.target.value)} />
@@ -250,6 +309,7 @@ export default function ContractorOnboarding() {
                 </div>
               </div>
               <p style={{ fontSize:".78rem", color:"rgba(190,205,235,.4)", fontWeight:300 }}>We'll create a free account so you can manage your jobs.</p>
+              {!authedUserId && <OAuthButtons role="contractor" label="or sign up with" />}
             </div>
           )}
 
