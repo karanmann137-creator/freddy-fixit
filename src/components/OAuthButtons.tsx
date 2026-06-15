@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-// Google + Apple sign-in buttons.
+// Google sign-in button.
 // `role` is the intent of the page the user started from:
 //   - contractor onboarding -> role="contractor"
 //   - client onboarding      -> role="client"
@@ -9,10 +9,10 @@ import { supabase } from "@/lib/supabase";
 // The role is carried through the OAuth round-trip in the redirect URL so the
 // callback page knows where to send a brand-new account.
 export default function OAuthButtons({ role, label = "or continue with" }: { role?: "client" | "contractor"; label?: string }) {
-  const [busy, setBusy] = useState<"google" | "apple" | null>(null);
+  const [busy, setBusy] = useState<"google" | null>(null);
   const [err, setErr] = useState("");
 
-  const signIn = async (provider: "google" | "apple") => {
+  const signIn = async (provider: "google") => {
     setErr(""); setBusy(provider);
     try {
       const params = new URLSearchParams();
@@ -53,13 +53,6 @@ export default function OAuthButtons({ role, label = "or continue with" }: { rol
             <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.94l3.01 2.34C4.68 5.16 6.66 3.58 9 3.58z"/>
           </svg>
           {busy === "google" ? "Redirecting…" : "Continue with Google"}
-        </button>
-        <button type="button" onClick={() => signIn("apple")} disabled={busy !== null}
-          style={{ ...btn, background: "#000", color: "#fff", borderColor: "#000", opacity: busy && busy !== "apple" ? .6 : 1 }}>
-          <svg width="16" height="16" viewBox="0 0 384 512" fill="#fff" aria-hidden="true">
-            <path d="M318.7 268c-.3-37 16.4-65 50.1-85.6-18.9-27-47.4-41.9-85-44.8-35.6-2.8-74.5 20.8-88.7 20.8-15 0-49.4-19.8-76.4-19.8C72.4 139.1 16 184.6 16 277c0 27.3 5 55.5 15 84.6 13.3 38.2 61.2 132 111.2 130.5 26.1-.6 44.6-18.5 78.6-18.5 33 0 50.1 18.5 78.7 18.5 50.4-.7 93.8-86 106.5-124.3-67.7-31.9-65.3-93.5-65.3-95.8zM262.4 80.6c27.2-32.3 24.7-61.7 23.9-72.3-23.9 1.4-51.6 16.3-67.4 34.6-17.4 19.6-27.6 43.8-25.4 71.7 25.8 2 49.3-11.2 68.9-34z"/>
-          </svg>
-          {busy === "apple" ? "Redirecting…" : "Continue with Apple"}
         </button>
       </div>
     </div>
