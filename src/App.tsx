@@ -20,6 +20,7 @@ import BrowseContractors from "@/pages/BrowseContractors";
 import ContractorProfile from "@/pages/ContractorProfile";
 import UserAgreement from "@/pages/UserAgreement";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import ProtectionPromise from "@/pages/ProtectionPromise";
 import Blog from "@/pages/Blog";
 import BlogPost from "@/pages/BlogPost";
 
@@ -132,6 +133,7 @@ export default function App() {
       <Route path="/contractor-success" component={ContractorSuccess} />
       <Route path="/user-agreement" component={UserAgreement} />
       <Route path="/privacy-policy" component={PrivacyPolicy} />
+      <Route path="/homeowner-protection-promise" component={ProtectionPromise} />
       <Route path="/blog" component={Blog} />
       <Route path="/blog/:slug" component={BlogPost} />
 

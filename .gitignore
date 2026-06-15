@@ -25,3 +25,4 @@ dist-ssr
 apply-auth-oauth.sh
 AUTH_SETUP.md
 apply-bugfixes.sh
+apply-legal-pages.sh

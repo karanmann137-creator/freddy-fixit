@@ -213,7 +213,8 @@ export default function PrivacyPolicy() {
         <div style={{ borderTop:"1px solid rgba(255,255,255,.08)", paddingTop:"2rem", marginTop:"2rem", textAlign:"center" }}>
           <p style={{ fontSize:".78rem", color:"rgba(190,205,235,.3)" }}>
             &copy; {new Date().getFullYear()} Freddy FixIt Contractors Inc. &nbsp;·&nbsp;
-            <a href="/user-agreement" style={{ color:"rgba(190,205,235,.4)" }}>User Agreement</a>
+            <a href="/user-agreement" style={{ color:"rgba(190,205,235,.4)" }}>User Agreement</a> &nbsp;·&nbsp;
+            <a href="/homeowner-protection-promise" style={{ color:"rgba(190,205,235,.4)" }}>Protection Promise</a>
           </p>
         </div>
       </div>
