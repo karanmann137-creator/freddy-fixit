@@ -7,23 +7,41 @@ interface Props {
   estimatedQuote?: number | null;
   quoteNotes?: string | null;
   canQuote?: boolean;
+  canUpload?: boolean;
 }
 
-export default function RequestPhotoQuote({ requestId, photoPath, estimatedQuote, quoteNotes, canQuote }: Props) {
+export default function RequestPhotoQuote({ requestId, photoPath, estimatedQuote, quoteNotes, canQuote, canUpload }: Props) {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [currentPath, setCurrentPath] = useState<string | null>(photoPath ?? null);
   const [editing, setEditing] = useState(false);
   const [amount, setAmount] = useState(estimatedQuote?.toString() ?? "");
   const [notes, setNotes] = useState(quoteNotes ?? "");
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [currentQuote, setCurrentQuote] = useState<number | null>(estimatedQuote ?? null);
   const [currentNotes, setCurrentNotes] = useState<string | null>(quoteNotes ?? null);
 
   useEffect(() => {
-    if (!photoPath) return;
-    supabase.storage.from("request-photos").createSignedUrl(photoPath, 3600)
+    if (!currentPath) { setPhotoUrl(null); return; }
+    supabase.storage.from("problem-photos").createSignedUrl(currentPath, 3600)
       .then(({ data }) => setPhotoUrl(data?.signedUrl ?? null));
-  }, [photoPath]);
+  }, [currentPath]);
+
+  const uploadPhoto = async (file: File) => {
+    setUploading(true);
+    const { data: auth } = await supabase.auth.getUser();
+    const uid = auth.user?.id;
+    if (!uid) { setUploading(false); alert("Please sign in again to add a photo."); return; }
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const path = uid + "/" + crypto.randomUUID() + "." + ext;
+    const up = await supabase.storage.from("problem-photos").upload(path, file, { upsert: false });
+    if (up.error) { setUploading(false); alert("Couldn't upload photo: " + up.error.message); return; }
+    const { error } = await supabase.from("client_requests").update({ photo_path: path }).eq("id", requestId);
+    setUploading(false);
+    if (error) { alert("Couldn't attach photo: " + error.message); return; }
+    setCurrentPath(path);
+  };
 
   const saveQuote = async () => {
     const parsed = parseFloat(amount);
@@ -42,7 +60,7 @@ export default function RequestPhotoQuote({ requestId, photoPath, estimatedQuote
     setTimeout(() => setSaved(false), 3000);
   };
 
-  if (!photoPath && !canQuote && !currentQuote) return null;
+  if (!currentPath && !canQuote && !currentQuote && !canUpload) return null;
 
   const s: Record<string, React.CSSProperties> = {
     wrap: { marginTop: "1rem", display: "flex", flexDirection: "column", gap: ".75rem" },
@@ -61,6 +79,18 @@ export default function RequestPhotoQuote({ requestId, photoPath, estimatedQuote
         <div>
           <div style={s.label}>Job photo</div>
           <img src={photoUrl} alt="Job photo" style={s.photo} />
+        </div>
+      )}
+
+      {canUpload && (
+        <div>
+          {!photoUrl && <div style={s.label}>Add a photo</div>}
+          <label style={{ ...s.btn, display: "inline-block", background: "rgba(255,255,255,.07)", color: "rgba(190,205,235,.8)", border: "1px solid rgba(255,255,255,.1)", cursor: uploading ? "default" : "pointer" }}>
+            {uploading ? "Uploading…" : photoUrl ? "Replace photo" : "Upload a photo"}
+            <input type="file" accept="image/*" disabled={uploading} style={{ display: "none" }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); e.target.value = ""; }} />
+          </label>
+          {!photoUrl && <div style={{ fontSize: ".75rem", color: "rgba(190,205,235,.45)", marginTop: ".35rem" }}>A photo helps contractors quote accurately.</div>}
         </div>
       )}
 

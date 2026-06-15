@@ -199,7 +199,7 @@ export default function ClientOnboarding() {
         </div>
         <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:".5rem" }}>Check Your <span style={{ color:"#ea6b14" }}>Email</span></h1>
         <p style={{ color:"rgba(190,205,235,.7)", marginBottom:".5rem", lineHeight:1.6 }}>We sent a confirmation link to <strong>{form.email}</strong>. Click it to activate your account.</p>
-        <p style={{ color:"rgba(190,205,235,.5)", fontSize:".85rem", marginBottom:"2rem", fontWeight:300 }}>Your request is saved — we'll start matching you with contractors right away.</p>
+        <p style={{ color:"rgba(190,205,235,.5)", fontSize:".85rem", marginBottom:"2rem", fontWeight:300 }}>Your request is saved — we'll start matching you with contractors right away.{photoFile ? " Once you've verified, you can add your photo from your dashboard." : ""}</p>
         <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff", maxWidth:"260px", margin:"0 auto" }} onClick={() => setLocation("/login")}>Go to Sign In →</button>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 
 // ── Chart component ──────────────────────────────────────────────────────────
@@ -419,10 +420,11 @@ export default function BlogPost() {
   const [, setLocation] = useLocation();
   const post = POSTS[params.slug ?? ""];
 
-  if (!post) {
-    setLocation("/blog");
-    return null;
-  }
+  useEffect(() => {
+    if (!post) setLocation("/blog");
+  }, [post, setLocation]);
+
+  if (!post) return null;
 
   const Content = post.content;
 

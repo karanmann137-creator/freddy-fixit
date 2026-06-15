@@ -9,7 +9,7 @@ export default function ContractorSuccess() {
     { iconName: "search", title: "Profile Review", desc: "We'll review your details and verify your specialties — usually within 24 hours." },
     { iconName: "user-check", title: "Account Activated", desc: "You'll get a WhatsApp message or email once your profile is live and visible to clients." },
     { iconName: "smartphone", title: "Start Getting Jobs", desc: "We'll match you with clients in your area based on your specialties and availability." },
-    { icon: "⭐", title: "Build Your Reputation", desc: "Complete jobs, collect 5-star reviews, and move to the top of our contractor list." },
+    { iconName: "sparkles", title: "Build Your Reputation", desc: "Complete jobs, collect 5-star reviews, and move to the top of our contractor list." },
   ];
 
   return (

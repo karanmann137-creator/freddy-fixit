@@ -90,8 +90,8 @@ export default function ContractorProfile() {
         {/* Header card */}
         <div style={{ ...s.card, display:"flex", gap:"1.5rem", alignItems:"flex-start", flexWrap:"wrap" as const }}>
           <div style={{ width:80, height:80, borderRadius:"50%", overflow:"hidden", background:"rgba(234,107,20,.1)", border:"2px solid rgba(234,107,20,.25)", flexShrink:0 }}>
-            {contractor.photo_path
-              ? <img src={avatarUrl(contractor.photo_path)} alt={contractor.first_name} style={{ width:"100%", height:"100%", objectFit:"cover" as const }} />
+            {contractor.photo_url
+              ? <img src={contractor.photo_url} alt={contractor.first_name} style={{ width:"100%", height:"100%", objectFit:"cover" as const }} />
               : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"2rem" }}>🔧</div>
             }
           </div>

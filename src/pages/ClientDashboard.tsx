@@ -312,7 +312,7 @@ export default function ClientDashboard() {
                       <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".4rem" }}>Job Description</div>
                       <div style={{ fontSize:".88rem", color:"rgba(190,205,235,.75)", lineHeight:1.6 }}>{activeReq.job_description}</div>
                     </div>
-                    <RequestPhotoQuote requestId={activeReq.id} photoPath={activeReq.photo_path} estimatedQuote={activeReq.estimated_quote} quoteNotes={activeReq.quote_notes} />
+                    <RequestPhotoQuote requestId={activeReq.id} photoPath={activeReq.photo_path} estimatedQuote={activeReq.estimated_quote} quoteNotes={activeReq.quote_notes} canUpload />
                     <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" }}>
                       <div style={{ display:"inline-block", padding:".4rem .9rem", borderRadius:"99px", fontSize:".78rem", fontWeight:500, color: STATUS_META[activeReq.status]?.color, border:`1px solid ${STATUS_META[activeReq.status]?.color}` }}>
                         <Ic name={STATUS_META[activeReq.status]?.icon as any} size={13} color={STATUS_META[activeReq.status]?.color} style={{ marginRight:4 }} />{STATUS_META[activeReq.status]?.label}

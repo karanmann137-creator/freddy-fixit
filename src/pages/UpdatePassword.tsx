@@ -12,13 +12,19 @@ export default function UpdatePassword() {
 
   useEffect(() => {
     let settled = false;
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session && !settled) { settled = true; setPhase("ready"); }
-    });
+    const ready = () => { if (!settled) { settled = true; setPhase("ready"); } };
+
+    // If Supabase redirected back with an explicit error in the URL (e.g. the link
+    // truly expired), don't make the user wait — show invalid right away.
+    const hash = window.location.hash || "";
+    if (/error=|error_code=/.test(hash)) { setPhase("invalid"); return; }
+
+    supabase.auth.getSession().then(({ data }) => { if (data.session) ready(); });
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") && session) { settled = true; setPhase("ready"); }
+      if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") && session) ready();
     });
-    const t = setTimeout(() => { if (!settled) setPhase("invalid"); }, 2500);
+    // Give the recovery token time to be parsed (slow connections / cold loads).
+    const t = setTimeout(() => { if (!settled) setPhase("invalid"); }, 10000);
     return () => { clearTimeout(t); sub.subscription.unsubscribe(); };
   }, []);
 

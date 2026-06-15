@@ -268,7 +268,7 @@ export default function AdminDashboard() {
                 <div style={s.title}>Job {j.id.slice(0,8)}</div>
                 <div style={s.meta}>Status: {j.status}</div>
                 {j.amount && <div style={s.meta}>Amount: ${j.amount}</div>}
-                {j.scheduled_date && <div style={s.meta}>Date: {j.scheduled_date}</div>}
+                {j.scheduled_at && <div style={s.meta}>Date: {new Date(j.scheduled_at).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" })}</div>}
               </div>
             ))}
             {pager("jobs")}

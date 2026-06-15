@@ -189,7 +189,7 @@ export default function NewRequest() {
           <p style={{ ...s.label, marginTop:"1.75rem" }}>When do you need it?</p>
           {SCHEDULES.map(sc => (
             <button key={sc.label} style={{ ...s.schedBtn, ...(schedule === sc.label ? s.schedBtnSel : {}) }} onClick={() => { setSchedule(sc.label); setErrors(e => ({ ...e, schedule:"" })); }}>
-              <span style={{ fontSize:"1.5rem" }}>{sc.icon}</span>
+              <span style={{ fontSize:"1.5rem" }}><Ic name={sc.iconName as any} size={22} color="#ea6b14" /></span>
               <div><div style={{ fontSize:".95rem", fontWeight:500 }}>{sc.label}</div><div style={{ fontSize:".78rem", color:"rgba(190,205,235,.5)" }}>{sc.sub}</div></div>
             </button>
           ))}
