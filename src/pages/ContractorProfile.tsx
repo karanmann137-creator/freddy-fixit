@@ -16,11 +16,12 @@ export default function ContractorProfile() {
   useEffect(() => {
     if (!id) return;
     (async () => {
+      // RPC instead of the contractor_directory view: returns the same
+      // contact-free columns, but lets admins preview contractors of any
+      // status (pending/inactive) while the public still only sees active ones.
       const { data: con } = await supabase
-        .from("contractor_directory")
-        .select("*")
-        .eq("id", id)
-        .single();
+        .rpc("get_contractor_profile", { p_id: id })
+        .maybeSingle();
       setContractor(con);
 
       const { data: pf } = await supabase
