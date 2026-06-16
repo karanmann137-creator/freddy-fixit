@@ -41,12 +41,25 @@ const AVAILABILITY_OPTIONS = [
   { iconName: "refresh", label: "Fully Flexible",     sub: "Available anytime" },
 ];
 
-const STEP_TITLES = ["Your Details", "Your Specialties", "Service Area", "Availability", "Credentials", "Profile Photo", "Documents"];
+// Primary work classification. This decides which credentials we actually
+// require: only regulated trades (electrical, gas, plumbing, HVAC) need a
+// provincial licence; for moving/assembly/cleaning a licence isn't required
+// and insurance is recommended rather than mandatory.
+const WORK_TYPES = [
+  { id:"regulated",     label:"Regulated trade",             sub:"Electrical, gas, plumbing, HVAC — needs a provincial certificate", licence:"required",    insurance:"required"    },
+  { id:"skilled",       label:"Skilled trade",               sub:"Carpentry, drywall, painting, flooring, roofing, concrete, appliance install", licence:"optional", insurance:"required" },
+  { id:"handyman",      label:"General handyman & repairs",  sub:"Multi-skill repairs and small jobs around the home",               licence:"optional",    insurance:"recommended" },
+  { id:"moving",        label:"Moving, assembly & delivery", sub:"Furniture & appliance moving, assembly, hauling — no trade licence needed", licence:"none", insurance:"recommended" },
+  { id:"home_services", label:"Cleaning, yard & seasonal",   sub:"Cleaning, landscaping, snow removal, gutters",                     licence:"none",        insurance:"recommended" },
+];
+
+const STEP_TITLES = ["Your Details", "Your Specialties", "Service Area", "Availability", "Your Trade", "Credentials", "Profile Photo", "Documents"];
 const STEP_SUBS   = [
   "Just the basics — takes about a minute",
   "What services do you offer? Select all that apply",
   "Which parts of Calgary do you cover?",
   "When are you generally available?",
+  "What best describes your work? This sets what we'll need from you",
   "Tell us about your qualifications",
   "Add a profile photo (optional)",
   "Upload now, or skip and add them later from your dashboard",
@@ -57,8 +70,8 @@ type DocFiles = { insurance: File|null; wcb: File|null; certification: File|null
 export default function ContractorOnboarding() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
-  const TOTAL = 7;
-  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", companyName:"", password:"", yearsOfExperience:"", photoUrl:"", licensed:false, licenseNumber:"", hasInsurance:false, insuranceProvider:"", insuranceExpiry:"", hasWcb:false, workReferences:"" });
+  const TOTAL = 8;
+  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", companyName:"", password:"", yearsOfExperience:"", photoUrl:"", workType:"", licensed:false, licenseNumber:"", hasInsurance:false, insuranceProvider:"", insuranceExpiry:"", hasWcb:false, workReferences:"" });
   const [selectedSpec,  setSelectedSpec]  = useState<string[]>([]);
   const [selectedArea,  setSelectedArea]  = useState<string[]>([]);
   const [selectedAvail, setSelectedAvail] = useState<string[]>([]);
@@ -82,6 +95,9 @@ export default function ContractorOnboarding() {
     });
   }, []);
 
+  const wt = WORK_TYPES.find(w => w.id === form.workType);
+  const insuranceRequired = wt?.insurance === "required";
+
   const setF = (key: string, val: string | number) => { setForm(f => ({ ...f, [key]: val })); setErrors(e => ({ ...e, [key]: "" })); };
   const setFB = (key: string, val: boolean) => { setForm(f => ({ ...f, [key]: val })); };
   const toggleSpec  = (l: string) => { setSelectedSpec(prev  => prev.includes(l)  ? prev.filter(x => x !== l)  : [...prev, l]);  setErrors(e => ({ ...e, spec: "" })); };
@@ -100,6 +116,7 @@ export default function ContractorOnboarding() {
     if (step === 2 && selectedSpec.length === 0)  errs.spec  = "Select at least one specialty";
     if (step === 3 && selectedArea.length === 0)  errs.area  = "Select at least one area";
     if (step === 4 && selectedAvail.length === 0) errs.avail = "Select at least one availability window";
+    if (step === 5 && !form.workType)             errs.workType = "Select what best describes your work";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -121,6 +138,7 @@ export default function ContractorOnboarding() {
         specialties: selectedSpec,
         service_area: selectedArea,
         availability: { windows: selectedAvail },
+        work_type: form.workType,
         years_of_experience: form.yearsOfExperience,
         licensed: form.licensed, license_number: form.licenseNumber,
         has_liability_insurance: form.hasInsurance, insurance_provider: form.insuranceProvider,
@@ -167,7 +185,7 @@ export default function ContractorOnboarding() {
         if (!docErr) docUrls[key] = path;
       }
 
-      await supabase.from("contractors").upsert({ id: userId, company_name: form.companyName || null, specialties: selectedSpec, years_of_experience: form.yearsOfExperience === "" ? null : Number(form.yearsOfExperience), service_area: selectedArea, availability: { windows: selectedAvail }, photo_url: photoPublicUrl, licensed: form.licensed, license_number: form.licenseNumber || null, has_liability_insurance: form.hasInsurance, insurance_provider: form.insuranceProvider || null, insurance_expiry: form.insuranceExpiry || null, has_wcb: form.hasWcb, work_references: form.workReferences || null, status: "pending", doc_urls: docUrls });
+      await supabase.from("contractors").upsert({ id: userId, company_name: form.companyName || null, specialties: selectedSpec, years_of_experience: form.yearsOfExperience === "" ? null : Number(form.yearsOfExperience), service_area: selectedArea, availability: { windows: selectedAvail }, work_type: form.workType || null, photo_url: photoPublicUrl, licensed: form.licensed, license_number: form.licenseNumber || null, has_liability_insurance: form.hasInsurance, insurance_provider: form.insuranceProvider || null, insurance_expiry: form.insuranceExpiry || null, has_wcb: form.hasWcb, work_references: form.workReferences || null, status: "pending", doc_urls: docUrls });
 
       // Trigger automated document review (non-blocking)
       if (Object.keys(docUrls).length > 0) {
@@ -352,11 +370,41 @@ export default function ContractorOnboarding() {
             </div>
           )}
 
-          {/* Step 5 — Credentials */}
+          {/* Step 5 — Trade / work type */}
           {step === 5 && (
             <div>
               <p style={{ fontSize:".85rem", color:"rgba(190,205,235,.55)", marginBottom:"1.5rem", fontWeight:300, lineHeight:1.6 }}>
-                Let clients know what you bring to the table. You can update any of this later from your dashboard.
+                Pick the option that best fits most of your work. This is how we know what to ask for next — for example, a furniture mover or assembler doesn&rsquo;t need a trade licence, while electrical or plumbing work does.
+              </p>
+              {WORK_TYPES.map(w => (
+                <button key={w.id} style={{ ...s.availBtn, ...(form.workType === w.id ? s.availBtnSel : {}) }} onClick={() => { setForm(f => ({ ...f, workType: w.id })); setErrors(e => ({ ...e, workType: "" })); }}>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:".95rem", fontWeight:500 }}>{w.label}</div>
+                    <div style={{ fontSize:".78rem", color:"rgba(190,205,235,.5)", marginTop:".15rem", lineHeight:1.45 }}>{w.sub}</div>
+                  </div>
+                  {form.workType === w.id && <span style={{ color:"#ea6b14", fontSize:"1.1rem", flexShrink:0 }}>✓</span>}
+                </button>
+              ))}
+              {errors.workType && <p style={s.err}>{errors.workType}</p>}
+              {wt && (
+                <div style={{ background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.15)", borderRadius:"8px", padding:".9rem 1rem", fontSize:".82rem", color:"rgba(190,205,235,.7)", lineHeight:1.6, marginTop:"1rem" }}>
+                  {wt.licence === "required"
+                    ? "This is a regulated trade in Alberta — we'll ask for your provincial trade licence and proof of liability insurance."
+                    : wt.licence === "optional"
+                      ? "No provincial trade licence is required to sign up. Liability insurance is expected for this kind of work; a trade certificate is optional but helps you stand out."
+                      : "No trade licence is required for this kind of work. Liability insurance is recommended — it protects you and reassures clients — but it's optional and you can add it later."}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 6 — Credentials */}
+          {step === 6 && (
+            <div>
+              <p style={{ fontSize:".85rem", color:"rgba(190,205,235,.55)", marginBottom:"1.5rem", fontWeight:300, lineHeight:1.6 }}>
+                {wt && wt.licence === "none"
+                  ? "Your work isn't a licensed trade, so a licence isn't required. Let clients know if you carry insurance — it's optional here, but it builds trust."
+                  : "Let clients know what you bring to the table. You can update any of this later from your dashboard."}
               </p>
               <label style={{ display:"flex", alignItems:"center", gap:".6rem", cursor:"pointer", fontSize:".9rem", color:"rgba(190,205,235,.85)" }}>
                 <input type="checkbox" checked={form.licensed} onChange={e=>setFB("licensed",e.target.checked)} style={{ width:"18px", height:"18px", accentColor:"#ea6b14", cursor:"pointer", flexShrink:0 }} />
@@ -384,16 +432,16 @@ export default function ContractorOnboarding() {
             </div>
           )}
 
-          {/* Step 7 — Documents */}
-          {step === 7 && (
+          {/* Step 8 — Documents */}
+          {step === 8 && (
             <div>
               <p style={{ fontSize:".85rem", color:"rgba(190,205,235,.55)", marginBottom:"1rem", fontWeight:300, lineHeight:1.6 }}>
                 Upload your credentials and our AI reviews them instantly. You don't need them to finish signing up — you can submit now and add documents anytime from your dashboard. You'll be approved to take jobs once they're verified.
               </p>
               {([
-                { key:"insurance",    label:"Liability Insurance Certificate", required:true,  hint:"Certificate of Insurance showing min. $1M coverage in Alberta" },
-                { key:"wcb",          label:"WCB / Workers Comp Certificate",  required:true,  hint:"WCB clearance letter issued within the last 90 days" },
-                { key:"certification",label:"Trade Certification",             required:false, hint:"Red Seal, provincial licence, or other trade credential" },
+                { key:"insurance",    label:"Liability Insurance Certificate", required:insuranceRequired,  hint:"Certificate of Insurance showing min. $1M coverage in Alberta" },
+                { key:"wcb",          label:"WCB / Workers Comp Certificate",  required:insuranceRequired,  hint:"WCB clearance letter issued within the last 90 days" },
+                { key:"certification",label:"Trade Certification",             required: wt?.licence === "required", hint:"Red Seal, provincial licence, or other trade credential" },
                 { key:"gov_id",       label:"Government-Issued Photo ID",      required:true,  hint:"Driver's licence or passport — name must be clearly visible" },
               ] as Array<{ key: keyof DocFiles; label: string; required: boolean; hint: string }>).map(doc => (
                 <div key={doc.key} style={{ marginBottom:"1.25rem" }}>
@@ -456,8 +504,8 @@ export default function ContractorOnboarding() {
             </div>
           )}
 
-          {/* Step 6 — Photo */}
-          {step === 6 && (
+          {/* Step 7 — Photo */}
+          {step === 7 && (
             <div>
               <div style={{ border:"2px dashed rgba(255,255,255,.12)", borderRadius:"12px", padding:"2rem 1.5rem", textAlign:"center", marginBottom:"1rem" }}>
                 <div style={{ marginBottom:"1rem" }}><Ic name="camera" size={48} color="#ea6b14" /></div>
