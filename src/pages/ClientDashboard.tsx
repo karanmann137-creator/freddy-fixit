@@ -96,7 +96,7 @@ export default function ClientDashboard() {
         // in the same round-trip instead of a third sequential query.
         const [{ data: con }, { data: job }] = await Promise.all([
           activeReq.assigned_contractor_id
-            ? supabase.from("profiles").select("*").eq("id", activeReq.assigned_contractor_id).single()
+            ? supabase.rpc("get_contractor_profile", { p_id: activeReq.assigned_contractor_id }).maybeSingle()
             : Promise.resolve({ data: null }),
           supabase.from("jobs").select("*, messages(*)").eq("request_id", activeReq.id).maybeSingle(),
         ]);
@@ -426,7 +426,7 @@ export default function ClientDashboard() {
                       </div>
                       <div>
                         <div style={{ fontSize:"1rem", fontWeight:500 }}>{contractor.first_name} {contractor.last_name}</div>
-                        <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.5)" }}><Ic name="phone" size={13} style={{ marginRight:4 }} />{contractor.phone}</div>
+                        <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.5)" }}><Ic name="message-square" size={13} style={{ marginRight:4 }} />Message in chat</div>
                       </div>
                       {activeJob && (
                         <button style={{ ...s.btn, marginLeft:"auto", color:"#25d366", borderColor:"rgba(37,211,102,.25)", background:"rgba(37,211,102,.1)" }} onClick={() => setActiveTab("chat")}>

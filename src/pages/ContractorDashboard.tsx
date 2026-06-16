@@ -48,7 +48,7 @@ export default function ContractorDashboard() {
       const { data: pf } = await supabase.from("portfolio_items").select("*").eq("contractor_id", user.id).order("created_at", { ascending: false });
       setPortfolio(pf ?? []);
       const { data: jobs } = await supabase.from("jobs")
-        .select("*, request:client_requests!jobs_request_id_fkey(*), client:profiles!jobs_client_id_fkey(*)")
+        .select("*, request:client_requests!jobs_request_id_fkey(service_needed, job_description, preferred_schedule, location, photo_path, estimated_quote, quote_notes, vehicle_details), client:profiles!jobs_client_id_fkey(first_name)")
         .eq("contractor_id", user.id).order("created_at", { ascending: false });
       const enriched = jobs ?? [];
       setMyJobs(enriched);
@@ -261,7 +261,7 @@ export default function ContractorDashboard() {
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:".75rem" }}>
                   <div>
                     <div style={{ fontSize:"1rem", fontWeight:500, marginBottom:".3rem" }}>{job.request?.service_needed ?? "Job"}</div>
-                    <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.6)", marginBottom:".2rem" }}><Ic name="user" size={13} style={{ marginRight:4 }} />{job.client?.first_name} {job.client?.last_name} · <Ic name="phone" size={13} style={{ marginRight:4, marginLeft:4 }} />{job.client?.phone}</div>
+                    <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.6)", marginBottom:".2rem" }}><Ic name="user" size={13} style={{ marginRight:4 }} />{job.client?.first_name ?? "Client"} · <Ic name="message-square" size={13} style={{ marginRight:4, marginLeft:4 }} />Message in chat below</div>
                     <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.5)" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{job.request?.location}</div>
                   </div>
                   <div style={{ textAlign:"right" }}>
