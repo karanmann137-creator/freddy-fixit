@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-05T15:45:08.566Z",
+  "timestamp": "2026-06-16T01:18:54.153Z",
   "projectRoot": "/Users/karanmann/freddy-fixit",
   "structure": {
     "hasPackageJson": true,
@@ -7,5 +7,5 @@
     "hasClaudeConfig": true,
     "hasClaudeFlow": true
   },
-  "scannedAt": 1780674308566
+  "scannedAt": 1781572734153
 }
