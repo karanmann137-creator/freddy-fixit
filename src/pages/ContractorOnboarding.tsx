@@ -41,14 +41,15 @@ const AVAILABILITY_OPTIONS = [
   { iconName: "refresh", label: "Fully Flexible",     sub: "Available anytime" },
 ];
 
-const STEP_TITLES = ["Your Details", "Your Specialties", "Service Area", "Availability", "Profile Photo", "Upload Documents"];
+const STEP_TITLES = ["Your Details", "Your Specialties", "Service Area", "Availability", "Credentials", "Profile Photo", "Documents"];
 const STEP_SUBS   = [
-  "Basic contact information",
+  "Just the basics — takes about a minute",
   "What services do you offer? Select all that apply",
   "Which parts of Calgary do you cover?",
   "When are you generally available?",
+  "Tell us about your qualifications",
   "Add a profile photo (optional)",
-  "Upload your credentials for automated verification",
+  "Upload now, or skip and add them later from your dashboard",
 ];
 
 type DocFiles = { insurance: File|null; wcb: File|null; certification: File|null; gov_id: File|null };
@@ -56,7 +57,7 @@ type DocFiles = { insurance: File|null; wcb: File|null; certification: File|null
 export default function ContractorOnboarding() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
-  const TOTAL = 6;
+  const TOTAL = 7;
   const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", companyName:"", password:"", yearsOfExperience:"", photoUrl:"", licensed:false, licenseNumber:"", hasInsurance:false, insuranceProvider:"", insuranceExpiry:"", hasWcb:false, workReferences:"" });
   const [selectedSpec,  setSelectedSpec]  = useState<string[]>([]);
   const [selectedArea,  setSelectedArea]  = useState<string[]>([]);
@@ -234,7 +235,8 @@ export default function ContractorOnboarding() {
         </button>
         <p style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".15em", color:"#ea6b14", marginBottom:".4rem" }}>Contractor Registration · Step {step} of {TOTAL}</p>
         <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:".4rem" }}>{STEP_TITLES[step-1]}</h1>
-        <p style={{ color:"rgba(190,205,235,.6)", fontSize:".9rem", marginBottom:"2rem" }}>{STEP_SUBS[step-1]}</p>
+        <p style={{ color:"rgba(190,205,235,.6)", fontSize:".9rem", marginBottom:".5rem" }}>{STEP_SUBS[step-1]}</p>
+        <p style={{ color:"rgba(190,205,235,.4)", fontSize:".8rem", marginBottom:"2rem" }}>Free to join · no monthly fees</p>
         <div style={{ display:"flex", gap:"6px", marginBottom:"2.5rem" }}>
           {Array.from({length:TOTAL},(_,i) => (
             <div key={i} style={{ height:"3px", flex:1, borderRadius:"99px", background: i+1===step ? "#ea6b14" : i+1<step ? "rgba(234,107,20,.45)" : "rgba(255,255,255,.1)" }} />
@@ -245,6 +247,12 @@ export default function ContractorOnboarding() {
           {/* Step 1 — Contact */}
           {step === 1 && (
             <div>
+              {!authedUserId && (
+                <>
+                  <OAuthButtons role="contractor" label="sign up in one tap with" />
+                  <p style={{ textAlign:"center", fontSize:".78rem", color:"rgba(190,205,235,.4)", margin:"1.25rem 0" }}>or with your email</p>
+                </>
+              )}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
                 <div style={{ marginBottom:"1.2rem" }}>
                   <label style={s.label}>First Name</label>
@@ -274,42 +282,17 @@ export default function ContractorOnboarding() {
                   {errors.password && <p style={s.err}>{errors.password}</p>}
                 </div>
               )}
-              <div style={{ marginBottom:"1.2rem" }}>
-                <label style={s.label}>Years of Experience</label>
-                <input style={inp} type="number" min={0} max={50} value={form.yearsOfExperience} placeholder="e.g. 5" onChange={e => setF("yearsOfExperience", e.target.value)} />
-              </div>
-              <div style={{ marginBottom:"1.2rem" }}>
-                <label style={s.label}>Company Name <span style={{ color:"rgba(190,205,235,.45)", fontWeight:300 }}>(optional)</span></label>
-                <input style={inp} placeholder="e.g. Kelly Home Repairs" value={form.companyName} onChange={e => setF("companyName",e.target.value)} />
-              </div>
-              <div style={{ marginBottom:"1.2rem", paddingTop:".9rem", borderTop:"1px solid rgba(255,255,255,.08)" }}>
-                <label style={{ ...s.label, display:"block", marginBottom:".75rem" }}>Credentials</label>
-                <label style={{ display:"flex", alignItems:"center", gap:".6rem", cursor:"pointer", fontSize:".9rem", color:"rgba(190,205,235,.85)" }}>
-                  <input type="checkbox" checked={form.licensed} onChange={e=>setFB("licensed",e.target.checked)} style={{ width:"18px", height:"18px", accentColor:"#ea6b14", cursor:"pointer", flexShrink:0 }} />
-                  <span>I'm a licensed contractor</span>
-                </label>
-                {form.licensed && <input style={{ ...inp, marginTop:".5rem" }} placeholder="License number" value={form.licenseNumber} onChange={e=>setF("licenseNumber",e.target.value)} />}
-                <label style={{ display:"flex", alignItems:"center", gap:".6rem", cursor:"pointer", fontSize:".9rem", color:"rgba(190,205,235,.85)", marginTop:".9rem" }}>
-                  <input type="checkbox" checked={form.hasInsurance} onChange={e=>setFB("hasInsurance",e.target.checked)} style={{ width:"18px", height:"18px", accentColor:"#ea6b14", cursor:"pointer", flexShrink:0 }} />
-                  <span>I carry liability insurance</span>
-                </label>
-                {form.hasInsurance && (
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".75rem", marginTop:".5rem" }}>
-                    <input style={inp} placeholder="Insurance provider" value={form.insuranceProvider} onChange={e=>setF("insuranceProvider",e.target.value)} />
-                    <input style={inp} placeholder="Expiry (e.g. 2026-12)" value={form.insuranceExpiry} onChange={e=>setF("insuranceExpiry",e.target.value)} />
-                  </div>
-                )}
-                <label style={{ display:"flex", alignItems:"center", gap:".6rem", cursor:"pointer", fontSize:".9rem", color:"rgba(190,205,235,.85)", marginTop:".9rem" }}>
-                  <input type="checkbox" checked={form.hasWcb} onChange={e=>setFB("hasWcb",e.target.checked)} style={{ width:"18px", height:"18px", accentColor:"#ea6b14", cursor:"pointer", flexShrink:0 }} />
-                  <span>I have WCB / WorkSafe coverage</span>
-                </label>
-                <div style={{ marginTop:"1rem" }}>
-                  <label style={s.label}>References or past-work links <span style={{ color:"rgba(190,205,235,.45)", fontWeight:300 }}>(optional)</span></label>
-                  <textarea style={{ ...inp, minHeight:"70px", resize:"vertical", fontFamily:"inherit" }} placeholder="Links to past work, or names/numbers of references" value={form.workReferences} onChange={e=>setF("workReferences",e.target.value)} />
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+                <div style={{ marginBottom:"1.2rem" }}>
+                  <label style={s.label}>Years of Experience <span style={{ color:"rgba(190,205,235,.45)", fontWeight:300 }}>(optional)</span></label>
+                  <input style={inp} type="number" min={0} max={50} value={form.yearsOfExperience} placeholder="e.g. 5" onChange={e => setF("yearsOfExperience", e.target.value)} />
+                </div>
+                <div style={{ marginBottom:"1.2rem" }}>
+                  <label style={s.label}>Company <span style={{ color:"rgba(190,205,235,.45)", fontWeight:300 }}>(optional)</span></label>
+                  <input style={inp} placeholder="Kelly Home Repairs" value={form.companyName} onChange={e => setF("companyName",e.target.value)} />
                 </div>
               </div>
-              <p style={{ fontSize:".78rem", color:"rgba(190,205,235,.4)", fontWeight:300 }}>We'll create a free account so you can manage your jobs.</p>
-              {!authedUserId && <OAuthButtons role="contractor" label="or sign up with" />}
+              <p style={{ fontSize:".78rem", color:"rgba(190,205,235,.4)", fontWeight:300 }}>Free account — no monthly fees, no upfront cost.</p>
             </div>
           )}
 
@@ -369,11 +352,43 @@ export default function ContractorOnboarding() {
             </div>
           )}
 
-          {/* Step 6 — Documents */}
-          {step === 6 && (
+          {/* Step 5 — Credentials */}
+          {step === 5 && (
             <div>
               <p style={{ fontSize:".85rem", color:"rgba(190,205,235,.55)", marginBottom:"1.5rem", fontWeight:300, lineHeight:1.6 }}>
-                Upload your credentials and our AI will review them instantly. Approved accounts can start taking jobs right away.
+                Let clients know what you bring to the table. You can update any of this later from your dashboard.
+              </p>
+              <label style={{ display:"flex", alignItems:"center", gap:".6rem", cursor:"pointer", fontSize:".9rem", color:"rgba(190,205,235,.85)" }}>
+                <input type="checkbox" checked={form.licensed} onChange={e=>setFB("licensed",e.target.checked)} style={{ width:"18px", height:"18px", accentColor:"#ea6b14", cursor:"pointer", flexShrink:0 }} />
+                <span>I'm a licensed contractor</span>
+              </label>
+              {form.licensed && <input style={{ ...inp, marginTop:".5rem" }} placeholder="License number" value={form.licenseNumber} onChange={e=>setF("licenseNumber",e.target.value)} />}
+              <label style={{ display:"flex", alignItems:"center", gap:".6rem", cursor:"pointer", fontSize:".9rem", color:"rgba(190,205,235,.85)", marginTop:".9rem" }}>
+                <input type="checkbox" checked={form.hasInsurance} onChange={e=>setFB("hasInsurance",e.target.checked)} style={{ width:"18px", height:"18px", accentColor:"#ea6b14", cursor:"pointer", flexShrink:0 }} />
+                <span>I carry liability insurance</span>
+              </label>
+              {form.hasInsurance && (
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".75rem", marginTop:".5rem" }}>
+                  <input style={inp} placeholder="Insurance provider" value={form.insuranceProvider} onChange={e=>setF("insuranceProvider",e.target.value)} />
+                  <input style={inp} placeholder="Expiry (e.g. 2026-12)" value={form.insuranceExpiry} onChange={e=>setF("insuranceExpiry",e.target.value)} />
+                </div>
+              )}
+              <label style={{ display:"flex", alignItems:"center", gap:".6rem", cursor:"pointer", fontSize:".9rem", color:"rgba(190,205,235,.85)", marginTop:".9rem" }}>
+                <input type="checkbox" checked={form.hasWcb} onChange={e=>setFB("hasWcb",e.target.checked)} style={{ width:"18px", height:"18px", accentColor:"#ea6b14", cursor:"pointer", flexShrink:0 }} />
+                <span>I have WCB / WorkSafe coverage</span>
+              </label>
+              <div style={{ marginTop:"1rem" }}>
+                <label style={s.label}>References or past-work links <span style={{ color:"rgba(190,205,235,.45)", fontWeight:300 }}>(optional)</span></label>
+                <textarea style={{ ...inp, minHeight:"70px", resize:"vertical", fontFamily:"inherit" }} placeholder="Links to past work, or names/numbers of references" value={form.workReferences} onChange={e=>setF("workReferences",e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          {/* Step 7 — Documents */}
+          {step === 7 && (
+            <div>
+              <p style={{ fontSize:".85rem", color:"rgba(190,205,235,.55)", marginBottom:"1rem", fontWeight:300, lineHeight:1.6 }}>
+                Upload your credentials and our AI reviews them instantly. You don't need them to finish signing up — you can submit now and add documents anytime from your dashboard. You'll be approved to take jobs once they're verified.
               </p>
               {([
                 { key:"insurance",    label:"Liability Insurance Certificate", required:true,  hint:"Certificate of Insurance showing min. $1M coverage in Alberta" },
@@ -385,7 +400,7 @@ export default function ContractorOnboarding() {
                   <label style={{ ...s.label, display:"flex", alignItems:"center", gap:".4rem" }}>
                     {doc.label}
                     {doc.required
-                      ? <span style={{ color:"#ea6b14", fontSize:".7rem" }}>Required for approval</span>
+                      ? <span style={{ color:"#ea6b14", fontSize:".7rem" }}>Needed before taking jobs</span>
                       : <span style={{ color:"rgba(190,205,235,.35)", fontSize:".7rem" }}>Optional</span>
                     }
                   </label>
@@ -441,8 +456,8 @@ export default function ContractorOnboarding() {
             </div>
           )}
 
-          {/* Step 5 — Photo */}
-          {step === 5 && (
+          {/* Step 6 — Photo */}
+          {step === 6 && (
             <div>
               <div style={{ border:"2px dashed rgba(255,255,255,.12)", borderRadius:"12px", padding:"2rem 1.5rem", textAlign:"center", marginBottom:"1rem" }}>
                 <div style={{ marginBottom:"1rem" }}><Ic name="camera" size={48} color="#ea6b14" /></div>

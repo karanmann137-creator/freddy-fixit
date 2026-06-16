@@ -38,8 +38,16 @@ export const SCHEDULES = [
   { iconName: "refresh", label: "Recurring",       sub: "Regular maintenance" },
 ];
 
-const STEP_TITLES = ["Your Details", "What Do You Need?", "Job Details"];
-const STEP_SUBS   = ["Tell us a bit about yourself", "Choose your services and preferred timing", "Where and what needs fixing?"];
+const STEP_TITLES = ["What Do You Need?", "Job Details", "Almost Done"];
+const STEP_SUBS   = ["Choose your service and preferred timing", "Where and what needs fixing?", "Create a free account to track your request"];
+
+const HOME_TO_SERVICE: Record<string,string> = {
+  "General Repairs": "General Handyman",
+  "Plumbing": "Plumbing Repair",
+  "Electrical": "Electrical Work",
+  "HVAC": "HVAC Maintenance",
+  "Drywall & Flooring": "Drywall / Flooring",
+};
 
 export default function ClientOnboarding() {
   const [, setLocation] = useLocation();
@@ -51,6 +59,14 @@ export default function ClientOnboarding() {
       const { data: { user } } = await supabase.auth.getUser();
       setMode(user ? "new" : "signup");
     })();
+  }, []);
+
+  // Pre-select a service if the home page linked here with ?service=…
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get("service");
+    if (!raw) return;
+    const mapped = HOME_TO_SERVICE[raw] ?? raw;
+    if (SERVICES.some(sv => sv.label === mapped)) setSelectedServices([mapped]);
   }, []);
   const [step, setStep] = useState(1);
   const TOTAL = 3;
@@ -93,19 +109,18 @@ export default function ClientOnboarding() {
   const validate = () => {
     const errs: Record<string,string> = {};
     if (step === 1) {
-      if (!form.firstName.trim()) errs.firstName = "Required";
-      if (!form.lastName.trim())  errs.lastName  = "Required";
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = "Valid email required";
-      if (form.phone.replace(/\D/g,"").length < 10) errs.phone = "10-digit phone required";
-      if (form.password.length < 8) errs.password = "Minimum 8 characters";
-    }
-    if (step === 2) {
       if (selectedServices.length === 0) errs.serviceNeeded = "Please select at least one service";
       if (!form.preferredSchedule) errs.preferredSchedule = "Please select a schedule";
     }
-    if (step === 3) {
+    if (step === 2) {
       if (!form.location.trim()) errs.location = "Location required";
       if (form.jobDescription.trim().length < 10) errs.jobDescription = "Min 10 characters";
+    }
+    if (step === 3) {
+      if (!form.firstName.trim()) errs.firstName = "Required";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = "Valid email required";
+      if (form.phone.replace(/\D/g,"").length < 10) errs.phone = "10-digit phone required";
+      if (form.password.length < 8) errs.password = "Minimum 8 characters";
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -232,26 +247,17 @@ export default function ClientOnboarding() {
         </button>
         <p style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".15em", color:"#ea6b14", marginBottom:".4rem" }}>Step {step} of {TOTAL}</p>
         <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:".4rem" }}>{STEP_TITLES[step-1]}</h1>
-        <p style={{ color:"rgba(190,205,235,.6)", fontSize:".9rem", marginBottom:"2rem" }}>{STEP_SUBS[step-1]}</p>
+        <p style={{ color:"rgba(190,205,235,.6)", fontSize:".9rem", marginBottom:".5rem" }}>{STEP_SUBS[step-1]}</p>
+        <p style={{ color:"rgba(190,205,235,.4)", fontSize:".8rem", marginBottom:"2rem" }}>Takes about 2 minutes · posting is free</p>
         <div style={{ display:"flex", gap:"6px", marginBottom:"2.5rem" }}>
           {Array.from({length:TOTAL},(_,i) => <div key={i} style={{ height:"3px", flex:1, borderRadius:"99px", background: i+1===step ? "#ea6b14" : i+1<step ? "rgba(234,107,20,.45)" : "rgba(255,255,255,.1)" }} />)}
         </div>
 
         <div style={s.card}>
-          {step === 1 && (
+          {step === 3 && (
             <div>
-              <div style={{ marginBottom:"1.5rem" }}>
-                <label style={s.label}>I am signing up as</label>
-                <div style={{ display:"flex", gap:".6rem", marginTop:".4rem" }}>
-                  {([["individual","Just me / household"],["business","A small business"]] as const).map(([val,lbl]) => (
-                    <button key={val} type="button" onClick={() => setClientType(val)}
-                      style={{ flex:1, padding:".7rem .5rem", borderRadius:"10px", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem", fontWeight:500,
-                        background: clientType===val ? "rgba(234,107,20,.15)" : "rgba(255,255,255,.04)",
-                        border: clientType===val ? "1px solid #ea6b14" : "1px solid rgba(255,255,255,.12)",
-                        color: clientType===val ? "#f0f4ff" : "rgba(190,205,235,.7)" }}>{lbl}</button>
-                  ))}
-                </div>
-              </div>
+              <OAuthButtons role="client" label="sign up in one tap with" />
+              <p style={{ textAlign:"center", fontSize:".78rem", color:"rgba(190,205,235,.4)", margin:"1.25rem 0" }}>or with your email</p>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
                 <div style={{ marginBottom:"1.2rem" }}>
                   <label style={s.label}>First Name</label>
@@ -259,9 +265,8 @@ export default function ClientOnboarding() {
                   {errors.firstName && <p style={s.err}>{errors.firstName}</p>}
                 </div>
                 <div style={{ marginBottom:"1.2rem" }}>
-                  <label style={s.label}>Last Name</label>
-                  <input style={{ ...inp, borderColor: errors.lastName ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} placeholder="Johnson" value={form.lastName} onChange={e => set("lastName",e.target.value)} />
-                  {errors.lastName && <p style={s.err}>{errors.lastName}</p>}
+                  <label style={s.label}>Last Name <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
+                  <input style={inp} placeholder="Johnson" value={form.lastName} onChange={e => set("lastName",e.target.value)} />
                 </div>
               </div>
               <div style={{ marginBottom:"1.2rem" }}>
@@ -279,13 +284,39 @@ export default function ClientOnboarding() {
                 <input style={{ ...inp, borderColor: errors.password ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} type="password" placeholder="Min 8 characters" value={form.password} onChange={e => set("password",e.target.value)} />
                 {errors.password && <p style={s.err}>{errors.password}</p>}
               </div>
-              <p style={{ fontSize:".78rem", color:"rgba(190,205,235,.4)", fontWeight:300 }}>We'll create a free account so you can track your request.</p>
-              <OAuthButtons role="client" label="or sign up with" />
+              <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", margin:"1.5rem 0 .5rem", padding:"1rem", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"8px" }}>
+                <input
+                  type="checkbox"
+                  id="agreeTerms"
+                  checked={agreedToTerms}
+                  onChange={e => { setAgreedToTerms(e.target.checked); if (e.target.checked) setSubmitError(""); }}
+                  style={{ marginTop:"2px", accentColor:"#ea6b14", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }}
+                />
+                <label htmlFor="agreeTerms" style={{ fontSize:".82rem", color:"rgba(190,205,235,.7)", lineHeight:1.6, cursor:"pointer", fontWeight:300 }}>
+                  I am 18 or older and I agree to Freddy Fix It&rsquo;s{" "}
+                  <a href="/user-agreement" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>User Agreement</a>
+                  {" "}and{" "}
+                  <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>Privacy Policy</a>.
+                </label>
+              </div>
+              {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"#fca5a5", marginTop:"1rem" }}>{submitError}</div>}
             </div>
           )}
 
-          {step === 2 && (
+          {step === 1 && (
             <div>
+              <div style={{ marginBottom:"1.5rem" }}>
+                <label style={s.label}>I am requesting as</label>
+                <div style={{ display:"flex", gap:".6rem", marginTop:".4rem" }}>
+                  {([["individual","Just me / household"],["business","A small business"]] as const).map(([val,lbl]) => (
+                    <button key={val} type="button" onClick={() => setClientType(val)}
+                      style={{ flex:1, padding:".7rem .5rem", borderRadius:"10px", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem", fontWeight:500,
+                        background: clientType===val ? "rgba(234,107,20,.15)" : "rgba(255,255,255,.04)",
+                        border: clientType===val ? "1px solid #ea6b14" : "1px solid rgba(255,255,255,.12)",
+                        color: clientType===val ? "#f0f4ff" : "rgba(190,205,235,.7)" }}>{lbl}</button>
+                  ))}
+                </div>
+              </div>
               <p style={s.label}>Services Needed <span style={{ color:"rgba(190,205,235,.4)", textTransform:"none", letterSpacing:0 }}>(select all that apply)</span></p>
               <div style={{ maxWidth:"100%", overflowX:"hidden", display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:".75rem", marginBottom:"1.5rem" }}>
                 {SERVICES.map(sv => (
@@ -356,7 +387,7 @@ export default function ClientOnboarding() {
             </div>
           )}
 
-          {step === 3 && (
+          {step === 2 && (
             <div>
               {clientType === "business" && (
                 <div style={{ marginBottom:"1.75rem", paddingBottom:"1.25rem", borderBottom:"1px solid rgba(255,255,255,.08)" }}>
@@ -400,21 +431,6 @@ export default function ClientOnboarding() {
                 <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0] ?? null; if (f && f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB."); return; } setSubmitError(""); setPhotoFile(f); }} style={{ ...inp, padding:".6rem", cursor:"pointer" }} />
                 <p style={{ fontSize:".78rem", color:"rgba(190,205,235,.55)", marginTop:".4rem" }}>A photo helps us give you a faster, more accurate quote. Max 5MB.</p>
                 {photoFile && <p style={{ fontSize:".78rem", color:"#9fe6b0", marginTop:".3rem" }}>Attached: {photoFile.name}</p>}
-              </div>
-              <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", margin:"1.5rem 0 .5rem", padding:"1rem", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"8px" }}>
-                <input
-                  type="checkbox"
-                  id="agreeTerms"
-                  checked={agreedToTerms}
-                  onChange={e => { setAgreedToTerms(e.target.checked); if (e.target.checked) setSubmitError(""); }}
-                  style={{ marginTop:"2px", accentColor:"#ea6b14", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }}
-                />
-                <label htmlFor="agreeTerms" style={{ fontSize:".82rem", color:"rgba(190,205,235,.7)", lineHeight:1.6, cursor:"pointer", fontWeight:300 }}>
-                  I am 18 or older and I agree to Freddy Fix It&rsquo;s{" "}
-                  <a href="/user-agreement" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>User Agreement</a>
-                  {" "}and{" "}
-                  <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>Privacy Policy</a>.
-                </label>
               </div>
               {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"#fca5a5", marginTop:"1rem" }}>{submitError}</div>}
             </div>

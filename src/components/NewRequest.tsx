@@ -61,6 +61,15 @@ export default function NewRequest() {
     })();
   }, []);
 
+  // Pre-select a service if the home page linked here with ?service=…
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get("service");
+    if (!raw) return;
+    const map: Record<string,string> = { "General Repairs":"General Handyman", "Plumbing":"Plumbing Repair", "Electrical":"Electrical Work", "HVAC":"HVAC Maintenance", "Drywall & Flooring":"Drywall / Flooring" };
+    const mapped = map[raw] ?? raw;
+    if (SERVICES.some(sv => sv.label === mapped)) setSelectedServices([mapped]);
+  }, []);
+
   const prevAddress = lastReq?.location ?? "";
   const isBusiness = lastReq?.client_type === "business";
 

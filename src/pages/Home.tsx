@@ -205,7 +205,7 @@ export default function Home() {
           </motion.div>
           <div className="ff-services-grid">
             {SERVICES.map((s, i) => (
-              <motion.div key={s.label} className="ff-service-card" onClick={() => window.location.href="/client-onboarding"} style={{ cursor:"pointer" }}
+              <motion.div key={s.label} className="ff-service-card" onClick={() => window.location.href="/client-onboarding?service=" + encodeURIComponent(s.label)} style={{ cursor:"pointer" }}
                 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.05 }}>
                 <div className="ff-service-icon"><Ic name={s.iconName as any} size={28} color="#ea6b14" /></div>
                 <div className="ff-service-label">{s.label}</div>
