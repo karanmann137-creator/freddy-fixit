@@ -42,6 +42,13 @@ export default function ContractorProfile() {
     })();
   }, [id]);
 
+  // The browse page was removed, so "back" returns to the previous page when
+  // there's history (in-app nav) and falls back to home (e.g. opened in a new tab).
+  const goBack = () => {
+    if (window.history.length > 1) window.history.back();
+    else setLocation("/");
+  };
+
   const pfUrl = (path: string) =>
     supabase.storage.from("portfolio-photos").getPublicUrl(path).data.publicUrl;
   const avatarUrl = (path: string) =>
@@ -72,7 +79,7 @@ export default function ContractorProfile() {
     <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ textAlign:"center" }}>
         <p style={{ color:"rgba(190,205,235,.5)" }}>Contractor not found.</p>
-        <button style={s.btn} onClick={() => setLocation("/contractors")}>← Back</button>
+        <button style={s.btn} onClick={goBack}>← Back</button>
       </div>
     </div>
   );
@@ -84,8 +91,8 @@ export default function ContractorProfile() {
       <div style={s.inner}>
 
         {/* Back */}
-        <button onClick={() => setLocation("/contractors")} style={{ background:"none", border:"none", color:"rgba(190,205,235,.5)", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", marginBottom:"1.25rem", padding:0 }}>
-          ← Back to contractors
+        <button onClick={goBack} style={{ background:"none", border:"none", color:"rgba(190,205,235,.5)", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", marginBottom:"1.25rem", padding:0 }}>
+          ← Back
         </button>
 
         {/* Header card */}

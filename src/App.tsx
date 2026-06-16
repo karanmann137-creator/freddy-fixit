@@ -16,7 +16,6 @@ import UpdatePassword from "@/pages/UpdatePassword";
 import AuthCallback from "@/pages/AuthCallback";
 import TopNav from "@/components/TopNav";
 import ChatWidget from "@/components/ChatWidget";
-import BrowseContractors from "@/pages/BrowseContractors";
 import ContractorProfile from "@/pages/ContractorProfile";
 import UserAgreement from "@/pages/UserAgreement";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
@@ -127,7 +126,6 @@ export default function App() {
       <Route path="/auth/callback" component={AuthCallback} />
       <Route path="/client-onboarding" component={ClientOnboarding} />
       <Route path="/contractor-onboarding" component={ContractorOnboarding} />
-      <Route path="/contractors" component={BrowseContractors} />
       <Route path="/contractors/:id" component={ContractorProfile} />
       <Route path="/client-success" component={ClientSuccess} />
       <Route path="/contractor-success" component={ContractorSuccess} />
