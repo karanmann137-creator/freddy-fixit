@@ -134,6 +134,10 @@ export default function Home() {
         .ff-stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; letter-spacing: 0.06em; color: #ea6b14; line-height: 1; margin-bottom: 0.4rem; }
         .ff-stat-label { font-size: 0.82rem; color: rgba(190,205,235,0.5); font-weight: 300; line-height: 1.4; }
 
+        /* ── Reviews ── */
+        .ff-reviews-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+        @media (max-width: 760px) { .ff-reviews-grid { grid-template-columns: 1fr; } }
+
         /* ── Footer ── */
         .ff-footer-bar { background: #111827; border-top: 1px solid rgba(255,255,255,0.06); padding: 2rem 1.5rem; text-align: center; font-size: 0.75rem; color: rgba(190,205,235,0.25); letter-spacing: 0.05em; }
       `}</style>
@@ -235,6 +239,27 @@ export default function Home() {
         </div>
       </div>
 
+      {/* ── FAQ ── */}
+      <div style={{ background:"#1a2236", padding:"6rem 2rem" }}>
+        <style>{"details.ff-faq>summary::-webkit-details-marker{display:none}details.ff-faq>summary{list-style:none}details.ff-faq .ff-faq-icon{transition:transform .2s ease;display:inline-block}details.ff-faq[open] .ff-faq-icon{transform:rotate(45deg)}details.ff-faq[open]{border-color:rgba(234,107,20,.3)}"}</style>
+        <div style={{ maxWidth:"800px", margin:"0 auto" }}>
+          <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" }}>Good to Know</p>
+          <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:".06em", color:"#f0f4ff", textAlign:"center", marginBottom:"3rem" }}>Frequently Asked <span style={{ color:"#ea6b14" }}>Questions.</span></h2>
+          <div style={{ display:"flex", flexDirection:"column", gap:".75rem" }}>
+            {FAQS.map((f, i) => (
+              <details key={i} className="ff-faq" style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"12px", padding:"1.2rem 1.5rem" }}>
+                <summary style={{ cursor:"pointer", fontSize:".98rem", fontWeight:500, color:"#f0f4ff", display:"flex", justifyContent:"space-between", alignItems:"center", gap:"1rem" }}>
+                  <span>{f.q}</span>
+                  <span className="ff-faq-icon" style={{ color:"#ea6b14", fontSize:"1.4rem", lineHeight:1, fontWeight:300 }}>+</span>
+                </summary>
+                <p style={{ fontSize:".9rem", color:"rgba(190,205,235,.75)", fontWeight:300, lineHeight:1.7, marginTop:"1rem", marginBottom:0 }}>{f.a}</p>
+              </details>
+            ))}
+          </div>
+          <p style={{ textAlign:"center", marginTop:"2.5rem", fontSize:".9rem", color:"rgba(190,205,235,.6)", fontWeight:300 }}>Still have questions? <a href="mailto:hello@freddyfixit.ca" style={{ color:"#ea6b14", textDecoration:"none" }}>Get in touch.</a></p>
+        </div>
+      </div>
+
       {/* ── About ── */}
       <div className="ff-about">
         <div className="ff-about-inner">
@@ -273,7 +298,7 @@ export default function Home() {
         <div style={{ maxWidth:"900px", margin:"0 auto" }}>
           <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" }}>What People Are Saying</p>
           <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:".06em", color:"#f0f4ff", textAlign:"center", marginBottom:"3rem" }}>Real <span style={{ color:"#ea6b14" }}>Results.</span></h2>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:"1.5rem" }}>
+          <div className="ff-reviews-grid">
             <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"14px", padding:"2rem" }}>
               <div style={{ fontSize:"1.5rem", marginBottom:"1rem" }}>⭐⭐⭐⭐⭐</div>
               <p style={{ fontSize:".9rem", color:"rgba(190,205,235,.75)", fontWeight:300, lineHeight:1.7, marginBottom:"1.5rem" }}>"I submitted my request in under two minutes and had a contractor at my door the next morning. The plumber was professional, clean, and fixed the leak properly the first time. Couldn't be easier."</p>
@@ -294,27 +319,6 @@ export default function Home() {
               <div style={{ fontSize:".75rem", color:"rgba(190,205,235,.4)" }}>Licensed Contractor · Calgary</div>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* ── FAQ ── */}
-      <div style={{ background:"#1a2236", padding:"6rem 2rem" }}>
-        <style>{"details.ff-faq>summary::-webkit-details-marker{display:none}details.ff-faq>summary{list-style:none}details.ff-faq .ff-faq-icon{transition:transform .2s ease;display:inline-block}details.ff-faq[open] .ff-faq-icon{transform:rotate(45deg)}details.ff-faq[open]{border-color:rgba(234,107,20,.3)}"}</style>
-        <div style={{ maxWidth:"800px", margin:"0 auto" }}>
-          <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" }}>Good to Know</p>
-          <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:".06em", color:"#f0f4ff", textAlign:"center", marginBottom:"3rem" }}>Frequently Asked <span style={{ color:"#ea6b14" }}>Questions.</span></h2>
-          <div style={{ display:"flex", flexDirection:"column", gap:".75rem" }}>
-            {FAQS.map((f, i) => (
-              <details key={i} className="ff-faq" style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"12px", padding:"1.2rem 1.5rem" }}>
-                <summary style={{ cursor:"pointer", fontSize:".98rem", fontWeight:500, color:"#f0f4ff", display:"flex", justifyContent:"space-between", alignItems:"center", gap:"1rem" }}>
-                  <span>{f.q}</span>
-                  <span className="ff-faq-icon" style={{ color:"#ea6b14", fontSize:"1.4rem", lineHeight:1, fontWeight:300 }}>+</span>
-                </summary>
-                <p style={{ fontSize:".9rem", color:"rgba(190,205,235,.75)", fontWeight:300, lineHeight:1.7, marginTop:"1rem", marginBottom:0 }}>{f.a}</p>
-              </details>
-            ))}
-          </div>
-          <p style={{ textAlign:"center", marginTop:"2.5rem", fontSize:".9rem", color:"rgba(190,205,235,.6)", fontWeight:300 }}>Still have questions? <a href="mailto:hello@freddyfixit.ca" style={{ color:"#ea6b14", textDecoration:"none" }}>Get in touch.</a></p>
         </div>
       </div>
 
