@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import DeleteAccount from "@/components/DeleteAccount";
+import ProfileBar from "@/components/ProfileBar";
 
 export default function ContractorDashboard() {
   const [, setLocation] = useLocation();
@@ -245,6 +246,7 @@ export default function ContractorDashboard() {
       </div>
 
       <div style={s.content}>
+        <ProfileBar role="contractor" />
 
         {activeTab === "jobs" && (
           <div>

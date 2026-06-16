@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
+import ProfileBar from "@/components/ProfileBar";
 
 // Re-signup flagging. These MUST stay byte-identical to the helpers in the
 // delete-account edge function so the hashes line up.
@@ -152,6 +153,7 @@ export default function AdminDashboard() {
       </div>
 
       <div style={s.content}>
+        <ProfileBar role="admin" />
         <div style={s.tabs}>
           {(["requests","contractors","jobs"] as const).map(t => (
             <button key={t} style={{ ...s.tab, ...(tab===t ? s.activeTab : {}) }} onClick={() => setTab(t)}>

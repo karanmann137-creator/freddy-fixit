@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import DeleteAccount from "@/components/DeleteAccount";
+import ProfileBar from "@/components/ProfileBar";
 
 
 const VEHICLE_SERVICES = ["Oil Change","Tire Swap / Rotation","Battery / Brakes","Vehicle Maintenance"];
@@ -279,6 +280,7 @@ export default function ClientDashboard() {
       </div>
 
       <div style={s.content}>
+        <ProfileBar role="client" />
         {activeJob && (
           <div style={s.tabs}>
             <button style={{ ...s.tab, ...(activeTab==="overview" ? s.activeTab : {}) }} onClick={() => setActiveTab("overview")}>Overview</button>
