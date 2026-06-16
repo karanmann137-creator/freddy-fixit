@@ -42,6 +42,7 @@ export default function NewRequest() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -81,6 +82,7 @@ export default function NewRequest() {
 
   const submit = async () => {
     if (!validate()) return;
+    if (!agreedToTerms) { setSubmitError("Please agree to the User Agreement and Privacy Policy to continue."); return; }
     setSubmitting(true); setSubmitError("");
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -289,6 +291,22 @@ export default function NewRequest() {
                 </p>
               </div>
               <input id="nr-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0] ?? null; if (f && f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB."); return; } setSubmitError(""); setPhotoFile(f); }} style={{ display:"none" }} />
+            </label>
+          </div>
+
+          <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", marginTop:"1.5rem", padding:"1rem", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"8px" }}>
+            <input
+              type="checkbox"
+              id="nr-agree-terms"
+              checked={agreedToTerms}
+              onChange={e => { setAgreedToTerms(e.target.checked); if (e.target.checked) setSubmitError(""); }}
+              style={{ marginTop:"2px", accentColor:"#ea6b14", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }}
+            />
+            <label htmlFor="nr-agree-terms" style={{ fontSize:".82rem", color:"rgba(190,205,235,.7)", lineHeight:1.6, cursor:"pointer", fontWeight:300 }}>
+              I agree to Freddy Fix It&rsquo;s{" "}
+              <a href="/user-agreement" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>User Agreement</a>
+              {" "}and{" "}
+              <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>Privacy Policy</a>.
             </label>
           </div>
 

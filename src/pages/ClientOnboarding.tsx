@@ -116,6 +116,7 @@ export default function ClientOnboarding() {
 
   const handleSubmit = async () => {
     if (!validate()) return;
+    if (!agreedToTerms) { setSubmitError("Please agree to the User Agreement and Privacy Policy to continue."); window.scrollTo(0,0); return; }
     setLoading(true); setSubmitError("");
     try {
       // Pass the whole request as signup metadata so a DB trigger creates the
