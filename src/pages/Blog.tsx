@@ -4,7 +4,7 @@ const POSTS = [
   {
     slug: "freddy-fix-it-vs-homestars-vs-jiffy-calgary",
     title: "Freddy Fix It vs HomeStars vs Jiffy vs TaskRabbit: The Best Way to Find a Calgary Contractor in 2026",
-    excerpt: "We compared every major contractor platform available in Calgary — response times, vetting standards, fees, and homeowner protection. Here's how they stack up.",
+    excerpt: "A plain-language guide to the different kinds of contractor platforms available in Calgary — how they work, what to compare, and how to choose the right fit.",
     date: "June 10, 2026",
     readTime: "8 min read",
     tag: "Comparison",
@@ -36,7 +36,7 @@ const POSTS = [
   {
     slug: "calgary-plumber-cost-2026",
     title: "How Much Does a Plumber Cost in Calgary? 2026 Pricing Guide",
-    excerpt: "Leaky faucet or full water heater replacement — here's what Calgary plumbers actually charge in 2026, plus the red flags that mean you're about to get overcharged.",
+    excerpt: "Leaky faucet or full water heater replacement — here are general 2026 cost ranges for common Calgary plumbing jobs, plus red flags to watch for.",
     date: "June 14, 2026",
     readTime: "5 min read",
     tag: "Pricing",

@@ -72,88 +72,29 @@ function ArticleComparison() {
   const [, setLocation] = useLocation();
   return (
     <article>
-      <p>If you're a Calgary homeowner looking to hire a contractor, you've got options. But not all platforms are created equal — and the wrong choice can cost you time, money, or worse, a botched job.</p>
-      <p>We compared every major contractor platform available in Calgary in 2026: <strong>Freddy Fix It</strong>, <strong>Jiffy</strong>, <strong>HomeStars</strong>, <strong>TaskRabbit</strong>, <strong>HouseCall Pro</strong>, and <strong>Kijiji</strong>. Here's the honest breakdown.</p>
-      <p style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".88rem" }}><strong>Note on HouseCall Pro:</strong> Unlike the others, HouseCall Pro is primarily <em>contractor business software</em> — a scheduling and invoicing tool used by contractors to run their operations. Homeowners don't book jobs through it directly. We've included it because many contractors advertise that they "use HouseCall Pro," which can create confusion about what it actually offers consumers.</p>
+      <p style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>About this comparison:</strong> This article reflects our general understanding of how different kinds of platforms work, based on publicly available information as of 2026. Features, pricing, and policies change often and can vary by individual contractor. Always confirm the current details directly with each platform before deciding.</p>
 
-      <h2>How Fast Will You Get a Response?</h2>
-      <p>When something breaks, waiting days for a callback isn't an option. We tracked how long it typically takes from posting a job request to receiving your first contractor response.</p>
+      <p>If you're a Calgary homeowner looking to hire a contractor, you've got options — and they work in very different ways. Rather than rank specific companies, here's a plain-language guide to the main <em>types</em> of platforms and what to weigh with each.</p>
 
-      <BarChart
-        title="Average Time to First Response"
-        subtitle="Hours from job posting to first contractor contact — 2026 average"
-        lowerBetter
-        unit="h"
-        data={[
-          { label: "Freddy Fix It",  value: 2,  color: "#ea6b14" },
-          { label: "Jiffy",          value: 4,  color: "#3b82f6" },
-          { label: "TaskRabbit",     value: 10, color: "#a855f7" },
-          { label: "HouseCall Pro",  value: 20, color: "#10b981" },
-          { label: "HomeStars",      value: 28, color: "#ef4444" },
-          { label: "Kijiji",         value: 52, color: "#6b7280" },
-        ]}
-      />
+      <h2>The Main Types of Platforms</h2>
+      <p><strong>Active-dispatch marketplaces</strong> (such as Freddy Fix It and Jiffy) push your job request directly to contractors who match it, instead of asking you to search a directory. The appeal is speed and convenience — you post once and qualified contractors come to you.</p>
+      <p><strong>Directory and review platforms</strong> (such as HomeStars) let you browse contractor listings and reviews and reach out yourself. They're useful for research, but how quickly you hear back depends on individual contractors checking their leads.</p>
+      <p><strong>General task platforms</strong> (such as TaskRabbit) cover a wide range of errands and tasks across many cities. Coverage and specialization for skilled home trades can vary by market.</p>
+      <p><strong>Classified listings</strong> (such as Kijiji) connect you with individuals directly. There's no platform-level vetting, so checking licensing, insurance, and references is entirely up to you.</p>
+      <p style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".88rem" }}><strong>A note on HouseCall Pro:</strong> HouseCall Pro is primarily <em>contractor business software</em> — a scheduling and invoicing tool contractors use to run their operations, rather than a marketplace homeowners book through directly. We mention it because some contractors advertise that they "use HouseCall Pro," which can be confusing.</p>
 
-      <p>Freddy Fix It and Jiffy lead on speed because both use <strong>active dispatch</strong> — your job is pushed directly to qualified contractors rather than sitting in a public directory waiting to be found.</p>
-      <p>HomeStars and Kijiji rely on contractors browsing leads at their own pace. On a busy weekend, that could mean days of waiting.</p>
+      <h2>What to Compare</h2>
+      <p><strong>Speed.</strong> If you need someone quickly, active-dispatch platforms generally connect you faster than browsing a directory and waiting for replies.</p>
+      <p><strong>Vetting.</strong> This is where platforms differ most. Some, like Freddy Fix It, require contractors to submit a trade licence and proof of insurance before they can accept work. Others leave verification up to you. Whatever platform you use, confirm a contractor is licensed and insured before they start.</p>
+      <p><strong>Pricing transparency.</strong> Look for fixed-price quotes before any work begins, so you aren't surprised by the final invoice.</p>
+      <p><strong>Protection if something goes wrong.</strong> Check whether the platform offers any recourse, guarantee, or support if a job doesn't go as planned.</p>
 
-      <h2>How Strictly Are Contractors Vetted?</h2>
-      <p>This is where platforms differ most — and where Calgary homeowners get burned most often. Kijiji and HomeStars essentially let anyone post. On Freddy Fix It, every contractor must submit their trade licence, proof of insurance, and business documentation before they can accept a single job.</p>
-
-      <BarChart
-        title="Contractor Vetting Strictness"
-        subtitle="Score out of 10 — based on licence checks, insurance requirements, and review verification"
-        unit="/10"
-        data={[
-          { label: "Freddy Fix It",  value: 9.5, color: "#ea6b14" },
-          { label: "Jiffy",          value: 8.2, color: "#3b82f6" },
-          { label: "TaskRabbit",     value: 5.8, color: "#a855f7" },
-          { label: "HomeStars",      value: 4.1, color: "#ef4444" },
-          { label: "HouseCall Pro",  value: 2.0, color: "#10b981" },
-          { label: "Kijiji",         value: 1.0, color: "#6b7280" },
-        ]}
-      />
-
-      <h2>Calgary Focus: Who Actually Serves Your Neighbourhood?</h2>
-      <p>TaskRabbit and HomeStars are North American platforms that treat Calgary as one of hundreds of markets. Jiffy and Freddy Fix It were built specifically for Calgary — meaning contractor networks, service areas, and pricing are calibrated for this city.</p>
-
-      <BarChart
-        title="Calgary Market Coverage"
-        subtitle="Score out of 10 — based on contractor density in Calgary quadrants and suburbs"
-        unit="/10"
-        data={[
-          { label: "Freddy Fix It",  value: 9.4, color: "#ea6b14" },
-          { label: "Jiffy",          value: 8.8, color: "#3b82f6" },
-          { label: "HomeStars",      value: 6.2, color: "#ef4444" },
-          { label: "Kijiji",         value: 5.5, color: "#6b7280" },
-          { label: "TaskRabbit",     value: 4.0, color: "#a855f7" },
-          { label: "HouseCall Pro",  value: 2.5, color: "#10b981" },
-        ]}
-      />
-
-      <h2>Feature-by-Feature Comparison</h2>
-      <FeatureTable rows={[
-        { feature: "Consumer-facing marketplace",        freddy: true,  jiffy: true,  homestars: true,       taskrabbit: true,      housecall: false,      kijiji: true },
-        { feature: "Contractor licence verification",    freddy: true,  jiffy: true,  homestars: false,      taskrabbit: false,     housecall: false,      kijiji: false },
-        { feature: "Insurance required",                 freddy: true,  jiffy: true,  homestars: false,      taskrabbit: false,     housecall: false,      kijiji: false },
-        { feature: "Transparent pricing before booking", freddy: true,  jiffy: true,  homestars: false,      taskrabbit: "Partial", housecall: "Via contractor", kijiji: false },
-        { feature: "Homeowner protection / guarantee",   freddy: true,  jiffy: true,  homestars: false,      taskrabbit: "Partial", housecall: false,      kijiji: false },
-        { feature: "Active dispatch (no browsing)",      freddy: true,  jiffy: true,  homestars: false,      taskrabbit: false,     housecall: false,      kijiji: false },
-        { feature: "Free to post a job",                 freddy: true,  jiffy: true,  homestars: true,       taskrabbit: true,      housecall: "N/A",      kijiji: true },
-        { feature: "No subscription / listing fees",     freddy: true,  jiffy: true,  homestars: false,      taskrabbit: false,     housecall: false,      kijiji: "Partial" },
-        { feature: "In-app messaging",                   freddy: true,  jiffy: true,  homestars: true,       taskrabbit: true,      housecall: "Contractor only", kijiji: false },
-        { feature: "Verified reviews",                   freddy: true,  jiffy: true,  homestars: "Partial",  taskrabbit: true,      housecall: false,      kijiji: false },
-        { feature: "Calgary-first focus",                freddy: true,  jiffy: true,  homestars: false,      taskrabbit: false,     housecall: false,      kijiji: false },
-        { feature: "Recurring / seasonal scheduling",    freddy: true,  jiffy: false, homestars: false,      taskrabbit: false,     housecall: "Contractor side", kijiji: false },
-      ]} />
-
-      <h2>The Bottom Line</h2>
-      <p>If you're a Calgary homeowner who wants speed, vetted contractors, and protection if something goes wrong, <strong>Freddy Fix It</strong> and <strong>Jiffy</strong> are the two platforms worth your time. Both beat the directory-style services (HomeStars, Kijiji) on every metric that matters for safety and convenience.</p>
-      <p>Where Freddy Fix It pulls ahead: <strong>recurring and seasonal scheduling</strong> (no other platform offers this), a tighter contractor vetting process, and an algorithm that matches you to the best-fit contractor — not just whoever happens to be browsing.</p>
-      <p>Kijiji and unvetted Kijiji contractors remain the single biggest source of homeowner complaints in Calgary. Save yourself the headache.</p>
+      <h2>How Freddy Fix It Works</h2>
+      <p>Freddy Fix It is built specifically for Calgary. Every contractor must submit their trade licence and proof of insurance before they can accept a job. You post once, receive up to three fixed-price bids from vetted contractors, and reviews are only unlocked after a job is completed and confirmed by both parties. We also offer recurring and seasonal scheduling for ongoing maintenance.</p>
+      <p>Whichever platform you choose, the same fundamentals protect you: hire licensed, insured contractors, get the price in writing first, and keep records of the work.</p>
 
       <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
-        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "#f0f4ff", margin: "0 0 .75rem" }}>Ready to try the fastest way to find a vetted Calgary contractor?</p>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "#f0f4ff", margin: "0 0 .75rem" }}>Ready to try a fast way to find a vetted Calgary contractor?</p>
         <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
@@ -163,7 +104,8 @@ function ArticleComparison() {
 function ArticlePricing() {
   return (
     <article>
-      <p>One of the most common questions Calgary homeowners ask before hiring a contractor: <em>how much should I actually be paying?</em> Pricing varies by trade, job complexity, and contractor experience — but here's what you can realistically expect in 2026.</p>
+      <p>One of the most common questions Calgary homeowners ask before hiring a contractor: <em>how much should I actually be paying?</em> Pricing varies by trade, job complexity, and contractor experience — but here are some general ranges to give you a rough sense in 2026.</p>
+      <p style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general estimates for illustration only, not quotes or guarantees. Actual prices depend on your specific job and the contractor you hire. Always get a written quote before any work begins.</p>
 
       <h2>Calgary Contractor Hourly Rates by Trade (2026)</h2>
       <BarChart
@@ -191,7 +133,7 @@ function ArticlePricing() {
       <p><strong>Locksmith (lock change or rekey):</strong> $100–$250 depending on lock type.</p>
 
       <h2>Why Calgary Prices Are Higher Than the National Average</h2>
-      <p>Calgary's strong economy and competitive labour market push contractor rates above national averages. The city also has strict building code enforcement, which means licensed trades command a premium — and you should be wary of bids that seem unusually low. Unlicensed work can void your home insurance and create liability issues on resale.</p>
+      <p>Calgary's strong economy and competitive labour market push contractor rates above national averages. The city also has strict building code enforcement, which means licensed trades command a premium — and you should be wary of bids that seem unusually low. Unlicensed or unpermitted work can create insurance and resale complications down the road, so it's worth confirming a contractor's credentials before hiring.</p>
 
       <h2>How to Know If You're Getting a Fair Price</h2>
       <p>On Freddy Fix It, you receive up to 3 bids from vetted contractors before committing. This gives you real market data for your specific job — not just estimates pulled from the internet. All bids are fixed-price: no surprise invoices at the end.</p>
@@ -233,22 +175,23 @@ function ArticleWinter() {
 function ArticleVetting() {
   return (
     <article>
-      <p>Calgary's contractor market is busy, competitive, and unfortunately — not fully regulated at the point of hire. Homeowners who skip vetting are taking real risks. Here's why it matters and what to look for.</p>
+      <p>Calgary's contractor market is busy and competitive, and not everything is verified at the point of hire. Homeowners who skip vetting may be taking on avoidable risk. Here's why it matters and what to look for.</p>
+      <p style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> This article is general information, not legal, insurance, or financial advice. Rules and coverage vary by situation. For your specific circumstances, check with your insurer and consult a qualified professional.</p>
 
-      <h2>1. Unlicensed Work Can Void Your Home Insurance</h2>
-      <p>In Alberta, certain trade work — electrical, gas, plumbing — must be performed by licensed tradespeople. If a fire or flood is traced to unlicensed work, your home insurer may deny the claim. Always ask for a contractor's trade ticket before they start.</p>
+      <h2>1. Unlicensed Work Could Affect Your Home Insurance</h2>
+      <p>In Alberta, certain trade work — such as electrical, gas, and plumbing — is generally required to be performed by licensed tradespeople. Depending on your policy, an insurer could question or deny a claim connected to improper or unpermitted work, so it's worth confirming coverage details with your provider. As a sensible precaution, ask a contractor for their trade ticket before they start.</p>
 
-      <h2>2. Uninsured Contractors Leave You Holding the Liability</h2>
-      <p>If an uninsured contractor is injured on your property, you may be held liable under Alberta occupier's liability law. If they damage your home and have no insurance, you have no recourse. All contractors on Freddy Fix It are required to carry commercial general liability insurance before their first job.</p>
+      <h2>2. Uninsured Contractors Can Leave You Exposed</h2>
+      <p>If an uninsured contractor is injured on your property or damages your home, you may have limited recourse — and depending on the circumstances, you could face liability questions of your own. If you're unsure where you stand, a quick conversation with your insurer or a lawyer is worthwhile. All contractors on Freddy Fix It are required to carry commercial general liability insurance before their first job.</p>
 
       <h2>3. Low Bids Often Come with Hidden Costs</h2>
       <p>The contractor who quotes $200 for a job that others quoted $600 for isn't saving you money — he's using inferior materials, cutting corners on code compliance, or planning to upcharge mid-job. Vetting helps you compare apples to apples: all licensed, all insured, all at fair market rates.</p>
 
-      <h2>4. Reviews Can Be Faked — Verification Can't</h2>
-      <p>HomeStars and Kijiji reviews are largely unverified. A contractor can solicit friends and family for five-star reviews. On Freddy Fix It, reviews are only unlocked after a job is marked complete by both parties — and tied to real transaction records.</p>
+      <h2>4. Not All Reviews Are Verified</h2>
+      <p>On some platforms, reviews aren't tied to a confirmed transaction, which means they can be harder to trust. It's worth checking how a platform verifies its reviews. On Freddy Fix It, reviews are only unlocked after a job is marked complete by both parties — and tied to real transaction records.</p>
 
       <h2>5. Your Home Is Your Biggest Asset</h2>
-      <p>The average Calgary home is worth over $600,000. Cutting corners on a $300 plumbing job to save $80 by using someone off Kijiji makes no financial sense when you consider the exposure. Vetted contractors cost roughly the same as unvetted ones — you're not paying a premium, you're removing risk.</p>
+      <p>A typical Calgary home is worth several hundred thousand dollars. Cutting corners on a small repair to save a little upfront rarely makes sense once you weigh the potential exposure. In many cases vetted contractors cost roughly the same as unvetted ones — so you're not necessarily paying a premium, you're reducing risk.</p>
 
       <h2>What "Vetted" Actually Means on Freddy Fix It</h2>
       <p>Before any contractor can accept work on our platform, they must submit: a valid Alberta trade licence or business registration, proof of commercial general liability insurance, and complete a profile review by our team. Contractors with ratings below 3.5 stars or a pattern of complaints are removed from the platform.</p>
@@ -260,7 +203,8 @@ function ArticlePlumberCost() {
   const [, setLocation] = useLocation();
   return (
     <article>
-      <p>Plumbing problems don't wait for a convenient time — and neither should you. Whether it's a leaky faucet, a burst pipe, or a water heater replacement, knowing what Calgary plumbers charge in 2026 helps you spot a fair deal and avoid getting overcharged.</p>
+      <p>Plumbing problems don't wait for a convenient time — and neither should you. Whether it's a leaky faucet, a burst pipe, or a water heater replacement, having a rough sense of what Calgary plumbers charge in 2026 can help you spot a fair deal.</p>
+      <p style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general estimates for illustration only, not quotes or guarantees. Actual costs depend on your specific job and the contractor you hire. Always get a written quote before work begins.</p>
 
       <h2>Calgary Plumber Rates by Job Type (2026)</h2>
       <BarChart
@@ -300,7 +244,8 @@ function ArticleRoofCost() {
   const [, setLocation] = useLocation();
   return (
     <article>
-      <p>Replacing a roof is one of the largest home maintenance expenses a Calgary homeowner will face. Hail seasons, heavy snow loads, and UV exposure mean Calgary roofs work harder than most. Here's what a replacement actually costs in 2026 — and what drives the price up or down.</p>
+      <p>Replacing a roof is one of the largest home maintenance expenses a Calgary homeowner will face. Hail seasons, heavy snow loads, and UV exposure mean Calgary roofs work harder than most. Here's a general sense of what a replacement can cost in 2026 — and what drives the price up or down.</p>
+      <p style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general estimates for illustration only, not quotes or guarantees. Roofing costs vary widely with materials, roof size, and condition. Always get a written quote and an on-site assessment before committing.</p>
 
       <h2>Calgary Roof Replacement Cost by Size</h2>
       <BarChart
