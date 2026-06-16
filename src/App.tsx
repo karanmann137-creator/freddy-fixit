@@ -16,6 +16,7 @@ import UpdatePassword from "@/pages/UpdatePassword";
 import AuthCallback from "@/pages/AuthCallback";
 import TopNav from "@/components/TopNav";
 import ChatWidget from "@/components/ChatWidget";
+import Footer from "@/components/Footer";
 import ContractorProfile from "@/pages/ContractorProfile";
 import UserAgreement from "@/pages/UserAgreement";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
@@ -151,6 +152,7 @@ export default function App() {
         {() => <Redirect to="/" />}
       </Route>
     </Switch>
+    <Footer />
     </>
   );
 }

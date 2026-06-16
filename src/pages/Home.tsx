@@ -322,15 +322,6 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="ff-footer-bar">
-        <div style={{ fontSize:"1rem", fontWeight:500, color:"rgba(190,205,235,0.6)", marginBottom:"0.75rem" }}>
-          Contact us: <a href="mailto:hello@freddyfixit.ca" style={{ color:"#ea6b14", textDecoration:"none" }}>hello@freddyfixit.ca</a>
-        </div>
-        <div>Calgary, AB · Home Repairs · Vehicle Maintenance · Trusted Tradespeople</div>
-        <div style={{ marginTop:"0.75rem", fontSize:"0.65rem", color:"rgba(190,205,235,0.2)", maxWidth:"700px", margin:"0.75rem auto 0", lineHeight:1.6 }}>
-          Freddy Fix It is a platform that connects clients with independent contractors. We are not liable for any damages, defects, injury, or loss arising from services booked through this platform. All contractors are independent professionals. Use of this platform constitutes acceptance of our{" "}<a href="/user-agreement" target="_blank" rel="noopener noreferrer" style={{ color:"rgba(190,205,235,.45)", textDecoration:"underline" }}>User Agreement</a>,{" "}<a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color:"rgba(190,205,235,.45)", textDecoration:"underline" }}>Privacy Policy</a>,{" "}and{" "}<a href="/homeowner-protection-promise" target="_blank" rel="noopener noreferrer" style={{ color:"rgba(190,205,235,.45)", textDecoration:"underline" }}>Homeowner Protection Promise</a>.
-        </div>
-      </div>
     </div>
   );
 }
