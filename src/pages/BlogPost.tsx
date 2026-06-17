@@ -374,7 +374,7 @@ export default function BlogPost() {
   const Content = post.content;
 
   return (
-    <div style={{ fontFamily: "'DM Sans',sans-serif", background: "#1a2236", color: "#f0f4ff", minHeight: "100vh", padding: "6rem 1.5rem 5rem" }}>
+    <div style={{ fontFamily: "'DM Sans',sans-serif", background: "#1a2236", backgroundImage: "radial-gradient(ellipse 55% 30% at 22% -2%, rgba(234,107,20,0.26) 0%, transparent 66%), radial-gradient(ellipse 50% 34% at 82% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), repeating-linear-gradient(45deg, transparent 0 27px, rgba(255,255,255,0.02) 27px, rgba(255,255,255,0.02) 28px), repeating-linear-gradient(-45deg, transparent 0 27px, rgba(255,255,255,0.016) 27px, rgba(255,255,255,0.016) 28px)", backgroundAttachment: "fixed", color: "#f0f4ff", minHeight: "100vh", padding: "6rem 1.5rem 5rem" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
       <style>{`
         h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em}
@@ -390,16 +390,23 @@ export default function BlogPost() {
       <div style={{ maxWidth: "740px", margin: "0 auto" }}>
         <button className="back-btn" onClick={() => setLocation("/blog")}>← All Articles</button>
 
-        <div style={{ margin: "2rem 0 .75rem" }}>
-          <span style={{ fontSize: ".72rem", fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: TAG_COLORS[post.tag], background: TAG_COLORS[post.tag] + "22", padding: ".25rem .6rem", borderRadius: 4 }}>{post.tag}</span>
-        </div>
+        {/* Header band — textured for now; drop a `url(...)` photo into backgroundImage later for a per-post hero image */}
+        <div style={{
+          position: "relative", overflow: "hidden", borderRadius: 16,
+          border: "1px solid rgba(255,255,255,.08)", margin: "2rem 0 3rem",
+          padding: "2rem 1.75rem",
+          background: "#141d2e",
+          backgroundImage: `radial-gradient(ellipse 70% 90% at 12% 0%, ${TAG_COLORS[post.tag]}33 0%, transparent 60%), radial-gradient(ellipse 60% 80% at 95% 110%, rgba(234,107,20,.18) 0%, transparent 60%), repeating-linear-gradient(45deg, transparent 0 24px, rgba(255,255,255,.025) 24px, rgba(255,255,255,.025) 25px), repeating-linear-gradient(-45deg, transparent 0 24px, rgba(255,255,255,.02) 24px, rgba(255,255,255,.02) 25px)`,
+        }}>
+          <span style={{ display: "inline-block", fontSize: ".72rem", fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: TAG_COLORS[post.tag], background: TAG_COLORS[post.tag] + "22", padding: ".25rem .6rem", borderRadius: 4, marginBottom: ".9rem" }}>{post.tag}</span>
 
-        <h1 style={{ fontSize: "clamp(1.8rem,4vw,2.8rem)", color: "#f0f4ff", lineHeight: 1.2, marginBottom: "1rem" }}>{post.title}</h1>
+          <h1 style={{ fontSize: "clamp(1.8rem,4vw,2.8rem)", color: "#f0f4ff", lineHeight: 1.2, marginBottom: "1rem" }}>{post.title}</h1>
 
-        <div style={{ display: "flex", gap: "1.5rem", fontSize: ".8rem", color: "rgba(190,205,235,.4)", marginBottom: "3rem", borderBottom: "1px solid rgba(255,255,255,.07)", paddingBottom: "1.5rem" }}>
-          <span>{post.date}</span>
-          <span>{post.readTime}</span>
-          <span>By Freddy Fix It Team</span>
+          <div style={{ display: "flex", gap: "1.5rem", fontSize: ".8rem", color: "rgba(190,205,235,.5)", flexWrap: "wrap" }}>
+            <span>{post.date}</span>
+            <span>{post.readTime}</span>
+            <span>By Freddy Fix It Team</span>
+          </div>
         </div>
 
         <Content />

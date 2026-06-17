@@ -127,17 +127,30 @@ export default function Home() {
           min-height: 100vh;
           background: #1a2236;
           background-image:
-            radial-gradient(ellipse 80% 60% at 50% -10%, rgba(234,107,20,0.2) 0%, transparent 70%),
-            radial-gradient(ellipse 40% 40% at 80% 80%, rgba(60,80,120,0.25) 0%, transparent 60%);
+            radial-gradient(ellipse 46% 36% at 26% -6%, rgba(234,107,20,0.42) 0%, transparent 70%),
+            radial-gradient(ellipse 52% 40% at 78% -10%, rgba(234,107,20,0.30) 0%, transparent 72%),
+            radial-gradient(ellipse 90% 70% at 50% 118%, rgba(13,18,30,0.85) 0%, transparent 70%);
           display: flex; flex-direction: column; align-items: center; justify-content: center;
           padding: 2rem 1rem 4rem; position: relative; overflow: hidden;
         }
+        /* faint diagonal woven grid, vignette-masked toward the centre */
         .ff-hero::before {
-          content: ''; position: absolute; inset: 0;
+          content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
           background-image:
-            repeating-linear-gradient(0deg, transparent, transparent 60px, rgba(255,255,255,0.015) 60px, rgba(255,255,255,0.015) 61px),
-            repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(255,255,255,0.015) 60px, rgba(255,255,255,0.015) 61px);
-          pointer-events: none;
+            repeating-linear-gradient(45deg, transparent 0 25px, rgba(255,255,255,0.035) 25px, rgba(255,255,255,0.035) 26px),
+            repeating-linear-gradient(-45deg, transparent 0 25px, rgba(255,255,255,0.03) 25px, rgba(255,255,255,0.03) 26px);
+          -webkit-mask-image: radial-gradient(circle at 50% 35%, #000 30%, transparent 82%);
+                  mask-image: radial-gradient(circle at 50% 35%, #000 30%, transparent 82%);
+        }
+        /* soft out-of-focus bokeh dots in the lower half */
+        .ff-hero::after {
+          content: ''; position: absolute; inset: 0; pointer-events: none;
+          background-image:
+            radial-gradient(circle at 24% 90%, rgba(245,210,150,0.18) 0%, transparent 4%),
+            radial-gradient(circle at 47% 97%, rgba(245,210,150,0.14) 0%, transparent 3%),
+            radial-gradient(circle at 63% 82%, rgba(245,210,150,0.16) 0%, transparent 5%),
+            radial-gradient(circle at 81% 78%, rgba(245,210,150,0.13) 0%, transparent 3.5%),
+            radial-gradient(circle at 35% 84%, rgba(245,210,150,0.12) 0%, transparent 2.5%);
         }
         .ff-inner { max-width: 680px; width: 100%; position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; }
         .ff-logo-mark { width: 80px; height: 80px; margin-bottom: 1.5rem; filter: drop-shadow(0 0 18px rgba(234,107,20,0.6)); }
@@ -165,8 +178,15 @@ export default function Home() {
         @keyframes bounce { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(6px); } }
 
         /* ── Services ── */
-        .ff-services { background: #151d2e; }
-        .ff-services-inner { max-width: 1000px; margin: 0 auto; padding: 6rem 2rem; }
+        .ff-services { background: #151d2e; position: relative; overflow: hidden; }
+        .ff-services::before {
+          content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
+          background-image:
+            radial-gradient(ellipse 70% 30% at 50% 0%, rgba(234,107,20,0.10) 0%, transparent 65%),
+            repeating-linear-gradient(45deg, transparent 0 28px, rgba(255,255,255,0.02) 28px, rgba(255,255,255,0.02) 29px),
+            repeating-linear-gradient(-45deg, transparent 0 28px, rgba(255,255,255,0.016) 28px, rgba(255,255,255,0.016) 29px);
+        }
+        .ff-services-inner { max-width: 1000px; margin: 0 auto; padding: 6rem 2rem; position: relative; z-index: 1; }
         .ff-services-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-top: 3rem; }
         @media (max-width: 900px) { .ff-services-grid { grid-template-columns: repeat(3, 1fr); } }
         @media (max-width: 500px) { .ff-services-grid { grid-template-columns: repeat(2, 1fr); } }
@@ -192,7 +212,13 @@ export default function Home() {
 
         /* ── About ── */
         .ff-about { background: #151d2e; position: relative; overflow: hidden; }
-        .ff-about::before { content: ''; position: absolute; inset: 0; background-image: repeating-linear-gradient(0deg, transparent, transparent 60px, rgba(255,255,255,0.01) 60px, rgba(255,255,255,0.01) 61px), repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(255,255,255,0.01) 60px, rgba(255,255,255,0.01) 61px); pointer-events: none; }
+        .ff-about::before {
+          content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.55;
+          background-image:
+            radial-gradient(ellipse 60% 40% at 12% 0%, rgba(234,107,20,0.16) 0%, transparent 60%),
+            repeating-linear-gradient(45deg, transparent 0 28px, rgba(255,255,255,0.022) 28px, rgba(255,255,255,0.022) 29px),
+            repeating-linear-gradient(-45deg, transparent 0 28px, rgba(255,255,255,0.018) 28px, rgba(255,255,255,0.018) 29px);
+        }
         .ff-about-inner { max-width: 900px; margin: 0 auto; padding: 6rem 2rem; position: relative; z-index: 1; }
         .ff-about-eyebrow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.2em; color: #ea6b14; margin-bottom: 1.5rem; }
         .ff-about-headline { font-family: 'Bebas Neue', sans-serif; font-size: clamp(2.8rem, 7vw, 5rem); letter-spacing: 0.06em; line-height: 1; color: #f0f4ff; margin-bottom: 2rem; }
