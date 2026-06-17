@@ -205,7 +205,7 @@ export default function ContractorDashboard() {
   const STATUS_COLORS: Record<string,string> = { pending:"#f59e0b", matched:"#3b82f6", in_progress:"#ea6b14", completed:"#22c55e", cancelled:"#ef4444", assigned:"#3b82f6" };
 
   const s = {
-    wrap: { minHeight:"100vh", background:"#1a2236", fontFamily:"'DM Sans',sans-serif", color:"#f0f4ff" },
+    wrap: { minHeight:"100vh", background:"#1a2236", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), radial-gradient(rgba(255,255,255,0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"#f0f4ff" },
     header: { background:"rgba(255,255,255,.03)", borderBottom:"1px solid rgba(255,255,255,.07)", padding:".75rem 1.5rem", display:"flex", justifyContent:"space-between", alignItems:"center" },
     logo: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.4rem", letterSpacing:".1em" },
     tabsBar: { background:"rgba(255,255,255,.02)", borderBottom:"1px solid rgba(255,255,255,.06)", padding:"0 1.5rem", overflowX:"auto" as const },
@@ -346,7 +346,7 @@ export default function ContractorDashboard() {
 
         {activeTab === "available" && (
           <div>
-            <p style={{ fontSize:".82rem", color:"rgba(190,205,235,.45)", marginBottom:"1rem" }}>Open job requests in Calgary. Message us on WhatsApp to accept a job.</p>
+            <p style={{ fontSize:".82rem", color:"rgba(190,205,235,.45)", marginBottom:"1rem" }}>Open job requests in your area. Message us on WhatsApp to accept a job.</p>
             {availableJobs.length === 0 ? <p style={{ color:"rgba(190,205,235,.45)" }}>No open jobs right now.</p> : availableJobs.map(r => (
               <div key={r.id} style={s.jobCard}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:".5rem" }}>

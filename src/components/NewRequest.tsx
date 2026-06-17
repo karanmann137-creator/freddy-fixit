@@ -264,11 +264,11 @@ export default function NewRequest() {
                 <span>A different address</span>
               </button>
               {!sameAddress && (
-                <input style={{ ...inp, marginTop:".4rem", borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} placeholder="e.g. 123 Main St NW, Calgary" value={newLocation} onChange={e => { setNewLocation(e.target.value); setErrors(er => ({ ...er, location:"" })); }} />
+                <input style={{ ...inp, marginTop:".4rem", borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} placeholder="e.g. 123 Main St NW" value={newLocation} onChange={e => { setNewLocation(e.target.value); setErrors(er => ({ ...er, location:"" })); }} />
               )}
             </>
           ) : (
-            <input style={{ ...inp, borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} placeholder="e.g. 123 Main St NW, Calgary" value={newLocation} onChange={e => { setNewLocation(e.target.value); setErrors(er => ({ ...er, location:"" })); }} />
+            <input style={{ ...inp, borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} placeholder="e.g. 123 Main St NW" value={newLocation} onChange={e => { setNewLocation(e.target.value); setErrors(er => ({ ...er, location:"" })); }} />
           )}
           {errors.location && <p style={s.err}>{errors.location}</p>}
 

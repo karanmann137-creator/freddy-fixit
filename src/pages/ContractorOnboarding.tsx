@@ -30,7 +30,7 @@ const SPECIALTIES = [
   { iconName: "refrigerator", label: "Appliance Repair / Install" },
 ];
 
-const AREAS = ["NW Calgary","NE Calgary","SW Calgary","SE Calgary","Downtown / Beltline","Airdrie","Cochrane","Chestermere"];
+const AREAS = ["NW","NE","SW","SE","Downtown / Beltline","Airdrie","Cochrane","Chestermere"];
 
 const AVAILABILITY_OPTIONS = [
   { iconName: "sun", label: "Weekday Mornings",   sub: "Mon–Fri, 7am–12pm" },
@@ -57,7 +57,7 @@ const STEP_TITLES = ["Your Details", "Your Specialties", "Service Area", "Availa
 const STEP_SUBS   = [
   "Just the basics — takes about a minute",
   "What services do you offer? Select all that apply",
-  "Which parts of Calgary do you cover?",
+  "Which areas do you cover?",
   "When are you generally available?",
   "What best describes your work? This sets what we'll need from you",
   "Tell us about your qualifications",
@@ -200,7 +200,7 @@ export default function ContractorOnboarding() {
 
   const inp = { width:"100%", padding:".75rem 1rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.1)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".95rem", outline:"none", boxSizing:"border-box" as const };
   const s = {
-    wrap: { minHeight:"100vh", background:"#1a2236", backgroundImage:"radial-gradient(ellipse 50% 32% at 18% -4%, rgba(234,107,20,0.30) 0%, transparent 68%), radial-gradient(ellipse 55% 36% at 84% -8%, rgba(234,107,20,0.18) 0%, transparent 70%), repeating-linear-gradient(45deg, transparent 0 26px, rgba(255,255,255,0.022) 26px, rgba(255,255,255,0.022) 27px), repeating-linear-gradient(-45deg, transparent 0 26px, rgba(255,255,255,0.018) 26px, rgba(255,255,255,0.018) 27px)", backgroundAttachment:"fixed", padding:"3rem 1rem 4rem", fontFamily:"'DM Sans',sans-serif", color:"#f0f4ff" },
+    wrap: { minHeight:"100vh", background:"#1a2236", backgroundImage:"linear-gradient(rgba(26,34,54,0.90), rgba(26,34,54,0.95)), radial-gradient(ellipse 50% 32% at 18% -4%, rgba(234,107,20,0.30) 0%, transparent 68%), radial-gradient(ellipse 55% 36% at 84% -8%, rgba(234,107,20,0.18) 0%, transparent 70%), repeating-linear-gradient(45deg, transparent 0 26px, rgba(255,255,255,0.022) 26px, rgba(255,255,255,0.022) 27px), repeating-linear-gradient(-45deg, transparent 0 26px, rgba(255,255,255,0.018) 26px, rgba(255,255,255,0.018) 27px), url(\"https://images.unsplash.com/photo-1685320198649-781e83a61de4?auto=format&fit=crop&w=1600&q=65\")", backgroundSize:"auto, auto, auto, auto, auto, cover", backgroundPosition:"center, center, center, center, center, center", backgroundAttachment:"fixed", padding:"3rem 1rem 4rem", fontFamily:"'DM Sans',sans-serif", color:"#f0f4ff" },
     inner: { maxWidth:"580px", margin:"0 auto" },
     card: { background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"14px", padding:"2rem" },
     label: { display:"block", fontSize:".78rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.6)", marginBottom:".6rem" },
@@ -335,7 +335,7 @@ export default function ContractorOnboarding() {
           {/* Step 3 — Service Area */}
           {step === 3 && (
             <div>
-              <p style={s.label}>Calgary Zones You Serve</p>
+              <p style={s.label}>Zones You Serve</p>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".7rem" }}>
                 {AREAS.map(z => (
                   <button key={z} style={{ ...s.chip, ...(selectedArea.includes(z) ? s.chipSel : {}) }} onClick={() => toggleArea(z)}>

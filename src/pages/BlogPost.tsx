@@ -358,6 +358,16 @@ const TAG_COLORS: Record<string, string> = {
   Comparison: "#ea6b14", Pricing: "#3b82f6", Maintenance: "#22c55e", Tips: "#a855f7",
 };
 
+// Free stock photos (Unsplash License) keyed by tag — used as a darkened hero image
+// behind each article header. Photos: workbench tools by Sparsh Paliwal, suburban
+// house by Jeff James. Swap in a Higgsfield/custom image by editing the URL.
+const TAG_IMAGES: Record<string, string> = {
+  Comparison: "https://images.unsplash.com/photo-1685320198649-781e83a61de4?auto=format&fit=crop&w=1600&q=70",
+  Pricing:    "https://images.unsplash.com/photo-1685320198649-781e83a61de4?auto=format&fit=crop&w=1600&q=70",
+  Tips:       "https://images.unsplash.com/photo-1685320198649-781e83a61de4?auto=format&fit=crop&w=1600&q=70",
+  Maintenance:"https://images.unsplash.com/photo-1750128973550-750f796f431b?auto=format&fit=crop&w=1600&q=70",
+};
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function BlogPost() {
@@ -390,13 +400,16 @@ export default function BlogPost() {
       <div style={{ maxWidth: "740px", margin: "0 auto" }}>
         <button className="back-btn" onClick={() => setLocation("/blog")}>← All Articles</button>
 
-        {/* Header band — textured for now; drop a `url(...)` photo into backgroundImage later for a per-post hero image */}
+        {/* Header band — darkened stock photo (by tag) behind a tinted gradient.
+            If the photo fails to load, the gradients still render the band gracefully. */}
         <div style={{
           position: "relative", overflow: "hidden", borderRadius: 16,
           border: "1px solid rgba(255,255,255,.08)", margin: "2rem 0 3rem",
-          padding: "2rem 1.75rem",
+          padding: "2.75rem 1.75rem",
           background: "#141d2e",
-          backgroundImage: `radial-gradient(ellipse 70% 90% at 12% 0%, ${TAG_COLORS[post.tag]}33 0%, transparent 60%), radial-gradient(ellipse 60% 80% at 95% 110%, rgba(234,107,20,.18) 0%, transparent 60%), repeating-linear-gradient(45deg, transparent 0 24px, rgba(255,255,255,.025) 24px, rgba(255,255,255,.025) 25px), repeating-linear-gradient(-45deg, transparent 0 24px, rgba(255,255,255,.02) 24px, rgba(255,255,255,.02) 25px)`,
+          backgroundImage: `linear-gradient(rgba(20,29,46,0.80), rgba(20,29,46,0.90)), radial-gradient(ellipse 70% 90% at 12% 0%, ${TAG_COLORS[post.tag]}55 0%, transparent 60%), radial-gradient(ellipse 60% 80% at 95% 110%, rgba(234,107,20,.28) 0%, transparent 60%), url("${TAG_IMAGES[post.tag] ?? ""}")`,
+          backgroundSize: "cover, cover, cover, cover",
+          backgroundPosition: "center, center, center, center",
         }}>
           <span style={{ display: "inline-block", fontSize: ".72rem", fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: TAG_COLORS[post.tag], background: TAG_COLORS[post.tag] + "22", padding: ".25rem .6rem", borderRadius: 4, marginBottom: ".9rem" }}>{post.tag}</span>
 

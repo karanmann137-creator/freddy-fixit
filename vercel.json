@@ -1,6 +1,10 @@
 {
   "routes": [
-    { "handle": "filesystem" },
+    { "src": "/assets/(.*)", "dest": "/assets/$1" },
+    { "src": "/favicon.svg", "dest": "/favicon.svg" },
+    { "src": "/favicon-32.png", "dest": "/favicon-32.png" },
+    { "src": "/favicon-180.png", "dest": "/favicon-180.png" },
+    { "src": "/icons.svg", "dest": "/icons.svg" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

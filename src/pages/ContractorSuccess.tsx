@@ -103,7 +103,7 @@ export default function ContractorSuccess() {
             <button className="ff-btn ff-btn-primary" onClick={() => setLocation("/contractor-dashboard")}>My Dashboard →</button>
           </div>
 
-          <p className="ff-footer">Questions? Email us at hello@freddyfixit.ca · Calgary, AB</p>
+          <p className="ff-footer">Questions? Email us at hello@freddyfixit.ca</p>
         </motion.div>
       </div>
     </div>

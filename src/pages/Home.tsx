@@ -107,7 +107,7 @@ const FAQS = [
   { q:"Is it free to post a job?", a:"Yes — posting a request is completely free. You only pay for the work itself, once a contractor is scheduled and the job is complete." },
   { q:"Are your contractors vetted?", a:"Yes. Every contractor on the platform has been reviewed and approved by our team, and we collect their qualifications and insurance details during onboarding." },
   { q:"How do I pay for the work?", a:"You settle payment once the job is scheduled and completed. We're rolling out secure in-platform payments so your money is only released to the contractor after you confirm the work is done." },
-  { q:"What areas do you serve?", a:"Calgary and the surrounding communities, including Airdrie, Cochrane, and Chestermere." },
+  { q:"What areas do you serve?", a:"Your local area and the surrounding communities, including Airdrie, Cochrane, and Chestermere." },
   { q:"What kinds of jobs can I request?", a:"General repairs and handyman work, carpentry, painting, drywall, landscaping, snow removal, gutters, windows & doors, and more." },
   { q:"How fast will I hear back?", a:"You'll get a response within 24 hours — often sooner." },
   { q:"What if I'm not happy with the work?", a:"Reach out to us at hello@freddyfixit.ca and we'll help make it right." },
@@ -152,6 +152,11 @@ export default function Home() {
             radial-gradient(circle at 81% 78%, rgba(245,210,150,0.13) 0%, transparent 3.5%),
             radial-gradient(circle at 35% 84%, rgba(245,210,150,0.12) 0%, transparent 2.5%);
         }
+        /* scattered, faint trade icons hinting at the jobs we do */
+        .ff-hero-icons { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+        .ff-hero-icons span { position: absolute; color: #ea6b14; opacity: 0.07; }
+        .ff-hero-icons span svg { display: block; }
+        @media (max-width: 600px) { .ff-hero-icons span.ff-hi-hide { display: none; } }
         .ff-inner { max-width: 680px; width: 100%; position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; }
         .ff-logo-mark { width: 80px; height: 80px; margin-bottom: 1.5rem; filter: drop-shadow(0 0 18px rgba(234,107,20,0.6)); }
         .ff-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(3.5rem, 10vw, 6rem); letter-spacing: 0.08em; line-height: 0.9; text-align: center; margin: 0 0 0.5rem; color: #f0f4ff; text-shadow: 0 0 40px rgba(234,107,20,0.3); }
@@ -256,6 +261,17 @@ export default function Home() {
 
       {/* ── Hero ── */}
       <div className="ff-hero">
+        {/* faint trade icons hinting at the jobs we do */}
+        <div className="ff-hero-icons" aria-hidden="true">
+          <span style={{ top:"12%", left:"8%", transform:"rotate(-18deg)" }}><Ic name="wrench" size={64} color="#ea6b14" /></span>
+          <span className="ff-hi-hide" style={{ top:"20%", right:"10%", transform:"rotate(14deg)" }}><Ic name="pipe" size={72} color="#ea6b14" /></span>
+          <span style={{ top:"58%", left:"6%", transform:"rotate(10deg)" }}><Ic name="paint-roller" size={58} color="#ea6b14" /></span>
+          <span className="ff-hi-hide" style={{ top:"62%", right:"7%", transform:"rotate(-12deg)" }}><Ic name="hammer" size={66} color="#ea6b14" /></span>
+          <span className="ff-hi-hide" style={{ top:"40%", left:"15%", transform:"rotate(8deg)" }}><Ic name="zap" size={48} color="#ea6b14" /></span>
+          <span style={{ top:"78%", left:"42%", transform:"rotate(-6deg)" }}><Ic name="car" size={54} color="#ea6b14" /></span>
+          <span className="ff-hi-hide" style={{ top:"34%", right:"16%", transform:"rotate(-10deg)" }}><Ic name="thermometer" size={50} color="#ea6b14" /></span>
+          <span className="ff-hi-hide" style={{ top:"8%", left:"46%", transform:"rotate(6deg)" }}><Ic name="home" size={52} color="#ea6b14" /></span>
+        </div>
         <motion.div className="ff-inner" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: "easeOut" }}>
           <motion.svg className="ff-logo-mark" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg"
             initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.6, delay: 0.1 }}>
@@ -271,7 +287,7 @@ export default function Home() {
           </motion.h1>
 
           <motion.p className="ff-tagline" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.35 }}>
-            Calgary's On-Demand Repair & Maintenance Platform
+            The On-Demand Repair & Maintenance Platform
           </motion.p>
 
           <div className="ff-divider" />
@@ -280,7 +296,7 @@ export default function Home() {
             <div className="ff-card ff-card-contractor" onClick={() => setLocation("/contractor-onboarding")}>
               <div className="ff-card-icon"><Ic name="wrench" size={32} color="#ea6b14" /></div>
               <div className="ff-card-title">I'm a Contractor</div>
-              <div className="ff-card-sub">Join our network and get more clients in Calgary</div>
+              <div className="ff-card-sub">Join our network and get more local clients</div>
               <div className="ff-card-cta">Get started →</div>
             </div>
             <div className="ff-card ff-card-client" onClick={() => setLocation("/client-onboarding")}>
@@ -406,7 +422,7 @@ export default function Home() {
             </div>
             <div className="ff-stat">
               <div className="ff-stat-num">100%</div>
-              <div className="ff-stat-label">Vetted and verified local Calgary tradespeople</div>
+              <div className="ff-stat-label">Vetted and verified local tradespeople</div>
             </div>
             <div className="ff-stat">
               <div className="ff-stat-num">$0</div>
@@ -428,20 +444,20 @@ export default function Home() {
               <div style={{ fontSize:"1.5rem", marginBottom:"1rem" }}>⭐⭐⭐⭐⭐</div>
               <p style={{ fontSize:".9rem", color:"rgba(190,205,235,.75)", fontWeight:300, lineHeight:1.7, marginBottom:"1.5rem" }}>"I submitted my request in under two minutes and had a contractor at my door the next morning. The plumber was professional, clean, and fixed the leak properly the first time. Couldn't be easier."</p>
               <div style={{ fontSize:".82rem", fontWeight:500, color:"#f0f4ff" }}>Sarah M.</div>
-              <div style={{ fontSize:".75rem", color:"rgba(190,205,235,.4)" }}>Homeowner · NW Calgary</div>
+              <div style={{ fontSize:".75rem", color:"rgba(190,205,235,.4)" }}>Homeowner · NW</div>
             </div>
             <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"14px", padding:"2rem" }}>
               <div style={{ fontSize:"1.5rem", marginBottom:"1rem" }}>⭐⭐⭐⭐⭐</div>
               <p style={{ fontSize:".9rem", color:"rgba(190,205,235,.75)", fontWeight:300, lineHeight:1.7, marginBottom:"1.5rem" }}>"The whole process was straightforward — I described the job, picked my timing, and that was it. The contractor showed up on time and did excellent work on my drywall. Very impressed."</p>
               <div style={{ fontSize:".82rem", fontWeight:500, color:"#f0f4ff" }}>James T.</div>
-              <div style={{ fontSize:".75rem", color:"rgba(190,205,235,.4)" }}>Property Owner · SE Calgary</div>
+              <div style={{ fontSize:".75rem", color:"rgba(190,205,235,.4)" }}>Property Owner · SE</div>
             </div>
             <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"14px", padding:"2rem", position:"relative" }}>
               <div style={{ position:"absolute", top:"1rem", right:"1rem", fontSize:".7rem", background:"rgba(234,107,20,.15)", color:"#ea6b14", padding:".25rem .6rem", borderRadius:"99px", letterSpacing:".08em", textTransform:"uppercase" }}>Contractor</div>
               <div style={{ fontSize:"1.5rem", marginBottom:"1rem" }}>⭐⭐⭐⭐⭐</div>
               <p style={{ fontSize:".9rem", color:"rgba(190,205,235,.75)", fontWeight:300, lineHeight:1.7, marginBottom:"1.5rem" }}>"Freddy Fix It completely changed my business. My calendar used to have gaps every week — now I'm booked solid. They cut my downtime dramatically and the clients they send are genuine and ready to go."</p>
               <div style={{ fontSize:".82rem", fontWeight:500, color:"#f0f4ff" }}>Mike R.</div>
-              <div style={{ fontSize:".75rem", color:"rgba(190,205,235,.4)" }}>Licensed Contractor · Calgary</div>
+              <div style={{ fontSize:".75rem", color:"rgba(190,205,235,.4)" }}>Licensed Contractor</div>
             </div>
           </div>
         </div>
