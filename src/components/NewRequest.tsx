@@ -1,4 +1,5 @@
 import { Ic } from "@/components/Ic";
+import VoiceDictate from "@/components/VoiceDictate";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
@@ -283,6 +284,7 @@ export default function NewRequest() {
           <div style={{ marginTop:"1.75rem", marginBottom:"1.2rem" }}>
             <label style={s.label}>Describe the job</label>
             <textarea style={{ ...inp, resize:"vertical", minHeight:"120px", borderColor: errors.description ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} placeholder="Tell us what's broken or what you need done." value={description} onChange={e => { setDescription(e.target.value); setErrors(er => ({ ...er, description:"" })); }} />
+            <VoiceDictate onAppend={(t) => { setDescription(d => (d.trim() ? d.trim() + " " : "") + t); setErrors(er => ({ ...er, description:"" })); }} />
             {errors.description && <p style={s.err}>{errors.description}</p>}
           </div>
 

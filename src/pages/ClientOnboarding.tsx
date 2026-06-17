@@ -1,4 +1,5 @@
 import { Ic } from "@/components/Ic";
+import VoiceDictate from "@/components/VoiceDictate";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
@@ -424,6 +425,7 @@ export default function ClientOnboarding() {
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Describe the Job</label>
                 <textarea style={{ ...inp, resize:"vertical", minHeight:"120px", borderColor: errors.jobDescription ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} placeholder="Tell us what's broken or what you need done." value={form.jobDescription} onChange={e => set("jobDescription",e.target.value)} />
+                <VoiceDictate onAppend={(t) => set("jobDescription", (form.jobDescription.trim() ? form.jobDescription.trim() + " " : "") + t)} />
                 {errors.jobDescription && <p style={s.err}>{errors.jobDescription}</p>}
               </div>
               <div style={{ marginBottom:"1.2rem" }}>

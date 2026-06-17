@@ -57,6 +57,7 @@ Fonts: Bebas Neue (headings), DM Sans (body). Loaded per-page via a Google Fonts
 
 ## Open / queued
 - Stripe Connect payments (Express accounts, separate charges+transfers, 7% application fee released on `client_confirmed_at`) — decided, not built.
+  - **Pricing decisions (owner, 2026-06):** platform fee = **7%**. A **3% client service fee** is added at job confirmation to cover Stripe processing (2.9% + $0.30). To be implemented as part of the Stripe Connect build — no charge moves through the site yet, so the fee is recorded here, not live.
 - User Agreement + Privacy Policy for signup (Alberta / PIPEDA + PIPA) — not built.
 - Set seed contractors' `company_name` + vetting answers in DB (owner to provide values).
 - Keep this file + `src/CLAUDE.md` + `supabase/CLAUDE.md` current as features land.
