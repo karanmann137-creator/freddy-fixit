@@ -161,7 +161,7 @@ export default function Home() {
         .ff-whatsapp:hover { background: rgba(37,211,102,0.2); }
         .ff-signin { display: flex; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 999px; padding: 0.6rem 1.4rem; color: rgba(190,205,235,0.7); font-size: 0.85rem; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; margin-top: 0.75rem; }
         .ff-signin:hover { background: rgba(255,255,255,0.1); color: #f0f4ff; }
-        .ff-scroll-hint { position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 0.4rem; color: rgba(190,205,235,0.3); font-size: 0.72rem; letter-spacing: 0.15em; text-transform: uppercase; animation: bounce 2s infinite; }
+        .ff-scroll-hint { position: absolute; bottom: 0.6rem; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 0.4rem; color: rgba(190,205,235,0.3); font-size: 0.72rem; letter-spacing: 0.15em; text-transform: uppercase; animation: bounce 2s infinite; }
         @keyframes bounce { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(6px); } }
 
         /* ── Services ── */
