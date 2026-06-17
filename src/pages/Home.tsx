@@ -4,8 +4,8 @@ import { motion } from "framer-motion";
 import { Ic } from "@/components/Ic";
 
 const BEFORE_AFTER = [
-  { label:"Bathroom Renovation", before:"/before-after/bathroom-before.png", after:"/before-after/bathroom-after.png" },
-  { label:"Kitchen Remodel",     before:"/before-after/kitchen-before.png",  after:"/before-after/kitchen-after.png" },
+  { label:"Bathroom Renovation", before:"/before-after/bathroom-before.webp", after:"/before-after/bathroom-after.webp" },
+  { label:"Kitchen Remodel",     before:"/before-after/kitchen-before.webp",  after:"/before-after/kitchen-after.webp" },
 ];
 
 function BeforeAfter() {
@@ -302,6 +302,19 @@ export default function Home() {
         </div>
       </div>
 
+      {/* ── Before / After ── */}
+      <div className="ff-how">
+        <div className="ff-how-inner">
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
+            <p className="ff-about-eyebrow" style={{ textAlign:"center" }}>See the Difference</p>
+            <h2 className="ff-about-headline" style={{ textAlign:"center", marginBottom:"3rem" }}>Before &amp; <span>After.</span></h2>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+            <BeforeAfter />
+          </motion.div>
+        </div>
+      </div>
+
       {/* ── How It Works ── */}
       <div className="ff-how">
         <div className="ff-how-inner">
@@ -322,19 +335,6 @@ export default function Home() {
               </motion.div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* ── Before / After ── */}
-      <div className="ff-services">
-        <div className="ff-services-inner">
-          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
-            <p className="ff-about-eyebrow" style={{ textAlign:"center" }}>See the Difference</p>
-            <h2 className="ff-about-headline" style={{ textAlign:"center", marginBottom:"3rem" }}>Before &amp; <span>After.</span></h2>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
-            <BeforeAfter />
-          </motion.div>
         </div>
       </div>
 
