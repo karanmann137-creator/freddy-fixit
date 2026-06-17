@@ -6,6 +6,10 @@ import { Ic } from "@/components/Ic";
 const BEFORE_AFTER = [
   { label:"Bathroom Renovation", before:"/before-after/bathroom-before.webp", after:"/before-after/bathroom-after.webp" },
   { label:"Kitchen Remodel",     before:"/before-after/kitchen-before.webp",  after:"/before-after/kitchen-after.webp" },
+  { label:"Landscaping",         before:"https://images.unsplash.com/photo-1748164089130-1311c43b83b7?auto=format&fit=crop&w=1600&q=70", after:"https://images.unsplash.com/photo-1694885186013-5aa7d91ae5d5?auto=format&fit=crop&w=1600&q=70" },
+  { label:"Appliance Install",   before:"https://images.unsplash.com/photo-1705538851801-4de1c763df2a?auto=format&fit=crop&w=1600&q=70", after:"https://images.unsplash.com/photo-1639405069836-f82aa6dcb900?auto=format&fit=crop&w=1600&q=70" },
+  { label:"Furniture Assembly",  before:"https://images.unsplash.com/photo-1562534315-64dba645d0f9?auto=format&fit=crop&w=1600&q=70", after:"https://images.unsplash.com/photo-1653971858474-4f2dfa7f4dc1?auto=format&fit=crop&w=1600&q=70" },
+  { label:"Auto / Tires & PPF",  before:"https://images.unsplash.com/photo-1645445522156-9ac06bc7a767?auto=format&fit=crop&w=1600&q=70", after:"https://images.unsplash.com/photo-1601411101851-ea0e07766235?auto=format&fit=crop&w=1600&q=70" },
 ];
 
 function BeforeAfter() {
