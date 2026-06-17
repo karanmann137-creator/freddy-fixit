@@ -282,6 +282,19 @@ export default function Home() {
         </div>
       </div>
 
+      {/* ── Before / After ── */}
+      <div className="ff-how">
+        <div className="ff-how-inner">
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
+            <p className="ff-about-eyebrow" style={{ textAlign:"center" }}>See the Difference</p>
+            <h2 className="ff-about-headline" style={{ textAlign:"center", marginBottom:"3rem" }}>Before &amp; <span>After.</span></h2>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+            <BeforeAfter />
+          </motion.div>
+        </div>
+      </div>
+
       {/* ── Services ── */}
       <div className="ff-services">
         <div className="ff-services-inner">
@@ -299,19 +312,6 @@ export default function Home() {
               </motion.div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* ── Before / After ── */}
-      <div className="ff-how">
-        <div className="ff-how-inner">
-          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
-            <p className="ff-about-eyebrow" style={{ textAlign:"center" }}>See the Difference</p>
-            <h2 className="ff-about-headline" style={{ textAlign:"center", marginBottom:"3rem" }}>Before &amp; <span>After.</span></h2>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
-            <BeforeAfter />
-          </motion.div>
         </div>
       </div>
 
