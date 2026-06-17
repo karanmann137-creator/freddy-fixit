@@ -1,6 +1,78 @@
 import { useLocation } from "wouter";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { Ic } from "@/components/Ic";
+
+const BEFORE_AFTER = [
+  { label:"Bathroom Renovation", before:"/before-after/bathroom-before.png", after:"/before-after/bathroom-after.png" },
+  { label:"Kitchen Remodel",     before:"/before-after/kitchen-before.png",  after:"/before-after/kitchen-after.png" },
+];
+
+function BeforeAfter() {
+  const [idx, setIdx] = useState(0);
+  const [pct, setPct] = useState(55);
+  const wrap = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+
+  const moveTo = (clientX: number) => {
+    const el = wrap.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    let p = ((clientX - r.left) / r.width) * 100;
+    if (p < 0) p = 0;
+    if (p > 100) p = 100;
+    setPct(p);
+  };
+  const clientXOf = (e: any) => (e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX);
+  const onDown = (e: any) => { dragging.current = true; moveTo(clientXOf(e)); };
+  const onMove = (e: any) => { if (dragging.current) moveTo(clientXOf(e)); };
+  const onUp = () => { dragging.current = false; };
+
+  const pair = BEFORE_AFTER[idx];
+
+  return (
+    <div style={{ maxWidth:"900px", margin:"0 auto" }}>
+      <div className="ff-ba-tabs">
+        {BEFORE_AFTER.map((p, i) => (
+          <button key={p.label} className={"ff-ba-tab" + (i === idx ? " ff-ba-tab-on" : "")} onClick={() => { setIdx(i); setPct(55); }}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      <div
+        ref={wrap}
+        className="ff-ba-wrap"
+        onMouseDown={onDown}
+        onMouseMove={onMove}
+        onMouseUp={onUp}
+        onMouseLeave={onUp}
+        onTouchStart={onDown}
+        onTouchMove={onMove}
+        onTouchEnd={onUp}
+      >
+        <img className="ff-ba-img" src={pair.after} alt={pair.label + " after"} draggable={false} />
+        <img className="ff-ba-img" src={pair.before} alt={pair.label + " before"} draggable={false}
+          style={{ clipPath: "inset(0 " + (100 - pct) + "% 0 0)" }} />
+
+        <span className="ff-ba-badge ff-ba-badge-before" style={{ opacity: pct > 12 ? 1 : 0 }}>Before</span>
+        <span className="ff-ba-badge ff-ba-badge-after" style={{ opacity: pct < 88 ? 1 : 0 }}>After</span>
+
+        <div className="ff-ba-handle" style={{ left: pct + "%" }}>
+          <div className="ff-ba-knob">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a2236" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" /><polyline points="9 18 3 12 9 6" style={{ display:"none" }} />
+            </svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a2236" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 6 15 12 9 18" />
+            </svg>
+          </div>
+        </div>
+      </div>
+      <p className="ff-ba-note">Illustrative examples. Drag the slider to reveal the transformation.</p>
+    </div>
+  );
+}
 
 const SERVICES = [
   { iconName:"wrench", label:"General Repairs",      desc:"Handyman services for anything around the house" },
@@ -138,6 +210,20 @@ export default function Home() {
         .ff-reviews-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
         @media (max-width: 760px) { .ff-reviews-grid { grid-template-columns: 1fr; } }
 
+        /* ── Before / After ── */
+        .ff-ba-tabs { display: flex; justify-content: center; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .ff-ba-tab { font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 500; letter-spacing: 0.04em; color: rgba(190,205,235,0.7); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 999px; padding: 0.55rem 1.25rem; cursor: pointer; transition: all 0.2s; }
+        .ff-ba-tab:hover { color: #f0f4ff; border-color: rgba(234,107,20,0.4); }
+        .ff-ba-tab-on { color: #fff; background: rgba(234,107,20,0.18); border-color: rgba(234,107,20,0.6); }
+        .ff-ba-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); cursor: ew-resize; user-select: none; touch-action: none; box-shadow: 0 14px 44px rgba(0,0,0,0.4); background: #0e1422; }
+        .ff-ba-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; -webkit-user-drag: none; }
+        .ff-ba-badge { position: absolute; top: 1rem; font-family: 'Bebas Neue', sans-serif; font-size: 0.95rem; letter-spacing: 0.1em; color: #f0f4ff; background: rgba(26,34,54,0.7); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.12); padding: 0.3rem 0.85rem; border-radius: 999px; pointer-events: none; transition: opacity 0.2s; }
+        .ff-ba-badge-before { left: 1rem; }
+        .ff-ba-badge-after { right: 1rem; color: #ea6b14; border-color: rgba(234,107,20,0.4); }
+        .ff-ba-handle { position: absolute; top: 0; bottom: 0; width: 3px; background: rgba(255,255,255,0.9); transform: translateX(-50%); pointer-events: none; box-shadow: 0 0 12px rgba(0,0,0,0.5); }
+        .ff-ba-knob { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 44px; height: 44px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; gap: 1px; box-shadow: 0 2px 12px rgba(0,0,0,0.4); }
+        .ff-ba-note { text-align: center; margin-top: 1.25rem; font-size: 0.8rem; color: rgba(190,205,235,0.45); font-weight: 300; letter-spacing: 0.02em; }
+
         /* ── Footer ── */
         .ff-footer-bar { background: #111827; border-top: 1px solid rgba(255,255,255,0.06); padding: 2rem 1.5rem; text-align: center; font-size: 0.75rem; color: rgba(190,205,235,0.25); letter-spacing: 0.05em; }
       `}</style>
@@ -236,6 +322,19 @@ export default function Home() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* ── Before / After ── */}
+      <div className="ff-services">
+        <div className="ff-services-inner">
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
+            <p className="ff-about-eyebrow" style={{ textAlign:"center" }}>See the Difference</p>
+            <h2 className="ff-about-headline" style={{ textAlign:"center", marginBottom:"3rem" }}>Before &amp; <span>After.</span></h2>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+            <BeforeAfter />
+          </motion.div>
         </div>
       </div>
 

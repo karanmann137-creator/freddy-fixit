@@ -34,3 +34,4 @@ apply-contractor-view.sh
 apply-global-footer.sh
 apply-contractor-cleanup.sh
 apply-contact-privacy.sh
+apply-before-after.sh
