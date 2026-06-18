@@ -27,6 +27,7 @@ export default function ContractorDashboard() {
   const [busyPf, setBusyPf]           = useState(false);
   const [bidForm, setBidForm]         = useState<Record<string,{amount:string;message:string}>>({});
   const [busyBid, setBusyBid]         = useState<string|null>(null);
+  const [busyStripe, setBusyStripe]   = useState(false);
   const [myReviews, setMyReviews]     = useState<any[]>([]);
   const msgEndRef = useRef<HTMLDivElement>(null);
 
@@ -45,6 +46,16 @@ export default function ContractorDashboard() {
       const { data: con } = await supabase.from("contractors").select("*").eq("id", user.id).single();
       setContractor(con);
       setGoogleUrl(con?.google_reviews_url ?? "");
+      // Sync live Stripe payout status (no account.updated webhook needed)
+      if (con?.stripe_account_id && !con?.stripe_payouts_enabled) {
+        supabase.functions.invoke("refresh-connect-status", { body: {} })
+          .then(({ data }: any) => {
+            if (data && (data.payouts_enabled != null)) {
+              setContractor((c: any) => c ? { ...c, stripe_charges_enabled: !!data.charges_enabled, stripe_payouts_enabled: !!data.payouts_enabled } : c);
+            }
+          })
+          .catch(() => {});
+      }
       const { data: pf } = await supabase.from("portfolio_items").select("*").eq("contractor_id", user.id).order("created_at", { ascending: false });
       setPortfolio(pf ?? []);
       const { data: jobs } = await supabase.from("jobs")
@@ -198,6 +209,19 @@ export default function ContractorDashboard() {
     await supabase.from("contractors").update({ availability: avail }).eq("id", profile.id);
     setContractor((c: any) => ({ ...c, availability: avail }));
   };
+
+  async function setupPayouts() {
+    setBusyStripe(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-connect-account", { body: {} });
+      if (error) throw error;
+      if (data?.url) { window.location.href = data.url; return; }
+      throw new Error(data?.error || "Could not start payout setup");
+    } catch (e: any) {
+      alert("Payout setup failed: " + (e?.message || String(e)));
+      setBusyStripe(false);
+    }
+  }
 
   const totalEarned = Number(contractor?.total_earned ?? 0);
   const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
@@ -462,6 +486,26 @@ export default function ContractorDashboard() {
                   <div style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.45)" }}>{l}</div>
                 </div>
               ))}
+            </div>
+            <div style={{ ...s.card, marginBottom:"1.5rem" }}>
+              <div style={s.cardTitle}>Payouts</div>
+              {contractor?.stripe_payouts_enabled ? (
+                <div style={{ display:"flex", alignItems:"center", gap:".6rem", color:"#22c55e", fontSize:".9rem" }}>
+                  <Ic name="check" size={16} color="#22c55e" />
+                  <span>Connected — you're set up to receive payouts. You keep <strong>93%</strong> of each job; Freddy Fix It's fee is 7%.</span>
+                </div>
+              ) : (
+                <div>
+                  <p style={{ color:"rgba(190,205,235,.7)", fontSize:".88rem", marginBottom:".9rem", lineHeight:1.5 }}>
+                    {contractor?.stripe_account_id
+                      ? "Your payout account needs a few more details before you can be paid. Finish setup with Stripe below."
+                      : "Connect a bank account through Stripe to get paid for completed jobs. Funds for each job are released to you after the client confirms the work is done. You keep 93% of every job."}
+                  </p>
+                  <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyStripe} onClick={setupPayouts}>
+                    {busyStripe ? "Opening Stripe…" : (contractor?.stripe_account_id ? "Finish payout setup" : "Set up payouts")}
+                  </button>
+                </div>
+              )}
             </div>
             <div style={s.card}>
               <div style={s.cardTitle}>Job History</div>

@@ -67,6 +67,7 @@ export default function ClientDashboard() {
   const [clientBids, setClientBids] = useState<any[]>([]);
   const [bidNames, setBidNames] = useState<Record<string,string>>({});
   const [busyPick, setBusyPick] = useState<string|null>(null);
+  const [busyPay, setBusyPay] = useState(false);
   const msgEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -172,6 +173,26 @@ export default function ClientDashboard() {
     if (error) { alert("Couldn't approve: " + error.message); return; }
     setActiveJob({ ...activeJob, status: "scheduled", client_approved_at: new Date().toISOString() });
   };
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  function jobTotal(j: any) {
+    if (j?.total_charged != null) return Number(j.total_charged);
+    const amt = Number(j?.amount ?? 0);
+    return r2(amt * 1.03);
+  }
+  const payForJob = async () => {
+    if (!activeJob) return;
+    setBusyPay(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-payment-intent", { body: { job_id: activeJob.id } });
+      if (error) throw error;
+      if (data?.url) { window.location.href = data.url; return; }
+      throw new Error(data?.error || "Could not start checkout");
+    } catch (e: any) {
+      alert("Payment couldn't start: " + (e?.message || String(e)));
+      setBusyPay(false);
+    }
+  };
+
   const confirmCompletion = async () => {
     if (!activeJob) return;
     setBusyReq(true);
@@ -180,6 +201,11 @@ export default function ClientDashboard() {
     if (error) { alert("Couldn't confirm: " + error.message); return; }
     setActiveJob({ ...activeJob, status: "completed", client_confirmed_at: new Date().toISOString() });
     setRequests(prev => prev.map(r => r.id === activeJob.request_id ? { ...r, status: "completed" } : r));
+    if (activeJob.payment_status === "held") {
+      supabase.functions.invoke("release-payment", { body: { job_id: activeJob.id } })
+        .then(() => setActiveJob((j: any) => j ? { ...j, payment_status: "released" } : j))
+        .catch(() => {});
+    }
   };
 
   useEffect(() => {
@@ -356,14 +382,38 @@ export default function ClientDashboard() {
                           <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.75)" }}><Ic name="check-circle" size={14} style={{ marginRight:4 }} />Matched! Waiting for your contractor to propose a time and price.</div>
                         )}
                         {activeJob.status === "scheduled" && (
-                          <div style={{ fontSize:".85rem", color:"#86efac" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Scheduled for {activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "the agreed time"}{activeJob.amount ? " · $" + activeJob.amount : ""}.</div>
+                          <>
+                            <div style={{ fontSize:".85rem", color:"#86efac", marginBottom: (activeJob.payment_status === "held" || activeJob.payment_status === "released") ? 0 : ".75rem" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Scheduled for {activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "the agreed time"}{activeJob.amount ? " · $" + activeJob.amount : ""}.</div>
+                            {(activeJob.payment_status === "held" || activeJob.payment_status === "released") ? (
+                              <div style={{ fontSize:".82rem", color:"#86efac" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Payment secured — we'll release it to your contractor once you confirm the work is done.</div>
+                            ) : activeJob.amount ? (
+                              <>
+                                <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.75)", marginBottom:".6rem", lineHeight:1.5 }}>Pay now to secure the job. Your money is <strong>held safely</strong> and only released to the contractor after you confirm the work is done. Total includes a 3% service fee.</div>
+                                <button style={s.primaryBtn} disabled={busyPay} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " (held until you confirm)"}</button>
+                              </>
+                            ) : null}
+                          </>
                         )}
                         {activeJob.status === "pending_confirmation" && (
                           <>
                             <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}>Your contractor marked this complete</div>
                             {completionPhotoUrl && <img src={completionPhotoUrl} alt="Completed work" style={{ width:"100%", maxWidth:"320px", borderRadius:"10px", margin:".5rem 0", display:"block" }} />}
-                            <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.7)", marginBottom:".75rem" }}>Please confirm the work is done. If you don't, it auto-confirms in a few days.</div>
-                            <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm completion"}</button>
+                            {(activeJob.payment_status === "held" || activeJob.payment_status === "released") ? (
+                              <>
+                                <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.7)", marginBottom:".75rem" }}>Confirm the work is done and we'll release your held payment to the contractor. If you don't, it auto-confirms in a few days.</div>
+                                <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm & release payment"}</button>
+                              </>
+                            ) : activeJob.amount ? (
+                              <>
+                                <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.7)", marginBottom:".6rem", lineHeight:1.5 }}>Pay for the job, then confirm. Your payment is held and only released to the contractor once you confirm. Total includes a 3% service fee.</div>
+                                <button style={s.primaryBtn} disabled={busyPay} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " now"}</button>
+                              </>
+                            ) : (
+                              <>
+                                <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.7)", marginBottom:".75rem" }}>Please confirm the work is done. If you don't, it auto-confirms in a few days.</div>
+                                <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm completion"}</button>
+                              </>
+                            )}
                           </>
                         )}
                         {activeJob.status === "completed" && (
