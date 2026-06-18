@@ -218,7 +218,9 @@ export default function ContractorDashboard() {
       if (data?.url) { window.location.href = data.url; return; }
       throw new Error(data?.error || "Could not start payout setup");
     } catch (e: any) {
-      alert("Payout setup failed: " + (e?.message || String(e)));
+      let msg = e?.message || String(e);
+      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
+      alert("Payout setup failed: " + msg);
       setBusyStripe(false);
     }
   }

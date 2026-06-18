@@ -188,7 +188,9 @@ export default function ClientDashboard() {
       if (data?.url) { window.location.href = data.url; return; }
       throw new Error(data?.error || "Could not start checkout");
     } catch (e: any) {
-      alert("Payment couldn't start: " + (e?.message || String(e)));
+      let msg = e?.message || String(e);
+      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
+      alert("Payment couldn't start: " + msg);
       setBusyPay(false);
     }
   };
