@@ -35,7 +35,15 @@ Deno.serve(async (req) => {
     if (!acctId) {
       const { data: profile } = await admin.from("profiles").select("email").eq("id", user.id).maybeSingle();
       const acct = await stripe.accounts.create({
-        type: "express",
+        // Declare loss responsibility explicitly so we don't depend on the
+        // dashboard platform-profile attestation. Express-style dashboard,
+        // Stripe collects requirements; platform is liable for losses (required by separate charges & transfers) and pays Stripe processing fees.
+        controller: {
+          losses: { payments: "application" },
+          fees: { payer: "application" },
+          requirement_collection: "stripe",
+          stripe_dashboard: { type: "express" },
+        },
         country: "CA",
         email: profile?.email ?? user.email ?? undefined,
         capabilities: { transfers: { requested: true } },

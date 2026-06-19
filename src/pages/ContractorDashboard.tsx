@@ -494,14 +494,14 @@ export default function ContractorDashboard() {
               {contractor?.stripe_payouts_enabled ? (
                 <div style={{ display:"flex", alignItems:"center", gap:".6rem", color:"#22c55e", fontSize:".9rem" }}>
                   <Ic name="check" size={16} color="#22c55e" />
-                  <span>Connected — you're set up to receive payouts. You keep <strong>93%</strong> of each job; Freddy Fix It's fee is 7%.</span>
+                  <span>Connected — you're set up to receive payouts.</span>
                 </div>
               ) : (
                 <div>
                   <p style={{ color:"rgba(190,205,235,.7)", fontSize:".88rem", marginBottom:".9rem", lineHeight:1.5 }}>
                     {contractor?.stripe_account_id
                       ? "Your payout account needs a few more details before you can be paid. Finish setup with Stripe below."
-                      : "Connect a bank account through Stripe to get paid for completed jobs. Funds for each job are released to you after the client confirms the work is done. You keep 93% of every job."}
+                      : "Connect a bank account through Stripe to get paid for completed jobs. Funds for each job are released to you after the client confirms the work is done."}
                   </p>
                   <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyStripe} onClick={setupPayouts}>
                     {busyStripe ? "Opening Stripe…" : (contractor?.stripe_account_id ? "Finish payout setup" : "Set up payouts")}
