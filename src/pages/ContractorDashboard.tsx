@@ -403,11 +403,6 @@ export default function ContractorDashboard() {
                     </div>
                   )}
                 </div>
-                <a href={`https://wa.me/18255618331?text=Hi%2C%20I'd%20like%20to%20accept%20the%20${encodeURIComponent(r.service_needed)}%20job`}
-                  target="_blank" rel="noopener noreferrer"
-                  style={{ display:"inline-flex", alignItems:"center", gap:".5rem", padding:".6rem 1.1rem", background:"rgba(37,211,102,.1)", border:"1px solid rgba(37,211,102,.25)", borderRadius:"8px", color:"#25d366", fontSize:".82rem", fontWeight:500, textDecoration:"none" }}>
-                  💬 Accept via WhatsApp
-                </a>
               </div>
             ))}
           </div>
