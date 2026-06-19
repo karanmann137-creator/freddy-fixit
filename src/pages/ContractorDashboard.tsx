@@ -372,8 +372,14 @@ export default function ContractorDashboard() {
 
         {activeTab === "available" && (
           <div>
-            <p style={{ fontSize:".82rem", color:"rgba(190,205,235,.45)", marginBottom:"1rem" }}>Open job requests in your area. Message us on WhatsApp to accept a job.</p>
-            {availableJobs.length === 0 ? <p style={{ color:"rgba(190,205,235,.45)" }}>No open jobs right now.</p> : availableJobs.map(r => (
+            <p style={{ fontSize:".82rem", color:"rgba(190,205,235,.45)", marginBottom:"1rem" }}>Open job requests in your area.</p>
+            {availableJobs.length === 0 ? (
+              <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
+                <div style={{ marginBottom:"1rem" }}><Ic name="clipboard-list" size={48} color="#ea6b14" /></div>
+                <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", marginBottom:".5rem" }}>No Open Jobs Right Now</h2>
+                <p style={{ color:"rgba(190,205,235,.5)" }}>New job requests in your area will show up here.</p>
+              </div>
+            ) : availableJobs.map(r => (
               <div key={r.id} style={s.jobCard}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:".5rem" }}>
                   <div style={{ fontSize:"1rem", fontWeight:500 }}>{r.service_needed}</div>
@@ -476,6 +482,7 @@ export default function ContractorDashboard() {
                 </div>
               ))}
             </div>
+            <DeleteAccount />
           </div>
         )}
 
@@ -567,8 +574,6 @@ export default function ContractorDashboard() {
             )}
           </div>
         )}
-
-        <DeleteAccount />
 
       </div>
     </div>
