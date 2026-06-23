@@ -6,6 +6,7 @@ import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import DeleteAccount from "@/components/DeleteAccount";
 import ProfileBar from "@/components/ProfileBar";
 import JobChat from "@/components/JobChat";
+import ReportProblem from "@/components/ReportProblem";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 
 
@@ -56,6 +57,7 @@ export default function ClientDashboard() {
   const [contractor, setContractor] = useState<any>(null);
   const [activeJob, setActiveJob]   = useState<any>(null);
   const [chatOpen, setChatOpen]     = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [confirmState, setConfirmState] = useState<ConfirmState|null>(null);
   const [loading, setLoading]       = useState(true);
   const [editingId, setEditingId]   = useState<string|null>(null);
@@ -362,7 +364,14 @@ export default function ClientDashboard() {
                       </div>
                     )}
 
-                    {activeJob && (
+                    {activeJob && activeJob.payment_status === "disputed" && (
+                      <div style={{ marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(251,191,36,.08)", border:"1px solid rgba(251,191,36,.35)" }}>
+                        <div style={{ fontSize:".9rem", fontWeight:600, color:"#fbbf24", marginBottom:".4rem" }}><Ic name="alert-triangle" size={14} style={{ marginRight:5 }} />Problem reported — under review</div>
+                        <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.8)", lineHeight:1.55 }}>Your payment is <strong>frozen and protected</strong> while our team reviews your report. Nothing has been released to the contractor. We'll email you as soon as it's resolved.</div>
+                      </div>
+                    )}
+
+                    {activeJob && activeJob.payment_status !== "disputed" && (
                       <div style={{ marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)" }}>
                         {activeJob.status === "assigned" && activeJob.schedule_proposed_at && !activeJob.client_approved_at && (
                           <>
@@ -394,7 +403,10 @@ export default function ClientDashboard() {
                             {(activeJob.payment_status === "held" || activeJob.payment_status === "released") ? (
                               <>
                                 <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.7)", marginBottom:".75rem" }}>Confirm the work is done and we'll release your held payment to the contractor. If you don't, it auto-confirms in a few days.</div>
-                                <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm & release payment"}</button>
+                                <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
+                                  <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm & release payment"}</button>
+                                  <button style={{ ...s.btn, color:"#fbbf24", borderColor:"rgba(251,191,36,.35)", background:"rgba(251,191,36,.08)" }} disabled={busyReq} onClick={() => setReportOpen(true)}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />Report a problem</button>
+                                </div>
                               </>
                             ) : activeJob.amount ? (
                               <>
@@ -516,6 +528,17 @@ export default function ClientDashboard() {
           title={"Chat with " + (contractor?.first_name ?? "your contractor")}
           readOnly={activeJob.status === "completed"}
           onClose={() => setChatOpen(false)}
+        />
+      )}
+      {reportOpen && activeJob && profile && (
+        <ReportProblem
+          jobId={activeJob.id}
+          userId={profile.id}
+          onClose={() => setReportOpen(false)}
+          onSubmitted={() => {
+            setReportOpen(false);
+            setActiveJob((j: any) => j ? { ...j, payment_status: "disputed", disputed_at: new Date().toISOString() } : j);
+          }}
         />
       )}
       <ConfirmDialog state={confirmState} onClose={(ok) => { confirmState?.resolve(ok); setConfirmState(null); }} />

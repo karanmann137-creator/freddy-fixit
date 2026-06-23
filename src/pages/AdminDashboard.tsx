@@ -22,7 +22,12 @@ export default function AdminDashboard() {
   const [requests, setRequests] = useState<any[]>([]);
   const [contractors, setContractors] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
-  const [tab, setTab] = useState<"requests"|"contractors"|"jobs">("requests");
+  const [tab, setTab] = useState<"requests"|"contractors"|"jobs"|"disputes">("requests");
+  const [disputes, setDisputes] = useState<any[]>([]);
+  const [disputePhotos, setDisputePhotos] = useState<Record<string, string[]>>({});
+  const [busyResolve, setBusyResolve] = useState<string|null>(null);
+  const [partialAmt, setPartialAmt] = useState<Record<string, string>>({});
+  const [resolveNote, setResolveNote] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [activeContractors, setActiveContractors] = useState<any[]>([]);
   const [assignSel, setAssignSel] = useState<Record<string,string>>({});
@@ -50,17 +55,30 @@ export default function AdminDashboard() {
     const rRange: [number, number] = [page.requests * PAGE_SIZE, page.requests * PAGE_SIZE + PAGE_SIZE - 1];
     const cRange: [number, number] = [page.contractors * PAGE_SIZE, page.contractors * PAGE_SIZE + PAGE_SIZE - 1];
     const jRange: [number, number] = [page.jobs * PAGE_SIZE, page.jobs * PAGE_SIZE + PAGE_SIZE - 1];
-    const [{ data: reqs, count: reqCount }, { data: cons, count: conCount }, { data: js, count: jobCount }, { data: dir }, { data: bids }, { data: flags }] = await Promise.all([
+    const [{ data: reqs, count: reqCount }, { data: cons, count: conCount }, { data: js, count: jobCount }, { data: dir }, { data: bids }, { data: flags }, { data: disp }] = await Promise.all([
       supabase.from("client_requests").select("*", { count: "exact" }).order("created_at", { ascending: false }).range(rRange[0], rRange[1]),
       supabase.from("contractors").select("*, profile:profiles!contractors_id_fkey(first_name,last_name,email,phone)", { count: "exact" }).order("created_at", { ascending: false }).range(cRange[0], cRange[1]),
       supabase.from("jobs").select("*", { count: "exact" }).order("created_at", { ascending: false }).range(jRange[0], jRange[1]),
       supabase.from("contractor_directory").select("id, first_name, last_name, specialties"),
       supabase.from("bids").select("*").eq("status", "pending").order("amount", { ascending: true }),
       supabase.from("deleted_account_flags").select("*").eq("was_poor", true),
+      supabase.from("disputes").select("*, job:jobs(id, amount, total_charged, contractor_payout, status, payment_status, stripe_payment_intent_id)").order("created_at", { ascending: false }),
     ]);
     setRequests(reqs ?? []);
     setContractors(cons ?? []);
     setJobs(js ?? []);
+    setDisputes(disp ?? []);
+    // Resolve signed URLs for any dispute photos (problem-photos is a private bucket).
+    const dp: Record<string, string[]> = {};
+    for (const d of (disp ?? [])) {
+      const paths: string[] = d.photo_paths ?? [];
+      if (paths.length) {
+        const signed = await Promise.all(paths.map((p: string) =>
+          supabase.storage.from("problem-photos").createSignedUrl(p, 3600).then(({ data }) => data?.signedUrl).catch(() => null)));
+        dp[d.id] = signed.filter(Boolean) as string[];
+      }
+    }
+    setDisputePhotos(dp);
     setCounts({ requests: reqCount ?? 0, contractors: conCount ?? 0, jobs: jobCount ?? 0 });
     setActiveContractors(dir ?? []);
     const bb: Record<string, any[]> = {};
@@ -140,6 +158,32 @@ export default function AdminDashboard() {
     await loadAll();
   };
 
+  const resolveDispute = async (d: any, action: "refund_full"|"refund_partial"|"release") => {
+    let refund_amount: number | undefined;
+    if (action === "refund_partial") {
+      refund_amount = Number(partialAmt[d.id]);
+      if (!refund_amount || refund_amount <= 0) { alert("Enter a partial refund amount first."); return; }
+    }
+    const labels: Record<string, string> = {
+      refund_full: "Refund the client in full",
+      refund_partial: `Refund $${refund_amount} to the client (contractor still gets paid)`,
+      release: "Release the held payment to the contractor (dispute not upheld)",
+    };
+    if (!window.confirm(`${labels[action]}?\n\nThis moves real money and can't be undone.`)) return;
+    setBusyResolve(d.id);
+    const { data, error } = await supabase.functions.invoke("resolve-dispute", {
+      body: { dispute_id: d.id, action, refund_amount, note: resolveNote[d.id] || undefined },
+    });
+    setBusyResolve(null);
+    if (error || data?.error) {
+      let msg = error?.message || data?.error || "Unknown error";
+      try { if (error?.context?.json) { const b = await error.context.json(); if (b?.error) msg = b.error; } } catch {}
+      alert("Couldn't resolve dispute: " + msg);
+      return;
+    }
+    await loadAll();
+  };
+
   const s = { wrap: { minHeight:"100vh", background:"#1a2236", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), radial-gradient(rgba(255,255,255,0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"#f0f4ff" }, header: { background:"rgba(255,255,255,.03)", borderBottom:"1px solid rgba(255,255,255,.07)", padding:"1rem 1.5rem", display:"flex", justifyContent:"space-between", alignItems:"center" }, logo: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.4rem", letterSpacing:".1em" }, content: { maxWidth:"1000px", margin:"0 auto", padding:"2rem 1.5rem" }, tabs: { display:"flex", gap:".5rem", marginBottom:"1.5rem" }, tab: { padding:".6rem 1.2rem", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"8px", color:"rgba(190,205,235,.6)", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem" }, activeTab: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.4)", color:"#f0f4ff" }, card: { background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"12px", padding:"1.25rem", marginBottom:"1rem" }, title: { fontSize:".95rem", fontWeight:500, color:"#f0f4ff", marginBottom:".35rem" }, meta: { fontSize:".78rem", color:"rgba(190,205,235,.5)", marginBottom:".2rem" }, badge: { fontSize:".75rem", fontWeight:500, color:"#ea6b14" }, btn: { padding:".5rem 1rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.1)", borderRadius:"6px", color:"rgba(190,205,235,.7)", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer" } };
 
   if (loading) return <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>Loading…</div>;
@@ -155,11 +199,18 @@ export default function AdminDashboard() {
       <div style={s.content}>
         <ProfileBar role="admin" />
         <div style={s.tabs}>
-          {(["requests","contractors","jobs"] as const).map(t => (
-            <button key={t} style={{ ...s.tab, ...(tab===t ? s.activeTab : {}) }} onClick={() => setTab(t)}>
-              {t === "requests" ? `Requests (${counts.requests})` : t === "contractors" ? `Contractors (${counts.contractors})` : `Jobs (${counts.jobs})`}
-            </button>
-          ))}
+          {(["requests","contractors","jobs","disputes"] as const).map(t => {
+            const openDisputes = disputes.filter(d => d.status === "open").length;
+            const label = t === "requests" ? `Requests (${counts.requests})`
+              : t === "contractors" ? `Contractors (${counts.contractors})`
+              : t === "jobs" ? `Jobs (${counts.jobs})`
+              : `Disputes (${openDisputes})`;
+            return (
+              <button key={t} style={{ ...s.tab, ...(tab===t ? s.activeTab : {}), ...(t === "disputes" && openDisputes > 0 ? { borderColor:"rgba(251,191,36,.5)", color:"#fbbf24" } : {}) }} onClick={() => setTab(t)}>
+                {label}
+              </button>
+            );
+          })}
         </div>
 
         {tab === "requests" && (
@@ -274,6 +325,73 @@ export default function AdminDashboard() {
               </div>
             ))}
             {pager("jobs")}
+          </div>
+        )}
+
+        {tab === "disputes" && (
+          <div>
+            {disputes.length === 0 && <p style={{ color:"rgba(190,205,235,.45)" }}>No disputes yet.</p>}
+            {disputes.map(d => {
+              const job = d.job ?? {};
+              const charged = Number(job.total_charged ?? job.amount ?? 0);
+              const payout = Number(job.contractor_payout ?? 0);
+              const resolved = d.status !== "open";
+              const statusLabel: Record<string, string> = {
+                open: "Open — needs review",
+                resolved_refund: "Resolved — full refund",
+                resolved_partial: "Resolved — partial refund",
+                resolved_released: "Resolved — released to contractor",
+                rejected: "Rejected",
+              };
+              const statusColor = d.status === "open" ? "#fbbf24" : "#86efac";
+              return (
+                <div key={d.id} style={{ ...s.card, ...(d.status === "open" ? { borderColor:"rgba(251,191,36,.4)" } : {}) }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const, gap:".5rem" }}>
+                    <div style={s.title}>{d.reason}</div>
+                    <div style={{ fontSize:".78rem", fontWeight:500, color: statusColor }}>● {statusLabel[d.status] ?? d.status}</div>
+                  </div>
+                  <div style={s.meta}>Job {String(d.job_id).slice(0,8)} · Charged ${charged.toFixed(2)} · Contractor payout ${payout.toFixed(2)}</div>
+                  <div style={s.meta}>Reported {new Date(d.created_at).toLocaleString("en-CA", { dateStyle:"medium", timeStyle:"short" })}</div>
+                  {d.description && (
+                    <div style={{ marginTop:".5rem", padding:".6rem .8rem", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.06)", borderRadius:"8px", fontSize:".85rem", color:"rgba(190,205,235,.8)", lineHeight:1.5 }}>{d.description}</div>
+                  )}
+                  {(disputePhotos[d.id]?.length ?? 0) > 0 && (
+                    <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginTop:".6rem" }}>
+                      {disputePhotos[d.id].map((url, i) => (
+                        <a key={i} href={url} target="_blank" rel="noreferrer">
+                          <img src={url} alt={"Evidence " + (i+1)} style={{ width:"110px", height:"110px", objectFit:"cover", borderRadius:"8px", border:"1px solid rgba(255,255,255,.12)" }} />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+
+                  {d.status === "open" ? (
+                    <div style={{ marginTop:".9rem", borderTop:"1px solid rgba(255,255,255,.07)", paddingTop:".9rem" }}>
+                      <textarea value={resolveNote[d.id] ?? ""} rows={2} placeholder="Resolution note (optional, shared internally)"
+                        onChange={e => setResolveNote(p => ({ ...p, [d.id]: e.target.value }))}
+                        style={{ width:"100%", padding:".55rem .7rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".82rem", boxSizing:"border-box" as const, resize:"vertical" as const, marginBottom:".7rem" }} />
+                      <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center" }}>
+                        <button style={{ ...s.btn, background:"#ef4444", color:"#fff", border:"none" }} disabled={busyResolve === d.id} onClick={() => resolveDispute(d, "refund_full")}>{busyResolve === d.id ? "…" : "Refund client in full"}</button>
+                        <button style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none" }} disabled={busyResolve === d.id} onClick={() => resolveDispute(d, "release")}>Release to contractor</button>
+                      </div>
+                      <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center", marginTop:".6rem" }}>
+                        <input type="number" min={0} max={charged} step="0.01" value={partialAmt[d.id] ?? ""} placeholder="Partial $"
+                          onChange={e => setPartialAmt(p => ({ ...p, [d.id]: e.target.value }))}
+                          style={{ width:"110px", padding:".5rem .6rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"6px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".82rem" }} />
+                        <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyResolve === d.id} onClick={() => resolveDispute(d, "refund_partial")}>Partial refund + pay contractor</button>
+                      </div>
+                      <div style={{ fontSize:".74rem", color:"rgba(190,205,235,.45)", marginTop:".55rem", lineHeight:1.45 }}>Full refund returns the whole charge to the client and pays nothing out. Partial refund returns part to the client and still pays the contractor their payout. Release pays the contractor and keeps the charge.</div>
+                    </div>
+                  ) : (
+                    <div style={{ ...s.meta, marginTop:".6rem", color:"#86efac" }}>
+                      {d.refund_amount != null ? `Refunded $${Number(d.refund_amount).toFixed(2)}. ` : ""}
+                      {d.resolved_at ? "Resolved " + new Date(d.resolved_at).toLocaleDateString() : ""}
+                      {d.resolution_note ? ` — ${d.resolution_note}` : ""}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
