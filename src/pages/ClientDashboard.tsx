@@ -6,6 +6,7 @@ import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import DeleteAccount from "@/components/DeleteAccount";
 import ProfileBar from "@/components/ProfileBar";
 import JobChat from "@/components/JobChat";
+import JobTimeline from "@/components/JobTimeline";
 import ReportProblem from "@/components/ReportProblem";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 
@@ -70,6 +71,7 @@ export default function ClientDashboard() {
   const [bidNames, setBidNames] = useState<Record<string,string>>({});
   const [busyPick, setBusyPick] = useState<string|null>(null);
   const [busyPay, setBusyPay] = useState(false);
+  const [feeRate, setFeeRate] = useState(0.03);
 
   const askConfirm = (o: Omit<ConfirmState, "resolve">) =>
     new Promise<boolean>(resolve => setConfirmState({ ...o, resolve }));
@@ -92,6 +94,11 @@ export default function ClientDashboard() {
       ]);
       setProfile(prof);
       setRequests(reqs ?? []);
+
+      // Loyalty: returning clients (1+ completed job) get the 3% service fee waived.
+      supabase.rpc("client_fee_rate", { p_client: user.id })
+        .then(({ data }) => { if (data != null) setFeeRate(Number(data)); })
+        .catch(() => {});
 
       const activeReq = (reqs ?? []).find((r: any) => r.status !== "completed" && r.status !== "cancelled");
 
@@ -157,8 +164,9 @@ export default function ClientDashboard() {
   function jobTotal(j: any) {
     if (j?.total_charged != null) return Number(j.total_charged);
     const amt = Number(j?.amount ?? 0);
-    return r2(amt * 1.03);
+    return r2(amt * (1 + feeRate));
   }
+  const feeWaived = feeRate === 0;
   const payForJob = async () => {
     if (!activeJob) return;
     if (!(await askConfirm({
@@ -310,6 +318,13 @@ export default function ClientDashboard() {
       <div style={s.content}>
         <ProfileBar role="client" />
 
+        {feeWaived && (
+          <div style={{ display:"flex", alignItems:"center", gap:".6rem", padding:".7rem 1rem", marginBottom:"1.25rem", borderRadius:"12px", background:"rgba(34,197,94,.08)", border:"1px solid rgba(34,197,94,.3)" }}>
+            <span style={{ fontSize:"1.1rem" }}>🎉</span>
+            <div style={{ fontSize:".84rem", color:"#bbf7d0", lineHeight:1.45 }}><strong style={{ color:"#86efac" }}>Returning-client perk:</strong> your 3% service fee is waived on every job from here on out. Thanks for booking with Freddy Fix It.</div>
+          </div>
+        )}
+
         <>
             {requests.length === 0 ? (
               <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
@@ -364,6 +379,13 @@ export default function ClientDashboard() {
                       </div>
                     )}
 
+                    {activeJob && (activeJob.client_approved_at || activeJob.status === "scheduled" || activeJob.status === "pending_confirmation" || activeJob.status === "completed") && (
+                      <div style={{ marginTop:"1rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.07)" }}>
+                        <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.45)", marginBottom:".75rem" }}>Job progress</div>
+                        <JobTimeline job={activeJob} />
+                      </div>
+                    )}
+
                     {activeJob && activeJob.payment_status === "disputed" && (
                       <div style={{ marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(251,191,36,.08)", border:"1px solid rgba(251,191,36,.35)" }}>
                         <div style={{ fontSize:".9rem", fontWeight:600, color:"#fbbf24", marginBottom:".4rem" }}><Ic name="alert-triangle" size={14} style={{ marginRight:5 }} />Problem reported — under review</div>
@@ -390,7 +412,7 @@ export default function ClientDashboard() {
                               <div style={{ fontSize:".82rem", color:"#86efac" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Payment secured — we'll release it to your contractor once you confirm the work is done.</div>
                             ) : activeJob.amount ? (
                               <>
-                                <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.75)", marginBottom:".6rem", lineHeight:1.5 }}>Pay now to secure the job. Your money is <strong>held safely</strong> and only released to the contractor after you confirm the work is done. Total includes a 3% service fee.</div>
+                                <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.75)", marginBottom:".6rem", lineHeight:1.5 }}>Pay now to secure the job. Your money is <strong>held safely</strong> and only released to the contractor after you confirm the work is done. {feeWaived ? <span style={{ color:"#86efac" }}>Service fee waived — thanks for booking with us again. 🎉</span> : "Total includes a 3% service fee."}</div>
                                 <button style={s.primaryBtn} disabled={busyPay} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " (held until you confirm)"}</button>
                               </>
                             ) : null}
@@ -410,7 +432,7 @@ export default function ClientDashboard() {
                               </>
                             ) : activeJob.amount ? (
                               <>
-                                <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.7)", marginBottom:".6rem", lineHeight:1.5 }}>Pay for the job, then confirm. Your payment is held and only released to the contractor once you confirm. Total includes a 3% service fee.</div>
+                                <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.7)", marginBottom:".6rem", lineHeight:1.5 }}>Pay for the job, then confirm. Your payment is held and only released to the contractor once you confirm. {feeWaived ? <span style={{ color:"#86efac" }}>Service fee waived for returning clients. 🎉</span> : "Total includes a 3% service fee."}</div>
                                 <button style={s.primaryBtn} disabled={busyPay} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " now"}</button>
                               </>
                             ) : (

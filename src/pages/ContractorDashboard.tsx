@@ -7,6 +7,7 @@ import DeleteAccount from "@/components/DeleteAccount";
 import ProfileBar from "@/components/ProfileBar";
 import ScheduleField from "@/components/ScheduleField";
 import JobChat from "@/components/JobChat";
+import JobTimeline from "@/components/JobTimeline";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 
 export default function ContractorDashboard() {
@@ -117,6 +118,13 @@ export default function ContractorDashboard() {
     setBusyJob(false);
     if (error) { alert("Couldn't send proposal: " + error.message); return; }
     setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, scheduled_at: whenIso, amount: proposeForm.amount ? Number(proposeForm.amount) : j.amount, schedule_proposed_at: new Date().toISOString(), client_approved_at: null } : j));
+  };
+  const onMyWay = async (job: any) => {
+    setBusyJob(true);
+    const { error } = await supabase.rpc("contractor_on_my_way", { p_job_id: job.id });
+    setBusyJob(false);
+    if (error) { alert("Couldn't update: " + error.message); return; }
+    setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, on_my_way_at: new Date().toISOString() } : j));
   };
   const markComplete = async (job: any) => {
     if (!(await askConfirm({
@@ -326,6 +334,13 @@ export default function ContractorDashboard() {
                   <div onClick={e => e.stopPropagation()} style={{ marginTop:"1rem", borderTop:"1px solid rgba(255,255,255,.07)", paddingTop:"1rem" }}>
                     <RequestPhotoQuote requestId={job.request_id} photoPath={job.request?.photo_path} estimatedQuote={job.request?.estimated_quote} quoteNotes={job.request?.quote_notes} canQuote />
 
+                    {(job.client_approved_at || job.status === "scheduled" || job.status === "pending_confirmation" || job.status === "completed") && (
+                      <div style={{ margin:"1rem 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.07)" }}>
+                        <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.45)", marginBottom:".75rem" }}>Job progress</div>
+                        <JobTimeline job={job} />
+                      </div>
+                    )}
+
                     <div style={{ display:"flex", flexDirection:"column", gap:".7rem", marginBottom:"1.25rem" }}>
                       {job.status === "assigned" && (
                         <>
@@ -347,6 +362,11 @@ export default function ContractorDashboard() {
                       {(job.status === "scheduled" || job.status === "in_progress") && (
                         <>
                           <div style={{ fontSize:".85rem", color:"#86efac" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Booked for {job.scheduled_at ? new Date(job.scheduled_at).toLocaleString() : "the agreed time"}{job.amount ? " · $" + job.amount : ""}.</div>
+                          {job.on_my_way_at ? (
+                            <div style={{ fontSize:".82rem", color:"#86efac" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />You let the client know you're on the way.</div>
+                          ) : (
+                            <button style={{ ...s.btn, color:"#f0f4ff", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.12)", alignSelf:"flex-start" }} disabled={busyJob} onClick={() => onMyWay(job)}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{busyJob ? "…" : "I'm on my way"}</button>
+                          )}
                           <div>
                             <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".25rem" }}>Completion photo (optional)</div>
                             <input type="file" accept="image/*" onChange={e => setPhotoFile(e.target.files?.[0] ?? null)} style={{ fontSize:".8rem", color:"rgba(190,205,235,.7)" }} />

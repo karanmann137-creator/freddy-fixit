@@ -42,7 +42,13 @@ Deno.serve(async (req) => {
       return json({ error: "This job is already paid" }, 409);
 
     const amount = Number(job.amount);
-    const clientFee = r2(amount * 0.03);
+    // Loyalty perk: returning clients (1+ completed job) pay no 3% service fee.
+    let feeRate = 0.03;
+    try {
+      const { data: rate } = await admin.rpc("client_fee_rate", { p_client: user.id });
+      if (rate != null) feeRate = Number(rate);
+    } catch (_) { /* fall back to standard 3% */ }
+    const clientFee = r2(amount * feeRate);
     const total = r2(amount + clientFee);
     const platformFee = r2(amount * 0.07);
     const payout = r2(amount - platformFee);
@@ -61,7 +67,9 @@ Deno.serve(async (req) => {
           unit_amount: Math.round(total * 100),
           product_data: {
             name: "Freddy Fix It — service payment",
-            description: `Service $${amount.toFixed(2)} + 3% service fee $${clientFee.toFixed(2)}`,
+            description: clientFee > 0
+              ? `Service $${amount.toFixed(2)} + 3% service fee $${clientFee.toFixed(2)}`
+              : `Service $${amount.toFixed(2)} — service fee waived (returning client)`,
           },
         },
       }],
