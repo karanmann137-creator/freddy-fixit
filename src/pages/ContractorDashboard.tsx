@@ -1,11 +1,13 @@
 import { Ic } from "@/components/Ic";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import DeleteAccount from "@/components/DeleteAccount";
 import ProfileBar from "@/components/ProfileBar";
 import ScheduleField from "@/components/ScheduleField";
+import JobChat from "@/components/JobChat";
+import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 
 export default function ContractorDashboard() {
   const [, setLocation] = useLocation();
@@ -13,10 +15,9 @@ export default function ContractorDashboard() {
   const [contractor, setContractor]   = useState<any>(null);
   const [myJobs, setMyJobs]           = useState<any[]>([]);
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
-  const [messages, setMessages]       = useState<any[]>([]);
   const [activeJobId, setActiveJobId] = useState<string|null>(null);
-  const [newMsg, setNewMsg]           = useState("");
-  const [sendingMsg, setSendingMsg]   = useState(false);
+  const [chatJob, setChatJob]         = useState<any|null>(null);
+  const [confirmState, setConfirmState] = useState<ConfirmState|null>(null);
   const [loading, setLoading]         = useState(true);
   const [activeTab, setActiveTab]     = useState<"jobs"|"available"|"profile"|"earnings"|"reviews">("jobs");
   const [proposeForm, setProposeForm] = useState({ when:"", amount:"", notes:"" });
@@ -30,7 +31,9 @@ export default function ContractorDashboard() {
   const [busyBid, setBusyBid]         = useState<string|null>(null);
   const [busyStripe, setBusyStripe]   = useState(false);
   const [myReviews, setMyReviews]     = useState<any[]>([]);
-  const msgEndRef = useRef<HTMLDivElement>(null);
+
+  const askConfirm = (o: Omit<ConfirmState, "resolve">) =>
+    new Promise<boolean>(resolve => setConfirmState({ ...o, resolve }));
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -78,27 +81,6 @@ export default function ContractorDashboard() {
     load();
   }, []);
 
-  useEffect(() => {
-    if (!activeJobId) return;
-    supabase.from("messages").select("*").eq("job_id", activeJobId).order("created_at", { ascending: true }).then(({ data }) => setMessages(data ?? []));
-    const channel = supabase.channel("con-msgs:" + activeJobId)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `job_id=eq.${activeJobId}` },
-        payload => setMessages(prev => [...prev, payload.new as any]))
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [activeJobId]);
-
-  useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
-
-  const sendMessage = async () => {
-    if (!newMsg.trim() || !activeJobId || !profile) return;
-    setSendingMsg(true);
-    const content = newMsg.trim();
-    setNewMsg("");
-    await supabase.from("messages").insert({ job_id: activeJobId, sender_id: profile.id, content });
-    setSendingMsg(false);
-  };
-
   const handleSignOut = async () => { await supabase.auth.signOut(); setLocation("/"); };
 
   const openJob = (job: any) => {
@@ -126,7 +108,12 @@ export default function ContractorDashboard() {
     setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, scheduled_at: whenIso, amount: proposeForm.amount ? Number(proposeForm.amount) : j.amount, schedule_proposed_at: new Date().toISOString(), client_approved_at: null } : j));
   };
   const markComplete = async (job: any) => {
-    if (!window.confirm("Mark this job complete? The client will be asked to confirm.")) return;
+    if (!(await askConfirm({
+      title: "Mark job complete?",
+      message: "The client will be asked to confirm the work and release your payment. Make sure the job is fully done before marking it complete.",
+      confirmLabel: "Yes, mark complete",
+      danger: false,
+    }))) return;
     setBusyJob(true);
     let photoPath: string | null = null;
     try {
@@ -148,7 +135,12 @@ export default function ContractorDashboard() {
     }
   };
   const withdrawJob = async (job: any) => {
-    if (!window.confirm("Withdraw from this job? It goes back to the open pool and the chat history is removed.")) return;
+    if (!(await askConfirm({
+      title: "Withdraw from this job?",
+      message: "The job goes back to the open pool and your chat history with this client is permanently removed.",
+      confirmLabel: "Yes, withdraw",
+      danger: true,
+    }))) return;
     setBusyJob(true);
     const { error } = await supabase.rpc("withdraw_job", { p_job_id: job.id });
     setBusyJob(false);
@@ -211,6 +203,25 @@ export default function ContractorDashboard() {
     setContractor((c: any) => ({ ...c, availability: avail }));
   };
 
+  const saveAvailability = async (avail: Record<string, string[]>) => {
+    if (!profile) return;
+    setContractor((c: any) => ({ ...c, availability: avail }));
+    await supabase.from("contractors").update({ availability: avail }).eq("id", profile.id);
+  };
+  // Select or clear every slot for one day.
+  const setDayAll = (day: string, on: boolean) => {
+    const avail = { ...(contractor?.availability ?? {}) };
+    avail[day] = on ? [...getSlots(day)] : [];
+    saveAvailability(avail);
+  };
+  // Copy one day's selected slots to every day (respecting each day's valid slots).
+  const copyDayToAll = (day: string) => {
+    const src = (contractor?.availability ?? {})[day] ?? [];
+    const avail: Record<string, string[]> = {};
+    DAYS.forEach(d => { avail[d] = getSlots(d).filter(sl => src.includes(sl)); });
+    saveAvailability(avail);
+  };
+
   async function setupPayouts() {
     setBusyStripe(true);
     try {
@@ -227,6 +238,10 @@ export default function ContractorDashboard() {
   }
 
   const totalEarned = Number(contractor?.total_earned ?? 0);
+  // What the contractor actually receives = 93% of the quote (platform keeps 7%).
+  const netPayout = (job: any) => job?.contractor_payout != null
+    ? Number(job.contractor_payout)
+    : Math.round(Number(job?.amount ?? 0) * 0.93 * 100) / 100;
   const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   const getSlots = (day: string) => ["Saturday","Sunday"].includes(day) ? ["Morning","Afternoon"] : ["Morning","Afternoon","Evening"];
   const STATUS_COLORS: Record<string,string> = { pending:"#f59e0b", matched:"#3b82f6", in_progress:"#ea6b14", completed:"#22c55e", cancelled:"#ef4444", assigned:"#3b82f6" };
@@ -288,7 +303,7 @@ export default function ContractorDashboard() {
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:".75rem" }}>
                   <div>
                     <div style={{ fontSize:"1rem", fontWeight:500, marginBottom:".3rem" }}>{job.request?.service_needed ?? "Job"}</div>
-                    <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.6)", marginBottom:".2rem" }}><Ic name="user" size={13} style={{ marginRight:4 }} />{job.client?.first_name ?? "Client"} · <Ic name="message-square" size={13} style={{ marginRight:4, marginLeft:4 }} />Message in chat below</div>
+                    <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.6)", marginBottom:".2rem" }}><Ic name="user" size={13} style={{ marginRight:4 }} />{job.client?.first_name || "Your client"}</div>
                     <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.5)" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{job.request?.location}</div>
                   </div>
                   <div style={{ textAlign:"right" }}>
@@ -339,26 +354,14 @@ export default function ContractorDashboard() {
                       )}
                     </div>
 
-                    <div style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".75rem" }}><Ic name="message-square" size={14} style={{ marginRight:6 }} />Chat with {job.client?.first_name}</div>
-                    <div style={{ maxHeight:"200px", overflowY:"auto", display:"flex", flexDirection:"column", gap:".6rem", marginBottom:".75rem" }}>
-                      {messages.length === 0 && <p style={{ textAlign:"center", fontSize:".82rem", color:"rgba(190,205,235,.35)" }}>No messages yet</p>}
-                      {messages.map(m => {
-                        const mine = m.sender_id === profile?.id;
-                        return (
-                          <div key={m.id} style={{ display:"flex", flexDirection:"column", maxWidth:"72%", alignSelf: mine ? "flex-end" : "flex-start", alignItems: mine ? "flex-end" : "flex-start" }}>
-                            <div style={{ padding:".6rem .9rem", borderRadius:"10px", fontSize:".85rem", lineHeight:1.5, background: mine ? "#ea6b14" : "rgba(255,255,255,.08)", color:"#f0f4ff" }}>{m.content}</div>
-                          </div>
-                        );
-                      })}
-                      <div ref={msgEndRef} />
-                    </div>
-                    <div style={{ display:"flex", gap:".6rem" }}>
-                      <input style={{ flex:1, padding:".65rem .9rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.1)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".88rem", outline:"none" }}
-                        placeholder="Message…" value={newMsg} onChange={e => setNewMsg(e.target.value)}
-                        onKeyDown={e => { if(e.key==="Enter"){ e.preventDefault(); sendMessage(); }}} />
-                      <button style={{ padding:".65rem 1.1rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"8px", fontFamily:"inherit", cursor:"pointer" }}
-                        onClick={sendMessage} disabled={sendingMsg||!newMsg.trim()}>Send</button>
-                    </div>
+                    <button
+                      onClick={() => setChatJob(job)}
+                      style={{ display:"flex", alignItems:"center", gap:".5rem", width:"100%", justifyContent:"center", padding:".7rem 1rem", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.3)", borderRadius:"10px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".88rem", fontWeight:500, cursor:"pointer" }}>
+                      <Ic name="message-square" size={15} />
+                      {job.status === "completed"
+                        ? `View chat with ${job.client?.first_name || "your client"}`
+                        : `Message ${job.client?.first_name || "your client"}`}
+                    </button>
                   </div>
                 )}
               </div>
@@ -463,15 +466,47 @@ export default function ContractorDashboard() {
             </div>
             <div style={s.card}>
               <div style={s.cardTitle}>Availability</div>
-              {DAYS.map(day => (
-                <div key={day} style={{ marginBottom:"1rem" }}>
-                  <div style={{ fontSize:".78rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.45)", marginBottom:".5rem" }}>{day}</div>
-                  {getSlots(day).map(slot => {
-                    const sel = ((contractor?.availability ?? {})[day] ?? []).includes(slot);
-                    return <button key={slot} style={{ ...s.slot, ...(sel ? s.slotSel : {}) }} onClick={() => toggleSlot(day, slot)}>{slot}</button>;
-                  })}
-                </div>
-              ))}
+              <p style={{ fontSize:".82rem", color:"rgba(190,205,235,.5)", marginBottom:"1.25rem", lineHeight:1.5 }}>
+                Tap the time slots you can usually work. Changes save automatically.
+              </p>
+              {DAYS.map(day => {
+                const sel = (contractor?.availability ?? {})[day] ?? [];
+                const slots = getSlots(day);
+                const allOn = slots.every(sl => sel.includes(sl));
+                return (
+                  <div key={day} style={{ marginBottom:".9rem", paddingBottom:".9rem", borderBottom:"1px solid rgba(255,255,255,.05)" }}>
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:".55rem", flexWrap:"wrap" as const, gap:".5rem" }}>
+                      <div style={{ fontSize:".82rem", fontWeight:600, letterSpacing:".04em", color:"#f0f4ff" }}>{day}</div>
+                      <div style={{ display:"flex", gap:".4rem", alignItems:"center" }}>
+                        <button
+                          onClick={() => setDayAll(day, !allOn)}
+                          style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:".74rem", color: allOn ? "#ef4444" : "#ea6b14", padding:".15rem .3rem" }}>
+                          {allOn ? "Clear" : "All day"}
+                        </button>
+                        {sel.length > 0 && (
+                          <button
+                            onClick={() => copyDayToAll(day)}
+                            title={"Copy " + day + "'s hours to every day"}
+                            style={{ background:"none", border:"1px solid rgba(255,255,255,.12)", borderRadius:"6px", cursor:"pointer", fontFamily:"inherit", fontSize:".72rem", color:"rgba(190,205,235,.7)", padding:".2rem .5rem" }}>
+                            Copy to all days
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const }}>
+                      {slots.map(slot => {
+                        const on = sel.includes(slot);
+                        return (
+                          <button key={slot} onClick={() => toggleSlot(day, slot)}
+                            style={{ ...s.slot, margin:0, ...(on ? s.slotSel : {}) }}>
+                            {on ? "✓ " : ""}{slot}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             <DeleteAccount />
           </div>
@@ -516,8 +551,13 @@ export default function ContractorDashboard() {
                     <div style={{ fontSize:".75rem", color:"rgba(190,205,235,.4)" }}>{new Date(job.created_at).toLocaleDateString()}</div>
                   </div>
                   <div style={{ textAlign:"right" }}>
-                    {job.amount ? <div style={{ fontSize:".95rem", fontWeight:500, color:"#22c55e" }}>${job.amount}</div> : <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.4)" }}>TBD</div>}
-                    <div style={{ fontSize:".72rem", textTransform:"capitalize", color: STATUS_COLORS[job.status] }}>{job.status.replace("_"," ")}</div>
+                    {job.amount ? (
+                      <>
+                        <div style={{ fontSize:".95rem", fontWeight:600, color:"#22c55e" }}>${netPayout(job).toFixed(2)}</div>
+                        <div style={{ fontSize:".66rem", color:"rgba(190,205,235,.4)" }}>your payout · ${job.amount} quote</div>
+                      </>
+                    ) : <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.4)" }}>TBD</div>}
+                    <div style={{ fontSize:".72rem", textTransform:"capitalize", color: STATUS_COLORS[job.status], marginTop:".15rem" }}>{job.status.replace("_"," ")}</div>
                   </div>
                 </div>
               ))}
@@ -567,6 +607,17 @@ export default function ContractorDashboard() {
         )}
 
       </div>
+
+      {chatJob && profile && (
+        <JobChat
+          jobId={chatJob.id}
+          meId={profile.id}
+          title={`Chat with ${chatJob.client?.first_name || "your client"}`}
+          readOnly={chatJob.status === "completed"}
+          onClose={() => setChatJob(null)}
+        />
+      )}
+      <ConfirmDialog state={confirmState} onClose={(ok) => { confirmState?.resolve(ok); setConfirmState(null); }} />
     </div>
   );
 }

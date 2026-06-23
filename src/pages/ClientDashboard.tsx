@@ -1,10 +1,12 @@
 import { Ic } from "@/components/Ic";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import DeleteAccount from "@/components/DeleteAccount";
 import ProfileBar from "@/components/ProfileBar";
+import JobChat from "@/components/JobChat";
+import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 
 
 const VEHICLE_SERVICES = ["Oil Change","Tire Swap / Rotation","Battery / Brakes","Vehicle Maintenance"];
@@ -53,11 +55,9 @@ export default function ClientDashboard() {
   const [requests, setRequests]     = useState<any[]>([]);
   const [contractor, setContractor] = useState<any>(null);
   const [activeJob, setActiveJob]   = useState<any>(null);
-  const [messages, setMessages]     = useState<any[]>([]);
-  const [newMsg, setNewMsg]         = useState("");
+  const [chatOpen, setChatOpen]     = useState(false);
+  const [confirmState, setConfirmState] = useState<ConfirmState|null>(null);
   const [loading, setLoading]       = useState(true);
-  const [sendingMsg, setSendingMsg] = useState(false);
-  const [activeTab, setActiveTab]   = useState<"overview"|"chat">("overview");
   const [editingId, setEditingId]   = useState<string|null>(null);
   const [editForm, setEditForm]     = useState({ service:"", schedule:"", location:"", description:"" });
   const [busyReq, setBusyReq]       = useState(false);
@@ -68,7 +68,9 @@ export default function ClientDashboard() {
   const [bidNames, setBidNames] = useState<Record<string,string>>({});
   const [busyPick, setBusyPick] = useState<string|null>(null);
   const [busyPay, setBusyPay] = useState(false);
-  const msgEndRef = useRef<HTMLDivElement>(null);
+
+  const askConfirm = (o: Omit<ConfirmState, "resolve">) =>
+    new Promise<boolean>(resolve => setConfirmState({ ...o, resolve }));
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -99,40 +101,16 @@ export default function ClientDashboard() {
           activeReq.assigned_contractor_id
             ? supabase.rpc("get_contractor_profile", { p_id: activeReq.assigned_contractor_id }).maybeSingle()
             : Promise.resolve({ data: null }),
-          supabase.from("jobs").select("*, messages(*)").eq("request_id", activeReq.id).maybeSingle(),
+          supabase.from("jobs").select("*").eq("request_id", activeReq.id).maybeSingle(),
         ]);
         if (con) setContractor(con);
         setActiveJob(job);
-        if (job) {
-          const msgs = [...((job as any).messages ?? [])].sort((a: any, b: any) => (a.created_at < b.created_at ? -1 : 1));
-          setMessages(msgs);
-        }
       }
 
       setLoading(false);
     };
     load();
   }, []);
-
-  useEffect(() => {
-    if (!activeJob) return;
-    const channel = supabase.channel("messages:" + activeJob.id)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `job_id=eq.${activeJob.id}` },
-        payload => setMessages(prev => [...prev, payload.new as any]))
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [activeJob]);
-
-  useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
-
-  const sendMessage = async () => {
-    if (!newMsg.trim() || !activeJob || !profile) return;
-    setSendingMsg(true);
-    const content = newMsg.trim();
-    setNewMsg("");
-    await supabase.from("messages").insert({ job_id: activeJob.id, sender_id: profile.id, content });
-    setSendingMsg(false);
-  };
 
   const handleSignOut = async () => { await supabase.auth.signOut(); setLocation("/"); };
 
@@ -181,6 +159,12 @@ export default function ClientDashboard() {
   }
   const payForJob = async () => {
     if (!activeJob) return;
+    if (!(await askConfirm({
+      title: "Pay " + "$" + jobTotal(activeJob).toFixed(2) + "?",
+      message: "You'll be taken to a secure checkout. Your payment is held safely and only released to the contractor after you confirm the work is done.",
+      confirmLabel: "Continue to checkout",
+      danger: false,
+    }))) return;
     setBusyPay(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-payment-intent", { body: { job_id: activeJob.id } });
@@ -197,6 +181,15 @@ export default function ClientDashboard() {
 
   const confirmCompletion = async () => {
     if (!activeJob) return;
+    const willRelease = activeJob.payment_status === "held";
+    if (!(await askConfirm({
+      title: willRelease ? "Confirm & release payment?" : "Confirm completion?",
+      message: willRelease
+        ? "This releases your held payment to the contractor and closes the job. Only do this once you're satisfied the work is done."
+        : "This marks the job as done and closes it out. Only do this once you're satisfied the work is done.",
+      confirmLabel: willRelease ? "Yes, release payment" : "Yes, confirm",
+      danger: false,
+    }))) return;
     setBusyReq(true);
     const { error } = await supabase.rpc("confirm_job_completion", { p_job_id: activeJob.id });
     setBusyReq(false);
@@ -242,7 +235,12 @@ export default function ClientDashboard() {
   }, [requests]);
 
   const pickBid = async (bidId: string) => {
-    if (!window.confirm("Choose this contractor for your job?")) return;
+    if (!(await askConfirm({
+      title: "Choose this contractor?",
+      message: "This assigns your job to this contractor and declines the other bids. They'll be notified and will propose a time and price.",
+      confirmLabel: "Yes, choose them",
+      danger: false,
+    }))) return;
     setBusyPick(bidId);
     const { error } = await supabase.rpc("accept_bid", { p_bid_id: bidId });
     setBusyPick(null);
@@ -309,15 +307,8 @@ export default function ClientDashboard() {
 
       <div style={s.content}>
         <ProfileBar role="client" />
-        {activeJob && (
-          <div style={s.tabs}>
-            <button style={{ ...s.tab, ...(activeTab==="overview" ? s.activeTab : {}) }} onClick={() => setActiveTab("overview")}>Overview</button>
-            <button style={{ ...s.tab, ...(activeTab==="chat" ? s.activeTab : {}) }} onClick={() => setActiveTab("chat")}><Ic name="message-square" size={14} style={{ marginRight:6 }} />Chat with Contractor</button>
-          </div>
-        )}
 
-        {activeTab === "overview" && (
-          <>
+        <>
             {requests.length === 0 ? (
               <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
                 <div style={{ marginBottom:"1rem" }}><Ic name="home" size={48} color="#ea6b14" /></div>
@@ -478,11 +469,12 @@ export default function ClientDashboard() {
                       </div>
                       <div>
                         <div style={{ fontSize:"1rem", fontWeight:500 }}>{contractor.first_name} {contractor.last_name}</div>
-                        <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.5)" }}><Ic name="message-square" size={13} style={{ marginRight:4 }} />Message in chat</div>
+                        <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.5)" }}>{contractor.specialties?.[0] ?? "Your contractor"}</div>
                       </div>
                       {activeJob && (
-                        <button style={{ ...s.btn, marginLeft:"auto", color:"#25d366", borderColor:"rgba(37,211,102,.25)", background:"rgba(37,211,102,.1)" }} onClick={() => setActiveTab("chat")}>
-                          💬 Message
+                        <button style={{ ...s.btn, marginLeft:"auto", color:"#f0f4ff", borderColor:"rgba(234,107,20,.35)", background:"rgba(234,107,20,.12)", display:"flex", alignItems:"center", gap:".4rem" }} onClick={() => setChatOpen(true)}>
+                          <Ic name="message-square" size={14} />
+                          {activeJob.status === "completed" ? "View chat" : "Message " + contractor.first_name}
                         </button>
                       )}
                     </div>
@@ -512,39 +504,21 @@ export default function ClientDashboard() {
                 )}
               </>
             )}
-          </>
-        )}
-
-        {activeTab === "chat" && activeJob && (
-          <div style={{ ...s.card, display:"flex", flexDirection:"column", height:"500px", padding:0, overflow:"hidden" }}>
-            <div style={{ padding:"1rem 1.5rem", borderBottom:"1px solid rgba(255,255,255,.07)", fontSize:".88rem", color:"rgba(190,205,235,.7)" }}>
-              💬 Chat with {contractor?.first_name ?? "your contractor"}
-            </div>
-            <div style={{ flex:1, overflowY:"auto", padding:"1.25rem", display:"flex", flexDirection:"column", gap:".75rem" }}>
-              {messages.length === 0 && <p style={{ textAlign:"center", color:"rgba(190,205,235,.35)", fontSize:".85rem", margin:"auto" }}>No messages yet. Say hi!</p>}
-              {messages.map(m => {
-                const mine = m.sender_id === profile?.id;
-                return (
-                  <div key={m.id} style={{ display:"flex", flexDirection:"column", maxWidth:"72%", alignSelf: mine ? "flex-end" : "flex-start", alignItems: mine ? "flex-end" : "flex-start" }}>
-                    <div style={{ padding:".65rem 1rem", borderRadius:"12px", fontSize:".88rem", lineHeight:1.5, background: mine ? "#ea6b14" : "rgba(255,255,255,.08)", color:"#f0f4ff" }}>{m.content}</div>
-                    <div style={{ fontSize:".65rem", color:"rgba(190,205,235,.35)", marginTop:".25rem" }}>{new Date(m.created_at).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })}</div>
-                  </div>
-                );
-              })}
-              <div ref={msgEndRef} />
-            </div>
-            <div style={{ display:"flex", gap:".75rem", padding:"1rem 1.25rem", borderTop:"1px solid rgba(255,255,255,.07)" }}>
-              <input style={{ flex:1, padding:".7rem 1rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.1)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".9rem", outline:"none", minWidth:0 }}
-                placeholder="Type a message…" value={newMsg} onChange={e => setNewMsg(e.target.value)}
-                onKeyDown={e => { if (e.key==="Enter") { e.preventDefault(); sendMessage(); }}} />
-              <button style={{ padding:".7rem 1.25rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"8px", fontFamily:"inherit", fontWeight:500, cursor:"pointer", flexShrink:0 }}
-                onClick={sendMessage} disabled={sendingMsg || !newMsg.trim()}>Send</button>
-            </div>
-          </div>
-        )}
+        </>
 
         <DeleteAccount />
       </div>
+
+      {chatOpen && activeJob && profile && (
+        <JobChat
+          jobId={activeJob.id}
+          meId={profile.id}
+          title={"Chat with " + (contractor?.first_name ?? "your contractor")}
+          readOnly={activeJob.status === "completed"}
+          onClose={() => setChatOpen(false)}
+        />
+      )}
+      <ConfirmDialog state={confirmState} onClose={(ok) => { confirmState?.resolve(ok); setConfirmState(null); }} />
     </div>
   );
 }
