@@ -6,7 +6,7 @@ const ANON_KEY     = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 type Msg = { role: "user" | "assistant"; content: string };
 
 const INITIAL: Msg[] = [
-  { role: "assistant", content: "Hi! I'm Freddy 👋 How can I help you today? I can help you book a repair, answer questions about the platform, or get you connected with a contractor." },
+  { role: "assistant", content: "Hi! I'm Freddy 👋 I'm an automated AI assistant. I can help you book a repair, answer questions about the platform, or get you connected with a contractor. For a real person, email hello@freddyfixit.ca anytime." },
 ];
 
 export default function ChatWidget() {
@@ -94,7 +94,7 @@ export default function ChatWidget() {
                 <div style={{ fontSize: ".9rem", fontWeight: 600, color: "#f0f4ff" }}>Freddy</div>
                 <div style={{ fontSize: ".72rem", color: "#ea6b14", display: "flex", alignItems: "center", gap: ".3rem" }}>
                   <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
-                  Online
+                  AI assistant · Online
                 </div>
               </div>
             </div>
@@ -182,6 +182,14 @@ export default function ChatWidget() {
             >
               ↑
             </button>
+          </div>
+
+          {/* AI disclosure */}
+          <div style={{
+            padding: "0 1rem .6rem", textAlign: "center",
+            fontSize: ".66rem", color: "rgba(190,205,235,.4)", lineHeight: 1.4,
+          }}>
+            Freddy is an automated AI assistant and can make mistakes.
           </div>
 
           <style>{`

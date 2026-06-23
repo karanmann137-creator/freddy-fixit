@@ -45,9 +45,30 @@ export default function ContractorDashboard() {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+      // All six reads key only off user.id, so fire them in parallel instead of
+      // waiting on each round-trip in sequence.
+      const [
+        { data: prof },
+        { data: con },
+        { data: pf },
+        { data: jobs },
+        { data: open },
+        { data: revs },
+      ] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", user.id).single(),
+        supabase.from("contractors").select("*").eq("id", user.id).single(),
+        supabase.from("portfolio_items").select("*").eq("contractor_id", user.id).order("created_at", { ascending: false }),
+        supabase.from("jobs")
+          .select("*, request:client_requests!jobs_request_id_fkey(service_needed, job_description, preferred_schedule, location, photo_path, estimated_quote, quote_notes, vehicle_details), client:profiles!jobs_client_id_fkey(first_name)")
+          .eq("contractor_id", user.id).order("created_at", { ascending: false }),
+        supabase.rpc("list_open_jobs"),
+        supabase.from("reviews")
+          .select("*, client:profiles!reviews_client_id_fkey(first_name)")
+          .eq("contractor_id", user.id)
+          .order("created_at", { ascending: false }),
+      ]);
+
       setProfile(prof);
-      const { data: con } = await supabase.from("contractors").select("*").eq("id", user.id).single();
       setContractor(con);
       setGoogleUrl(con?.google_reviews_url ?? "");
       // Sync live Stripe payout status (no account.updated webhook needed)
@@ -60,21 +81,11 @@ export default function ContractorDashboard() {
           })
           .catch(() => {});
       }
-      const { data: pf } = await supabase.from("portfolio_items").select("*").eq("contractor_id", user.id).order("created_at", { ascending: false });
       setPortfolio(pf ?? []);
-      const { data: jobs } = await supabase.from("jobs")
-        .select("*, request:client_requests!jobs_request_id_fkey(service_needed, job_description, preferred_schedule, location, photo_path, estimated_quote, quote_notes, vehicle_details), client:profiles!jobs_client_id_fkey(first_name)")
-        .eq("contractor_id", user.id).order("created_at", { ascending: false });
       const enriched = jobs ?? [];
       setMyJobs(enriched);
       if (enriched.length > 0) setActiveJobId(enriched[0].id);
-      const { data: open } = await supabase.rpc("list_open_jobs");
       setAvailableJobs(open ?? []);
-      const { data: revs } = await supabase
-        .from("reviews")
-        .select("*, client:profiles!reviews_client_id_fkey(first_name)")
-        .eq("contractor_id", user.id)
-        .order("created_at", { ascending: false });
       setMyReviews(revs ?? []);
       setLoading(false);
     };

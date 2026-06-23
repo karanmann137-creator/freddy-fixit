@@ -14,6 +14,24 @@ const cors = {
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
+// Fire-and-forget alert so a failed payout never goes unnoticed.
+async function alertAdmin(subject: string, detail: string) {
+  const key = Deno.env.get("RESEND_API_KEY");
+  if (!key) return;
+  try {
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: "noreply@freddyfixit.ca",
+        to: "hello@freddyfixit.ca",
+        subject: `⚠️ ${subject}`,
+        html: `<pre style="font-family:monospace;white-space:pre-wrap;">${detail}</pre>`,
+      }),
+    });
+  } catch (_) { /* never let alerting break the request */ }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
@@ -61,13 +79,16 @@ Deno.serve(async (req) => {
     if (!payoutsOk)
       return json({ error: "Contractor has not finished payout setup" }, 409);
 
+    // idempotencyKey keyed on the job guarantees Stripe creates at most ONE
+    // transfer per job even if this function runs twice concurrently
+    // (double-click, retry, or the auto-confirm cron overlapping a manual call).
     const transfer = await stripe.transfers.create({
       amount: Math.round(Number(job.contractor_payout) * 100),
       currency: "cad",
       destination: contractor.stripe_account_id,
       transfer_group: job.id,
       metadata: { job_id: job.id },
-    });
+    }, { idempotencyKey: `payout_${job.id}` });
 
     await admin.from("jobs").update({
       stripe_transfer_id: transfer.id, payment_status: "released", released_at: new Date().toISOString(),
@@ -76,6 +97,7 @@ Deno.serve(async (req) => {
     return json({ ok: true, transfer_id: transfer.id });
   } catch (err) {
     console.error("release-payment:", String(err));
+    await alertAdmin("Payout failed in release-payment", String(err));
     return json({ error: String(err) }, 500);
   }
 });
