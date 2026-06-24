@@ -372,15 +372,15 @@ export default function ClientOnboarding() {
                     </div>
                   )}
                   <div style={{ display:"flex", gap:".75rem", flexWrap:"wrap" as const }}>
-                    <div style={{ flex:"1 1 140px" }}>
+                    <div style={{ flex:"1 1 140px", minWidth:0 }}>
                       <label style={{ ...s.label, marginBottom:".35rem" }}>Start date <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
                       <input type="date" value={recurringStartDate} onChange={e => setRecurringStartDate(e.target.value)}
-                        style={{ ...inp, padding:".6rem .8rem", fontSize:".88rem" }} />
+                        style={{ ...inp, padding:".6rem .8rem", fontSize:".88rem", minWidth:0 }} />
                     </div>
-                    <div style={{ flex:"1 1 140px" }}>
+                    <div style={{ flex:"1 1 140px", minWidth:0 }}>
                       <label style={{ ...s.label, marginBottom:".35rem" }}>End date <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
                       <input type="date" value={recurringEndDate} onChange={e => setRecurringEndDate(e.target.value)}
-                        style={{ ...inp, padding:".6rem .8rem", fontSize:".88rem" }} />
+                        style={{ ...inp, padding:".6rem .8rem", fontSize:".88rem", minWidth:0 }} />
                     </div>
                   </div>
                 </div>

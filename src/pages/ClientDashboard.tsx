@@ -95,10 +95,7 @@ export default function ClientDashboard() {
       setProfile(prof);
       setRequests(reqs ?? []);
 
-      // Loyalty: returning clients (1+ completed job) get the 3% service fee waived.
-      supabase.rpc("client_fee_rate", { p_client: user.id })
-        .then(({ data }) => { if (data != null) setFeeRate(Number(data)); })
-        .catch(() => {});
+      // All clients pay the standard 3% service fee (feeRate defaults to 0.03).
 
       const activeReq = (reqs ?? []).find((r: any) => r.status !== "completed" && r.status !== "cancelled");
 
