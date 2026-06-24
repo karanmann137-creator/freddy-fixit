@@ -5,17 +5,9 @@ import { supabase } from "@/lib/supabase";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import ProfileBar from "@/components/ProfileBar";
 
-// Re-signup flagging. These MUST stay byte-identical to the helpers in the
-// delete-account edge function so the hashes line up.
-async function sha256Hex(input: string): Promise<string> {
-  const bytes = new TextEncoder().encode(input);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
-}
-const normEmail = (e?: string | null) => (e ?? "").trim().toLowerCase();
-const normPhone = (p?: string | null) => (p ?? "").replace(/\D/g, "");
-const normName  = (f?: string | null, l?: string | null) =>
-  [f ?? "", l ?? ""].join(" ").trim().toLowerCase().replace(/\s+/g, " ");
+// Re-signup flagging is now computed server-side by the admin_resignup_matches()
+// RPC (hashes built in SQL via pgcrypto, joined against deleted_account_flags),
+// replacing the old O(contractors * flags) client-side SHA-256 loop.
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
@@ -55,13 +47,13 @@ export default function AdminDashboard() {
     const rRange: [number, number] = [page.requests * PAGE_SIZE, page.requests * PAGE_SIZE + PAGE_SIZE - 1];
     const cRange: [number, number] = [page.contractors * PAGE_SIZE, page.contractors * PAGE_SIZE + PAGE_SIZE - 1];
     const jRange: [number, number] = [page.jobs * PAGE_SIZE, page.jobs * PAGE_SIZE + PAGE_SIZE - 1];
-    const [{ data: reqs, count: reqCount }, { data: cons, count: conCount }, { data: js, count: jobCount }, { data: dir }, { data: bids }, { data: flags }, { data: disp }] = await Promise.all([
+    const [{ data: reqs, count: reqCount }, { data: cons, count: conCount }, { data: js, count: jobCount }, { data: dir }, { data: bids }, { data: resignup }, { data: disp }] = await Promise.all([
       supabase.from("client_requests").select("*", { count: "exact" }).order("created_at", { ascending: false }).range(rRange[0], rRange[1]),
       supabase.from("contractors").select("*, profile:profiles!contractors_id_fkey(first_name,last_name,email,phone)", { count: "exact" }).order("created_at", { ascending: false }).range(cRange[0], cRange[1]),
       supabase.from("jobs").select("*", { count: "exact" }).order("created_at", { ascending: false }).range(jRange[0], jRange[1]),
       supabase.from("contractor_directory").select("id, first_name, last_name, specialties"),
       supabase.from("bids").select("*").eq("status", "pending").order("amount", { ascending: true }),
-      supabase.from("deleted_account_flags").select("*").eq("was_poor", true),
+      supabase.rpc("admin_resignup_matches"),
       supabase.from("disputes").select("*, job:jobs(id, amount, total_charged, contractor_payout, status, payment_status, stripe_payment_intent_id)").order("created_at", { ascending: false }),
     ]);
     setRequests(reqs ?? []);
@@ -85,26 +77,11 @@ export default function AdminDashboard() {
     (bids ?? []).forEach((b: any) => { if (!bb[b.request_id]) bb[b.request_id] = []; bb[b.request_id].push(b); });
     setBidsBy(bb);
 
-    // Match current contractors against tombstones of deleted, poorly-rated
-    // accounts (by hashed email / phone / name) to surface likely re-signups.
-    const poorFlags = flags ?? [];
+    // Likely re-signups of deleted, poorly-rated accounts — matched server-side
+    // by admin_resignup_matches() (hashes built and joined in SQL).
     const fm: Record<string, { fields: string[]; avg: number; count: number; date: string }> = {};
-    if (poorFlags.length > 0) {
-      for (const c of (cons ?? [])) {
-        const eh = normEmail(c.profile?.email) ? await sha256Hex(normEmail(c.profile?.email)) : null;
-        const ph = normPhone(c.profile?.phone) ? await sha256Hex(normPhone(c.profile?.phone)) : null;
-        const nh = normName(c.profile?.first_name, c.profile?.last_name) ? await sha256Hex(normName(c.profile?.first_name, c.profile?.last_name)) : null;
-        for (const f of poorFlags) {
-          const fields: string[] = [];
-          if (eh && f.email_hash === eh) fields.push("email");
-          if (ph && f.phone_hash === ph) fields.push("phone");
-          if (nh && f.name_hash === nh) fields.push("name");
-          if (fields.length > 0) {
-            fm[c.id] = { fields, avg: f.avg_score, count: f.review_count, date: f.deleted_at };
-            break;
-          }
-        }
-      }
+    for (const r of (resignup ?? [])) {
+      fm[r.contractor_id] = { fields: r.fields ?? [], avg: r.avg_score, count: r.review_count, date: r.deleted_at };
     }
     setFlagMatches(fm);
     } catch (e) {
