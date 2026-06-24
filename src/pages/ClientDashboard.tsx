@@ -72,6 +72,9 @@ export default function ClientDashboard() {
   const [busyPick, setBusyPick] = useState<string|null>(null);
   const [busyPay, setBusyPay] = useState(false);
   const [feeRate, setFeeRate] = useState(0.03);
+  const [selectedReqId, setSelectedReqId] = useState<string|null>(null);
+  const [histFilter, setHistFilter] = useState<"all"|"active"|"completed"|"cancelled">("all");
+  const [histLimit, setHistLimit] = useState(5);
 
   const askConfirm = (o: Omit<ConfirmState, "resolve">) =>
     new Promise<boolean>(resolve => setConfirmState({ ...o, resolve }));
@@ -94,29 +97,38 @@ export default function ClientDashboard() {
       ]);
       setProfile(prof);
       setRequests(reqs ?? []);
-
       // All clients pay the standard 3% service fee (feeRate defaults to 0.03).
-
-      const activeReq = (reqs ?? []).find((r: any) => r.status !== "completed" && r.status !== "cancelled");
-
-      if (activeReq) {
-        // assigned contractor + the job (with its messages embedded) are
-        // independent of each other — fetch them together, and pull messages
-        // in the same round-trip instead of a third sequential query.
-        const [{ data: con }, { data: job }] = await Promise.all([
-          activeReq.assigned_contractor_id
-            ? supabase.rpc("get_contractor_profile", { p_id: activeReq.assigned_contractor_id }).maybeSingle()
-            : Promise.resolve({ data: null }),
-          supabase.from("jobs").select("*").eq("request_id", activeReq.id).maybeSingle(),
-        ]);
-        if (con) setContractor(con);
-        setActiveJob(job);
-      }
-
       setLoading(false);
     };
     load();
   }, []);
+
+  // Non-terminal requests the client can switch between. If the user picked one
+  // explicitly use it; otherwise default to the first open request, else newest.
+  const openReqs = requests.filter(r => r.status !== "completed" && r.status !== "cancelled");
+  const activeReq =
+    (selectedReqId && requests.find(r => r.id === selectedReqId)) ||
+    openReqs[0] || requests[0];
+
+  // Load the assigned contractor + job whenever the active request changes
+  // (mount, or the client switching between open requests).
+  useEffect(() => {
+    if (!activeReq) { setContractor(null); setActiveJob(null); return; }
+    let cancelled = false;
+    (async () => {
+      const [{ data: con }, { data: job }] = await Promise.all([
+        activeReq.assigned_contractor_id
+          ? supabase.rpc("get_contractor_profile", { p_id: activeReq.assigned_contractor_id }).maybeSingle()
+          : Promise.resolve({ data: null }),
+        supabase.from("jobs").select("*").eq("request_id", activeReq.id).maybeSingle(),
+      ]);
+      if (cancelled) return;
+      setContractor(con ?? null);
+      setActiveJob(job ?? null);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeReq?.id]);
 
   const handleSignOut = async () => { await supabase.auth.signOut(); setLocation("/"); };
 
@@ -157,6 +169,56 @@ export default function ClientDashboard() {
     if (error) { alert("Couldn't approve: " + error.message); return; }
     setActiveJob({ ...activeJob, status: "scheduled", client_approved_at: new Date().toISOString() });
   };
+  const requestReschedule = async () => {
+    if (!activeJob || !profile) return;
+    const note = window.prompt("Suggest a different day/time for your contractor (they'll get it as a message):", "");
+    if (note == null) return;
+    const trimmed = note.trim();
+    if (!trimmed) return;
+    setBusyReq(true);
+    const { error } = await supabase.from("messages").insert({
+      job_id: activeJob.id,
+      sender_id: profile.id,
+      content: "📅 Reschedule request: " + trimmed,
+    });
+    setBusyReq(false);
+    if (error) { alert("Couldn't send your request: " + error.message); return; }
+    alert("Sent! Your contractor will see your suggested time and propose a new one.");
+  };
+
+  const downloadReceipt = (j: any) => {
+    const amt = Number(j?.amount ?? 0);
+    const total = jobTotal(j);
+    const fee = r2(total - amt);
+    const paidOn = j.paid_at ? new Date(j.paid_at).toLocaleDateString() : new Date().toLocaleDateString();
+    const ref = (j.id ?? "").slice(0, 8).toUpperCase();
+    const esc = (v: any) => String(v ?? "").replace(/[<>&]/g, (c: string) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" } as any)[c]);
+    const html =
+      "<!doctype html><html><head><meta charset='utf-8'><title>Receipt " + esc(ref) + "</title>" +
+      "<style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#1a2236;max-width:560px;margin:40px auto;padding:0 20px}" +
+      "h1{font-size:22px;color:#ea6b14;margin:0 0 2px}.sub{color:#667;font-size:13px;margin-bottom:24px}" +
+      "table{width:100%;border-collapse:collapse;margin:18px 0}td{padding:9px 0;font-size:14px;border-bottom:1px solid #eee}" +
+      "td.r{text-align:right}.tot td{font-weight:700;font-size:16px;border-bottom:none;border-top:2px solid #1a2236;padding-top:12px}" +
+      ".muted{color:#778;font-size:12px}@media print{button{display:none}}" +
+      "button{margin-top:18px;padding:10px 18px;background:#ea6b14;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer}</style></head><body>" +
+      "<h1>FREDDY FIX IT</h1><div class='sub'>Payment receipt · " + esc(paidOn) + "</div>" +
+      "<table>" +
+      "<tr><td>Receipt #</td><td class='r'>" + esc(ref) + "</td></tr>" +
+      "<tr><td>Service</td><td class='r'>" + esc(activeReq?.service_needed ?? "Home service") + "</td></tr>" +
+      (contractor ? "<tr><td>Contractor</td><td class='r'>" + esc(contractor.first_name + " " + (contractor.last_name?.[0] ?? "") + ".") + "</td></tr>" : "") +
+      "<tr><td>Job amount</td><td class='r'>$" + amt.toFixed(2) + "</td></tr>" +
+      "<tr><td>Service fee (3%)</td><td class='r'>$" + fee.toFixed(2) + "</td></tr>" +
+      "<tr class='tot'><td>Total paid</td><td class='r'>$" + total.toFixed(2) + "</td></tr>" +
+      "</table>" +
+      "<div class='muted'>Status: " + esc((j.payment_status ?? "").replace("_", " ")) + ". Payment is held securely and released to your contractor after you confirm the work is complete.</div>" +
+      "<button onclick='window.print()'>Print / Save as PDF</button>" +
+      "</body></html>";
+    const w = window.open("", "_blank");
+    if (!w) { alert("Please allow pop-ups to view your receipt."); return; }
+    w.document.write(html);
+    w.document.close();
+  };
+
   const r2 = (n: number) => Math.round(n * 100) / 100;
   function jobTotal(j: any) {
     if (j?.total_charged != null) return Number(j.total_charged);
@@ -225,7 +287,7 @@ export default function ClientDashboard() {
   }, [activeJob?.id, activeJob?.status]);
 
   useEffect(() => {
-    const ar = requests.find((r: any) => r.status !== "completed" && r.status !== "cancelled") ?? requests[0];
+    const ar = activeReq;
     if (ar && ar.status === "pending") {
       supabase.from("bids").select("*").eq("request_id", ar.id).eq("status", "pending").order("amount", { ascending: true })
         .then(async ({ data }) => {
@@ -239,7 +301,8 @@ export default function ClientDashboard() {
           }
         });
     } else { setClientBids([]); }
-  }, [requests]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeReq?.id, activeReq?.status]);
 
   const pickBid = async (bidId: string) => {
     if (!(await askConfirm({
@@ -252,7 +315,7 @@ export default function ClientDashboard() {
     const { error } = await supabase.rpc("accept_bid", { p_bid_id: bidId });
     setBusyPick(null);
     if (error) { alert("Couldn't select: " + error.message); return; }
-    const ar = requests.find(r => r.status !== "completed" && r.status !== "cancelled") ?? requests[0];
+    const ar = activeReq;
     if (ar) {
       const { data: job } = await supabase.from("jobs").select("*").eq("request_id", ar.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
       setActiveJob(job);
@@ -275,8 +338,6 @@ export default function ClientDashboard() {
     if (error) { alert("Couldn't submit rating: " + error.message); return; }
     setHasReviewed(true);
   };
-
-  const activeReq = requests.find(r => r.status !== "completed" && r.status !== "cancelled") ?? requests[0];
 
   const s = {
     wrap: { minHeight:"100vh", background:"#1a2236", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), radial-gradient(rgba(255,255,255,0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"#f0f4ff" },
@@ -332,6 +393,22 @@ export default function ClientDashboard() {
               </div>
             ) : (
               <>
+                {openReqs.length > 1 && (
+                  <div style={{ ...s.card, padding:"1rem 1.25rem" }}>
+                    <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.45)", marginBottom:".6rem" }}>Your open requests ({openReqs.length})</div>
+                    <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
+                      {openReqs.map(r => {
+                        const on = r.id === activeReq?.id;
+                        return (
+                          <button key={r.id} onClick={() => setSelectedReqId(r.id)} style={{ ...s.tab, ...(on ? s.activeTab : {}), display:"flex", alignItems:"center", gap:".4rem" }}>
+                            <Ic name={STATUS_META[r.status]?.icon as any} size={12} color={STATUS_META[r.status]?.color} />
+                            <span style={{ maxWidth:160, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{r.service_needed}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 {activeReq && (
                   <div style={s.card}>
                     <div style={s.cardTitle}>Current Request</div>
@@ -396,7 +473,10 @@ export default function ClientDashboard() {
                           <>
                             <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}>Your contractor proposed a time</div>
                             <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.8)", marginBottom:".75rem" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />{activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "—"}{activeJob.amount ? " · $" + activeJob.amount : ""}</div>
-                            <button style={s.primaryBtn} disabled={busyReq} onClick={approveSchedule}>{busyReq ? "…" : "Approve & schedule"}</button>
+                            <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
+                              <button style={s.primaryBtn} disabled={busyReq} onClick={approveSchedule}>{busyReq ? "…" : "Approve & schedule"}</button>
+                              <button style={s.btn} disabled={busyReq} onClick={requestReschedule}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Request a different time</button>
+                            </div>
                           </>
                         )}
                         {activeJob.status === "assigned" && !activeJob.schedule_proposed_at && (
@@ -406,7 +486,10 @@ export default function ClientDashboard() {
                           <>
                             <div style={{ fontSize:".85rem", color:"#86efac", marginBottom: (activeJob.payment_status === "held" || activeJob.payment_status === "released") ? 0 : ".75rem" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Scheduled for {activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "the agreed time"}{activeJob.amount ? " · $" + activeJob.amount : ""}.</div>
                             {(activeJob.payment_status === "held" || activeJob.payment_status === "released") ? (
-                              <div style={{ fontSize:".82rem", color:"#86efac" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Payment secured — we'll release it to your contractor once you confirm the work is done.</div>
+                              <>
+                                <div style={{ fontSize:".82rem", color:"#86efac", marginBottom:".6rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Payment secured — we'll release it to your contractor once you confirm the work is done.</div>
+                                <button style={s.btn} onClick={() => downloadReceipt(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Download receipt</button>
+                              </>
                             ) : activeJob.amount ? (
                               <>
                                 <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.75)", marginBottom:".6rem", lineHeight:1.5 }}>Pay now to secure the job. Your money is <strong>held safely</strong> and only released to the contractor after you confirm the work is done. {feeWaived ? <span style={{ color:"#86efac" }}>Service fee waived — thanks for booking with us again. 🎉</span> : "Total includes a 3% service fee."}</div>
@@ -425,6 +508,7 @@ export default function ClientDashboard() {
                                 <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                                   <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm & release payment"}</button>
                                   <button style={{ ...s.btn, color:"#fbbf24", borderColor:"rgba(251,191,36,.35)", background:"rgba(251,191,36,.08)" }} disabled={busyReq} onClick={() => setReportOpen(true)}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />Report a problem</button>
+                                  <button style={s.btn} onClick={() => downloadReceipt(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Download receipt</button>
                                 </div>
                               </>
                             ) : activeJob.amount ? (
@@ -512,27 +596,57 @@ export default function ClientDashboard() {
                   </div>
                 )}
 
-                {requests.length > 1 && (
-                  <div style={s.card}>
-                    <div style={s.cardTitle}>Past Requests</div>
-                    {requests.slice(1).map(r => (
-                      <div key={r.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:".85rem 0", borderBottom:"1px solid rgba(255,255,255,.06)", gap:"1rem", flexWrap:"wrap" as const }}>
-                        <div>
-                          <div style={{ fontSize:".9rem" }}>{r.service_needed}</div>
-                          <div style={{ fontSize:".75rem", color:"rgba(190,205,235,.4)" }}>{new Date(r.created_at).toLocaleDateString()}</div>
-                        </div>
-                        <div style={{ display:"flex", alignItems:"center", gap:".75rem" }}>
-                          <div style={{ fontSize:".78rem", fontWeight:500, color: STATUS_META[r.status]?.color, whiteSpace:"nowrap" as const }}>
-                            <Ic name={STATUS_META[r.status]?.icon as any} size={13} color={STATUS_META[r.status]?.color} style={{ marginRight:4 }} />{STATUS_META[r.status]?.label}
-                          </div>
-                          {r.status !== "cancelled" && (
-                            <button style={{ ...s.btn, padding:".3rem .55rem", color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyReq} onClick={() => removeRequest(r)}><Ic name="trash" size={13} /></button>
-                          )}
-                        </div>
+                {(() => {
+                  const histAll = requests.filter(r => r.id !== activeReq?.id);
+                  if (histAll.length === 0) return null;
+                  const matches = (r: any) =>
+                    histFilter === "all" ? true :
+                    histFilter === "completed" ? r.status === "completed" :
+                    histFilter === "cancelled" ? r.status === "cancelled" :
+                    (r.status !== "completed" && r.status !== "cancelled");
+                  const filtered = histAll.filter(matches);
+                  const shown = filtered.slice(0, histLimit);
+                  const FILTERS: { key: typeof histFilter; label: string }[] = [
+                    { key: "all", label: "All" },
+                    { key: "active", label: "Active" },
+                    { key: "completed", label: "Completed" },
+                    { key: "cancelled", label: "Cancelled" },
+                  ];
+                  return (
+                    <div style={s.card}>
+                      <div style={s.cardTitle}>Request History</div>
+                      <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginBottom:"1rem" }}>
+                        {FILTERS.map(f => (
+                          <button key={f.key} onClick={() => { setHistFilter(f.key); setHistLimit(5); }} style={{ ...s.tab, padding:".4rem .85rem", fontSize:".8rem", ...(histFilter === f.key ? s.activeTab : {}) }}>{f.label}</button>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
+                      {shown.length === 0 ? (
+                        <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.5)", padding:".5rem 0" }}>No {histFilter === "all" ? "" : histFilter + " "}requests to show.</div>
+                      ) : shown.map(r => (
+                        <div key={r.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:".85rem 0", borderBottom:"1px solid rgba(255,255,255,.06)", gap:"1rem", flexWrap:"wrap" as const }}>
+                          <div>
+                            <div style={{ fontSize:".9rem" }}>{r.service_needed}</div>
+                            <div style={{ fontSize:".75rem", color:"rgba(190,205,235,.4)" }}>{new Date(r.created_at).toLocaleDateString()}</div>
+                          </div>
+                          <div style={{ display:"flex", alignItems:"center", gap:".75rem" }}>
+                            {r.status !== "completed" && r.status !== "cancelled" && (
+                              <button style={{ ...s.btn, padding:".3rem .7rem" }} onClick={() => setSelectedReqId(r.id)}>View</button>
+                            )}
+                            <div style={{ fontSize:".78rem", fontWeight:500, color: STATUS_META[r.status]?.color, whiteSpace:"nowrap" as const }}>
+                              <Ic name={STATUS_META[r.status]?.icon as any} size={13} color={STATUS_META[r.status]?.color} style={{ marginRight:4 }} />{STATUS_META[r.status]?.label}
+                            </div>
+                            {r.status !== "cancelled" && (
+                              <button style={{ ...s.btn, padding:".3rem .55rem", color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyReq} onClick={() => removeRequest(r)}><Ic name="trash" size={13} /></button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      {filtered.length > histLimit && (
+                        <button style={{ ...s.btn, marginTop:"1rem" }} onClick={() => setHistLimit(l => l + 5)}>Show more ({filtered.length - histLimit})</button>
+                      )}
+                    </div>
+                  );
+                })()}
               </>
             )}
         </>

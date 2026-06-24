@@ -1,28 +1,42 @@
 import { Switch, Route, Redirect, useLocation } from "wouter";
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { supabase } from "@/lib/supabase";
 import type { UserRole } from "@/lib/supabase";
 
+// Eager: tiny, always-needed shell + the landing/login pages.
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
-import ClientOnboarding from "@/pages/ClientOnboarding";
-import ContractorOnboarding from "@/pages/ContractorOnboarding";
-import ClientSuccess from "@/pages/ClientSuccess";
-import ContractorSuccess from "@/pages/ContractorSuccess";
-import ClientDashboard from "@/pages/ClientDashboard";
-import ContractorDashboard from "@/pages/ContractorDashboard";
-import AdminDashboard from "@/pages/AdminDashboard";
 import UpdatePassword from "@/pages/UpdatePassword";
 import AuthCallback from "@/pages/AuthCallback";
 import TopNav from "@/components/TopNav";
 import ChatWidget from "@/components/ChatWidget";
 import Footer from "@/components/Footer";
-import ContractorProfile from "@/pages/ContractorProfile";
-import UserAgreement from "@/pages/UserAgreement";
-import PrivacyPolicy from "@/pages/PrivacyPolicy";
-import ProtectionPromise from "@/pages/ProtectionPromise";
-import Blog from "@/pages/Blog";
-import BlogPost from "@/pages/BlogPost";
+
+// Lazy: heavy pages are split into their own chunks and fetched on demand,
+// so the initial bundle (what every first-time visitor downloads) stays small.
+const ClientOnboarding     = lazy(() => import("@/pages/ClientOnboarding"));
+const ContractorOnboarding = lazy(() => import("@/pages/ContractorOnboarding"));
+const ClientSuccess        = lazy(() => import("@/pages/ClientSuccess"));
+const ContractorSuccess    = lazy(() => import("@/pages/ContractorSuccess"));
+const ClientDashboard      = lazy(() => import("@/pages/ClientDashboard"));
+const ContractorDashboard  = lazy(() => import("@/pages/ContractorDashboard"));
+const AdminDashboard       = lazy(() => import("@/pages/AdminDashboard"));
+const ContractorProfile    = lazy(() => import("@/pages/ContractorProfile"));
+const UserAgreement        = lazy(() => import("@/pages/UserAgreement"));
+const PrivacyPolicy        = lazy(() => import("@/pages/PrivacyPolicy"));
+const ProtectionPromise    = lazy(() => import("@/pages/ProtectionPromise"));
+const Blog                 = lazy(() => import("@/pages/Blog"));
+const BlogPost             = lazy(() => import("@/pages/BlogPost"));
+
+// Shown briefly while a lazily-loaded page chunk downloads.
+function PageLoader() {
+  return (
+    <div style={{ minHeight: "100vh", background: "#1a2236", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ width: 32, height: 32, border: "3px solid rgba(234,107,20,0.2)", borderTopColor: "#ea6b14", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
 
 // When Supabase detects a password-recovery session (fired as the
 // PASSWORD_RECOVERY auth event, or visible as a recovery token in the URL
@@ -119,6 +133,7 @@ export default function App() {
       <RecoveryRedirect />
       <TopNav />
       <ChatWidget />
+      <Suspense fallback={<PageLoader />}>
       <Switch>
       {/* Public */}
       <Route path="/" component={Home} />
@@ -152,6 +167,7 @@ export default function App() {
         {() => <Redirect to="/" />}
       </Route>
     </Switch>
+    </Suspense>
     <Footer />
     </>
   );

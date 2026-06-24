@@ -36,6 +36,28 @@ export default function ContractorDashboard() {
   const askConfirm = (o: Omit<ConfirmState, "resolve">) =>
     new Promise<boolean>(resolve => setConfirmState({ ...o, resolve }));
 
+  // Export the job/payout history as a CSV the contractor can open in Excel
+  // (handy at tax time). Built entirely in-browser — no server round-trip.
+  const exportPayoutsCsv = () => {
+    const esc = (v: any) => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+    const header = ["Service", "Date", "Status", "Quote", "Your payout"].map(esc).join(",");
+    const lines = myJobs.map((j: any) => [
+      j.request?.service_needed ?? "Job",
+      new Date(j.created_at).toLocaleDateString(),
+      j.status.replace("_", " "),
+      j.amount != null ? j.amount : "",
+      j.amount != null ? netPayout(j).toFixed(2) : "",
+    ].map(esc).join(","));
+    const csv = [header, ...lines].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "freddy-fixit-payouts-" + new Date().toISOString().slice(0, 10) + ".csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (!data.session) setLocation("/login");
@@ -284,7 +306,13 @@ export default function ContractorDashboard() {
     slotSel: { background:"rgba(234,107,20,.15)", borderColor:"rgba(234,107,20,.5)", color:"#f0f4ff" },
   };
 
-  if (loading) return <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>Loading…</div>;
+  if (loading) return (
+    <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ textAlign:"center", color:"rgba(190,205,235,.5)" }}>
+        <div style={{ marginBottom:"1rem" }}><Ic name="settings" size={36} color="#ea6b14" /></div>Loading your dashboard…
+      </div>
+    </div>
+  );
 
   return (
     <div style={s.wrap}>
@@ -574,7 +602,14 @@ export default function ContractorDashboard() {
               )}
             </div>
             <div style={s.card}>
-              <div style={s.cardTitle}>Job History</div>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".75rem", flexWrap:"wrap" as const, marginBottom:"1.25rem" }}>
+                <div style={{ ...s.cardTitle, marginBottom:0 }}>Job History</div>
+                {myJobs.length > 0 && (
+                  <button style={{ ...s.btn, display:"inline-flex", alignItems:"center", gap:".4rem" }} onClick={exportPayoutsCsv}>
+                    <Ic name="download" size={13} />Download CSV
+                  </button>
+                )}
+              </div>
               {myJobs.length === 0 ? <p style={{ color:"rgba(190,205,235,.45)" }}>No jobs yet.</p> : myJobs.map(job => (
                 <div key={job.id} style={{ display:"flex", justifyContent:"space-between", padding:".85rem 0", borderBottom:"1px solid rgba(255,255,255,.06)" }}>
                   <div>
