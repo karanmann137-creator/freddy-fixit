@@ -27,6 +27,7 @@ const PrivacyPolicy        = lazy(() => import("@/pages/PrivacyPolicy"));
 const ProtectionPromise    = lazy(() => import("@/pages/ProtectionPromise"));
 const Blog                 = lazy(() => import("@/pages/Blog"));
 const BlogPost             = lazy(() => import("@/pages/BlogPost"));
+const GetQuote             = lazy(() => import("@/pages/GetQuote"));
 
 // Shown briefly while a lazily-loaded page chunk downloads.
 function PageLoader() {
@@ -141,6 +142,7 @@ export default function App() {
       <Route path="/update-password" component={UpdatePassword} />
       <Route path="/auth/callback" component={AuthCallback} />
       <Route path="/client-onboarding" component={ClientOnboarding} />
+      <Route path="/get-a-quote" component={GetQuote} />
       <Route path="/contractor-onboarding" component={ContractorOnboarding} />
       <Route path="/contractors/:id" component={ContractorProfile} />
       <Route path="/client-success" component={ClientSuccess} />

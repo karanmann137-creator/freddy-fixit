@@ -358,6 +358,30 @@ const TAG_COLORS: Record<string, string> = {
   Comparison: "#ea6b14", Pricing: "#3b82f6", Maintenance: "#22c55e", Tips: "#a855f7",
 };
 
+// Short, search-friendly summaries used for each post's <meta description> and
+// Open Graph tags (set client-side in BlogPost's effect).
+const POST_DESCRIPTIONS: Record<string, string> = {
+  "freddy-fix-it-vs-homestars-vs-jiffy-calgary": "A plain-language guide to the main types of contractor platforms in Calgary — active-dispatch marketplaces, directories, task platforms and classifieds — and how to weigh speed, vetting, pricing and protection.",
+  "handyman-costs-calgary-2026": "2026 pricing guide for Calgary handyman and contractor work: hourly rates by trade plus typical costs for plumbing, electrical, drywall, painting, concrete and more.",
+  "calgary-home-winter-checklist": "A 12-point Calgary winter home prep checklist covering heating, plumbing, exterior and safety — what to do before the cold hits to avoid emergency repairs.",
+  "why-vet-contractors-calgary": "Five reasons Calgary homeowners should always hire vetted, licensed and insured contractors — and what 'vetted' actually means for your insurance and your home.",
+  "calgary-plumber-cost-2026": "What Calgary plumbers charge in 2026: typical costs by job type, hourly vs flat-fee work, what drives the final price, and red flags to watch for.",
+  "calgary-roof-replacement-cost-2026": "Calgary roof replacement costs in 2026 by home size, what drives the price, hail insurance claims, and when to repair vs replace.",
+  "calgary-spring-home-maintenance-checklist": "A Calgary spring home maintenance checklist for when the snow melts — exterior, interior, landscaping and drainage tasks to tackle before the summer contractor rush.",
+};
+
+// Create or update a meta/link tag in <head> so each article has its own
+// title, description and Open Graph data when shared or crawled.
+function upsertMeta(selector: string, attr: "name" | "property" | "rel", key: string, content: string, valueAttr: "content" | "href" = "content") {
+  let el = document.head.querySelector(selector) as HTMLElement | null;
+  if (!el) {
+    el = document.createElement(selector.startsWith("link") ? "link" : "meta");
+    el.setAttribute(attr, key);
+    document.head.appendChild(el);
+  }
+  el.setAttribute(valueAttr, content);
+}
+
 // Free stock photos (Unsplash License) keyed by tag — used as a darkened hero image
 // behind each article header. Photos: workbench tools by Sparsh Paliwal, suburban
 // house by Jeff James. Swap in a Higgsfield/custom image by editing the URL.
@@ -376,8 +400,25 @@ export default function BlogPost() {
   const post = POSTS[params.slug ?? ""];
 
   useEffect(() => {
-    if (!post) setLocation("/blog");
-  }, [post, setLocation]);
+    if (!post) { setLocation("/blog"); return; }
+
+    const url = "https://freddyfixit.ca/blog/" + (params.slug ?? "");
+    const desc = POST_DESCRIPTIONS[params.slug ?? ""] ?? "Calgary home repair and contractor advice from Freddy Fix It.";
+    const fullTitle = post.title + " | Freddy Fix It";
+    const prevTitle = document.title;
+    document.title = fullTitle;
+
+    upsertMeta('meta[name="description"]', "name", "description", desc);
+    upsertMeta('link[rel="canonical"]', "rel", "canonical", url, "href");
+    upsertMeta('meta[property="og:type"]', "property", "og:type", "article");
+    upsertMeta('meta[property="og:title"]', "property", "og:title", post.title);
+    upsertMeta('meta[property="og:description"]', "property", "og:description", desc);
+    upsertMeta('meta[property="og:url"]', "property", "og:url", url);
+    upsertMeta('meta[name="twitter:title"]', "name", "twitter:title", post.title);
+    upsertMeta('meta[name="twitter:description"]', "name", "twitter:description", desc);
+
+    return () => { document.title = prevTitle; };
+  }, [post, params.slug, setLocation]);
 
   if (!post) return null;
 

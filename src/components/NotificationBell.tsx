@@ -32,9 +32,15 @@ export default function NotificationBell({ userId, dashboardPath }: { userId: st
 
   useEffect(() => {
     load();
-    // Light polling so the badge stays roughly fresh without a realtime sub.
-    const t = setInterval(load, 60000);
-    return () => clearInterval(t);
+    // Realtime: refresh the instant a notification is inserted/updated for me.
+    const channel = supabase.channel("notif:" + userId)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+        () => load())
+      .subscribe();
+    // Slow poll as a safety net if the socket drops.
+    const t = setInterval(load, 120000);
+    return () => { clearInterval(t); supabase.removeChannel(channel); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 

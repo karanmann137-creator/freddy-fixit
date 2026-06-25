@@ -311,6 +311,14 @@ export default function Home() {
             </div>
           </motion.div>
 
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.55 }}
+            style={{ textAlign:"center", marginTop:"1.1rem" }}>
+            <button onClick={() => setLocation("/get-a-quote")}
+              style={{ background:"none", border:"none", color:"rgba(240,244,255,.75)", fontFamily:"inherit", fontSize:".9rem", cursor:"pointer", textDecoration:"underline", textUnderlineOffset:"3px" }}>
+              Not ready to sign up? Get a free quote first →
+            </button>
+          </motion.div>
+
           <motion.a href="https://wa.me/18255618331" target="_blank" rel="noopener noreferrer" className="ff-whatsapp"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">

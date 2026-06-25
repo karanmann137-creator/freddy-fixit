@@ -19,6 +19,17 @@ export default function NewRequest() {
   const [schedule, setSchedule] = useState("");
   const [sameAddress, setSameAddress] = useState(true);
   const [newLocation, setNewLocation] = useState("");
+
+  // Saved addresses & vehicles (reused across requests).
+  const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
+  const [savedVehicles, setSavedVehicles] = useState<any[]>([]);
+  const [addrChoice, setAddrChoice] = useState<string>("last"); // saved id | "last" | "new"
+  const [saveNewAddress, setSaveNewAddress] = useState(true);
+  const [vehChoice, setVehChoice] = useState<string>("new");    // saved id | "new"
+  const [vehYear, setVehYear] = useState("");
+  const [vehMake, setVehMake] = useState("");
+  const [vehModel, setVehModel] = useState("");
+  const [saveNewVehicle, setSaveNewVehicle] = useState(true);
   const [description, setDescription] = useState("");
   const [recurring, setRecurring] = useState(false);
   const [recurringFrequency, setRecurringFrequency] = useState<"weekly"|"biweekly"|"monthly"|"seasonal"|"">("");
@@ -49,14 +60,22 @@ export default function NewRequest() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLocation("/login"); return; }
-      const [{ data: prof }, { data: reqs }] = await Promise.all([
+      const [{ data: prof }, { data: reqs }, { data: addrs }, { data: vehs }] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", user.id).single(),
         supabase.from("client_requests").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1),
+        supabase.from("saved_addresses").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+        supabase.from("saved_vehicles").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
       ]);
       setProfile(prof);
       const last = (reqs ?? [])[0] ?? null;
       setLastReq(last);
-      if (!last?.location) setSameAddress(false);       // nothing to reuse → enter fresh
+      setSavedAddresses(addrs ?? []);
+      setSavedVehicles(vehs ?? []);
+      // Default address choice: last-used if we have one, else first saved, else fresh entry.
+      if (last?.location) { setAddrChoice("last"); setSameAddress(true); }
+      else if ((addrs ?? []).length) { setAddrChoice((addrs as any[])[0].id); setSameAddress(true); }
+      else { setAddrChoice("new"); setSameAddress(false); }
+      if ((vehs ?? []).length) setVehChoice((vehs as any[])[0].id);
       if (last?.client_type === "business") setRecurring(!!last.recurring);
       setLoading(false);
     })();
@@ -74,6 +93,17 @@ export default function NewRequest() {
   const prevAddress = lastReq?.location ?? "";
   const isBusiness = lastReq?.client_type === "business";
 
+  const VEHICLE_SERVICES = ["Oil Change","Tire Swap / Rotation","Battery / Brakes","Vehicle Maintenance"];
+  const isVehicle = selectedServices.some(sv => VEHICLE_SERVICES.includes(sv));
+
+  // Resolve the address string from the current choice.
+  const resolveLocation = () => {
+    if (addrChoice === "new") return newLocation.trim();
+    if (addrChoice === "last") return prevAddress;
+    const found = savedAddresses.find(a => a.id === addrChoice);
+    return found?.address ?? "";
+  };
+
   const toggleService = (label: string) => {
     setSelectedServices(prev => prev.includes(label) ? prev.filter(x => x !== label) : [...prev, label]);
     setErrors(e => ({ ...e, services: "" }));
@@ -83,8 +113,8 @@ export default function NewRequest() {
     const e: Record<string, string> = {};
     if (selectedServices.length === 0) e.services = "Please select at least one service";
     if (!schedule) e.schedule = "Please choose a timeframe";
-    const loc = sameAddress ? prevAddress : newLocation.trim();
-    if (!loc) e.location = sameAddress ? "No previous address on file — please enter one" : "Address required";
+    const loc = resolveLocation();
+    if (!loc) e.location = addrChoice === "new" ? "Address required" : "No address on file — please enter one";
     if (description.trim().length < 10) e.description = "Please add a few more details (min 10 characters)";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -106,7 +136,28 @@ export default function NewRequest() {
         if (!up.error) photoPath = path;
       }
 
-      const location = sameAddress ? prevAddress : newLocation.trim();
+      const location = resolveLocation();
+
+      // Persist a newly-typed address to the user's saved list (best effort).
+      if (addrChoice === "new" && saveNewAddress && location) {
+        const dup = savedAddresses.some(a => (a.address ?? "").trim().toLowerCase() === location.toLowerCase());
+        if (!dup) await supabase.from("saved_addresses").insert({ user_id: user.id, address: location });
+      }
+
+      // Resolve the vehicle (saved pick or newly typed) for vehicle jobs.
+      let vehicleDetails: any = null;
+      if (isVehicle) {
+        if (vehChoice !== "new") {
+          const v = savedVehicles.find(x => x.id === vehChoice);
+          if (v) vehicleDetails = { year: v.year ?? "", make: v.make ?? "", model: v.model ?? "", notes: v.notes ?? "" };
+        } else if (vehYear.trim() || vehMake.trim() || vehModel.trim()) {
+          vehicleDetails = { year: vehYear.trim(), make: vehMake.trim(), model: vehModel.trim() };
+          if (saveNewVehicle) {
+            await supabase.from("saved_vehicles").insert({ user_id: user.id, year: vehYear.trim() || null, make: vehMake.trim() || null, model: vehModel.trim() || null });
+          }
+        }
+      }
+
       const { error } = await supabase.from("client_requests").insert({
         user_id: user.id,
         first_name: profile?.first_name ?? null,
@@ -128,6 +179,7 @@ export default function NewRequest() {
         recurring_start_date: recurringStartDate || null,
         recurring_end_date: recurringEndDate || null,
         billing_preference: isBusiness ? (lastReq?.billing_preference ?? null) : null,
+        vehicle_details: vehicleDetails,
       });
       if (error) throw error;
       setLocation("/client-dashboard");
@@ -254,24 +306,74 @@ export default function NewRequest() {
 
           {/* Address */}
           <p style={{ ...s.label, marginTop:"1.75rem" }}>Where is this job?</p>
-          {prevAddress ? (
+          {(() => {
+            // De-dupe the "last used" option if it's already a saved address.
+            const lastIsSaved = prevAddress && savedAddresses.some(a => (a.address ?? "").trim().toLowerCase() === prevAddress.trim().toLowerCase());
+            const pick = (val: string) => { setAddrChoice(val); setSameAddress(val !== "new"); setErrors(e => ({ ...e, location:"" })); };
+            return (
+              <>
+                {prevAddress && !lastIsSaved && (
+                  <button style={{ ...s.addrBtn, ...(addrChoice === "last" ? s.addrBtnSel : {}) }} onClick={() => pick("last")}>
+                    <span><Ic name={addrChoice === "last" ? "radio-on" : "radio-off"} size={16} color="#ea6b14" /></span>
+                    <span>Same as last time — <span style={{ color:"rgba(190,205,235,.6)" }}>{prevAddress}</span></span>
+                  </button>
+                )}
+                {savedAddresses.map(a => (
+                  <button key={a.id} style={{ ...s.addrBtn, ...(addrChoice === a.id ? s.addrBtnSel : {}) }} onClick={() => pick(a.id)}>
+                    <span><Ic name={addrChoice === a.id ? "radio-on" : "radio-off"} size={16} color="#ea6b14" /></span>
+                    <span>{a.label ? <strong style={{ marginRight:6 }}>{a.label}</strong> : null}<span style={{ color:"rgba(190,205,235,.75)" }}>{a.address}</span></span>
+                  </button>
+                ))}
+                <button style={{ ...s.addrBtn, ...(addrChoice === "new" ? s.addrBtnSel : {}) }} onClick={() => pick("new")}>
+                  <span><Ic name={addrChoice === "new" ? "radio-on" : "radio-off"} size={16} color="#ea6b14" /></span>
+                  <span>A different address</span>
+                </button>
+                {addrChoice === "new" && (
+                  <>
+                    <input style={{ ...inp, marginTop:".4rem", borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} placeholder="e.g. 123 Main St NW" value={newLocation} onChange={e => { setNewLocation(e.target.value); setErrors(er => ({ ...er, location:"" })); }} />
+                    <label style={{ display:"flex", alignItems:"center", gap:".5rem", cursor:"pointer", fontSize:".82rem", color:"rgba(190,205,235,.7)", marginTop:".5rem" }}>
+                      <input type="checkbox" checked={saveNewAddress} onChange={e => setSaveNewAddress(e.target.checked)} style={{ width:"15px", height:"15px", accentColor:"#ea6b14" }} />
+                      Save this address for next time
+                    </label>
+                  </>
+                )}
+              </>
+            );
+          })()}
+          {errors.location && <p style={s.err}>{errors.location}</p>}
+
+          {/* Vehicle (only for vehicle services) */}
+          {isVehicle && (
             <>
-              <button style={{ ...s.addrBtn, ...(sameAddress ? s.addrBtnSel : {}) }} onClick={() => { setSameAddress(true); setErrors(e => ({ ...e, location:"" })); }}>
-                <span><Ic name={sameAddress ? "radio-on" : "radio-off"} size={16} color="#ea6b14" /></span>
-                <span>Same address as last time — <span style={{ color:"rgba(190,205,235,.6)" }}>{prevAddress}</span></span>
+              <p style={{ ...s.label, marginTop:"1.75rem" }}>Which vehicle?</p>
+              {savedVehicles.map(v => {
+                const label = [v.year, v.make, v.model].filter(Boolean).join(" ") || "Saved vehicle";
+                return (
+                  <button key={v.id} style={{ ...s.addrBtn, ...(vehChoice === v.id ? s.addrBtnSel : {}) }} onClick={() => setVehChoice(v.id)}>
+                    <span><Ic name={vehChoice === v.id ? "radio-on" : "radio-off"} size={16} color="#ea6b14" /></span>
+                    <span>{label}</span>
+                  </button>
+                );
+              })}
+              <button style={{ ...s.addrBtn, ...(vehChoice === "new" ? s.addrBtnSel : {}) }} onClick={() => setVehChoice("new")}>
+                <span><Ic name={vehChoice === "new" ? "radio-on" : "radio-off"} size={16} color="#ea6b14" /></span>
+                <span>{savedVehicles.length ? "A different vehicle" : "Add your vehicle"}</span>
               </button>
-              <button style={{ ...s.addrBtn, ...(!sameAddress ? s.addrBtnSel : {}) }} onClick={() => { setSameAddress(false); setErrors(e => ({ ...e, location:"" })); }}>
-                <span><Ic name={!sameAddress ? "radio-on" : "radio-off"} size={16} color="#ea6b14" /></span>
-                <span>A different address</span>
-              </button>
-              {!sameAddress && (
-                <input style={{ ...inp, marginTop:".4rem", borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} placeholder="e.g. 123 Main St NW" value={newLocation} onChange={e => { setNewLocation(e.target.value); setErrors(er => ({ ...er, location:"" })); }} />
+              {vehChoice === "new" && (
+                <>
+                  <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const, marginTop:".4rem" }}>
+                    <input style={{ ...inp, flex:"1 1 80px", minWidth:0 }} placeholder="Year" value={vehYear} onChange={e => setVehYear(e.target.value)} />
+                    <input style={{ ...inp, flex:"1 1 110px", minWidth:0 }} placeholder="Make" value={vehMake} onChange={e => setVehMake(e.target.value)} />
+                    <input style={{ ...inp, flex:"1 1 110px", minWidth:0 }} placeholder="Model" value={vehModel} onChange={e => setVehModel(e.target.value)} />
+                  </div>
+                  <label style={{ display:"flex", alignItems:"center", gap:".5rem", cursor:"pointer", fontSize:".82rem", color:"rgba(190,205,235,.7)", marginTop:".5rem" }}>
+                    <input type="checkbox" checked={saveNewVehicle} onChange={e => setSaveNewVehicle(e.target.checked)} style={{ width:"15px", height:"15px", accentColor:"#ea6b14" }} />
+                    Save this vehicle for next time
+                  </label>
+                </>
               )}
             </>
-          ) : (
-            <input style={{ ...inp, borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} placeholder="e.g. 123 Main St NW" value={newLocation} onChange={e => { setNewLocation(e.target.value); setErrors(er => ({ ...er, location:"" })); }} />
           )}
-          {errors.location && <p style={s.err}>{errors.location}</p>}
 
           {isBusiness && (
             <label style={{ display:"flex", alignItems:"center", gap:".5rem", cursor:"pointer", fontSize:".88rem", color:"rgba(240,244,255,.85)", marginTop:"1rem" }}>

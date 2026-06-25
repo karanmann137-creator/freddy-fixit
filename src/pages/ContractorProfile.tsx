@@ -31,11 +31,11 @@ export default function ContractorProfile() {
         .order("created_at", { ascending: false });
       setPortfolio(pf ?? []);
 
+      // RPC (SECURITY DEFINER) so logged-out visitors get the reviewer's first
+      // name too — profiles has no public read policy, so a direct join would
+      // show "Client" for everyone. The fn returns only the first name + scores.
       const { data: revs } = await supabase
-        .from("reviews")
-        .select("*, client:profiles!reviews_client_id_fkey(first_name)")
-        .eq("contractor_id", id)
-        .order("created_at", { ascending: false });
+        .rpc("get_contractor_reviews", { p_id: id });
       setReviews(revs ?? []);
 
       setLoading(false);
@@ -188,7 +188,7 @@ export default function ContractorProfile() {
             {reviews.map((r: any) => (
               <div key={r.id} style={{ padding:"1rem 0", borderBottom:"1px solid rgba(255,255,255,.06)" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:".5rem" }}>
-                  <span style={{ fontWeight:500 }}>{r.client?.first_name ?? "Client"}</span>
+                  <span style={{ fontWeight:500 }}>{r.reviewer_first_name ?? "Client"}</span>
                   <span style={{ fontSize:".75rem", color:"rgba(190,205,235,.4)" }}>{new Date(r.created_at).toLocaleDateString()}</span>
                 </div>
                 <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginBottom:".5rem" }}>

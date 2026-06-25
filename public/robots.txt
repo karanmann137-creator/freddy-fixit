@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin-dashboard
+Disallow: /client-dashboard
+Disallow: /contractor-dashboard
+Disallow: /update-password
+Disallow: /auth/
+
+Sitemap: https://freddyfixit.ca/sitemap.xml

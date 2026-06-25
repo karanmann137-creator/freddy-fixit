@@ -1,5 +1,6 @@
 // Supabase Edge Function: notify-email
 // Sends transactional emails (via Resend) tied to the job lifecycle.
+//   - schedule_proposed         → emails the CLIENT that the contractor proposed a time/price
 //   - job_completed_client      → emails the CLIENT that the contractor marked the job complete
 //   - job_confirmed_contractor  → emails the CONTRACTOR that the client confirmed & released payment
 // Deploy: supabase functions deploy notify-email --no-verify-jwt
@@ -20,7 +21,7 @@ const cors = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-type EventType = "job_completed_client" | "job_confirmed_contractor";
+type EventType = "schedule_proposed" | "job_completed_client" | "job_confirmed_contractor";
 
 // Shared layout so these emails match the rest of your branded mail.
 const wrap = (inner: string) => `
@@ -92,7 +93,21 @@ serve(async (req) => {
     let subject = "";
     let html = "";
 
-    if (event === "job_completed_client") {
+    if (event === "schedule_proposed") {
+      const r = await resolveRecipient(job.client_id);
+      to = r.email;
+      const when = job.scheduled_at
+        ? new Date(job.scheduled_at).toLocaleString("en-CA", { timeZone: "America/Edmonton", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+        : null;
+      const amt = job.amount != null ? `$${Number(job.amount).toFixed(2)}` : null;
+      subject = "🕒 Your contractor proposed a time";
+      html = wrap(`
+        <h1 style="font-size:1.8rem;color:#ea6b14;margin-bottom:1rem;">A time has been proposed</h1>
+        <p style="line-height:1.6;">Hi ${r.firstName}, <strong>${contractorName}</strong> proposed a time for your <strong>${service}</strong> job${when ? `: <strong>${when}</strong>` : ""}.${amt ? ` The quoted price is <strong>${amt}</strong>.` : ""}</p>
+        <p style="line-height:1.6;">Open your dashboard to approve the time and schedule the work.</p>
+        ${button("https://freddyfixit.ca/client-dashboard", "Review & Approve →")}
+      `);
+    } else if (event === "job_completed_client") {
       const r = await resolveRecipient(job.client_id);
       to = r.email;
       subject = "✅ Your job is marked complete — confirm to release payment";

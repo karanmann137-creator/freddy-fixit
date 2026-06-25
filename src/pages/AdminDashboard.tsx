@@ -14,8 +14,11 @@ export default function AdminDashboard() {
   const [requests, setRequests] = useState<any[]>([]);
   const [contractors, setContractors] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
-  const [tab, setTab] = useState<"requests"|"contractors"|"jobs"|"disputes">("requests");
+  const [tab, setTab] = useState<"health"|"requests"|"contractors"|"jobs"|"disputes"|"leads">("requests");
   const [disputes, setDisputes] = useState<any[]>([]);
+  const [leads, setLeads] = useState<any[]>([]);
+  const [busyLead, setBusyLead] = useState<string|null>(null);
+  const [health, setHealth] = useState<any>(null);
   const [disputePhotos, setDisputePhotos] = useState<Record<string, string[]>>({});
   const [busyResolve, setBusyResolve] = useState<string|null>(null);
   const [partialAmt, setPartialAmt] = useState<Record<string, string>>({});
@@ -47,7 +50,7 @@ export default function AdminDashboard() {
     const rRange: [number, number] = [page.requests * PAGE_SIZE, page.requests * PAGE_SIZE + PAGE_SIZE - 1];
     const cRange: [number, number] = [page.contractors * PAGE_SIZE, page.contractors * PAGE_SIZE + PAGE_SIZE - 1];
     const jRange: [number, number] = [page.jobs * PAGE_SIZE, page.jobs * PAGE_SIZE + PAGE_SIZE - 1];
-    const [{ data: reqs, count: reqCount }, { data: cons, count: conCount }, { data: js, count: jobCount }, { data: dir }, { data: bids }, { data: resignup }, { data: disp }] = await Promise.all([
+    const [{ data: reqs, count: reqCount }, { data: cons, count: conCount }, { data: js, count: jobCount }, { data: dir }, { data: bids }, { data: resignup }, { data: disp }, { data: leadsData }, { data: healthData }] = await Promise.all([
       supabase.from("client_requests").select("*", { count: "exact" }).order("created_at", { ascending: false }).range(rRange[0], rRange[1]),
       supabase.from("contractors").select("*, profile:profiles!contractors_id_fkey(first_name,last_name,email,phone)", { count: "exact" }).order("created_at", { ascending: false }).range(cRange[0], cRange[1]),
       supabase.from("jobs").select("*", { count: "exact" }).order("created_at", { ascending: false }).range(jRange[0], jRange[1]),
@@ -55,11 +58,15 @@ export default function AdminDashboard() {
       supabase.from("bids").select("*").eq("status", "pending").order("amount", { ascending: true }),
       supabase.rpc("admin_resignup_matches"),
       supabase.from("disputes").select("*, job:jobs(id, amount, total_charged, contractor_payout, status, payment_status, stripe_payment_intent_id)").order("created_at", { ascending: false }),
+      supabase.from("quote_leads").select("*").order("created_at", { ascending: false }).limit(100),
+      supabase.rpc("admin_health"),
     ]);
     setRequests(reqs ?? []);
     setContractors(cons ?? []);
     setJobs(js ?? []);
     setDisputes(disp ?? []);
+    setLeads(leadsData ?? []);
+    setHealth(healthData ?? null);
     // Resolve signed URLs for any dispute photos (problem-photos is a private bucket).
     const dp: Record<string, string[]> = {};
     for (const d of (disp ?? [])) {
@@ -135,6 +142,14 @@ export default function AdminDashboard() {
     await loadAll();
   };
 
+  const markLeadContacted = async (leadId: string) => {
+    setBusyLead(leadId);
+    const { error } = await supabase.from("quote_leads").update({ status: "contacted" }).eq("id", leadId);
+    setBusyLead(null);
+    if (error) { alert("Couldn't update lead: " + error.message); return; }
+    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: "contacted" } : l));
+  };
+
   const resolveDispute = async (d: any, action: "refund_full"|"refund_partial"|"release") => {
     let refund_amount: number | undefined;
     if (action === "refund_partial") {
@@ -176,14 +191,18 @@ export default function AdminDashboard() {
       <div style={s.content}>
         <ProfileBar role="admin" />
         <div style={s.tabs}>
-          {(["requests","contractors","jobs","disputes"] as const).map(t => {
+          {(["health","requests","contractors","jobs","disputes","leads"] as const).map(t => {
             const openDisputes = disputes.filter(d => d.status === "open").length;
-            const label = t === "requests" ? `Requests (${counts.requests})`
+            const newLeads = leads.filter(l => l.status === "new").length;
+            const healthAlerts = health ? ((health.no_bid_count||0) + (health.awaiting_confirm_count||0) + (health.awaiting_approval_count||0) + (health.stale_disputes_count||0)) : 0;
+            const label = t === "health" ? `Health${healthAlerts > 0 ? ` (${healthAlerts})` : ""}`
+              : t === "requests" ? `Requests (${counts.requests})`
               : t === "contractors" ? `Contractors (${counts.contractors})`
               : t === "jobs" ? `Jobs (${counts.jobs})`
-              : `Disputes (${openDisputes})`;
+              : t === "disputes" ? `Disputes (${openDisputes})`
+              : `Leads (${newLeads})`;
             return (
-              <button key={t} style={{ ...s.tab, ...(tab===t ? s.activeTab : {}), ...(t === "disputes" && openDisputes > 0 ? { borderColor:"rgba(251,191,36,.5)", color:"#fbbf24" } : {}) }} onClick={() => setTab(t)}>
+              <button key={t} style={{ ...s.tab, ...(tab===t ? s.activeTab : {}), ...(t === "health" && healthAlerts > 0 ? { borderColor:"rgba(251,191,36,.5)", color:"#fbbf24" } : {}), ...(t === "disputes" && openDisputes > 0 ? { borderColor:"rgba(251,191,36,.5)", color:"#fbbf24" } : {}), ...(t === "leads" && newLeads > 0 ? { borderColor:"rgba(234,107,20,.5)", color:"#ea6b14" } : {}) }} onClick={() => setTab(t)}>
                 {label}
               </button>
             );
@@ -369,6 +388,88 @@ export default function AdminDashboard() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {tab === "leads" && (
+          <div>
+            <p style={{ color:"rgba(190,205,235,.5)", fontSize:".82rem", marginBottom:"1rem", lineHeight:1.5 }}>
+              Quote requests from visitors who haven't signed up. Reach out, then mark them contacted.
+            </p>
+            {leads.length === 0 && <p style={{ color:"rgba(190,205,235,.45)" }}>No quote leads yet.</p>}
+            {leads.map(l => (
+              <div key={l.id} style={{ ...s.card, ...(l.status === "new" ? { borderColor:"rgba(234,107,20,.4)" } : {}) }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const, gap:".5rem" }}>
+                  <div style={s.title}>{l.service_needed || "General enquiry"}</div>
+                  <div style={{ fontSize:".78rem", fontWeight:500, color: l.status === "new" ? "#ea6b14" : "#86efac" }}>● {l.status === "new" ? "New" : "Contacted"}</div>
+                </div>
+                <div style={s.meta}><Ic name="user" size={13} style={{ marginRight:4 }} />{l.name || "—"}</div>
+                <div style={s.meta}>
+                  {l.email ? <a href={"mailto:" + l.email} style={{ color:"#ea6b14", textDecoration:"none" }}>{l.email}</a> : null}
+                  {l.email && l.phone ? " · " : ""}
+                  {l.phone ? <a href={"tel:" + l.phone} style={{ color:"#ea6b14", textDecoration:"none" }}>{l.phone}</a> : null}
+                </div>
+                {l.location && <div style={s.meta}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{l.location}</div>}
+                {l.details && (
+                  <div style={{ marginTop:".5rem", padding:".6rem .8rem", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.06)", borderRadius:"8px", fontSize:".85rem", color:"rgba(190,205,235,.8)", lineHeight:1.5 }}>{l.details}</div>
+                )}
+                <div style={{ ...s.meta, marginTop:".4rem", color:"rgba(190,205,235,.45)" }}>Received {new Date(l.created_at).toLocaleString("en-CA", { dateStyle:"medium", timeStyle:"short" })}</div>
+                {l.status === "new" && (
+                  <div style={{ marginTop:".75rem" }}>
+                    <button style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none" }} disabled={busyLead === l.id} onClick={() => markLeadContacted(l.id)}>{busyLead === l.id ? "…" : "Mark contacted"}</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === "health" && (
+          <div>
+            <p style={{ color:"rgba(190,205,235,.5)", fontSize:".82rem", marginBottom:"1rem", lineHeight:1.5 }}>
+              Things that may need your attention. Buckets only show items that have been waiting too long.
+            </p>
+            {!health && <p style={{ color:"rgba(190,205,235,.45)" }}>Loading…</p>}
+            {health && (() => {
+              const buckets: { key:string; title:string; hint:string; count:number; items:any[] }[] = [
+                { key:"no_bid", title:"Requests with no bids", hint:"Pending & unassigned for over 24h — may need a contractor invited.", count: health.no_bid_count||0, items: health.no_bid||[] },
+                { key:"awaiting_approval", title:"Waiting on client approval", hint:"Contractor proposed a time over 2 days ago, client hasn't approved.", count: health.awaiting_approval_count||0, items: health.awaiting_approval||[] },
+                { key:"awaiting_confirm", title:"Waiting on client confirmation", hint:"Job completed over 2 days ago, client hasn't confirmed (auto-confirms at 3 days).", count: health.awaiting_confirm_count||0, items: health.awaiting_confirm||[] },
+                { key:"stale_disputes", title:"Stale open disputes", hint:"Disputes open for over 3 days.", count: health.stale_disputes_count||0, items: health.stale_disputes||[] },
+              ];
+              const allClear = buckets.every(b => b.count === 0);
+              return (
+                <>
+                  <div style={{ display:"flex", gap:".75rem", flexWrap:"wrap" as const, marginBottom:"1.25rem" }}>
+                    <div style={{ ...s.card, flex:"1 1 180px", margin:0, textAlign:"center" as const }}>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"#ea6b14", lineHeight:1 }}>{health.new_leads_count ?? 0}</div>
+                      <div style={{ fontSize:".78rem", color:"rgba(190,205,235,.6)", marginTop:".35rem" }}>New quote leads</div>
+                    </div>
+                    <div style={{ ...s.card, flex:"1 1 180px", margin:0, textAlign:"center" as const }}>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"#fbbf24", lineHeight:1 }}>{health.pending_contractors_count ?? 0}</div>
+                      <div style={{ fontSize:".78rem", color:"rgba(190,205,235,.6)", marginTop:".35rem" }}>Contractors awaiting review</div>
+                    </div>
+                  </div>
+                  {allClear && <p style={{ color:"#86efac", fontSize:".9rem" }}>● All clear — nothing is overdue right now.</p>}
+                  {buckets.map(b => b.count > 0 && (
+                    <div key={b.key} style={{ marginBottom:"1.5rem" }}>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.1rem", letterSpacing:".04em", color:"#fbbf24" }}>{b.title} ({b.count})</div>
+                      <div style={{ fontSize:".78rem", color:"rgba(190,205,235,.5)", marginBottom:".6rem" }}>{b.hint}</div>
+                      {b.items.map((it:any) => (
+                        <div key={it.id} style={{ ...s.card, borderColor:"rgba(251,191,36,.25)" }}>
+                          <div style={s.title}>{it.service_needed || it.service || it.reason || "Item"}</div>
+                          {(it.first_name || it.last_name || it.client_name) && (
+                            <div style={s.meta}><Ic name="user" size={13} style={{ marginRight:4 }} />{it.client_name || `${it.first_name||""} ${it.last_name||""}`.trim()}</div>
+                          )}
+                          {it.location && <div style={s.meta}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{it.location}</div>}
+                          {(it.created_at || it.since) && <div style={{ ...s.meta, color:"rgba(190,205,235,.45)" }}>Since {new Date(it.created_at || it.since).toLocaleString("en-CA", { dateStyle:"medium", timeStyle:"short" })}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </>
+              );
+            })()}
           </div>
         )}
       </div>

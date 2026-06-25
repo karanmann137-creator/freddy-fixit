@@ -130,6 +130,19 @@ export default function ClientDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeReq?.id]);
 
+  // Realtime: keep the active job's status/payment live as the contractor acts
+  // (proposes a time, marks on-the-way, completes) without a manual refresh.
+  useEffect(() => {
+    if (!activeReq?.id) return;
+    const channel = supabase.channel("clientjob:" + activeReq.id)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "jobs", filter: `request_id=eq.${activeReq.id}` },
+        payload => { const row = payload.new as any; if (row?.id) setActiveJob((j: any) => (j && j.id !== row.id) ? j : { ...(j ?? {}), ...row }); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeReq?.id]);
+
   const handleSignOut = async () => { await supabase.auth.signOut(); setLocation("/"); };
 
   const startEdit = (r: any) => {
