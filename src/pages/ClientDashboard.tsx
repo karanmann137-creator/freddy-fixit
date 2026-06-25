@@ -238,7 +238,6 @@ export default function ClientDashboard() {
     const amt = Number(j?.amount ?? 0);
     return r2(amt * (1 + feeRate));
   }
-  const feeWaived = feeRate === 0;
   const payForJob = async () => {
     if (!activeJob) return;
     if (!(await askConfirm({
@@ -389,13 +388,6 @@ export default function ClientDashboard() {
       <div style={s.content}>
         <ProfileBar role="client" />
 
-        {feeWaived && (
-          <div style={{ display:"flex", alignItems:"center", gap:".6rem", padding:".7rem 1rem", marginBottom:"1.25rem", borderRadius:"12px", background:"rgba(34,197,94,.08)", border:"1px solid rgba(34,197,94,.3)" }}>
-            <span style={{ fontSize:"1.1rem" }}>🎉</span>
-            <div style={{ fontSize:".84rem", color:"#bbf7d0", lineHeight:1.45 }}><strong style={{ color:"#86efac" }}>Returning-client perk:</strong> your 3% service fee is waived on every job from here on out. Thanks for booking with Freddy Fix It.</div>
-          </div>
-        )}
-
         <>
             {requests.length === 0 ? (
               <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
@@ -505,7 +497,7 @@ export default function ClientDashboard() {
                               </>
                             ) : activeJob.amount ? (
                               <>
-                                <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.75)", marginBottom:".6rem", lineHeight:1.5 }}>Pay now to secure the job. Your money is <strong>held safely</strong> and only released to the contractor after you confirm the work is done. {feeWaived ? <span style={{ color:"#86efac" }}>Service fee waived — thanks for booking with us again. 🎉</span> : "Total includes a 3% service fee."}</div>
+                                <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.75)", marginBottom:".6rem", lineHeight:1.5 }}>Pay now to secure the job. Your money is <strong>held safely</strong> and only released to the contractor after you confirm the work is done. Total includes a 3% service fee.</div>
                                 <button style={s.primaryBtn} disabled={busyPay} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " (held until you confirm)"}</button>
                               </>
                             ) : null}
@@ -526,7 +518,7 @@ export default function ClientDashboard() {
                               </>
                             ) : activeJob.amount ? (
                               <>
-                                <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.7)", marginBottom:".6rem", lineHeight:1.5 }}>Pay for the job, then confirm. Your payment is held and only released to the contractor once you confirm. {feeWaived ? <span style={{ color:"#86efac" }}>Service fee waived for returning clients. 🎉</span> : "Total includes a 3% service fee."}</div>
+                                <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.7)", marginBottom:".6rem", lineHeight:1.5 }}>Pay for the job, then confirm. Your payment is held and only released to the contractor once you confirm. Total includes a 3% service fee.</div>
                                 <button style={s.primaryBtn} disabled={busyPay} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " now"}</button>
                               </>
                             ) : (
