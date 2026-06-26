@@ -274,7 +274,7 @@ export default function Home() {
           <span className="ff-hi-hide" style={{ top:"40%", left:"15%", transform:"rotate(8deg)" }}><Ic name="zap" size={48} color="#ea6b14" /></span>
           <span style={{ top:"78%", left:"42%", transform:"rotate(-6deg)" }}><Ic name="car" size={54} color="#ea6b14" /></span>
           <span className="ff-hi-hide" style={{ top:"34%", right:"16%", transform:"rotate(-10deg)" }}><Ic name="thermometer" size={50} color="#ea6b14" /></span>
-          <span className="ff-hi-hide" style={{ top:"8%", left:"46%", transform:"rotate(6deg)" }}><Ic name="home" size={52} color="#ea6b14" /></span>
+          <span className="ff-hi-hide" style={{ top:"82%", right:"20%", transform:"rotate(-6deg)" }}><Ic name="home" size={50} color="#ea6b14" /></span>
         </div>
         <motion.div className="ff-inner" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: "easeOut" }}>
           <motion.svg className="ff-logo-mark" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg"
