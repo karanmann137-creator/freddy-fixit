@@ -56,8 +56,7 @@ Fonts: Bebas Neue (headings), DM Sans (body). Loaded per-page via a Google Fonts
 - Business contacts only: admin `hello@freddyfixit.ca`, from `noreply@freddyfixit.ca`.
 
 ## Open / queued
-- Stripe Connect payments (Express accounts, separate charges+transfers, 7% application fee released on `client_confirmed_at`) — decided, not built.
-  - **Pricing decisions (owner, 2026-06):** platform fee = **7%**. A **3% client service fee** is added at job confirmation to cover Stripe processing (2.9% + $0.30). To be implemented as part of the Stripe Connect build — no charge moves through the site yet, so the fee is recorded here, not live.
-- User Agreement + Privacy Policy for signup (Alberta / PIPEDA + PIPA) — not built.
+- **Stripe Connect payments — BUILT & LIVE (2026-06-26).** Separate charges+transfers via Stripe-hosted Checkout. Client pays Job price + **3% service fee**; funds held; on client confirmation (or 3-day auto-confirm) **93%** is released to the contractor and the platform keeps the **7%** commission. 6 edge functions deployed; `STRIPE_SECRET_KEY` switched to `sk_live`, single webhook destination set (`STRIPE_WEBHOOK_SECRET`). Test-mode Connect accounts were cleared so contractors re-onboard live payout accounts. Verified live with a real test charge.
+- **Legal pages — BUILT & LIVE.** User Agreement (incl. Contractor Terms + §6.7 Fees), Privacy Policy (Alberta PIPA + PIPEDA; discloses Stripe/Supabase/Vercel/Resend; 7-yr payment retention; OIPC Alberta rights), and Homeowner Protection Promise. Routed (`/user-agreement`, `/privacy-policy`, `/homeowner-protection-promise`), linked in footer, and gated behind an acceptance checkbox in all signup flows (ClientOnboarding, ContractorOnboarding, NewRequest). Company entity: **Freddy FixIt Contractors Inc.**
 - Set seed contractors' `company_name` + vetting answers in DB (owner to provide values).
 - Keep this file + `src/CLAUDE.md` + `supabase/CLAUDE.md` current as features land.

@@ -7,7 +7,7 @@ export default function UserAgreement() {
 
         {/* ─── PART I: GENERAL USER AGREEMENT ─── */}
         <h1 style={{ fontSize:"clamp(2.5rem,6vw,4rem)", color:"#f0f4ff", marginBottom:".5rem" }}>User Agreement</h1>
-        <p style={{ fontSize:".82rem", color:"rgba(190,205,235,.4)", marginBottom:"3rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 4, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
+        <p style={{ fontSize:".82rem", color:"rgba(190,205,235,.4)", marginBottom:"3rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 26, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
 
         <section style={{ marginBottom:"2.5rem" }}>
           <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>1. Agreement to Terms</h2>
@@ -48,6 +48,7 @@ export default function UserAgreement() {
           <p><strong>6.4 Auto-Confirmation.</strong> After a Contractor marks a Job complete, Clients have <strong>3 calendar days</strong> to confirm or raise a concern. If no action is taken, the Job is automatically confirmed and payment is released to the Contractor.</p>
           <p><strong>6.5 Ratings.</strong> Clients may rate Contractors following Job completion. Ratings must be honest, based on direct experience, and must not contain false or defamatory statements.</p>
           <p><strong>6.6 Safety.</strong> You are responsible for ensuring safe access to your property. You agree not to ask Contractors to perform work that violates applicable building codes, safety standards, or the law.</p>
+          <p><strong>6.7 Fees.</strong> The Job price you approve is the amount payable to the Contractor for the work. At the time of payment, the Company adds a <strong>Client service fee</strong> (currently <strong>3% of the Job price</strong>) to cover payment processing and platform costs; the total amount charged, including this fee, is shown to you before you confirm payment. The Company also retains a <strong>platform commission</strong> (currently <strong>7% of the Job price</strong>) from the amount paid to the Contractor. These amounts may change from time to time; the fees in effect are those disclosed to you at the time of the transaction. Payments are processed by Stripe, Inc.; the Company does not receive or store your full card details.</p>
         </section>
 
         <section style={{ marginBottom:"2.5rem" }}>
@@ -97,7 +98,7 @@ export default function UserAgreement() {
 
         {/* ─── PART II: CONTRACTOR PROFESSIONAL TERMS ─── */}
         <h1 style={{ fontSize:"clamp(2.2rem,5vw,3.5rem)", color:"#f0f4ff", marginBottom:".5rem" }}>Contractor Professional Terms</h1>
-        <p style={{ fontSize:".82rem", color:"rgba(190,205,235,.4)", marginBottom:"1rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 4, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
+        <p style={{ fontSize:".82rem", color:"rgba(190,205,235,.4)", marginBottom:"1rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 26, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
         <p style={{ marginBottom:"3rem" }}>These Contractor Professional Terms (&ldquo;Contractor Terms&rdquo;) apply to every User who registers as a Contractor on the Platform. They form part of and are incorporated into the User Agreement above. In the event of conflict, these Contractor Terms prevail with respect to Contractor obligations. By registering as a Contractor, you agree to be bound by these Contractor Terms.</p>
 
         {/* Section 1 */}

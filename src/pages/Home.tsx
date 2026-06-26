@@ -110,7 +110,7 @@ const FAQS = [
   { q:"How does Freddy Fix It work?", a:"Tell us what you need, add a photo and a few details, and we'll match you with a local pro. You approve the price and timing, the work gets done, and you confirm and rate it when you're happy." },
   { q:"Is it free to post a job?", a:"Yes — posting a request is completely free. You only pay for the work itself, once a contractor is scheduled and the job is complete." },
   { q:"Are your contractors vetted?", a:"Yes. Every contractor on the platform has been reviewed and approved by our team, and we collect their qualifications and insurance details during onboarding." },
-  { q:"How do I pay for the work?", a:"You settle payment once the job is scheduled and completed. We're rolling out secure in-platform payments so your money is only released to the contractor after you confirm the work is done." },
+  { q:"How do I pay for the work?", a:"You pay securely through the platform once the job is scheduled and completed. Your payment is held safely and only released to the contractor after you confirm the work is done right — so you're never out of pocket for unfinished work." },
   { q:"What areas do you serve?", a:"Your local area and the surrounding communities, including Airdrie, Cochrane, and Chestermere." },
   { q:"What kinds of jobs can I request?", a:"General repairs and handyman work, carpentry, painting, drywall, landscaping, snow removal, gutters, windows & doors, and more." },
   { q:"How fast will I hear back?", a:"You'll get a response within 24 hours — often sooner." },
