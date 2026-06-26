@@ -297,17 +297,21 @@ export default function Home() {
           <div className="ff-divider" />
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.4 }}
-            style={{ display:"flex", flexWrap:"wrap", justifyContent:"center", gap:".45rem 1.4rem", marginBottom:"1.7rem", maxWidth:"620px", marginLeft:"auto", marginRight:"auto" }}>
-            {[
-              { icon:"user-check", label:"Vetted, licensed & insured" },
-              { icon:"dollar", label:"Payment held until you confirm" },
-              { icon:"clipboard-list", label:"Free quote — no signup" },
-              { icon:"map-pin", label:"Calgary local" },
-            ].map((t) => (
-              <span key={t.label} style={{ display:"inline-flex", alignItems:"center", gap:".4rem", fontSize:".78rem", fontWeight:300, letterSpacing:".01em", color:"rgba(190,205,235,.62)" }}>
-                <Ic name={t.icon as any} size={14} color="#ea6b14" />{t.label}
-              </span>
-            ))}
+            style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:".7rem", marginBottom:"1.7rem" }}>
+            <span style={{ display:"inline-flex", alignItems:"center", gap:".45rem", fontSize:"1rem", fontWeight:500, color:"rgba(240,244,255,.9)" }}>
+              <Ic name="clipboard-list" size={17} color="#ea6b14" />Free quote — no signup
+            </span>
+            <div style={{ display:"flex", flexWrap:"wrap", justifyContent:"center", gap:".45rem 1.4rem", maxWidth:"560px" }}>
+              {[
+                { icon:"user-check", label:"Vetted, licensed & insured" },
+                { icon:"dollar", label:"Payment held until you confirm" },
+                { icon:"map-pin", label:"Calgary local" },
+              ].map((t) => (
+                <span key={t.label} style={{ display:"inline-flex", alignItems:"center", gap:".4rem", fontSize:".78rem", fontWeight:300, letterSpacing:".01em", color:"rgba(190,205,235,.62)" }}>
+                  <Ic name={t.icon as any} size={14} color="#ea6b14" />{t.label}
+                </span>
+              ))}
+            </div>
           </motion.div>
           <motion.div className="ff-cards" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.45 }}>
             <div className="ff-card ff-card-contractor" onClick={() => setLocation("/contractor-onboarding")}>
