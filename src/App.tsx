@@ -62,6 +62,18 @@ function RecoveryRedirect() {
   return null;
 }
 
+// Reset scroll to the top whenever the route changes. Single-page apps keep the
+// previous scroll position on navigation, which makes clicking the logo/home
+// from far down another page land you mid-page instead of at the top. We skip
+// this when the URL has a hash so in-page anchor links still work.
+function ScrollToTop() {
+  const [location] = useLocation();
+  useEffect(() => {
+    if (!window.location.hash) window.scrollTo(0, 0);
+  }, [location]);
+  return null;
+}
+
 // Protect routes that require auth + a specific role
 function ProtectedRoute({
   component: Component,
@@ -132,6 +144,7 @@ export default function App() {
   return (
     <>
       <RecoveryRedirect />
+      <ScrollToTop />
       <TopNav />
       <ChatWidget />
       <Suspense fallback={<PageLoader />}>
