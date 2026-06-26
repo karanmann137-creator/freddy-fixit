@@ -296,6 +296,19 @@ export default function Home() {
 
           <div className="ff-divider" />
 
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.4 }}
+            style={{ display:"flex", flexWrap:"wrap", justifyContent:"center", gap:".45rem 1.4rem", marginBottom:"1.7rem", maxWidth:"620px", marginLeft:"auto", marginRight:"auto" }}>
+            {[
+              { icon:"user-check", label:"Vetted, licensed & insured" },
+              { icon:"dollar", label:"Payment held until you confirm" },
+              { icon:"clipboard-list", label:"Free quote — no signup" },
+              { icon:"map-pin", label:"Calgary local" },
+            ].map((t) => (
+              <span key={t.label} style={{ display:"inline-flex", alignItems:"center", gap:".4rem", fontSize:".78rem", fontWeight:300, letterSpacing:".01em", color:"rgba(190,205,235,.62)" }}>
+                <Ic name={t.icon as any} size={14} color="#ea6b14" />{t.label}
+              </span>
+            ))}
+          </motion.div>
           <motion.div className="ff-cards" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.45 }}>
             <div className="ff-card ff-card-contractor" onClick={() => setLocation("/contractor-onboarding")}>
               <div className="ff-card-icon"><Ic name="wrench" size={32} color="#ea6b14" /></div>
@@ -317,20 +330,6 @@ export default function Home() {
               style={{ background:"none", border:"none", color:"rgba(240,244,255,.75)", fontFamily:"inherit", fontSize:".9rem", cursor:"pointer", textDecoration:"underline", textUnderlineOffset:"3px" }}>
               Not ready to sign up? Get a free quote first →
             </button>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.65 }}
-            style={{ display:"flex", flexWrap:"wrap", justifyContent:"center", gap:".5rem .7rem", marginTop:"1.5rem", maxWidth:"560px", marginLeft:"auto", marginRight:"auto" }}>
-            {[
-              { icon:"user-check", label:"Vetted, licensed & insured" },
-              { icon:"dollar", label:"Payment held until you confirm" },
-              { icon:"clipboard-list", label:"Free quote — no signup" },
-              { icon:"map-pin", label:"Calgary local" },
-            ].map((t) => (
-              <span key={t.label} style={{ display:"inline-flex", alignItems:"center", gap:".4rem", fontSize:".78rem", color:"rgba(240,244,255,.82)", background:"rgba(255,255,255,.05)", border:"1px solid rgba(234,107,20,.25)", borderRadius:"99px", padding:".4rem .8rem" }}>
-                <Ic name={t.icon as any} size={14} color="#ea6b14" />{t.label}
-              </span>
-            ))}
           </motion.div>
 
           <motion.a href="https://wa.me/18255618331" target="_blank" rel="noopener noreferrer" className="ff-whatsapp"
