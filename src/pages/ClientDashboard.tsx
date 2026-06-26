@@ -467,8 +467,8 @@ export default function ClientDashboard() {
 
                     {activeJob && activeJob.payment_status === "disputed" && (
                       <div style={{ marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(251,191,36,.08)", border:"1px solid rgba(251,191,36,.35)" }}>
-                        <div style={{ fontSize:".9rem", fontWeight:600, color:"#fbbf24", marginBottom:".4rem" }}><Ic name="alert-triangle" size={14} style={{ marginRight:5 }} />Problem reported — under review</div>
-                        <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.8)", lineHeight:1.55 }}>Your payment is <strong>frozen and protected</strong> while our team reviews your report. Nothing has been released to the contractor. We'll email you as soon as it's resolved.</div>
+                        <div style={{ fontSize:".9rem", fontWeight:600, color:"#fbbf24", marginBottom:".4rem" }}><Ic name="alert-triangle" size={14} style={{ marginRight:5 }} />Claim filed — under review</div>
+                        <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.8)", lineHeight:1.55 }}>Your payment is <strong>frozen and protected</strong> while our team reviews your claim. The contractor has a few days to respond, then we'll decide. Nothing has been released to them in the meantime. We'll email you as soon as it's resolved.</div>
                       </div>
                     )}
 
@@ -515,7 +515,7 @@ export default function ClientDashboard() {
                                 <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.7)", marginBottom:".75rem" }}>Confirm the work is done and we'll release your held payment to the contractor. If you don't, it auto-confirms in a few days.</div>
                                 <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                                   <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm & release payment"}</button>
-                                  <button style={{ ...s.btn, color:"#fbbf24", borderColor:"rgba(251,191,36,.35)", background:"rgba(251,191,36,.08)" }} disabled={busyReq} onClick={() => setReportOpen(true)}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />Report a problem</button>
+                                  <button style={{ ...s.btn, color:"#fbbf24", borderColor:"rgba(251,191,36,.35)", background:"rgba(251,191,36,.08)" }} disabled={busyReq} onClick={() => setReportOpen(true)}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />File a claim</button>
                                   <button style={s.btn} onClick={() => downloadReceipt(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Download receipt</button>
                                 </div>
                               </>

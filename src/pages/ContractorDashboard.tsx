@@ -8,6 +8,7 @@ import ProfileBar from "@/components/ProfileBar";
 import ScheduleField from "@/components/ScheduleField";
 import JobChat from "@/components/JobChat";
 import JobTimeline from "@/components/JobTimeline";
+import RespondToClaim from "@/components/RespondToClaim";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 
 export default function ContractorDashboard() {
@@ -32,6 +33,9 @@ export default function ContractorDashboard() {
   const [busyBid, setBusyBid]         = useState<string|null>(null);
   const [busyStripe, setBusyStripe]   = useState(false);
   const [myReviews, setMyReviews]     = useState<any[]>([]);
+  const [disputes, setDisputes]       = useState<Record<string, any>>({});
+  const [claimPhotos, setClaimPhotos] = useState<Record<string, string>>({});
+  const [claimToAnswer, setClaimToAnswer] = useState<any|null>(null);
 
   const askConfirm = (o: Omit<ConfirmState, "resolve">) =>
     new Promise<boolean>(resolve => setConfirmState({ ...o, resolve }));
@@ -77,6 +81,7 @@ export default function ContractorDashboard() {
         { data: jobs },
         { data: open },
         { data: revs },
+        { data: disp },
       ] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", user.id).single(),
         supabase.from("contractors").select("*").eq("id", user.id).single(),
@@ -87,6 +92,10 @@ export default function ContractorDashboard() {
         supabase.rpc("list_open_jobs"),
         supabase.from("reviews")
           .select("*, client:profiles!reviews_client_id_fkey(first_name)")
+          .eq("contractor_id", user.id)
+          .order("created_at", { ascending: false }),
+        supabase.from("disputes")
+          .select("*")
           .eq("contractor_id", user.id)
           .order("created_at", { ascending: false }),
       ]);
@@ -110,6 +119,19 @@ export default function ContractorDashboard() {
       if (enriched.length > 0) setActiveJobId(enriched[0].id);
       setAvailableJobs(open ?? []);
       setMyReviews(revs ?? []);
+      const dmap: Record<string, any> = {};
+      for (const d of (disp ?? [])) { if (!dmap[d.job_id]) dmap[d.job_id] = d; }
+      setDisputes(dmap);
+      // Sign the client's claim photos so the contractor can see the evidence.
+      const allPaths = (disp ?? []).flatMap((d: any) => d.photo_paths ?? []);
+      if (allPaths.length > 0) {
+        const signed: Record<string, string> = {};
+        for (const p of allPaths) {
+          const { data: u } = await supabase.storage.from("problem-photos").createSignedUrl(p, 3600);
+          if (u?.signedUrl) signed[p] = u.signedUrl;
+        }
+        setClaimPhotos(signed);
+      }
       setLoading(false);
     };
     load();
@@ -368,6 +390,53 @@ export default function ContractorDashboard() {
                         <JobTimeline job={job} />
                       </div>
                     )}
+
+                    {disputes[job.id] && (() => {
+                      const d = disputes[job.id];
+                      const open = d.status === "open";
+                      const responded = !!d.contractor_responded_at;
+                      const deadline = d.response_deadline ? new Date(d.response_deadline) : null;
+                      const overdue = deadline ? deadline.getTime() < Date.now() : false;
+                      return (
+                        <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(251,191,36,.07)", border:"1px solid rgba(251,191,36,.35)" }}>
+                          <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".82rem", fontWeight:600, color:"#fbbf24", marginBottom:".6rem" }}>
+                            <Ic name="alert-triangle" size={14} />{open ? "The client filed a claim on this job" : "Claim resolved"}
+                          </div>
+                          <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.85)", lineHeight:1.5, marginBottom:".5rem" }}>
+                            Your payout is paused while our team reviews. <strong>{d.reason}</strong>
+                          </div>
+                          {d.description && <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.75)", lineHeight:1.5, marginBottom:".5rem" }}>&ldquo;{d.description}&rdquo;</div>}
+                          <div style={{ fontSize:".76rem", color:"rgba(190,205,235,.6)", lineHeight:1.6, marginBottom:".6rem" }}>
+                            {d.requested_remedy && <div>Requested outcome: {d.requested_remedy}</div>}
+                            {d.service_date && <div>Date of service: {d.service_date}</div>}
+                          </div>
+                          {(d.photo_paths ?? []).length > 0 && (
+                            <div style={{ display:"flex", flexWrap:"wrap" as const, gap:".4rem", marginBottom:".7rem" }}>
+                              {(d.photo_paths ?? []).map((p: string) => claimPhotos[p] ? (
+                                <a key={p} href={claimPhotos[p]} target="_blank" rel="noopener noreferrer">
+                                  <img src={claimPhotos[p]} alt="Claim photo" style={{ width:"68px", height:"68px", objectFit:"cover" as const, borderRadius:"8px", border:"1px solid rgba(255,255,255,.12)" }} />
+                                </a>
+                              ) : null)}
+                            </div>
+                          )}
+                          {open && !responded && (
+                            <>
+                              <div style={{ fontSize:".78rem", color: overdue ? "#f87171" : "#fbbf24", marginBottom:".6rem" }}>
+                                <Ic name="clock" size={12} style={{ marginRight:4 }} />
+                                {overdue ? "Your response window has passed — you can still respond until our team decides." : `Please respond by ${deadline ? deadline.toLocaleDateString() : "the deadline"}.`}
+                              </div>
+                              <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} onClick={() => setClaimToAnswer(d)}>Respond to claim</button>
+                            </>
+                          )}
+                          {responded && (
+                            <div style={{ fontSize:".8rem", color:"#86efac", lineHeight:1.5 }}>
+                              <Ic name="check-circle" size={13} style={{ marginRight:4 }} />Your response was submitted. Our team is reviewing both sides.
+                              <div style={{ fontSize:".8rem", color:"rgba(190,205,235,.75)", marginTop:".4rem" }}>&ldquo;{d.contractor_response}&rdquo;</div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     <div style={{ display:"flex", flexDirection:"column", gap:".7rem", marginBottom:"1.25rem" }}>
                       {job.status === "assigned" && (
@@ -681,6 +750,19 @@ export default function ContractorDashboard() {
           title={`Chat with ${chatJob.client?.first_name || "your client"}`}
           readOnly={chatJob.status === "completed"}
           onClose={() => setChatJob(null)}
+        />
+      )}
+      {claimToAnswer && profile && (
+        <RespondToClaim
+          disputeId={claimToAnswer.id}
+          userId={profile.id}
+          claim={claimToAnswer}
+          onClose={() => setClaimToAnswer(null)}
+          onSubmitted={(resp) => {
+            const did = claimToAnswer.id, jid = claimToAnswer.job_id;
+            setDisputes(prev => ({ ...prev, [jid]: { ...prev[jid], contractor_response: resp, contractor_responded_at: new Date().toISOString() } }));
+            setClaimToAnswer(null);
+          }}
         />
       )}
       <ConfirmDialog state={confirmState} onClose={(ok) => { confirmState?.resolve(ok); setConfirmState(null); }} />

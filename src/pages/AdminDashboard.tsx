@@ -20,6 +20,7 @@ export default function AdminDashboard() {
   const [busyLead, setBusyLead] = useState<string|null>(null);
   const [health, setHealth] = useState<any>(null);
   const [disputePhotos, setDisputePhotos] = useState<Record<string, string[]>>({});
+  const [disputeRespPhotos, setDisputeRespPhotos] = useState<Record<string, string[]>>({});
   const [busyResolve, setBusyResolve] = useState<string|null>(null);
   const [partialAmt, setPartialAmt] = useState<Record<string, string>>({});
   const [resolveNote, setResolveNote] = useState<Record<string, string>>({});
@@ -78,6 +79,16 @@ export default function AdminDashboard() {
       }
     }
     setDisputePhotos(dp);
+    const rp: Record<string, string[]> = {};
+    for (const d of (disp ?? [])) {
+      const paths: string[] = d.contractor_response_photos ?? [];
+      if (paths.length) {
+        const signed = await Promise.all(paths.map((p: string) =>
+          supabase.storage.from("problem-photos").createSignedUrl(p, 3600).then(({ data }) => data?.signedUrl).catch(() => null)));
+        rp[d.id] = signed.filter(Boolean) as string[];
+      }
+    }
+    setDisputeRespPhotos(rp);
     setCounts({ requests: reqCount ?? 0, contractors: conCount ?? 0, jobs: jobCount ?? 0 });
     setActiveContractors(dir ?? []);
     const bb: Record<string, any[]> = {};
@@ -360,6 +371,38 @@ export default function AdminDashboard() {
                       ))}
                     </div>
                   )}
+
+                  {(d.agreed_scope || d.requested_remedy || d.service_date || d.amount_in_dispute != null || d.declarant_name) && (
+                    <div style={{ marginTop:".6rem", padding:".6rem .8rem", background:"rgba(255,255,255,.02)", border:"1px solid rgba(255,255,255,.06)", borderRadius:"8px", fontSize:".8rem", color:"rgba(190,205,235,.75)", lineHeight:1.6 }}>
+                      {d.service_date && <div>Date of service: <strong style={{ color:"rgba(240,244,255,.9)" }}>{d.service_date}</strong></div>}
+                      {d.agreed_scope && <div>What was agreed: {d.agreed_scope}</div>}
+                      {d.requested_remedy && <div>Requested outcome: <strong style={{ color:"rgba(240,244,255,.9)" }}>{d.requested_remedy}</strong></div>}
+                      {d.amount_in_dispute != null && <div>Amount in dispute: ${Number(d.amount_in_dispute).toFixed(2)}</div>}
+                      {d.declarant_name && <div style={{ marginTop:".3rem", fontStyle:"italic" as const, color:"rgba(190,205,235,.6)" }}>Declared true &amp; signed by {d.declarant_name}</div>}
+                    </div>
+                  )}
+
+                  <div style={{ marginTop:".6rem", padding:".6rem .8rem", background: d.contractor_responded_at ? "rgba(59,130,246,.07)" : "rgba(251,191,36,.06)", border: "1px solid " + (d.contractor_responded_at ? "rgba(59,130,246,.3)" : "rgba(251,191,36,.25)"), borderRadius:"8px", fontSize:".82rem", lineHeight:1.5 }}>
+                    {d.contractor_responded_at ? (
+                      <>
+                        <div style={{ fontWeight:600, color:"#93c5fd", marginBottom:".3rem" }}>Contractor responded</div>
+                        <div style={{ color:"rgba(190,205,235,.85)" }}>{d.contractor_response}</div>
+                        {(disputeRespPhotos[d.id]?.length ?? 0) > 0 && (
+                          <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginTop:".5rem" }}>
+                            {disputeRespPhotos[d.id].map((url, i) => (
+                              <a key={i} href={url} target="_blank" rel="noreferrer">
+                                <img src={url} alt={"Response " + (i+1)} style={{ width:"90px", height:"90px", objectFit:"cover" as const, borderRadius:"8px", border:"1px solid rgba(255,255,255,.12)" }} />
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div style={{ color:"#fbbf24" }}>
+                        Awaiting contractor response{d.response_deadline ? " — due " + new Date(d.response_deadline).toLocaleDateString("en-CA", { dateStyle:"medium" }) : ""}.
+                      </div>
+                    )}
+                  </div>
 
                   {d.status === "open" ? (
                     <div style={{ marginTop:".9rem", borderTop:"1px solid rgba(255,255,255,.07)", paddingTop:".9rem" }}>
