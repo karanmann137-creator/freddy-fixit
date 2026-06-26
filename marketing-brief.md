@@ -54,7 +54,7 @@ Finding a trustworthy local pro is slow and stressful: endless phone tag, vague 
 - **Payment protection / escrow** baked in — money isn't released until the client is satisfied.
 - **Both home repair AND vehicle maintenance** in one place.
 - **Active vetting** (license/insurance/WCB/references), not self-reported badges.
-- **Repeat-customer perk** — loyal clients get rewarded (service fee waived on repeat bookings).
+- **Trusted repeat relationships** — clients can rebook the same vetted pro and keep their job history in one place. *(Note: the earlier "3% service fee waived on repeat bookings" perk was retired — all clients now pay the 3% fee. Don't advertise a fee waiver. A future loyalty/referral reward is TBD.)*
 
 ---
 
@@ -109,7 +109,7 @@ Marketing exists to grow **demand** (job posts) without starving **supply** (ava
 - **North-star:** completed, client-confirmed jobs per month.
 - **Acquisition:** new free-quote requests; signups; cost per quote request.
 - **Activation:** % of quote requests that become posted jobs; quote-turnaround time.
-- **Retention:** repeat-booking rate (lean on the repeat-customer perk); reviews collected.
+- **Retention:** repeat-booking rate (rebook the same vetted pro, job history in one place); reviews collected.
 - **Supply health:** active vetted contractors; avg # quotes per request (target: 3).
 - **SEO:** ranking blog posts, organic sessions, organic → quote conversion.
 
@@ -129,7 +129,7 @@ Every campaign should name which funnel stage it serves and point to the free-qu
 
 - **Local SEO** — keep publishing cost/checklist posts targeting "Calgary + [trade] + cost/near me."
 - **Social** — before/after job photos, contractor spotlights, seasonal tips.
-- **Referral** — lean on the repeat-customer perk; add a refer-a-friend angle.
+- **Referral** — add a refer-a-friend angle (loyalty/referral reward TBD; no fee-waiver claim).
 - **Community / local** — Calgary homeowner groups, neighborhood pages, local partnerships.
 
 ---

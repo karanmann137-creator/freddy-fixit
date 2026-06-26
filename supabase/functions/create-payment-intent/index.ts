@@ -3,6 +3,10 @@
 // transfers) — funds are HELD until the client confirms the work, at which
 // point release-payment transfers 93% of the quote to the contractor and the
 // platform retains the 7% fee. Returns a Checkout URL to redirect the client to.
+//
+// NOTE: All clients pay the standard 3% service fee. (The previous returning-
+// client fee waiver has been removed per business decision — every client is
+// charged 3%.)
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@16.12.0?target=deno";
@@ -42,24 +46,21 @@ Deno.serve(async (req) => {
       return json({ error: "This job is already paid" }, 409);
 
     const amount = Number(job.amount);
-    // Loyalty perk: returning clients (1+ completed job) pay no 3% service fee.
-    let feeRate = 0.03;
-    try {
-      const { data: rate } = await admin.rpc("client_fee_rate", { p_client: user.id });
-      if (rate != null) feeRate = Number(rate);
-    } catch (_) { /* fall back to standard 3% */ }
+    // All clients pay the standard 3% service fee.
+    const feeRate = 0.03;
     const clientFee = r2(amount * feeRate);
     const total = r2(amount + clientFee);
     const platformFee = r2(amount * 0.07);
     const payout = r2(amount - platformFee);
 
     const { data: profile } = await admin.from("profiles").select("email").eq("id", user.id).maybeSingle();
+    const receiptEmail = profile?.email ?? user.email ?? undefined;
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       success_url: `${SITE}/client?payment=success`,
       cancel_url: `${SITE}/client?payment=cancelled`,
-      customer_email: profile?.email ?? user.email ?? undefined,
+      customer_email: receiptEmail,
       line_items: [{
         quantity: 1,
         price_data: {
@@ -67,14 +68,15 @@ Deno.serve(async (req) => {
           unit_amount: Math.round(total * 100),
           product_data: {
             name: "Freddy Fix It — service payment",
-            description: clientFee > 0
-              ? `Service $${amount.toFixed(2)} + 3% service fee $${clientFee.toFixed(2)}`
-              : `Service $${amount.toFixed(2)} — service fee waived (returning client)`,
+            description: `Service $${amount.toFixed(2)} + 3% service fee $${clientFee.toFixed(2)}`,
           },
         },
       }],
       payment_intent_data: {
         description: `Freddy Fix It — job ${job.id}`,
+        // Stripe emails an automatic receipt to this address on a successful
+        // live charge (in addition to the in-app downloadable receipt).
+        receipt_email: receiptEmail,
         metadata: { job_id: job.id, client_id: user.id },
       },
       metadata: { job_id: job.id },

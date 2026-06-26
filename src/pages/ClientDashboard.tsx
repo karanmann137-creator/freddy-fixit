@@ -497,6 +497,9 @@ export default function ClientDashboard() {
                               </>
                             ) : activeJob.amount ? (
                               <>
+                                {activeJob.payment_status === "failed" && (
+                                  <div style={{ fontSize:".82rem", color:"#fca5a5", marginBottom:".6rem", lineHeight:1.5 }}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />Your last payment didn't go through. No charge was made — please try again below.</div>
+                                )}
                                 <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.75)", marginBottom:".6rem", lineHeight:1.5 }}>Pay now to secure the job. Your money is <strong>held safely</strong> and only released to the contractor after you confirm the work is done. Total includes a 3% service fee.</div>
                                 <button style={s.primaryBtn} disabled={busyPay} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " (held until you confirm)"}</button>
                               </>

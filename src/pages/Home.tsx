@@ -319,6 +319,20 @@ export default function Home() {
             </button>
           </motion.div>
 
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.65 }}
+            style={{ display:"flex", flexWrap:"wrap", justifyContent:"center", gap:".5rem .7rem", marginTop:"1.5rem", maxWidth:"560px", marginLeft:"auto", marginRight:"auto" }}>
+            {[
+              { icon:"user-check", label:"Vetted, licensed & insured" },
+              { icon:"dollar", label:"Payment held until you confirm" },
+              { icon:"clipboard-list", label:"Free quote — no signup" },
+              { icon:"map-pin", label:"Calgary local" },
+            ].map((t) => (
+              <span key={t.label} style={{ display:"inline-flex", alignItems:"center", gap:".4rem", fontSize:".78rem", color:"rgba(240,244,255,.82)", background:"rgba(255,255,255,.05)", border:"1px solid rgba(234,107,20,.25)", borderRadius:"99px", padding:".4rem .8rem" }}>
+                <Ic name={t.icon as any} size={14} color="#ea6b14" />{t.label}
+              </span>
+            ))}
+          </motion.div>
+
           <motion.a href="https://wa.me/18255618331" target="_blank" rel="noopener noreferrer" className="ff-whatsapp"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -429,8 +443,8 @@ export default function Home() {
           </motion.div>
           <motion.div className="ff-stats" initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7, delay: 0.2 }}>
             <div className="ff-stat">
-              <div className="ff-stat-num">2–6h</div>
-              <div className="ff-stat-label">Average response time during business hours</div>
+              <div className="ff-stat-num">24/7</div>
+              <div className="ff-stat-label">Post your job request online anytime — no phone tag</div>
             </div>
             <div className="ff-stat">
               <div className="ff-stat-num">100%</div>
@@ -449,27 +463,23 @@ export default function Home() {
       {/* ── Testimonials ── */}
       <div style={{ background:"#151d2e", padding:"6rem 2rem" }}>
         <div style={{ maxWidth:"900px", margin:"0 auto" }}>
-          <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" }}>What People Are Saying</p>
-          <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:".06em", color:"#f0f4ff", textAlign:"center", marginBottom:"3rem" }}>Real <span style={{ color:"#ea6b14" }}>Results.</span></h2>
+          <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" }}>Why Calgary Trusts Us</p>
+          <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:".06em", color:"#f0f4ff", textAlign:"center", marginBottom:"3rem" }}>Built On <span style={{ color:"#ea6b14" }}>Trust.</span></h2>
           <div className="ff-reviews-grid">
             <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"14px", padding:"2rem" }}>
-              <div style={{ fontSize:"1.5rem", marginBottom:"1rem" }}>⭐⭐⭐⭐⭐</div>
-              <p style={{ fontSize:".9rem", color:"rgba(190,205,235,.75)", fontWeight:300, lineHeight:1.7, marginBottom:"1.5rem" }}>"I submitted my request in under two minutes and had a contractor at my door the next morning. The plumber was professional, clean, and fixed the leak properly the first time. Couldn't be easier."</p>
-              <div style={{ fontSize:".82rem", fontWeight:500, color:"#f0f4ff" }}>Sarah M.</div>
-              <div style={{ fontSize:".75rem", color:"rgba(190,205,235,.4)" }}>Homeowner · NW</div>
+              <div style={{ marginBottom:"1rem" }}><Ic name="user-check" size={26} color="#ea6b14" /></div>
+              <div style={{ fontSize:"1.05rem", fontWeight:600, color:"#f0f4ff", marginBottom:".6rem" }}>Vetted &amp; Accountable</div>
+              <p style={{ fontSize:".9rem", color:"rgba(190,205,235,.75)", fontWeight:300, lineHeight:1.7, marginBottom:0 }}>Every pro is screened before they take a job — licensed, insured, WCB-covered, and reference-checked. We do the background work so you don't have to.</p>
+            </div>
+            <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"14px", padding:"2rem" }}>
+              <div style={{ marginBottom:"1rem" }}><Ic name="dollar" size={26} color="#ea6b14" /></div>
+              <div style={{ fontSize:"1.05rem", fontWeight:600, color:"#f0f4ff", marginBottom:".6rem" }}>Your Payment Is Protected</div>
+              <p style={{ fontSize:".9rem", color:"rgba(190,205,235,.75)", fontWeight:300, lineHeight:1.7, marginBottom:0 }}>Pay through the platform and your money is held until you confirm the work is done right. If something goes sideways, there's a built-in dispute process.</p>
             </div>
             <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"14px", padding:"2rem" }}>
-              <div style={{ fontSize:"1.5rem", marginBottom:"1rem" }}>⭐⭐⭐⭐⭐</div>
-              <p style={{ fontSize:".9rem", color:"rgba(190,205,235,.75)", fontWeight:300, lineHeight:1.7, marginBottom:"1.5rem" }}>"The whole process was straightforward — I described the job, picked my timing, and that was it. The contractor showed up on time and did excellent work on my drywall. Very impressed."</p>
-              <div style={{ fontSize:".82rem", fontWeight:500, color:"#f0f4ff" }}>James T.</div>
-              <div style={{ fontSize:".75rem", color:"rgba(190,205,235,.4)" }}>Property Owner · SE</div>
-            </div>
-            <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"14px", padding:"2rem", position:"relative" }}>
-              <div style={{ position:"absolute", top:"1rem", right:"1rem", fontSize:".7rem", background:"rgba(234,107,20,.15)", color:"#ea6b14", padding:".25rem .6rem", borderRadius:"99px", letterSpacing:".08em", textTransform:"uppercase" }}>Contractor</div>
-              <div style={{ fontSize:"1.5rem", marginBottom:"1rem" }}>⭐⭐⭐⭐⭐</div>
-              <p style={{ fontSize:".9rem", color:"rgba(190,205,235,.75)", fontWeight:300, lineHeight:1.7, marginBottom:"1.5rem" }}>"Freddy Fix It completely changed my business. My calendar used to have gaps every week — now I'm booked solid. They cut my downtime dramatically and the clients they send are genuine and ready to go."</p>
-              <div style={{ fontSize:".82rem", fontWeight:500, color:"#f0f4ff" }}>Mike R.</div>
-              <div style={{ fontSize:".75rem", color:"rgba(190,205,235,.4)" }}>Licensed Contractor</div>
+              <div style={{ marginBottom:"1rem" }}><Ic name="map-pin" size={26} color="#ea6b14" /></div>
+              <div style={{ fontSize:"1.05rem", fontWeight:600, color:"#f0f4ff", marginBottom:".6rem" }}>Local &amp; Honest</div>
+              <p style={{ fontSize:".9rem", color:"rgba(190,205,235,.75)", fontWeight:300, lineHeight:1.7, marginBottom:0 }}>We're a Calgary-based team building this the right way. As our community grows, verified reviews from real completed jobs will appear here — no invented hype.</p>
             </div>
           </div>
         </div>
