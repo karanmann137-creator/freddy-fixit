@@ -2,6 +2,7 @@ import { Ic } from "@/components/Ic";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { trackEvent } from "@/lib/analytics";
 import OAuthButtons from "@/components/OAuthButtons";
 
 const SPECIALTIES = [
@@ -158,7 +159,7 @@ export default function ContractorOnboarding() {
         userId = authData.user.id;
         // No session => email confirmation is required. The trigger has already
         // saved their profile + contractor details; show the verify screen.
-        if (!authData.session) { setVerifyEmail(true); window.scrollTo(0,0); setLoading(false); return; }
+        if (!authData.session) { trackEvent("sign_up", { method: "contractor" }); setVerifyEmail(true); window.scrollTo(0,0); setLoading(false); return; }
       } else {
         // Already signed in (OAuth): set their role so the trigger's default doesn't stick.
         await supabase.from("profiles").update({ role: "contractor", first_name: form.firstName, last_name: form.lastName, phone: form.phone }).eq("id", userId);
@@ -192,6 +193,7 @@ export default function ContractorOnboarding() {
         supabase.functions.invoke("review-contractor", { body: { contractor_id: userId } }).catch(() => {});
       }
 
+      trackEvent("sign_up", { method: "contractor" });
       setSuccess(true); window.scrollTo(0,0);
     } catch (err: any) {
       setSubmitError(err.message?.includes("already registered") ? "An account with this email already exists. Please sign in instead." : err.message ?? "Something went wrong.");

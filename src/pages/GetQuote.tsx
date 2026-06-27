@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { trackEvent } from "@/lib/analytics";
 import { SERVICES } from "@/pages/ClientOnboarding";
 
 // Public, no-signup lead capture. A visitor can request a ballpark quote with
@@ -46,6 +47,7 @@ export default function GetQuote() {
         p_details: details.trim(),
       });
       if (error) throw error;
+      trackEvent("generate_lead", { form: "get_quote", service });
       setDone(true);
     } catch (err: any) {
       setSubmitError(err?.message ?? "Something went wrong. Please try again.");

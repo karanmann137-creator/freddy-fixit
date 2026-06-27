@@ -3,6 +3,7 @@ import VoiceDictate from "@/components/VoiceDictate";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { trackEvent } from "@/lib/analytics";
 import NewRequest from "@/components/NewRequest";
 import OAuthButtons from "@/components/OAuthButtons";
 
@@ -165,7 +166,7 @@ export default function ClientOnboarding() {
       const userId = authData.user.id;
       // No session => email confirmation required. The trigger saved their
       // request already; show the verify screen.
-      if (!authData.session) { setVerifyEmail(true); window.scrollTo(0,0); setLoading(false); return; }
+      if (!authData.session) { trackEvent("sign_up", { method: "client" }); trackEvent("post_job"); setVerifyEmail(true); window.scrollTo(0,0); setLoading(false); return; }
 
       // Session exists: attach the optional photo to the request the trigger made.
       if (photoFile) {
@@ -177,6 +178,7 @@ export default function ClientOnboarding() {
           if (reqRow) await supabase.from("client_requests").update({ photo_path: path }).eq("id", reqRow.id);
         }
       }
+      trackEvent("sign_up", { method: "client" }); trackEvent("post_job");
       setSuccess(true); window.scrollTo(0,0);
     } catch (err: any) {
       setSubmitError(err.message?.includes("already registered") ? "An account with this email already exists. Please sign in instead." : err.message ?? "Something went wrong.");

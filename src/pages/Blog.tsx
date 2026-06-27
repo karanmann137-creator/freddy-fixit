@@ -57,6 +57,30 @@ const POSTS = [
     readTime: "5 min read",
     tag: "Maintenance",
   },
+  {
+    slug: "calgary-electrician-cost-2026",
+    title: "How Much Does an Electrician Cost in Calgary? 2026 Pricing Guide",
+    excerpt: "Panel upgrades, EV chargers, new circuits, or a dead outlet — here's what Calgary electricians charge in 2026, plus how permits work and the red flags to avoid.",
+    date: "June 24, 2026",
+    readTime: "5 min read",
+    tag: "Pricing",
+  },
+  {
+    slug: "calgary-furnace-repair-replacement-cost-2026",
+    title: "Furnace Repair vs Replacement in Calgary: 2026 Cost Guide",
+    excerpt: "When your furnace quits on a -30 night, you need answers fast. Here are 2026 repair and replacement costs, when to replace vs repair, permits, and rebates to ask about.",
+    date: "June 24, 2026",
+    readTime: "6 min read",
+    tag: "Pricing",
+  },
+  {
+    slug: "hiring-a-contractor-calgary-questions-permits",
+    title: "Hiring a Contractor in Calgary: 7 Questions to Ask (and How Permits Work)",
+    excerpt: "Hiring the wrong contractor is expensive and stressful. These 7 questions screen out the bad ones — plus a plain-language guide to how City of Calgary permits actually work.",
+    date: "June 24, 2026",
+    readTime: "6 min read",
+    tag: "Tips",
+  },
 ];
 
 const TAG_COLORS: Record<string, string> = {

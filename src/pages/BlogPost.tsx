@@ -313,6 +313,124 @@ function ArticleSpring() {
 
 // ── Post manifest ────────────────────────────────────────────────────────────
 
+function ArticleElectricianCost() {
+  const [, setLocation] = useLocation();
+  return (
+    <article>
+      <p>Whether you're adding a circuit for a hot tub, upgrading an aging panel, or finally fixing that dead outlet, electrical work is one area where cutting corners isn't worth it. Here's a rough sense of what Calgary electricians charge in 2026 so you can budget and spot a fair quote.</p>
+      <p style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general estimates for illustration only, not quotes or guarantees. Actual costs depend on your specific job and the contractor you hire. Always get a written quote before work begins.</p>
+
+      <h2>Calgary Electrician Costs by Job Type (2026)</h2>
+      <BarChart
+        title="Typical Electrical Job Costs — Calgary 2026"
+        subtitle="All-in cost estimates in CAD including labour; materials extra where noted"
+        unit="$"
+        data={[
+          { label: "200A panel upgrade",      value: 2600, color: "#ea6b14" },
+          { label: "EV charger install",      value: 1300, color: "#f59e0b" },
+          { label: "Add a dedicated circuit", value: 450,  color: "#3b82f6" },
+          { label: "Hot tub hookup",          value: 1100, color: "#22c55e" },
+          { label: "Replace outlet/switch",   value: 150,  color: "#a855f7" },
+          { label: "Install ceiling fan",     value: 250,  color: "#6b7280" },
+        ]}
+      />
+
+      <h2>Hourly Rate vs Flat-Fee Jobs</h2>
+      <p>Most Calgary electricians charge <strong>$110–$150/hour</strong> with a one-hour minimum and a service-call fee. Small, well-defined jobs — swapping a light fixture, adding an outlet — are usually quoted flat. Larger jobs like a panel upgrade or a sub-panel are almost always flat-fee after an on-site assessment.</p>
+      <p><strong>Emergency / after-hours calls</strong> typically add a $90–$175 surcharge. A flickering light can usually wait for a regular weekday appointment; a burning smell or sparking outlet cannot — shut the breaker off and call right away.</p>
+
+      <h2>What Affects the Final Price?</h2>
+      <p><strong>Panel and wiring age</strong> is the biggest factor. Many older Calgary homes still have 60–100A panels or aluminum wiring, which can turn a "simple" addition into a larger upgrade. <strong>Wall access</strong> matters too — fishing wire through a finished, insulated wall costs more than open framing in a reno.</p>
+      <p><strong>Permits and inspection</strong>: In Alberta, most electrical work requires a permit and an inspection by a Safety Codes Officer. Licensed electricians pull the permit and book the inspection as part of the job. Skipping it can void your home insurance and create problems when you sell.</p>
+
+      <h2>Red Flags to Watch For</h2>
+      <p>Be wary of anyone who offers to do panel or service work "without a permit to save you money," can't provide a Master Electrician or journeyman certification, or quotes a major job sight-unseen. Electrical mistakes cause fires — this is the wrong place to gamble. Every electrician on Freddy Fix It is licensed and insured, and you get a fixed-price quote before any work starts.</p>
+
+      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "#f0f4ff", margin: "0 0 .75rem" }}>Need an electrician in Calgary? Get fixed-price quotes from licensed pros.</p>
+        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
+      </div>
+    </article>
+  );
+}
+
+function ArticleFurnaceCost() {
+  const [, setLocation] = useLocation();
+  return (
+    <article>
+      <p>In Calgary, your furnace isn't a luxury — it's survival gear for seven months of the year. When it starts making noise, short-cycling, or quits on a -30°C night, you need to know whether you're looking at a cheap repair or a full replacement. Here's what to expect in 2026.</p>
+      <p style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general estimates for illustration only, not quotes or guarantees. Actual costs depend on your specific equipment, home, and the contractor you hire. Always get a written quote before work begins.</p>
+
+      <h2>Repair vs Replacement Costs (2026)</h2>
+      <BarChart
+        title="Typical Furnace Costs — Calgary 2026"
+        subtitle="All-in cost estimates in CAD including labour"
+        unit="$"
+        data={[
+          { label: "High-eff. replacement", value: 6000, color: "#ea6b14" },
+          { label: "Mid-range replacement", value: 4500, color: "#f59e0b" },
+          { label: "Blower motor repair",   value: 650,  color: "#3b82f6" },
+          { label: "Ignitor / flame sensor", value: 300, color: "#22c55e" },
+          { label: "Annual tune-up",        value: 150,  color: "#a855f7" },
+          { label: "Diagnostic service call", value: 120, color: "#6b7280" },
+        ]}
+      />
+
+      <h2>When to Repair vs Replace</h2>
+      <p>A good rule of thumb: if your furnace is <strong>under 12 years old</strong> and the repair costs less than a third of a new unit, repair it. Most furnaces last 15–20 years with maintenance. Once you're past 15 years and facing a major repair like a cracked heat exchanger, replacement usually makes more financial sense — newer high-efficiency units (95–98% AFUE) also cut your gas bill meaningfully through a Calgary winter.</p>
+
+      <h2>What Drives the Price of a Replacement</h2>
+      <p><strong>Efficiency rating</strong> is the main lever — a 96%+ high-efficiency furnace costs more upfront but lowers monthly heating bills. <strong>Sizing and ductwork</strong> matter too: an oversized furnace short-cycles and wears out faster, so a proper heat-loss calculation is worth paying for. <strong>Venting changes</strong> (converting an old mid-efficiency unit to a high-efficiency one needs new PVC venting) add cost.</p>
+      <p><strong>Permits</strong>: Furnace replacement requires a mechanical permit through the City of Calgary, and the install must be done by a licensed gas fitter. Reputable HVAC contractors handle this automatically.</p>
+
+      <h2>Watch for Rebates</h2>
+      <p>Federal and provincial efficiency rebate programs change year to year. Before you replace, ask your contractor whether your chosen unit qualifies for any current rebate — it can offset hundreds of dollars. Confirm any rebate directly with the program, as eligibility and amounts change often.</p>
+
+      <h2>Red Flags to Watch For</h2>
+      <p>Be cautious of a technician who pushes a full replacement on the first visit without showing you the failed part, or who can't provide a gas fitter licence. A cracked heat exchanger is a legitimate reason to replace — but ask to see it. Every HVAC pro on Freddy Fix It is licensed and insured, and you get a fixed-price quote before any work begins.</p>
+
+      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "#f0f4ff", margin: "0 0 .75rem" }}>Furnace trouble? Get fixed-price quotes from licensed Calgary HVAC pros.</p>
+        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
+      </div>
+    </article>
+  );
+}
+
+function ArticleHiringContractor() {
+  const [, setLocation] = useLocation();
+  return (
+    <article>
+      <p>Hiring the wrong contractor is expensive, stressful, and sometimes dangerous. The good news: a handful of questions up front will screen out most of the bad ones. Here's exactly what to ask before you let anyone start work on your Calgary home — plus how permits work in this city.</p>
+
+      <h2>7 Questions to Ask Before You Hire</h2>
+      <p><strong>1. Are you licensed for this trade, and can I see it?</strong> In Alberta, trades like electrical, plumbing, and gas fitting require certification. Ask for the number and don't be shy about it — legitimate contractors expect this.</p>
+      <p><strong>2. Do you carry liability insurance and WCB coverage?</strong> Liability insurance protects your property if something goes wrong; WCB (Workers' Compensation) protects you if a worker is injured on your job. Without it, you could be on the hook.</p>
+      <p><strong>3. Will you pull the required permits?</strong> A contractor who suggests skipping permits "to save money" is shifting risk onto you. More on permits below.</p>
+      <p><strong>4. Can I get the quote in writing, with a fixed price?</strong> A written, itemized quote prevents the classic "the job grew" surprise on the final invoice.</p>
+      <p><strong>5. What's the payment schedule?</strong> Be wary of anyone demanding full payment upfront. A deposit plus payment on completion (or staged for big jobs) is normal.</p>
+      <p><strong>6. Do you offer a warranty on the work?</strong> Good contractors stand behind their labour. Ask what's covered and for how long.</p>
+      <p><strong>7. Can you share references or recent reviews?</strong> Recent, verifiable feedback from other Calgary homeowners tells you more than a polished sales pitch.</p>
+
+      <h2>How Permits Work in Calgary</h2>
+      <p>Many homeowners don't realize how much work legally requires a permit. In Calgary, permits are generally required for structural changes, new or altered electrical circuits, plumbing and gas work, furnace and water heater replacement, decks above a certain height, and basement developments. Cosmetic work — painting, flooring, trim, simple fixture swaps — usually does not.</p>
+      <p><strong>Why it matters to you:</strong> Permitted work is inspected by a Safety Codes Officer, which protects your safety and your insurance coverage. Unpermitted work can stall a home sale, fail an inspection, and void claims if something fails later. The contractor pulls the permit, but the responsibility ultimately attaches to your property — so confirm it's being done.</p>
+      <p style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Tip:</strong> Permit rules and fees change. Confirm current requirements for your specific project directly with the City of Calgary before work begins.</p>
+
+      <h2>Red Flags That Should End the Conversation</h2>
+      <p>Walk away from anyone who pressures you to decide on the spot, only takes cash, won't put anything in writing, can't show a licence or insurance, or quotes a complex job without seeing it. These aren't quirks — they're how the costliest contractor horror stories start.</p>
+
+      <h2>How Freddy Fix It Helps</h2>
+      <p>Every contractor on Freddy Fix It submits a trade licence and proof of insurance before they can accept work, you get fixed-price quotes before anyone starts, and there's a built-in process if a job doesn't go as planned. It takes the screening work off your plate.</p>
+
+      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "#f0f4ff", margin: "0 0 .75rem" }}>Skip the screening — get quotes from licensed, insured Calgary contractors.</p>
+        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
+      </div>
+    </article>
+  );
+}
+
 const POSTS: Record<string, {
   title: string; date: string; readTime: string; tag: string;
   content: React.ComponentType;
@@ -352,6 +470,21 @@ const POSTS: Record<string, {
     date: "June 14, 2026", readTime: "5 min read", tag: "Maintenance",
     content: ArticleSpring,
   },
+  "calgary-electrician-cost-2026": {
+    title: "How Much Does an Electrician Cost in Calgary? 2026 Pricing Guide",
+    date: "June 24, 2026", readTime: "5 min read", tag: "Pricing",
+    content: ArticleElectricianCost,
+  },
+  "calgary-furnace-repair-replacement-cost-2026": {
+    title: "Furnace Repair vs Replacement in Calgary: 2026 Cost Guide",
+    date: "June 24, 2026", readTime: "6 min read", tag: "Pricing",
+    content: ArticleFurnaceCost,
+  },
+  "hiring-a-contractor-calgary-questions-permits": {
+    title: "Hiring a Contractor in Calgary: 7 Questions to Ask (and How Permits Work)",
+    date: "June 24, 2026", readTime: "6 min read", tag: "Tips",
+    content: ArticleHiringContractor,
+  },
 };
 
 const TAG_COLORS: Record<string, string> = {
@@ -368,6 +501,9 @@ const POST_DESCRIPTIONS: Record<string, string> = {
   "calgary-plumber-cost-2026": "What Calgary plumbers charge in 2026: typical costs by job type, hourly vs flat-fee work, what drives the final price, and red flags to watch for.",
   "calgary-roof-replacement-cost-2026": "Calgary roof replacement costs in 2026 by home size, what drives the price, hail insurance claims, and when to repair vs replace.",
   "calgary-spring-home-maintenance-checklist": "A Calgary spring home maintenance checklist for when the snow melts — exterior, interior, landscaping and drainage tasks to tackle before the summer contractor rush.",
+  "calgary-electrician-cost-2026": "What Calgary electricians charge in 2026: typical costs for panel upgrades, EV chargers, new circuits and outlet work, plus permits, hourly rates and red flags.",
+  "calgary-furnace-repair-replacement-cost-2026": "Calgary furnace repair vs replacement costs in 2026: repair prices, replacement ranges by efficiency, when to replace, permits, rebates and red flags.",
+  "hiring-a-contractor-calgary-questions-permits": "The 7 questions every Calgary homeowner should ask before hiring a contractor, plus how City of Calgary permits work and the red flags that should end the conversation.",
 };
 
 // Create or update a meta/link tag in <head> so each article has its own

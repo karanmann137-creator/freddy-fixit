@@ -1,7 +1,19 @@
 import { useLocation } from "wouter";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Ic } from "@/components/Ic";
+import { supabase } from "@/lib/supabase";
+
+type HomeReview = {
+  id: string;
+  price_score: number | null;
+  experience_score: number | null;
+  result_score: number | null;
+  comment: string | null;
+  created_at: string;
+  reviewer_first_name: string | null;
+  contractor_name: string | null;
+};
 
 const BEFORE_AFTER = [
   { label:"Bathroom Renovation", before:"/before-after/bathroom-before.webp", after:"/before-after/bathroom-after.webp" },
@@ -120,6 +132,30 @@ const FAQS = [
 
 export default function Home() {
   const [, setLocation] = useLocation();
+  const [reviews, setReviews] = useState<HomeReview[]>([]);
+
+  // Pull real, completed-job reviews (with a written comment) to display as
+  // social proof. Empty result = graceful fallback to the trust cards below.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const { data } = await supabase.rpc("get_homepage_reviews", { p_limit: 6 });
+        if (alive && Array.isArray(data)) setReviews(data as HomeReview[]);
+      } catch {
+        /* non-blocking: homepage renders fine without reviews */
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const reviewAvg = (r: HomeReview) => {
+    const vals = [r.price_score, r.experience_score, r.result_score].filter(
+      (v): v is number => v != null
+    );
+    if (!vals.length) return null;
+    return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
+  };
 
   return (
     <div style={{ fontFamily:"'DM Sans', sans-serif", background:"#1a2236", color:"#f0f4ff" }}>
@@ -461,6 +497,35 @@ export default function Home() {
         <div style={{ maxWidth:"900px", margin:"0 auto" }}>
           <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" }}>Why Calgary Trusts Us</p>
           <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:".06em", color:"#f0f4ff", textAlign:"center", marginBottom:"3rem" }}>Built On <span style={{ color:"#ea6b14" }}>Trust.</span></h2>
+
+          {reviews.length > 0 && (
+            <div style={{ marginBottom:"3rem" }}>
+              <p style={{ textAlign:"center", color:"rgba(190,205,235,.6)", fontSize:".95rem", marginBottom:"1.75rem" }}>What Calgary homeowners are saying about completed jobs:</p>
+              <div className="ff-reviews-grid">
+                {reviews.map((r) => {
+                  const avg = reviewAvg(r);
+                  return (
+                    <div key={r.id} style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"14px", padding:"1.75rem", display:"flex", flexDirection:"column" as const }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:".5rem", marginBottom:".85rem" }}>
+                        <Ic name="message-square" size={18} color="#ea6b14" />
+                        {avg != null && (
+                          <span style={{ fontWeight:600, color:"#ea6b14", fontSize:".95rem" }}>{avg}/10</span>
+                        )}
+                      </div>
+                      {r.comment && (
+                        <p style={{ fontSize:".92rem", color:"rgba(190,205,235,.82)", fontWeight:300, lineHeight:1.7, margin:"0 0 1rem" }}>&ldquo;{r.comment}&rdquo;</p>
+                      )}
+                      <div style={{ marginTop:"auto", fontSize:".8rem", color:"rgba(190,205,235,.5)" }}>
+                        <span style={{ color:"#f0f4ff", fontWeight:500 }}>{r.reviewer_first_name || "Calgary homeowner"}</span>
+                        {r.contractor_name ? " · " + r.contractor_name : ""}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="ff-reviews-grid">
             <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"14px", padding:"2rem" }}>
               <div style={{ marginBottom:"1rem" }}><Ic name="user-check" size={26} color="#ea6b14" /></div>
@@ -475,7 +540,7 @@ export default function Home() {
             <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"14px", padding:"2rem" }}>
               <div style={{ marginBottom:"1rem" }}><Ic name="map-pin" size={26} color="#ea6b14" /></div>
               <div style={{ fontSize:"1.05rem", fontWeight:600, color:"#f0f4ff", marginBottom:".6rem" }}>Local &amp; Honest</div>
-              <p style={{ fontSize:".9rem", color:"rgba(190,205,235,.75)", fontWeight:300, lineHeight:1.7, marginBottom:0 }}>We're a Calgary-based team building this the right way. As our community grows, verified reviews from real completed jobs will appear here — no invented hype.</p>
+              <p style={{ fontSize:".9rem", color:"rgba(190,205,235,.75)", fontWeight:300, lineHeight:1.7, marginBottom:0 }}>We're a Calgary-based team building this the right way. Reviews come from real, completed jobs — verified through the platform, never invented.</p>
             </div>
           </div>
         </div>

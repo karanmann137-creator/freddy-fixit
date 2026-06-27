@@ -2,6 +2,7 @@ import { Switch, Route, Redirect, useLocation } from "wouter";
 import { useEffect, useState, lazy, Suspense } from "react";
 import { supabase } from "@/lib/supabase";
 import type { UserRole } from "@/lib/supabase";
+import { trackPageView } from "@/lib/analytics";
 
 // Eager: tiny, always-needed shell + the landing/login pages.
 import Home from "@/pages/Home";
@@ -73,6 +74,7 @@ function ScrollToTop() {
   const [location] = useLocation();
   useEffect(() => {
     if (!window.location.hash) window.scrollTo(0, 0);
+    trackPageView(location);
   }, [location]);
   return null;
 }
