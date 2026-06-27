@@ -146,7 +146,7 @@ export default function ContractorProfile() {
 
         {/* Review scores */}
         {reviews.length > 0 && (
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"1rem", marginBottom:"1.5rem" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))", gap:"1rem", marginBottom:"1.5rem" }}>
             {[["Price", "price_score"], ["Experience", "experience_score"], ["Results", "result_score"]].map(([label, key]) => {
               const avg = avgScore(key);
               return avg ? (

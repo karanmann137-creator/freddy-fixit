@@ -292,7 +292,7 @@ export default function Home() {
           </motion.h1>
 
           <motion.p className="ff-tagline" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.35 }}>
-            Calgary's Vetted Handymen & Trades — On Demand
+            Vetted Handymen & Trades — On Demand
           </motion.p>
 
           <div className="ff-divider" />

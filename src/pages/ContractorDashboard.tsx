@@ -642,10 +642,10 @@ export default function ContractorDashboard() {
 
         {activeTab === "earnings" && (
           <div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"1rem", marginBottom:"1.5rem" }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))", gap:"1rem", marginBottom:"1.5rem" }}>
               {[["$" + totalEarned.toFixed(2), "Total Earned"], [contractor?.total_jobs ?? 0, "Jobs Completed"], [myJobs.filter(j=>j.status==="assigned"||j.status==="in_progress").length, "Active Jobs"], [contractor?.rating ? `⭐ ${contractor.rating}` : "—", "Avg Rating"]].map(([v,l]) => (
                 <div key={String(l)} style={s.earnCard}>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", letterSpacing:".06em", color:"#ea6b14", marginBottom:".25rem" }}>{v}</div>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(1.5rem,6vw,2rem)", letterSpacing:".04em", color:"#ea6b14", marginBottom:".25rem" }}>{v}</div>
                   <div style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.45)" }}>{l}</div>
                 </div>
               ))}
@@ -710,7 +710,7 @@ export default function ContractorDashboard() {
               </div>
             ) : (
               <>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"1rem", marginBottom:"1.5rem" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))", gap:"1rem", marginBottom:"1.5rem" }}>
                   {[
                     ["Price", myReviews.reduce((a,r)=>a+(r.price_score??0),0)/myReviews.length || 0],
                     ["Experience", myReviews.reduce((a,r)=>a+(r.experience_score??0),0)/myReviews.length || 0],
