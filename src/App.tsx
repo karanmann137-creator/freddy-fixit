@@ -28,6 +28,8 @@ const ProtectionPromise    = lazy(() => import("@/pages/ProtectionPromise"));
 const Blog                 = lazy(() => import("@/pages/Blog"));
 const BlogPost             = lazy(() => import("@/pages/BlogPost"));
 const GetQuote             = lazy(() => import("@/pages/GetQuote"));
+const ServicesIndex        = lazy(() => import("@/pages/ServicesIndex"));
+const ServiceLanding       = lazy(() => import("@/pages/ServiceLanding"));
 
 // Shown briefly while a lazily-loaded page chunk downloads.
 function PageLoader() {
@@ -165,6 +167,8 @@ export default function App() {
       <Route path="/homeowner-protection-promise" component={ProtectionPromise} />
       <Route path="/blog" component={Blog} />
       <Route path="/blog/:slug" component={BlogPost} />
+      <Route path="/services" component={ServicesIndex} />
+      <Route path="/services/:slug" component={ServiceLanding} />
 
       {/* Protected */}
       <Route path="/client-dashboard">

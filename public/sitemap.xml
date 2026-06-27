@@ -15,4 +15,23 @@
   <url><loc>https://freddyfixit.ca/blog/calgary-spring-home-maintenance-checklist</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://freddyfixit.ca/user-agreement</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
   <url><loc>https://freddyfixit.ca/privacy-policy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://freddyfixit.ca/services</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://freddyfixit.ca/services/handyman</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://freddyfixit.ca/services/plumbing</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://freddyfixit.ca/services/electrical</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://freddyfixit.ca/services/hvac</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://freddyfixit.ca/services/carpentry</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://freddyfixit.ca/services/painting</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://freddyfixit.ca/services/drywall-flooring</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://freddyfixit.ca/services/landscaping</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://freddyfixit.ca/services/snow-removal</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://freddyfixit.ca/services/gutters</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://freddyfixit.ca/services/siding-roofing</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://freddyfixit.ca/services/concrete-masonry</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://freddyfixit.ca/services/appliance-repair</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://freddyfixit.ca/services/vehicle-maintenance</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://freddyfixit.ca/services/air-conditioning</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://freddyfixit.ca/services/windows-doors</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://freddyfixit.ca/services/garage</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://freddyfixit.ca/services/cleaning</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
 </urlset>

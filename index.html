@@ -20,6 +20,34 @@
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="Freddy Fix It — Calgary's On-Demand Home Repair Marketplace" />
     <meta name="twitter:description" content="Vetted, licensed Calgary contractors. Post a job and get up to 3 fixed-price quotes." />
+
+    <!-- Structured data: tells Google this is a Calgary local business + enables sitelinks search. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "LocalBusiness",
+          "@id": "https://freddyfixit.ca/#business",
+          "name": "Freddy Fix It",
+          "description": "Calgary marketplace connecting homeowners with vetted, licensed and insured contractors for home repairs and vehicle maintenance. Post a job and get up to 3 fixed-price quotes.",
+          "url": "https://freddyfixit.ca/",
+          "email": "hello@freddyfixit.ca",
+          "image": "https://freddyfixit.ca/favicon-180.png",
+          "priceRange": "$$",
+          "areaServed": { "@type": "City", "name": "Calgary", "addressRegion": "AB", "addressCountry": "CA" },
+          "address": { "@type": "PostalAddress", "addressLocality": "Calgary", "addressRegion": "AB", "addressCountry": "CA" }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://freddyfixit.ca/#website",
+          "url": "https://freddyfixit.ca/",
+          "name": "Freddy Fix It",
+          "publisher": { "@id": "https://freddyfixit.ca/#business" }
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
