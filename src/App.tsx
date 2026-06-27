@@ -30,6 +30,7 @@ const BlogPost             = lazy(() => import("@/pages/BlogPost"));
 const GetQuote             = lazy(() => import("@/pages/GetQuote"));
 const ServicesIndex        = lazy(() => import("@/pages/ServicesIndex"));
 const ServiceLanding       = lazy(() => import("@/pages/ServiceLanding"));
+const ForContractors       = lazy(() => import("@/pages/ForContractors"));
 
 // Shown briefly while a lazily-loaded page chunk downloads.
 function PageLoader() {
@@ -169,6 +170,7 @@ export default function App() {
       <Route path="/blog/:slug" component={BlogPost} />
       <Route path="/services" component={ServicesIndex} />
       <Route path="/services/:slug" component={ServiceLanding} />
+      <Route path="/for-contractors" component={ForContractors} />
 
       {/* Protected */}
       <Route path="/client-dashboard">

@@ -168,7 +168,8 @@ export default function Home() {
         .ff-tagline { font-size: 1rem; font-weight: 300; color: rgba(190,205,235,0.75); text-align: center; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 3rem; }
         .ff-divider { width: 48px; height: 2px; background: linear-gradient(90deg, transparent, #ea6b14, transparent); margin: 0 auto 3rem; }
         .ff-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; width: 100%; margin-bottom: 1.5rem; }
-        @media (max-width: 480px) { .ff-cards { grid-template-columns: 1fr; } .ff-card-client { order: -1; } }
+        @media (max-width: 480px) { .ff-cards { grid-template-columns: 1fr; } }
+        .ff-card-client { border-color: rgba(234,107,20,0.55) !important; box-shadow: 0 0 0 1px rgba(234,107,20,0.25), 0 8px 30px rgba(234,107,20,0.12); }
         .ff-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 2rem 1.5rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; transition: all 0.25s ease; position: relative; overflow: hidden; text-align: center; }
         .ff-card::before { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity 0.25s ease; border-radius: 12px; }
         .ff-card-contractor::before { background: radial-gradient(ellipse at 50% 0%, rgba(234,107,20,0.15) 0%, transparent 70%); }
@@ -291,7 +292,7 @@ export default function Home() {
           </motion.h1>
 
           <motion.p className="ff-tagline" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.35 }}>
-            The On-Demand Repair & Maintenance Platform
+            Calgary's Vetted Handymen & Trades — On Demand
           </motion.p>
 
           <div className="ff-divider" />
@@ -314,17 +315,17 @@ export default function Home() {
             </div>
           </motion.div>
           <motion.div className="ff-cards" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.45 }}>
-            <div className="ff-card ff-card-contractor" onClick={() => setLocation("/contractor-onboarding")}>
-              <div className="ff-card-icon"><Ic name="wrench" size={32} color="#ea6b14" /></div>
-              <div className="ff-card-title">I'm a Contractor</div>
-              <div className="ff-card-sub">Join our network and get more local clients</div>
-              <div className="ff-card-cta">Get started →</div>
-            </div>
             <div className="ff-card ff-card-client" onClick={() => setLocation("/client-onboarding")}>
               <div className="ff-card-icon"><Ic name="home" size={32} color="#ea6b14" /></div>
               <div className="ff-card-title">I Need a Fix</div>
-              <div className="ff-card-sub">Home repairs, vehicle maintenance — we've got you</div>
-              <div className="ff-card-cta">Book now →</div>
+              <div className="ff-card-sub">Home repairs &amp; vehicle maintenance — get a free quote</div>
+              <div className="ff-card-cta">Get my free quote →</div>
+            </div>
+            <div className="ff-card ff-card-contractor" onClick={() => setLocation("/contractor-onboarding")}>
+              <div className="ff-card-icon"><Ic name="wrench" size={32} color="#ea6b14" /></div>
+              <div className="ff-card-title">I'm a Contractor</div>
+              <div className="ff-card-sub">Join our Calgary network and get more local jobs</div>
+              <div className="ff-card-cta">Get started →</div>
             </div>
           </motion.div>
 

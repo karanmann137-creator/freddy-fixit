@@ -49,6 +49,8 @@ Fonts: Bebas Neue (headings), DM Sans (body). Loaded per-page via a Google Fonts
 
 - **SEO service landing pages (2026-06-27).** `/services` index + `/services/:slug` (ServicesIndex.tsx / ServiceLanding.tsx) target Calgary trade searches ("handyman calgary", "calgary plumber", etc.). 18 slugs, each with per-page meta + Service/FAQPage JSON-LD, "what we cover"/"how it works"/FAQ/related-services sections, CTAs to /client-onboarding?service=<name> (name matches Home SERVICES label). Site-wide LocalBusiness+WebSite JSON-LD in index.html. Sitemap + footer carry internal links to all service pages.
 
+- **Homepage conversion rework + contractor recruitment (2026-06-27).** Hero tagline now "Calgary's Vetted Handymen & Trades — On Demand"; client "I Need a Fix" card is primary (first + orange-bordered) with CTA "Get my free quote". New `/for-contractors` recruitment landing page (ForContractors.tsx) — value props (no fees/lead-buying, secure payout, local jobs), how-it-works, FAQ+JSON-LD, CTA→/contractor-onboarding; linked in footer + sitemap. Offline deliverables (owner's Desktop, not in repo): Google-Business-Profile-Guide.docx, Contractor-Recruitment-Kit.docx.
+
 ## Gotchas
 - esbuild build has **no typecheck**; rely on `vite build` for real errors. `any` is used liberally.
 - Node/JSX authoring: avoid `${` inside template literals in generator scripts; for `$` amounts in JSX use `{"$" + x}`; embed CSS as `<style>{"...double-quoted css..."}</style>` (no backticks).

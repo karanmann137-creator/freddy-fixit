@@ -34,4 +34,5 @@
   <url><loc>https://freddyfixit.ca/services/windows-doors</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://freddyfixit.ca/services/garage</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://freddyfixit.ca/services/cleaning</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://freddyfixit.ca/for-contractors</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
 </urlset>
