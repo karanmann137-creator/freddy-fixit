@@ -11,6 +11,7 @@ import UpdatePassword from "@/pages/UpdatePassword";
 import AuthCallback from "@/pages/AuthCallback";
 import TopNav from "@/components/TopNav";
 import ChatWidget from "@/components/ChatWidget";
+import GoogleReviewModal from "@/components/GoogleReviewModal";
 import Footer from "@/components/Footer";
 
 // Lazy: heavy pages are split into their own chunks and fetched on demand,
@@ -152,6 +153,7 @@ export default function App() {
       <ScrollToTop />
       <TopNav />
       <ChatWidget />
+      <GoogleReviewModal />
       <Suspense fallback={<PageLoader />}>
       <Switch>
       {/* Public */}

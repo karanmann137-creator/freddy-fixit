@@ -3,6 +3,7 @@ import VoiceDictate from "@/components/VoiceDictate";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { requestGoogleReview } from "@/lib/reviewPrompt";
 import { SERVICES, SCHEDULES } from "@/pages/ClientOnboarding";
 
 // Shown when an already-signed-in client starts another request. Unlike the
@@ -182,6 +183,7 @@ export default function NewRequest() {
         vehicle_details: vehicleDetails,
       });
       if (error) throw error;
+      requestGoogleReview("job_posted");
       setLocation("/client-dashboard");
     } catch (err: any) {
       setSubmitError(err?.message ?? "Something went wrong. Please try again.");

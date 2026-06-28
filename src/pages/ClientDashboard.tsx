@@ -2,6 +2,7 @@ import { Ic } from "@/components/Ic";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { requestGoogleReview } from "@/lib/reviewPrompt";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import DeleteAccount from "@/components/DeleteAccount";
 import ProfileBar from "@/components/ProfileBar";
@@ -275,6 +276,7 @@ export default function ClientDashboard() {
     const { error } = await supabase.rpc("confirm_job_completion", { p_job_id: activeJob.id });
     setBusyReq(false);
     if (error) { alert("Couldn't confirm: " + error.message); return; }
+    requestGoogleReview("job_done", { jobId: activeJob.id });
     setActiveJob({ ...activeJob, status: "completed", client_confirmed_at: new Date().toISOString() });
     setRequests(prev => prev.map(r => r.id === activeJob.request_id ? { ...r, status: "completed" } : r));
     if (activeJob.payment_status === "held") {
