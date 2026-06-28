@@ -359,6 +359,24 @@ export default function ContractorDashboard() {
       <div style={s.content}>
         <ProfileBar role="contractor" />
 
+        {contractor && !contractor.stripe_payouts_enabled && (
+          <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.45)", display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".75rem", justifyContent:"space-between" }}>
+            <div style={{ flex:"1 1 260px" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".85rem", fontWeight:600, color:"#ea6b14", marginBottom:".3rem" }}>
+                <Ic name="alert-triangle" size={14} />Finish payout setup to get paid
+              </div>
+              <div style={{ fontSize:".8rem", color:"rgba(190,205,235,.8)", lineHeight:1.5 }}>
+                {contractor.stripe_account_id
+                  ? "Your bank connection isn't finished yet. Until it is, money for completed jobs can't be sent to you."
+                  : "You haven't connected a bank account. Until you do, you won't be paid for completed jobs — clients can still book and pay, but your payout stays on hold."}
+              </div>
+            </div>
+            <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", whiteSpace:"nowrap" as const }} disabled={busyStripe} onClick={setupPayouts}>
+              {busyStripe ? "Opening Stripe…" : (contractor.stripe_account_id ? "Finish setup" : "Set up payouts")}
+            </button>
+          </div>
+        )}
+
         {activeTab === "jobs" && (
           <div>
             {myJobs.length === 0 ? (
