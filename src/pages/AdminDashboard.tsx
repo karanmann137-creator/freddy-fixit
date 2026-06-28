@@ -55,7 +55,7 @@ export default function AdminDashboard() {
       supabase.from("client_requests").select("*", { count: "exact" }).order("created_at", { ascending: false }).range(rRange[0], rRange[1]),
       supabase.from("contractors").select("*, profile:profiles!contractors_id_fkey(first_name,last_name,email,phone)", { count: "exact" }).order("created_at", { ascending: false }).range(cRange[0], cRange[1]),
       supabase.from("jobs").select("*", { count: "exact" }).order("created_at", { ascending: false }).range(jRange[0], jRange[1]),
-      supabase.from("contractor_directory").select("id, first_name, last_name, specialties"),
+      supabase.rpc("get_contractor_directory").select("id, first_name, last_name, specialties"),
       supabase.from("bids").select("*").eq("status", "pending").order("amount", { ascending: true }),
       supabase.rpc("admin_resignup_matches"),
       supabase.from("disputes").select("*, job:jobs(id, amount, total_charged, contractor_payout, status, payment_status, stripe_payment_intent_id)").order("created_at", { ascending: false }),

@@ -308,7 +308,7 @@ export default function ClientDashboard() {
           setClientBids(data ?? []);
           const ids = Array.from(new Set((data ?? []).map((b: any) => b.contractor_id)));
           if (ids.length) {
-            const { data: dir } = await supabase.from("contractor_directory").select("id, first_name, last_name").in("id", ids);
+            const { data: dir } = await supabase.rpc("get_contractor_directory").select("id, first_name, last_name").in("id", ids);
             const m: Record<string,string> = {};
             (dir ?? []).forEach((c: any) => { m[c.id] = ((c.first_name ?? "") + " " + (c.last_name ? c.last_name[0] + "." : "")).trim() || "Contractor"; });
             setBidNames(m);

@@ -10,7 +10,7 @@ Apply DB changes **live via Supabase MCP tools** (migrations / `execute_sql` / `
 → `bids(id,request_id,contractor_id,amount,message,status, UNIQUE(request_id,contractor_id))`
 → `jobs(id,request_id,contractor_id,client_id,status,amount,notes,scheduled_at,schedule_proposed_at,client_approved_at,contractor_completed_at,client_confirmed_at,completion_photo_path)`
 → `messages`, `reviews(id,job_id UNIQUE,contractor_id,client_id,price_score,experience_score,result_score,comment)`, `notifications`, `portfolio_items`.
-Views: `contractor_directory` (active contractors only; includes company_name).
+Directory: `get_contractor_directory()` + `get_contractor_profile(uuid)` SECURITY DEFINER functions (replaced the old contractor_directory view; expose active contractors only, contact-free columns; admins see any status via get_contractor_profile).
 Tombstone: `deleted_account_flags(email_hash,phone_hash,name_hash,review_count,avg_score,was_poor,deleted_at)` — privacy-preserving (hashes only).
 
 Verified FK names: `jobs_client_id_fkey`, `jobs_contractor_id_fkey`, `jobs_request_id_fkey`, `contractors_id_fkey` (→profiles).

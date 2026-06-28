@@ -12,7 +12,7 @@ Protected via `ProtectedRoute` (role-gated): `/client-dashboard`, `/contractor-d
 - `pages/ClientDashboard.tsx` — loads profile+requests in parallel, then contractor+job (job query embeds `messages(*)`). Realtime 🔔. "+ New Request" → `/client-onboarding`.
 - `pages/ContractorDashboard.tsx` — embedded select avoids N+1; earnings stats read DB-maintained `contractor.total_earned` / `total_jobs` (single source of truth, not recomputed).
 - `pages/AdminDashboard.tsx` — requests/contractors/jobs tabs with **range-based pagination** (20/page; reloads on page change). Approve/Deactivate call `admin_set_contractor_status` RPC. Shows a **re-signup warning** on contractor cards (hashes the contractor's email/phone/name and matches `deleted_account_flags` where `was_poor`; hashing helpers must stay byte-identical to the `delete-account` edge fn).
-- `pages/BrowseContractors.tsx` — reads `contractor_directory` view; **server-side specialty filter** via `.contains("specialties",[cat])` (GIN index), refetched on category change.
+- `pages/BrowseContractors.tsx` — reads `get_contractor_directory()` RPC (replaces old contractor_directory view; SECURITY DEFINER, contact-free columns).
 - `components/DeleteAccount.tsx` — danger-zone card + typed-"DELETE" modal → `supabase.functions.invoke("delete-account")` → signOut + redirect. Surfaces the function's JSON `error` body (e.g. active-job block).
 - `components/RequestPhotoQuote.tsx` — photo/quote widget for an existing request (not a new-request entry point).
 - `components/TopNav.tsx` — nav + realtime notifications bell.
