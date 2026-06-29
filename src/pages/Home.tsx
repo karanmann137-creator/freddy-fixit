@@ -76,10 +76,10 @@ function BeforeAfter() {
 
         <div className="ff-ba-handle" style={{ left: pct + "%" }}>
           <div className="ff-ba-knob">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a2236" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ff-bg)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" /><polyline points="9 18 3 12 9 6" style={{ display:"none" }} />
             </svg>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a2236" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ff-bg)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="9 6 15 12 9 18" />
             </svg>
           </div>
@@ -158,14 +158,14 @@ export default function Home() {
   };
 
   return (
-    <div style={{ fontFamily:"'DM Sans', sans-serif", background:"#1a2236", color:"#f0f4ff" }}>
+    <div style={{ fontFamily:"'DM Sans', sans-serif", background:"var(--ff-bg)", color:"var(--ff-text)" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         .ff-hero {
           min-height: 100vh;
-          background: #1a2236;
+          background: var(--ff-bg);
           background-image:
             radial-gradient(ellipse 46% 36% at 26% -6%, rgba(234,107,20,0.42) 0%, transparent 70%),
             radial-gradient(ellipse 52% 40% at 78% -10%, rgba(234,107,20,0.30) 0%, transparent 72%),
@@ -177,8 +177,8 @@ export default function Home() {
         .ff-hero::before {
           content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
           background-image:
-            repeating-linear-gradient(45deg, transparent 0 25px, rgba(255,255,255,0.035) 25px, rgba(255,255,255,0.035) 26px),
-            repeating-linear-gradient(-45deg, transparent 0 25px, rgba(255,255,255,0.03) 25px, rgba(255,255,255,0.03) 26px);
+            repeating-linear-gradient(45deg, transparent 0 25px, rgba(var(--ff-fg), 0.035) 25px, rgba(var(--ff-fg), 0.035) 26px),
+            repeating-linear-gradient(-45deg, transparent 0 25px, rgba(var(--ff-fg), 0.03) 25px, rgba(var(--ff-fg), 0.03) 26px);
           -webkit-mask-image: radial-gradient(circle at 50% 35%, #000 30%, transparent 82%);
                   mask-image: radial-gradient(circle at 50% 35%, #000 30%, transparent 82%);
         }
@@ -199,84 +199,84 @@ export default function Home() {
         @media (max-width: 600px) { .ff-hero-icons span.ff-hi-hide { display: none; } }
         .ff-inner { max-width: 680px; width: 100%; position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; }
         .ff-logo-mark { width: 80px; height: 80px; margin-bottom: 1.5rem; filter: drop-shadow(0 0 18px rgba(234,107,20,0.6)); }
-        .ff-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(3.5rem, 10vw, 6rem); letter-spacing: 0.08em; line-height: 0.9; text-align: center; margin: 0 0 0.5rem; color: #f0f4ff; text-shadow: 0 0 40px rgba(234,107,20,0.3); }
+        .ff-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(3.5rem, 10vw, 6rem); letter-spacing: 0.08em; line-height: 0.9; text-align: center; margin: 0 0 0.5rem; color: var(--ff-text); text-shadow: 0 0 40px rgba(234,107,20,0.3); }
         .ff-title span { color: #ea6b14; text-shadow: 0 0 30px rgba(234,107,20,0.7), 0 0 60px rgba(234,107,20,0.3); }
-        .ff-tagline { font-size: 1rem; font-weight: 300; color: rgba(190,205,235,0.75); text-align: center; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 3rem; }
+        .ff-tagline { font-size: 1rem; font-weight: 300; color: rgba(var(--ff-muted), 0.75); text-align: center; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 3rem; }
         .ff-divider { width: 48px; height: 2px; background: linear-gradient(90deg, transparent, #ea6b14, transparent); margin: 0 auto 3rem; }
         .ff-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; width: 100%; margin-bottom: 1.5rem; }
         @media (max-width: 480px) { .ff-cards { grid-template-columns: 1fr; } }
         .ff-card-client { border-color: rgba(234,107,20,0.55) !important; box-shadow: 0 0 0 1px rgba(234,107,20,0.25), 0 8px 30px rgba(234,107,20,0.12); }
-        .ff-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 2rem 1.5rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; transition: all 0.25s ease; position: relative; overflow: hidden; text-align: center; }
+        .ff-card { background: rgba(var(--ff-fg), 0.04); border: 1px solid rgba(var(--ff-fg), 0.08); border-radius: 12px; padding: 2rem 1.5rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; transition: all 0.25s ease; position: relative; overflow: hidden; text-align: center; }
         .ff-card::before { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity 0.25s ease; border-radius: 12px; }
         .ff-card-contractor::before { background: radial-gradient(ellipse at 50% 0%, rgba(234,107,20,0.15) 0%, transparent 70%); }
         .ff-card-client::before { background: radial-gradient(ellipse at 50% 0%, rgba(100,150,220,0.15) 0%, transparent 70%); }
         .ff-card:hover { transform: translateY(-3px); border-color: rgba(234,107,20,0.4); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
         .ff-card:hover::before { opacity: 1; }
         .ff-card-icon { font-size: 2.2rem; line-height: 1; }
-        .ff-card-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.08em; color: #f0f4ff; }
-        .ff-card-sub { font-size: 0.8rem; color: rgba(190,205,235,0.55); font-weight: 300; line-height: 1.4; }
+        .ff-card-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.08em; color: var(--ff-text); }
+        .ff-card-sub { font-size: 0.8rem; color: rgba(var(--ff-muted), 0.55); font-weight: 300; line-height: 1.4; }
         .ff-card-cta { margin-top: 0.5rem; font-size: 0.78rem; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: #ea6b14; }
         .ff-whatsapp { display: flex; align-items: center; gap: 0.5rem; background: rgba(37,211,102,0.12); border: 1px solid rgba(37,211,102,0.25); border-radius: 999px; padding: 0.6rem 1.4rem; color: #25d366; font-size: 0.85rem; font-weight: 500; cursor: pointer; text-decoration: none; transition: all 0.2s; margin-top: 1rem; }
         .ff-whatsapp:hover { background: rgba(37,211,102,0.2); }
-        .ff-signin { display: flex; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 999px; padding: 0.6rem 1.4rem; color: rgba(190,205,235,0.7); font-size: 0.85rem; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; margin-top: 0.75rem; }
-        .ff-signin:hover { background: rgba(255,255,255,0.1); color: #f0f4ff; }
-        .ff-scroll-hint { position: absolute; bottom: 0.6rem; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 0.4rem; color: rgba(190,205,235,0.3); font-size: 0.72rem; letter-spacing: 0.15em; text-transform: uppercase; animation: bounce 2s infinite; }
+        .ff-signin { display: flex; align-items: center; gap: 0.5rem; background: rgba(var(--ff-fg), 0.05); border: 1px solid rgba(var(--ff-fg), 0.1); border-radius: 999px; padding: 0.6rem 1.4rem; color: rgba(var(--ff-muted), 0.7); font-size: 0.85rem; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; margin-top: 0.75rem; }
+        .ff-signin:hover { background: rgba(var(--ff-fg), 0.1); color: var(--ff-text); }
+        .ff-scroll-hint { position: absolute; bottom: 0.6rem; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 0.4rem; color: rgba(var(--ff-muted), 0.3); font-size: 0.72rem; letter-spacing: 0.15em; text-transform: uppercase; animation: bounce 2s infinite; }
         @keyframes bounce { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(6px); } }
 
         /* ── Services ── */
-        .ff-services { background: #151d2e; position: relative; overflow: hidden; }
+        .ff-services { background: var(--ff-surface); position: relative; overflow: hidden; }
         .ff-services::before {
           content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
           background-image:
             radial-gradient(ellipse 70% 30% at 50% 0%, rgba(234,107,20,0.10) 0%, transparent 65%),
-            repeating-linear-gradient(45deg, transparent 0 28px, rgba(255,255,255,0.02) 28px, rgba(255,255,255,0.02) 29px),
-            repeating-linear-gradient(-45deg, transparent 0 28px, rgba(255,255,255,0.016) 28px, rgba(255,255,255,0.016) 29px);
+            repeating-linear-gradient(45deg, transparent 0 28px, rgba(var(--ff-fg), 0.02) 28px, rgba(var(--ff-fg), 0.02) 29px),
+            repeating-linear-gradient(-45deg, transparent 0 28px, rgba(var(--ff-fg), 0.016) 28px, rgba(var(--ff-fg), 0.016) 29px);
         }
         .ff-services-inner { max-width: 1000px; margin: 0 auto; padding: 6rem 2rem; position: relative; z-index: 1; }
         .ff-services-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-top: 3rem; }
         @media (max-width: 900px) { .ff-services-grid { grid-template-columns: repeat(3, 1fr); } }
         @media (max-width: 500px) { .ff-services-grid { grid-template-columns: repeat(2, 1fr); } }
-        .ff-service-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 1.5rem 1rem; text-align: center; transition: all 0.25s; width: 100%; }
+        .ff-service-card { background: rgba(var(--ff-fg), 0.04); border: 1px solid rgba(var(--ff-fg), 0.08); border-radius: 12px; padding: 1.5rem 1rem; text-align: center; transition: all 0.25s; width: 100%; }
         .ff-service-card:hover { border-color: rgba(234,107,20,0.4); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
         .ff-service-icon { font-size: 2rem; margin-bottom: 0.75rem; }
-        .ff-service-label { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.06em; color: #f0f4ff; margin-bottom: 0.4rem; }
-        .ff-service-desc { font-size: 0.72rem; color: rgba(190,205,235,0.5); font-weight: 300; line-height: 1.5; }
+        .ff-service-label { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.06em; color: var(--ff-text); margin-bottom: 0.4rem; }
+        .ff-service-desc { font-size: 0.72rem; color: rgba(var(--ff-muted), 0.5); font-weight: 300; line-height: 1.5; }
 
         /* ── How it works ── */
-        .ff-how { background: #1a2236; position: relative; overflow: hidden; }
-        .ff-how::before { content: ''; position: absolute; inset: 0; background-image: repeating-linear-gradient(0deg, transparent, transparent 60px, rgba(255,255,255,0.01) 60px, rgba(255,255,255,0.01) 61px), repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(255,255,255,0.01) 60px, rgba(255,255,255,0.01) 61px); pointer-events: none; }
+        .ff-how { background: var(--ff-bg); position: relative; overflow: hidden; }
+        .ff-how::before { content: ''; position: absolute; inset: 0; background-image: repeating-linear-gradient(0deg, transparent, transparent 60px, rgba(var(--ff-fg), 0.01) 60px, rgba(var(--ff-fg), 0.01) 61px), repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(var(--ff-fg), 0.01) 60px, rgba(var(--ff-fg), 0.01) 61px); pointer-events: none; }
         .ff-how-inner { max-width: 1000px; margin: 0 auto; padding: 4rem 2rem; position: relative; z-index: 1; }
         .ff-how-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 3rem; }
         @media (max-width: 700px) { .ff-how-grid { grid-template-columns: 1fr; } }
-        .ff-how-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 1.25rem 1.5rem; position: relative; }
+        .ff-how-card { background: rgba(var(--ff-fg), 0.03); border: 1px solid rgba(var(--ff-fg), 0.07); border-radius: 14px; padding: 1.25rem 1.5rem; position: relative; }
         .ff-how-step { font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem; letter-spacing: 0.06em; color: rgba(234,107,20,0.2); line-height: 1; margin-bottom: 0.5rem; }
         .ff-how-icon { font-size: 1.6rem; margin-bottom: 0.5rem; }
-        .ff-how-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 0.06em; color: #f0f4ff; margin-bottom: 0.75rem; }
-        .ff-how-desc { font-size: 0.85rem; color: rgba(190,205,235,0.6); font-weight: 300; line-height: 1.7; }
+        .ff-how-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 0.06em; color: var(--ff-text); margin-bottom: 0.75rem; }
+        .ff-how-desc { font-size: 0.85rem; color: rgba(var(--ff-muted), 0.6); font-weight: 300; line-height: 1.7; }
         .ff-how-connector { display: none; }
         @media (min-width: 700px) { .ff-how-connector { display: block; position: absolute; top: 2.5rem; right: -1rem; width: 2rem; height: 2px; background: linear-gradient(90deg, rgba(234,107,20,0.3), transparent); } }
 
         /* ── About ── */
-        .ff-about { background: #151d2e; position: relative; overflow: hidden; }
+        .ff-about { background: var(--ff-surface); position: relative; overflow: hidden; }
         .ff-about::before {
           content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.55;
           background-image:
             radial-gradient(ellipse 60% 40% at 12% 0%, rgba(234,107,20,0.16) 0%, transparent 60%),
-            repeating-linear-gradient(45deg, transparent 0 28px, rgba(255,255,255,0.022) 28px, rgba(255,255,255,0.022) 29px),
-            repeating-linear-gradient(-45deg, transparent 0 28px, rgba(255,255,255,0.018) 28px, rgba(255,255,255,0.018) 29px);
+            repeating-linear-gradient(45deg, transparent 0 28px, rgba(var(--ff-fg), 0.022) 28px, rgba(var(--ff-fg), 0.022) 29px),
+            repeating-linear-gradient(-45deg, transparent 0 28px, rgba(var(--ff-fg), 0.018) 28px, rgba(var(--ff-fg), 0.018) 29px);
         }
         .ff-about-inner { max-width: 900px; margin: 0 auto; padding: 6rem 2rem; position: relative; z-index: 1; }
         .ff-about-eyebrow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.2em; color: #ea6b14; margin-bottom: 1.5rem; }
-        .ff-about-headline { font-family: 'Bebas Neue', sans-serif; font-size: clamp(2.8rem, 7vw, 5rem); letter-spacing: 0.06em; line-height: 1; color: #f0f4ff; margin-bottom: 2rem; }
+        .ff-about-headline { font-family: 'Bebas Neue', sans-serif; font-size: clamp(2.8rem, 7vw, 5rem); letter-spacing: 0.06em; line-height: 1; color: var(--ff-text); margin-bottom: 2rem; }
         .ff-about-headline span { color: #ea6b14; }
-        .ff-about-body { font-size: 1.1rem; color: rgba(190,205,235,0.7); font-weight: 300; line-height: 1.8; max-width: 680px; margin-bottom: 3rem; }
-        .ff-about-body strong { color: #f0f4ff; font-weight: 500; }
+        .ff-about-body { font-size: 1.1rem; color: rgba(var(--ff-muted), 0.7); font-weight: 300; line-height: 1.8; max-width: 680px; margin-bottom: 3rem; }
+        .ff-about-body strong { color: var(--ff-text); font-weight: 500; }
         .ff-about-tagline { font-family: 'Bebas Neue', sans-serif; font-size: clamp(1.4rem, 4vw, 2rem); letter-spacing: 0.06em; color: rgba(234,107,20,0.85); border-left: 3px solid #ea6b14; padding-left: 1.25rem; line-height: 1.3; margin-bottom: 4rem; }
         .ff-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
         @media (max-width: 600px) { .ff-stats { grid-template-columns: 1fr; } }
-        .ff-stat { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 1.75rem; }
+        .ff-stat { background: rgba(var(--ff-fg), 0.03); border: 1px solid rgba(var(--ff-fg), 0.07); border-radius: 12px; padding: 1.75rem; }
         .ff-stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; letter-spacing: 0.06em; color: #ea6b14; line-height: 1; margin-bottom: 0.4rem; }
-        .ff-stat-label { font-size: 0.82rem; color: rgba(190,205,235,0.5); font-weight: 300; line-height: 1.4; }
+        .ff-stat-label { font-size: 0.82rem; color: rgba(var(--ff-muted), 0.5); font-weight: 300; line-height: 1.4; }
 
         /* ── Reviews ── */
         .ff-reviews-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
@@ -284,20 +284,20 @@ export default function Home() {
 
         /* ── Before / After ── */
         .ff-ba-tabs { display: flex; justify-content: center; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-        .ff-ba-tab { font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 500; letter-spacing: 0.04em; color: rgba(190,205,235,0.7); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 999px; padding: 0.55rem 1.25rem; cursor: pointer; transition: all 0.2s; }
-        .ff-ba-tab:hover { color: #f0f4ff; border-color: rgba(234,107,20,0.4); }
+        .ff-ba-tab { font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 500; letter-spacing: 0.04em; color: rgba(var(--ff-muted), 0.7); background: rgba(var(--ff-fg), 0.04); border: 1px solid rgba(var(--ff-fg), 0.1); border-radius: 999px; padding: 0.55rem 1.25rem; cursor: pointer; transition: all 0.2s; }
+        .ff-ba-tab:hover { color: var(--ff-text); border-color: rgba(234,107,20,0.4); }
         .ff-ba-tab-on { color: #fff; background: rgba(234,107,20,0.18); border-color: rgba(234,107,20,0.6); }
-        .ff-ba-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); cursor: ew-resize; user-select: none; touch-action: none; box-shadow: 0 14px 44px rgba(0,0,0,0.4); background: #0e1422; }
+        .ff-ba-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; border: 1px solid rgba(var(--ff-fg), 0.08); cursor: ew-resize; user-select: none; touch-action: none; box-shadow: 0 14px 44px rgba(0,0,0,0.4); background: var(--ff-surface-0e); }
         .ff-ba-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; -webkit-user-drag: none; }
-        .ff-ba-badge { position: absolute; top: 1rem; font-family: 'Bebas Neue', sans-serif; font-size: 0.95rem; letter-spacing: 0.1em; color: #f0f4ff; background: rgba(26,34,54,0.7); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.12); padding: 0.3rem 0.85rem; border-radius: 999px; pointer-events: none; transition: opacity 0.2s; }
+        .ff-ba-badge { position: absolute; top: 1rem; font-family: 'Bebas Neue', sans-serif; font-size: 0.95rem; letter-spacing: 0.1em; color: var(--ff-text); background: rgba(var(--ff-bg-rgb), 0.7); backdrop-filter: blur(4px); border: 1px solid rgba(var(--ff-fg), 0.12); padding: 0.3rem 0.85rem; border-radius: 999px; pointer-events: none; transition: opacity 0.2s; }
         .ff-ba-badge-before { left: 1rem; }
         .ff-ba-badge-after { right: 1rem; color: #ea6b14; border-color: rgba(234,107,20,0.4); }
-        .ff-ba-handle { position: absolute; top: 0; bottom: 0; width: 3px; background: rgba(255,255,255,0.9); transform: translateX(-50%); pointer-events: none; box-shadow: 0 0 12px rgba(0,0,0,0.5); }
+        .ff-ba-handle { position: absolute; top: 0; bottom: 0; width: 3px; background: rgba(var(--ff-fg), 0.9); transform: translateX(-50%); pointer-events: none; box-shadow: 0 0 12px rgba(0,0,0,0.5); }
         .ff-ba-knob { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 44px; height: 44px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; gap: 1px; box-shadow: 0 2px 12px rgba(0,0,0,0.4); }
-        .ff-ba-note { text-align: center; margin-top: 1.25rem; font-size: 0.8rem; color: rgba(190,205,235,0.45); font-weight: 300; letter-spacing: 0.02em; }
+        .ff-ba-note { text-align: center; margin-top: 1.25rem; font-size: 0.8rem; color: rgba(var(--ff-muted), 0.45); font-weight: 300; letter-spacing: 0.02em; }
 
         /* ── Footer ── */
-        .ff-footer-bar { background: #111827; border-top: 1px solid rgba(255,255,255,0.06); padding: 2rem 1.5rem; text-align: center; font-size: 0.75rem; color: rgba(190,205,235,0.25); letter-spacing: 0.05em; }
+        .ff-footer-bar { background: var(--ff-surface-2); border-top: 1px solid rgba(var(--ff-fg), 0.06); padding: 2rem 1.5rem; text-align: center; font-size: 0.75rem; color: rgba(var(--ff-muted), 0.25); letter-spacing: 0.05em; }
       `}</style>
 
       {/* ── Hero ── */}
@@ -318,7 +318,7 @@ export default function Home() {
             initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.6, delay: 0.1 }}>
             
             <polygon points="65.9,50.7 50.7,65.9 29.3,65.9 14.1,50.7 14.1,29.3 29.3,14.1 50.7,14.1 65.9,29.3" fill="rgba(234,107,20,0.08)" stroke="#ea6b14" strokeWidth="2"/>
-            <path d="M28 54 L28 38 L40 28 L52 38 L52 54 Z" stroke="#f0f4ff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+            <path d="M28 54 L28 38 L40 28 L52 38 L52 54 Z" stroke="var(--ff-text)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
             <path d="M36 54 L36 43 L44 43 L44 54" stroke="#ea6b14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
             
           </motion.svg>
@@ -335,7 +335,7 @@ export default function Home() {
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.4 }}
             style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:".7rem", marginBottom:"1.7rem" }}>
-            <span style={{ display:"inline-flex", alignItems:"center", gap:".45rem", fontSize:"1rem", fontWeight:500, color:"rgba(240,244,255,.9)" }}>
+            <span style={{ display:"inline-flex", alignItems:"center", gap:".45rem", fontSize:"1rem", fontWeight:500, color:"rgba(var(--ff-fg), .9)" }}>
               <Ic name="clipboard-list" size={17} color="#ea6b14" />Free quote — no signup
             </span>
             <div style={{ display:"flex", flexWrap:"wrap", justifyContent:"center", gap:".45rem 1.4rem", maxWidth:"560px" }}>
@@ -344,7 +344,7 @@ export default function Home() {
                 { icon:"dollar", label:"Payment held until you confirm" },
                 { icon:"map-pin", label:"Calgary local" },
               ].map((t) => (
-                <span key={t.label} style={{ display:"inline-flex", alignItems:"center", gap:".4rem", fontSize:".78rem", fontWeight:300, letterSpacing:".01em", color:"rgba(190,205,235,.62)" }}>
+                <span key={t.label} style={{ display:"inline-flex", alignItems:"center", gap:".4rem", fontSize:".78rem", fontWeight:300, letterSpacing:".01em", color:"rgba(var(--ff-muted), .62)" }}>
                   <Ic name={t.icon as any} size={14} color="#ea6b14" />{t.label}
                 </span>
               ))}
@@ -439,23 +439,23 @@ export default function Home() {
       </div>
 
       {/* ── FAQ ── */}
-      <div style={{ background:"#1a2236", padding:"6rem 2rem" }}>
+      <div style={{ background:"var(--ff-bg)", padding:"6rem 2rem" }}>
         <style>{"details.ff-faq>summary::-webkit-details-marker{display:none}details.ff-faq>summary{list-style:none}details.ff-faq .ff-faq-icon{transition:transform .2s ease;display:inline-block}details.ff-faq[open] .ff-faq-icon{transform:rotate(45deg)}details.ff-faq[open]{border-color:rgba(234,107,20,.3)}"}</style>
         <div style={{ maxWidth:"800px", margin:"0 auto" }}>
           <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" }}>Good to Know</p>
-          <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:".06em", color:"#f0f4ff", textAlign:"center", marginBottom:"3rem" }}>Frequently Asked <span style={{ color:"#ea6b14" }}>Questions.</span></h2>
+          <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:".06em", color:"var(--ff-text)", textAlign:"center", marginBottom:"3rem" }}>Frequently Asked <span style={{ color:"#ea6b14" }}>Questions.</span></h2>
           <div style={{ display:"flex", flexDirection:"column", gap:".75rem" }}>
             {FAQS.map((f, i) => (
-              <details key={i} className="ff-faq" style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"12px", padding:"1.2rem 1.5rem" }}>
-                <summary style={{ cursor:"pointer", fontSize:".98rem", fontWeight:500, color:"#f0f4ff", display:"flex", justifyContent:"space-between", alignItems:"center", gap:"1rem" }}>
+              <details key={i} className="ff-faq" style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.2rem 1.5rem" }}>
+                <summary style={{ cursor:"pointer", fontSize:".98rem", fontWeight:500, color:"var(--ff-text)", display:"flex", justifyContent:"space-between", alignItems:"center", gap:"1rem" }}>
                   <span>{f.q}</span>
                   <span className="ff-faq-icon" style={{ color:"#ea6b14", fontSize:"1.4rem", lineHeight:1, fontWeight:300 }}>+</span>
                 </summary>
-                <p style={{ fontSize:".9rem", color:"rgba(190,205,235,.75)", fontWeight:300, lineHeight:1.7, marginTop:"1rem", marginBottom:0 }}>{f.a}</p>
+                <p style={{ fontSize:".9rem", color:"rgba(var(--ff-muted), .75)", fontWeight:300, lineHeight:1.7, marginTop:"1rem", marginBottom:0 }}>{f.a}</p>
               </details>
             ))}
           </div>
-          <p style={{ textAlign:"center", marginTop:"2.5rem", fontSize:".9rem", color:"rgba(190,205,235,.6)", fontWeight:300 }}>Still have questions? <a href="mailto:hello@freddyfixit.ca" style={{ color:"#ea6b14", textDecoration:"none" }}>Get in touch.</a></p>
+          <p style={{ textAlign:"center", marginTop:"2.5rem", fontSize:".9rem", color:"rgba(var(--ff-muted), .6)", fontWeight:300 }}>Still have questions? <a href="mailto:hello@freddyfixit.ca" style={{ color:"#ea6b14", textDecoration:"none" }}>Get in touch.</a></p>
         </div>
       </div>
 
@@ -493,19 +493,19 @@ export default function Home() {
       {/* ── Footer ── */}
 
       {/* ── Testimonials ── */}
-      <div style={{ background:"#151d2e", padding:"6rem 2rem" }}>
+      <div style={{ background:"var(--ff-surface)", padding:"6rem 2rem" }}>
         <div style={{ maxWidth:"900px", margin:"0 auto" }}>
           <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" }}>Why Calgary Trusts Us</p>
-          <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:".06em", color:"#f0f4ff", textAlign:"center", marginBottom:"3rem" }}>Built On <span style={{ color:"#ea6b14" }}>Trust.</span></h2>
+          <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:".06em", color:"var(--ff-text)", textAlign:"center", marginBottom:"3rem" }}>Built On <span style={{ color:"#ea6b14" }}>Trust.</span></h2>
 
           {reviews.length > 0 && (
             <div style={{ marginBottom:"3rem" }}>
-              <p style={{ textAlign:"center", color:"rgba(190,205,235,.6)", fontSize:".95rem", marginBottom:"1.75rem" }}>What Calgary homeowners are saying about completed jobs:</p>
+              <p style={{ textAlign:"center", color:"rgba(var(--ff-muted), .6)", fontSize:".95rem", marginBottom:"1.75rem" }}>What Calgary homeowners are saying about completed jobs:</p>
               <div className="ff-reviews-grid">
                 {reviews.map((r) => {
                   const avg = reviewAvg(r);
                   return (
-                    <div key={r.id} style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"14px", padding:"1.75rem", display:"flex", flexDirection:"column" as const }}>
+                    <div key={r.id} style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"14px", padding:"1.75rem", display:"flex", flexDirection:"column" as const }}>
                       <div style={{ display:"flex", alignItems:"center", gap:".5rem", marginBottom:".85rem" }}>
                         <Ic name="message-square" size={18} color="#ea6b14" />
                         {avg != null && (
@@ -513,10 +513,10 @@ export default function Home() {
                         )}
                       </div>
                       {r.comment && (
-                        <p style={{ fontSize:".92rem", color:"rgba(190,205,235,.82)", fontWeight:300, lineHeight:1.7, margin:"0 0 1rem" }}>&ldquo;{r.comment}&rdquo;</p>
+                        <p style={{ fontSize:".92rem", color:"rgba(var(--ff-muted), .82)", fontWeight:300, lineHeight:1.7, margin:"0 0 1rem" }}>&ldquo;{r.comment}&rdquo;</p>
                       )}
-                      <div style={{ marginTop:"auto", fontSize:".8rem", color:"rgba(190,205,235,.5)" }}>
-                        <span style={{ color:"#f0f4ff", fontWeight:500 }}>{r.reviewer_first_name || "Calgary homeowner"}</span>
+                      <div style={{ marginTop:"auto", fontSize:".8rem", color:"rgba(var(--ff-muted), .5)" }}>
+                        <span style={{ color:"var(--ff-text)", fontWeight:500 }}>{r.reviewer_first_name || "Calgary homeowner"}</span>
                         {r.contractor_name ? " · " + r.contractor_name : ""}
                       </div>
                     </div>
@@ -527,20 +527,20 @@ export default function Home() {
           )}
 
           <div className="ff-reviews-grid">
-            <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"14px", padding:"2rem" }}>
+            <div style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"2rem" }}>
               <div style={{ marginBottom:"1rem" }}><Ic name="user-check" size={26} color="#ea6b14" /></div>
-              <div style={{ fontSize:"1.05rem", fontWeight:600, color:"#f0f4ff", marginBottom:".6rem" }}>Vetted &amp; Accountable</div>
-              <p style={{ fontSize:".9rem", color:"rgba(190,205,235,.75)", fontWeight:300, lineHeight:1.7, marginBottom:0 }}>Every pro is screened before they take a job — licensed, insured, WCB-covered, and reference-checked. We do the background work so you don't have to.</p>
+              <div style={{ fontSize:"1.05rem", fontWeight:600, color:"var(--ff-text)", marginBottom:".6rem" }}>Vetted &amp; Accountable</div>
+              <p style={{ fontSize:".9rem", color:"rgba(var(--ff-muted), .75)", fontWeight:300, lineHeight:1.7, marginBottom:0 }}>Every pro is screened before they take a job — licensed, insured, WCB-covered, and reference-checked. We do the background work so you don't have to.</p>
             </div>
-            <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"14px", padding:"2rem" }}>
+            <div style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"14px", padding:"2rem" }}>
               <div style={{ marginBottom:"1rem" }}><Ic name="dollar" size={26} color="#ea6b14" /></div>
-              <div style={{ fontSize:"1.05rem", fontWeight:600, color:"#f0f4ff", marginBottom:".6rem" }}>Your Payment Is Protected</div>
-              <p style={{ fontSize:".9rem", color:"rgba(190,205,235,.75)", fontWeight:300, lineHeight:1.7, marginBottom:0 }}>Pay through the platform and your money is held until you confirm the work is done right. If something goes sideways, there's a built-in dispute process.</p>
+              <div style={{ fontSize:"1.05rem", fontWeight:600, color:"var(--ff-text)", marginBottom:".6rem" }}>Your Payment Is Protected</div>
+              <p style={{ fontSize:".9rem", color:"rgba(var(--ff-muted), .75)", fontWeight:300, lineHeight:1.7, marginBottom:0 }}>Pay through the platform and your money is held until you confirm the work is done right. If something goes sideways, there's a built-in dispute process.</p>
             </div>
-            <div style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"14px", padding:"2rem" }}>
+            <div style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"2rem" }}>
               <div style={{ marginBottom:"1rem" }}><Ic name="map-pin" size={26} color="#ea6b14" /></div>
-              <div style={{ fontSize:"1.05rem", fontWeight:600, color:"#f0f4ff", marginBottom:".6rem" }}>Local &amp; Honest</div>
-              <p style={{ fontSize:".9rem", color:"rgba(190,205,235,.75)", fontWeight:300, lineHeight:1.7, marginBottom:0 }}>We're a Calgary-based team building this the right way. Reviews come from real, completed jobs — verified through the platform, never invented.</p>
+              <div style={{ fontSize:"1.05rem", fontWeight:600, color:"var(--ff-text)", marginBottom:".6rem" }}>Local &amp; Honest</div>
+              <p style={{ fontSize:".9rem", color:"rgba(var(--ff-muted), .75)", fontWeight:300, lineHeight:1.7, marginBottom:0 }}>We're a Calgary-based team building this the right way. Reviews come from real, completed jobs — verified through the platform, never invented.</p>
             </div>
           </div>
         </div>

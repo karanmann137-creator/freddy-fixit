@@ -52,8 +52,8 @@ export default function RespondToClaim({
     }
   };
 
-  const label = { fontSize: ".72rem", textTransform: "uppercase" as const, letterSpacing: ".1em", color: "rgba(190,205,235,.5)", marginBottom: ".35rem", display: "block" };
-  const field = { width: "100%", padding: ".6rem .8rem", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.12)", borderRadius: "8px", color: "#f0f4ff", fontFamily: "inherit", fontSize: ".88rem", boxSizing: "border-box" as const };
+  const label = { fontSize: ".72rem", textTransform: "uppercase" as const, letterSpacing: ".1em", color: "rgba(var(--ff-muted), .5)", marginBottom: ".35rem", display: "block" };
+  const field = { width: "100%", padding: ".6rem .8rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".88rem", boxSizing: "border-box" as const };
 
   return (
     <div
@@ -68,23 +68,23 @@ export default function RespondToClaim({
         onClick={e => e.stopPropagation()}
         style={{
           width: "100%", maxWidth: "460px", maxHeight: "90vh", overflowY: "auto",
-          background: "#1a2236", border: "1px solid rgba(255,255,255,.12)",
-          borderRadius: "16px", padding: "1.5rem", color: "#f0f4ff",
+          background: "var(--ff-bg)", border: "1px solid rgba(var(--ff-fg), .12)",
+          borderRadius: "16px", padding: "1.5rem", color: "var(--ff-text)",
           boxShadow: "0 20px 60px rgba(0,0,0,.6)",
         }}
       >
         <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.4rem", letterSpacing: ".05em", color: "#ea6b14", marginBottom: ".4rem" }}>
           Respond to Claim
         </div>
-        <div style={{ fontSize: ".84rem", color: "rgba(190,205,235,.7)", lineHeight: 1.5, marginBottom: "1rem" }}>
+        <div style={{ fontSize: ".84rem", color: "rgba(var(--ff-muted), .7)", lineHeight: 1.5, marginBottom: "1rem" }}>
           The client filed a claim on this job. Share your side &mdash; what was done, and anything that helps explain what happened. Our team reviews both sides before deciding.
         </div>
 
         {claim?.reason && (
-          <div style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: "10px", padding: ".75rem .9rem", marginBottom: "1rem" }}>
+          <div style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: "10px", padding: ".75rem .9rem", marginBottom: "1rem" }}>
             <div style={{ ...label, marginBottom: ".25rem" }}>The client's claim</div>
             <div style={{ fontSize: ".85rem", fontWeight: 600, marginBottom: ".2rem" }}>{claim.reason}</div>
-            {claim.description && <div style={{ fontSize: ".82rem", color: "rgba(190,205,235,.8)", lineHeight: 1.5 }}>{claim.description}</div>}
+            {claim.description && <div style={{ fontSize: ".82rem", color: "rgba(var(--ff-muted), .8)", lineHeight: 1.5 }}>{claim.description}</div>}
           </div>
         )}
 
@@ -101,13 +101,13 @@ export default function RespondToClaim({
 
         <div style={{ marginBottom: "1rem" }}>
           <label style={label}>Add photos (optional, up to 5)</label>
-          <input type="file" accept="image/*" multiple onChange={e => addFiles(e.target.files)} style={{ fontSize: ".82rem", color: "rgba(190,205,235,.7)" }} />
+          <input type="file" accept="image/*" multiple onChange={e => addFiles(e.target.files)} style={{ fontSize: ".82rem", color: "rgba(var(--ff-muted), .7)" }} />
           {files.length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: ".4rem", marginTop: ".6rem" }}>
               {files.map((f, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: ".4rem", padding: ".3rem .6rem", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.1)", borderRadius: "6px", fontSize: ".76rem" }}>
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: ".4rem", padding: ".3rem .6rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .1)", borderRadius: "6px", fontSize: ".76rem" }}>
                   <span style={{ maxWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
-                  <button onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "rgba(190,205,235,.6)", cursor: "pointer", fontSize: ".9rem", lineHeight: 1, padding: 0 }}>✕</button>
+                  <button onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "rgba(var(--ff-muted), .6)", cursor: "pointer", fontSize: ".9rem", lineHeight: 1, padding: 0 }}>✕</button>
                 </div>
               ))}
             </div>
@@ -127,7 +127,7 @@ export default function RespondToClaim({
           <button
             onClick={onClose}
             disabled={busy}
-            style={{ padding: ".75rem 1.1rem", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.1)", borderRadius: "8px", color: "rgba(190,205,235,.7)", fontFamily: "inherit", fontSize: ".9rem", cursor: "pointer" }}
+            style={{ padding: ".75rem 1.1rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .1)", borderRadius: "8px", color: "rgba(var(--ff-muted), .7)", fontFamily: "inherit", fontSize: ".9rem", cursor: "pointer" }}
           >
             Cancel
           </button>

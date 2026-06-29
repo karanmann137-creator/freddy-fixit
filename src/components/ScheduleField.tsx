@@ -63,9 +63,9 @@ export default function ScheduleField({ value, onChange }: Props) {
     setY(yy); setM(mm); setD(null);
   };
 
-  const wrap: React.CSSProperties = { background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.12)", borderRadius: "10px", padding: ".85rem" };
-  const lbl: React.CSSProperties = { fontSize: ".7rem", textTransform: "uppercase", letterSpacing: ".1em", color: "rgba(190,205,235,.5)", marginBottom: ".5rem" };
-  const fieldBg = "rgba(255,255,255,.06)";
+  const wrap: React.CSSProperties = { background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: "10px", padding: ".85rem" };
+  const lbl: React.CSSProperties = { fontSize: ".7rem", textTransform: "uppercase", letterSpacing: ".1em", color: "rgba(var(--ff-muted), .5)", marginBottom: ".5rem" };
+  const fieldBg = "rgba(var(--ff-fg), .06)";
 
   const monthsDisabledBefore = isCurYear ? now.getMonth() : 0;
   const selectedLabel = d != null
@@ -75,7 +75,7 @@ export default function ScheduleField({ value, onChange }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: ".7rem" }}>
       {/* Summary */}
-      <div style={{ fontSize: ".85rem", fontWeight: 500, color: d != null ? "#f0f4ff" : "rgba(190,205,235,.5)" }}>
+      <div style={{ fontSize: ".85rem", fontWeight: 500, color: d != null ? "var(--ff-text)" : "rgba(var(--ff-muted), .5)" }}>
         {selectedLabel}
       </div>
 
@@ -84,17 +84,17 @@ export default function ScheduleField({ value, onChange }: Props) {
         <div style={lbl}>Date</div>
         <div style={{ display: "flex", gap: ".5rem", marginBottom: ".6rem" }}>
           <select value={m} onChange={e => changeMonth(Number(e.target.value))}
-            style={{ flex: "1 1 auto", padding: ".5rem .6rem", background: fieldBg, border: "1px solid rgba(255,255,255,.12)", borderRadius: "8px", color: "#f0f4ff", fontFamily: "inherit", fontSize: ".85rem" }}>
+            style={{ flex: "1 1 auto", padding: ".5rem .6rem", background: fieldBg, border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".85rem" }}>
             {MONTHS.map((name, i) => (
-              <option key={name} value={i} disabled={i < monthsDisabledBefore} style={{ color: "#1a2236" }}>{name}</option>
+              <option key={name} value={i} disabled={i < monthsDisabledBefore} style={{ color: "var(--ff-bg)" }}>{name}</option>
             ))}
           </select>
           <input type="number" value={y} min={now.getFullYear()} onChange={e => changeYear(e.target.value)}
-            style={{ width: "84px", padding: ".5rem .6rem", background: fieldBg, border: "1px solid rgba(255,255,255,.12)", borderRadius: "8px", color: "#f0f4ff", fontFamily: "inherit", fontSize: ".85rem", boxSizing: "border-box" }} />
+            style={{ width: "84px", padding: ".5rem .6rem", background: fieldBg, border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".85rem", boxSizing: "border-box" }} />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: "3px" }}>
           {DOW.map((dn, i) => (
-            <div key={i} style={{ textAlign: "center", fontSize: ".62rem", color: "rgba(190,205,235,.4)", padding: ".2rem 0" }}>{dn}</div>
+            <div key={i} style={{ textAlign: "center", fontSize: ".62rem", color: "rgba(var(--ff-muted), .4)", padding: ".2rem 0" }}>{dn}</div>
           ))}
           {Array.from({ length: firstDow }).map((_, i) => <div key={"b" + i} />)}
           {Array.from({ length: daysInMonth }).map((_, i) => {
@@ -108,8 +108,8 @@ export default function ScheduleField({ value, onChange }: Props) {
                 style={{
                   aspectRatio: "1 / 1", border: selected ? "none" : isToday ? "1px solid #ea6b14" : "1px solid transparent",
                   borderRadius: "7px", fontFamily: "inherit", fontSize: ".8rem",
-                  background: selected ? "#ea6b14" : past ? "transparent" : "rgba(255,255,255,.05)",
-                  color: selected ? "#fff" : past ? "rgba(190,205,235,.2)" : "#f0f4ff",
+                  background: selected ? "#ea6b14" : past ? "transparent" : "rgba(var(--ff-fg), .05)",
+                  color: selected ? "#fff" : past ? "rgba(var(--ff-muted), .2)" : "var(--ff-text)",
                   cursor: past ? "not-allowed" : "pointer", transition: "background .15s",
                 }}>
                 {day}
@@ -130,18 +130,18 @@ export default function ScheduleField({ value, onChange }: Props) {
             {(["AM", "PM"] as const).map(p => (
               <button key={p} type="button" onClick={() => { setAmpm(p); emit({ ampm: p }); }}
                 style={{ padding: ".35rem .7rem", borderRadius: "7px", fontFamily: "inherit", fontSize: ".8rem", fontWeight: 600, cursor: "pointer",
-                  border: ampm === p ? "none" : "1px solid rgba(255,255,255,.15)",
-                  background: ampm === p ? "#ea6b14" : "transparent", color: ampm === p ? "#fff" : "rgba(190,205,235,.7)" }}>{p}</button>
+                  border: ampm === p ? "none" : "1px solid rgba(var(--ff-fg), .15)",
+                  background: ampm === p ? "#ea6b14" : "transparent", color: ampm === p ? "#fff" : "rgba(var(--ff-muted), .7)" }}>{p}</button>
             ))}
           </div>
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".62rem", color: "rgba(190,205,235,.4)", marginBottom: ".15rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".62rem", color: "rgba(var(--ff-muted), .4)", marginBottom: ".15rem" }}>
           <span>Hour</span><span>{hour12}</span>
         </div>
         <input type="range" min={1} max={12} step={1} value={hour12}
           onChange={e => { const v = Number(e.target.value); setHour12(v); emit({ hour12: v }); }}
           style={{ width: "100%", accentColor: "#ea6b14", marginBottom: ".7rem" }} />
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".62rem", color: "rgba(190,205,235,.4)", marginBottom: ".15rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".62rem", color: "rgba(var(--ff-muted), .4)", marginBottom: ".15rem" }}>
           <span>Minutes</span><span>{pad(minute)}</span>
         </div>
         <input type="range" min={0} max={45} step={15} value={minute}

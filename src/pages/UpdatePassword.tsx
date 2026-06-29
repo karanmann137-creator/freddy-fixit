@@ -46,13 +46,13 @@ export default function UpdatePassword() {
         <div style={s.logo}>FREDDY FIX IT</div>
         <div style={s.card}>
           {phase === "checking" && (
-            <p style={{ color: "rgba(190,205,235,.7)", textAlign: "center" }}>Verifying your reset link...</p>
+            <p style={{ color: "rgba(var(--ff-muted), .7)", textAlign: "center" }}>Verifying your reset link...</p>
           )}
 
           {phase === "invalid" && (
             <div style={{ textAlign: "center" }}>
               <div style={s.heading}>Link expired</div>
-              <p style={{ color: "rgba(190,205,235,.7)", fontSize: ".9rem", margin: ".5rem 0 1.25rem" }}>
+              <p style={{ color: "rgba(var(--ff-muted), .7)", fontSize: ".9rem", margin: ".5rem 0 1.25rem" }}>
                 This password reset link is invalid or has expired. Request a new one from the login page.
               </p>
               <button style={s.btn} onClick={() => setLocation("/login")}>Back to login</button>
@@ -62,7 +62,7 @@ export default function UpdatePassword() {
           {phase === "ready" && (
             <div>
               <div style={s.heading}>Set a new password</div>
-              <p style={{ color: "rgba(190,205,235,.6)", fontSize: ".85rem", marginBottom: "1.25rem" }}>
+              <p style={{ color: "rgba(var(--ff-muted), .6)", fontSize: ".85rem", marginBottom: "1.25rem" }}>
                 Enter a new password for your account.
               </p>
               {error && <div style={s.err}>{error}</div>}
@@ -75,7 +75,7 @@ export default function UpdatePassword() {
           {phase === "done" && (
             <div style={{ textAlign: "center" }}>
               <div style={s.heading}>Password updated</div>
-              <p style={{ color: "rgba(190,205,235,.7)", fontSize: ".9rem", margin: ".5rem 0 1.25rem" }}>
+              <p style={{ color: "rgba(var(--ff-muted), .7)", fontSize: ".9rem", margin: ".5rem 0 1.25rem" }}>
                 Your password has been changed. You can now sign in with your new password.
               </p>
               <button style={s.btn} onClick={() => setLocation("/login")}>Go to login</button>
@@ -87,11 +87,11 @@ export default function UpdatePassword() {
   );
 }
 
-const inp: React.CSSProperties = { width: "100%", padding: ".75rem 1rem", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.1)", borderRadius: "8px", color: "#f0f4ff", fontFamily: "inherit", fontSize: ".95rem", outline: "none", boxSizing: "border-box" };
+const inp: React.CSSProperties = { width: "100%", padding: ".75rem 1rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .1)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".95rem", outline: "none", boxSizing: "border-box" };
 const s: Record<string, React.CSSProperties> = {
-  wrap: { minHeight: "100vh", background: "#1a2236", backgroundImage: "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(234,107,20,0.15) 0%, transparent 70%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem 1rem", fontFamily: "'DM Sans',sans-serif", color: "#f0f4ff" },
+  wrap: { minHeight: "100vh", background: "var(--ff-bg)", backgroundImage: "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(234,107,20,0.15) 0%, transparent 70%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem 1rem", fontFamily: "'DM Sans',sans-serif", color: "var(--ff-text)" },
   logo: { fontFamily: "'Bebas Neue',sans-serif", fontSize: "2.2rem", letterSpacing: ".1em", textAlign: "center", marginBottom: "2rem", color: "#ea6b14" },
-  card: { background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: "14px", padding: "2rem" },
+  card: { background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: "14px", padding: "2rem" },
   heading: { fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.8rem", letterSpacing: ".06em", marginBottom: ".25rem" },
   err: { background: "rgba(239,68,68,.1)", border: "1px solid rgba(239,68,68,.25)", borderRadius: "8px", padding: ".75rem 1rem", fontSize: ".83rem", color: "#fca5a5", marginBottom: "1rem" },
   btn: { width: "100%", padding: ".9rem", background: "#ea6b14", color: "#fff", border: "none", borderRadius: "8px", fontFamily: "inherit", fontSize: ".95rem", fontWeight: 500, cursor: "pointer", boxSizing: "border-box" },

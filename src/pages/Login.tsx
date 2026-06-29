@@ -68,19 +68,19 @@ export default function Login() {
     } finally { setLoading(false); }
   };
 
-  const inp = { width:"100%", padding:".75rem 1rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.1)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".95rem", outline:"none", boxSizing:"border-box" as const };
+  const inp = { width:"100%", padding:".75rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".95rem", outline:"none", boxSizing:"border-box" as const };
   const s = {
-    wrap: { minHeight:"100vh", background:"#1a2236", backgroundImage:"radial-gradient(ellipse 80% 50% at 50% -10%, rgba(234,107,20,0.15) 0%, transparent 70%)", display:"flex", flexDirection:"column" as const, alignItems:"center", justifyContent:"center", padding:"2rem 1rem", fontFamily:"'DM Sans',sans-serif", color:"#f0f4ff" },
+    wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 80% 50% at 50% -10%, rgba(234,107,20,0.15) 0%, transparent 70%)", display:"flex", flexDirection:"column" as const, alignItems:"center", justifyContent:"center", padding:"2rem 1rem", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
     inner: { maxWidth:"420px", width:"100%" },
     logo: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.2rem", letterSpacing:".1em", textAlign:"center" as const, marginBottom:"2rem" },
-    card: { background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"14px", padding:"2rem" },
+    card: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"2rem" },
     heading: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.8rem", letterSpacing:".06em", marginBottom:".25rem" },
-    sub: { fontSize:".85rem", color:"rgba(190,205,235,.5)", fontWeight:300, marginBottom:"1.75rem" },
-    label: { display:"block", fontSize:".75rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.55)", marginBottom:".5rem" },
+    sub: { fontSize:".85rem", color:"rgba(var(--ff-muted), .5)", fontWeight:300, marginBottom:"1.75rem" },
+    label: { display:"block", fontSize:".75rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .55)", marginBottom:".5rem" },
     err: { background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"#fca5a5", marginBottom:"1rem" },
     btn: { width:"100%", padding:".9rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"8px", fontFamily:"inherit", fontSize:".95rem", fontWeight:500, cursor:"pointer", transition:"all .2s", boxSizing:"border-box" as const },
     textBtn: { background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem", color:"#ea6b14", padding:0 },
-    footer: { textAlign:"center" as const, marginTop:"1.5rem", fontSize:".83rem", color:"rgba(190,205,235,.45)" },
+    footer: { textAlign:"center" as const, marginTop:"1.5rem", fontSize:".83rem", color:"rgba(var(--ff-muted), .45)" },
   };
 
   return (
@@ -94,7 +94,7 @@ export default function Login() {
             <div style={{ textAlign:"center", padding:"1.5rem 0" }}>
               <div style={{ marginBottom:"1rem" }}><Ic name="mail" size={48} color="#ea6b14" /></div>
               <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.6rem", letterSpacing:".06em", marginBottom:".5rem" }}>Check Your Email</div>
-              <p style={{ fontSize:".85rem", color:"rgba(190,205,235,.6)", fontWeight:300, lineHeight:1.6 }}>
+              <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .6)", fontWeight:300, lineHeight:1.6 }}>
                 We sent a reset link to <strong>{email}</strong>. Check your inbox and follow the link to set a new password.
               </p>
               <button style={{ ...s.textBtn, marginTop:"1.5rem" }} onClick={() => { setMode("signin"); setResetSent(false); }}>
@@ -135,11 +135,11 @@ export default function Login() {
               </form>
               <OAuthButtons />
               <div style={{ display:"flex", alignItems:"center", gap:".75rem", margin:"1.5rem 0" }}>
-                <div style={{ flex:1, height:"1px", background:"rgba(255,255,255,.08)" }} />
-                <span style={{ fontSize:".75rem", color:"rgba(190,205,235,.35)" }}>No account yet?</span>
-                <div style={{ flex:1, height:"1px", background:"rgba(255,255,255,.08)" }} />
+                <div style={{ flex:1, height:"1px", background:"rgba(var(--ff-fg), .08)" }} />
+                <span style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .35)" }}>No account yet?</span>
+                <div style={{ flex:1, height:"1px", background:"rgba(var(--ff-fg), .08)" }} />
               </div>
-              <button style={{ ...s.btn, background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.1)", color:"rgba(190,205,235,.8)" }} onClick={() => setLocation("/")}>
+              <button style={{ ...s.btn, background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", color:"rgba(var(--ff-muted), .8)" }} onClick={() => setLocation("/")}>
                 Get Started on Home Page
               </button>
             </>

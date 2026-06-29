@@ -1,12 +1,12 @@
 export default function PrivacyPolicy() {
   return (
-    <div style={{ fontFamily:"'DM Sans',sans-serif", background:"#1a2236", color:"#f0f4ff", minHeight:"100vh", padding:"6rem 1.5rem 4rem" }}>
+    <div style={{ fontFamily:"'DM Sans',sans-serif", background:"var(--ff-bg)", color:"var(--ff-text)", minHeight:"100vh", padding:"6rem 1.5rem 4rem" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-      <style>{"h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em} h2{color:#ea6b14} p,li{line-height:1.8;color:rgba(190,205,235,.85);font-weight:300} strong{color:#f0f4ff;font-weight:500} a{color:#ea6b14} ul,ol{padding-left:1.5rem;margin:.5rem 0} li{margin:.3rem 0} table{width:100%;border-collapse:collapse;margin:1rem 0} td,th{padding:.6rem 1rem;border:1px solid rgba(255,255,255,.1);font-size:.85rem;color:rgba(190,205,235,.8);text-align:left} th{color:#f0f4ff;background:rgba(255,255,255,.04)}"}</style>
+      <style>{"h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em} h2{color:#ea6b14} p,li{line-height:1.8;color:rgba(var(--ff-muted), .85);font-weight:300} strong{color:var(--ff-text);font-weight:500} a{color:#ea6b14} ul,ol{padding-left:1.5rem;margin:.5rem 0} li{margin:.3rem 0} table{width:100%;border-collapse:collapse;margin:1rem 0} td,th{padding:.6rem 1rem;border:1px solid rgba(var(--ff-fg), .1);font-size:.85rem;color:rgba(var(--ff-muted), .8);text-align:left} th{color:var(--ff-text);background:rgba(var(--ff-fg), .04)}"}</style>
       <div style={{ maxWidth:"800px", margin:"0 auto" }}>
 
-        <h1 style={{ fontSize:"clamp(2.5rem,6vw,4rem)", color:"#f0f4ff", marginBottom:".5rem" }}>Privacy Policy</h1>
-        <p style={{ fontSize:".82rem", color:"rgba(190,205,235,.4)", marginBottom:"3rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 4, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
+        <h1 style={{ fontSize:"clamp(2.5rem,6vw,4rem)", color:"var(--ff-text)", marginBottom:".5rem" }}>Privacy Policy</h1>
+        <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)", marginBottom:"3rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 4, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
 
         <section style={{ marginBottom:"2.5rem" }}>
           <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>1. Introduction</h2>
@@ -63,7 +63,7 @@ export default function PrivacyPolicy() {
             <li>WCB (Workers&rsquo; Compensation Board) coverage status</li>
             <li>Professional references</li>
           </ul>
-          <p style={{ fontSize:".82rem", color:"rgba(190,205,235,.5)" }}>We collect this information solely for the purpose of vetting contractors before granting platform access. We do not store or verify the underlying documents directly.</p>
+          <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .5)" }}>We collect this information solely for the purpose of vetting contractors before granting platform access. We do not store or verify the underlying documents directly.</p>
 
           <p><strong>3.5 Service and Communication Content</strong></p>
           <ul>
@@ -77,7 +77,7 @@ export default function PrivacyPolicy() {
             <li>Transaction amounts, dates, and job references</li>
             <li>Payment status records</li>
           </ul>
-          <p style={{ fontSize:".82rem", color:"rgba(190,205,235,.5)" }}>Full payment card details are collected and stored by <strong>Stripe, Inc.</strong> directly. We do not receive or store card numbers, CVV codes, or full banking credentials on our systems.</p>
+          <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .5)" }}>Full payment card details are collected and stored by <strong>Stripe, Inc.</strong> directly. We do not receive or store card numbers, CVV codes, or full banking credentials on our systems.</p>
 
           <p><strong>3.7 Technical Information (collected automatically)</strong></p>
           <ul>
@@ -211,11 +211,11 @@ export default function PrivacyPolicy() {
           <p>We will acknowledge receipt of your inquiry within <strong>5 business days</strong> and will provide a substantive response within <strong>30 days</strong>. If you are not satisfied with our response, you may contact the <strong>Office of the Information and Privacy Commissioner of Alberta</strong> at <a href="https://www.oipc.ab.ca" target="_blank" rel="noopener noreferrer">www.oipc.ab.ca</a>.</p>
         </section>
 
-        <div style={{ borderTop:"1px solid rgba(255,255,255,.08)", paddingTop:"2rem", marginTop:"2rem", textAlign:"center" }}>
-          <p style={{ fontSize:".78rem", color:"rgba(190,205,235,.3)" }}>
+        <div style={{ borderTop:"1px solid rgba(var(--ff-fg), .08)", paddingTop:"2rem", marginTop:"2rem", textAlign:"center" }}>
+          <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .3)" }}>
             &copy; {new Date().getFullYear()} Freddy FixIt Contractors Inc. &nbsp;·&nbsp;
-            <a href="/user-agreement" style={{ color:"rgba(190,205,235,.4)" }}>User Agreement</a> &nbsp;·&nbsp;
-            <a href="/homeowner-protection-promise" style={{ color:"rgba(190,205,235,.4)" }}>Protection Promise</a>
+            <a href="/user-agreement" style={{ color:"rgba(var(--ff-muted), .4)" }}>User Agreement</a> &nbsp;·&nbsp;
+            <a href="/homeowner-protection-promise" style={{ color:"rgba(var(--ff-muted), .4)" }}>Protection Promise</a>
           </p>
         </div>
       </div>

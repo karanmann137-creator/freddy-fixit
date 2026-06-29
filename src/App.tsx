@@ -37,7 +37,7 @@ const ForContractors       = lazy(() => import("@/pages/ForContractors"));
 // Shown briefly while a lazily-loaded page chunk downloads.
 function PageLoader() {
   return (
-    <div style={{ minHeight: "100vh", background: "#1a2236", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ minHeight: "100vh", background: "var(--ff-bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ width: 32, height: 32, border: "3px solid rgba(234,107,20,0.2)", borderTopColor: "#ea6b14", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
@@ -136,7 +136,7 @@ function ProtectedRoute({
   }, [requiredRole]);
 
   if (status === "loading") return (
-    <div style={{ minHeight: "100vh", background: "#1a2236", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ minHeight: "100vh", background: "var(--ff-bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ width: 32, height: 32, border: "3px solid rgba(234,107,20,0.2)", borderTopColor: "#ea6b14", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>

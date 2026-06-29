@@ -36,15 +36,15 @@ export default function JobTimeline({ job }: { job: any }) {
       {steps.map((s, i) => {
         const isActive = !disputed && i === activeIdx;
         const isDone = s.done;
-        const color = isDone ? "#22c55e" : isActive ? "#ea6b14" : "rgba(190,205,235,.3)";
-        const lineColor = steps[i + 1]?.done ? "#22c55e" : "rgba(255,255,255,.12)";
+        const color = isDone ? "#22c55e" : isActive ? "#ea6b14" : "rgba(var(--ff-muted), .3)";
+        const lineColor = steps[i + 1]?.done ? "#22c55e" : "rgba(var(--ff-fg), .12)";
         const when = fmt(s.at);
         return (
           <div key={s.key} style={{ display: "flex", gap: ".7rem", alignItems: "flex-start" }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", alignSelf: "stretch" }}>
               <div style={{
                 width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
-                background: isDone ? "rgba(34,197,94,.15)" : isActive ? "rgba(234,107,20,.15)" : "rgba(255,255,255,.04)",
+                background: isDone ? "rgba(34,197,94,.15)" : isActive ? "rgba(234,107,20,.15)" : "rgba(var(--ff-fg), .04)",
                 border: `1.5px solid ${color}`,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
@@ -55,10 +55,10 @@ export default function JobTimeline({ job }: { job: any }) {
               )}
             </div>
             <div style={{ paddingBottom: i < steps.length - 1 ? ".7rem" : 0, paddingTop: 2 }}>
-              <div style={{ fontSize: ".85rem", fontWeight: isActive ? 600 : 500, color: isDone ? "#f0f4ff" : isActive ? "#f0f4ff" : "rgba(190,205,235,.45)" }}>
+              <div style={{ fontSize: ".85rem", fontWeight: isActive ? 600 : 500, color: isDone ? "var(--ff-text)" : isActive ? "var(--ff-text)" : "rgba(var(--ff-muted), .45)" }}>
                 {s.label}{isActive && <span style={{ color: "#ea6b14", fontSize: ".72rem", fontWeight: 600, marginLeft: ".5rem" }}>NOW</span>}
               </div>
-              {when && isDone && <div style={{ fontSize: ".74rem", color: "rgba(190,205,235,.5)", marginTop: ".1rem" }}>{when}</div>}
+              {when && isDone && <div style={{ fontSize: ".74rem", color: "rgba(var(--ff-muted), .5)", marginTop: ".1rem" }}>{when}</div>}
             </div>
           </div>
         );

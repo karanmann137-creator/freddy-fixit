@@ -41,9 +41,9 @@ export default function ConfirmDialog({
         onClick={e => e.stopPropagation()}
         style={{
           width: "100%", maxWidth: "420px",
-          background: "#1a2236", border: "1px solid rgba(255,255,255,.12)",
+          background: "var(--ff-bg)", border: "1px solid rgba(var(--ff-fg), .12)",
           borderRadius: "16px", padding: "1.6rem",
-          boxShadow: "0 24px 70px rgba(0,0,0,.6)", color: "#f0f4ff",
+          boxShadow: "0 24px 70px rgba(0,0,0,.6)", color: "var(--ff-text)",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: ".75rem", marginBottom: ".9rem" }}>
@@ -58,7 +58,7 @@ export default function ConfirmDialog({
           </div>
         </div>
 
-        <p style={{ fontSize: ".92rem", lineHeight: 1.6, color: "rgba(190,205,235,.85)", margin: "0 0 .5rem" }}>
+        <p style={{ fontSize: ".92rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .85)", margin: "0 0 .5rem" }}>
           {state.message}
         </p>
         <p style={{ fontSize: ".8rem", color: danger ? "#fca5a5" : "#fbbf24", margin: "0 0 1.4rem", fontWeight: 500 }}>
@@ -70,8 +70,8 @@ export default function ConfirmDialog({
             onClick={() => onClose(false)}
             style={{
               padding: ".6rem 1.1rem", borderRadius: "9px", cursor: "pointer",
-              background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.14)",
-              color: "rgba(190,205,235,.85)", fontFamily: "inherit", fontSize: ".88rem",
+              background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .14)",
+              color: "rgba(var(--ff-muted), .85)", fontFamily: "inherit", fontSize: ".88rem",
             }}
           >
             {state.cancelLabel || "Cancel"}

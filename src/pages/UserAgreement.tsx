@@ -1,13 +1,13 @@
 export default function UserAgreement() {
   return (
-    <div style={{ fontFamily:"'DM Sans',sans-serif", background:"#1a2236", color:"#f0f4ff", minHeight:"100vh", padding:"6rem 1.5rem 4rem" }}>
+    <div style={{ fontFamily:"'DM Sans',sans-serif", background:"var(--ff-bg)", color:"var(--ff-text)", minHeight:"100vh", padding:"6rem 1.5rem 4rem" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-      <style>{"h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em} h2{color:#ea6b14} h3{color:#f0f4ff;font-size:1.05rem;margin-top:1.4rem;margin-bottom:.4rem} p,li{line-height:1.8;color:rgba(190,205,235,.85);font-weight:300} strong{color:#f0f4ff;font-weight:500} a{color:#ea6b14} ul,ol{padding-left:1.5rem;margin:.5rem 0} li{margin:.3rem 0} .divider{border:none;border-top:1px solid rgba(255,255,255,.08);margin:3rem 0}"}</style>
+      <style>{"h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em} h2{color:#ea6b14} h3{color:var(--ff-text);font-size:1.05rem;margin-top:1.4rem;margin-bottom:.4rem} p,li{line-height:1.8;color:rgba(var(--ff-muted), .85);font-weight:300} strong{color:var(--ff-text);font-weight:500} a{color:#ea6b14} ul,ol{padding-left:1.5rem;margin:.5rem 0} li{margin:.3rem 0} .divider{border:none;border-top:1px solid rgba(var(--ff-fg), .08);margin:3rem 0}"}</style>
       <div style={{ maxWidth:"800px", margin:"0 auto" }}>
 
         {/* ─── PART I: GENERAL USER AGREEMENT ─── */}
-        <h1 style={{ fontSize:"clamp(2.5rem,6vw,4rem)", color:"#f0f4ff", marginBottom:".5rem" }}>User Agreement</h1>
-        <p style={{ fontSize:".82rem", color:"rgba(190,205,235,.4)", marginBottom:"3rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 26, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
+        <h1 style={{ fontSize:"clamp(2.5rem,6vw,4rem)", color:"var(--ff-text)", marginBottom:".5rem" }}>User Agreement</h1>
+        <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)", marginBottom:"3rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 26, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
 
         <section style={{ marginBottom:"2.5rem" }}>
           <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>1. Agreement to Terms</h2>
@@ -97,8 +97,8 @@ export default function UserAgreement() {
         <hr className="divider" />
 
         {/* ─── PART II: CONTRACTOR PROFESSIONAL TERMS ─── */}
-        <h1 style={{ fontSize:"clamp(2.2rem,5vw,3.5rem)", color:"#f0f4ff", marginBottom:".5rem" }}>Contractor Professional Terms</h1>
-        <p style={{ fontSize:".82rem", color:"rgba(190,205,235,.4)", marginBottom:"1rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 26, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
+        <h1 style={{ fontSize:"clamp(2.2rem,5vw,3.5rem)", color:"var(--ff-text)", marginBottom:".5rem" }}>Contractor Professional Terms</h1>
+        <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)", marginBottom:"1rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 26, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
         <p style={{ marginBottom:"3rem" }}>These Contractor Professional Terms (&ldquo;Contractor Terms&rdquo;) apply to every User who registers as a Contractor on the Platform. They form part of and are incorporated into the User Agreement above. In the event of conflict, these Contractor Terms prevail with respect to Contractor obligations. By registering as a Contractor, you agree to be bound by these Contractor Terms.</p>
 
         {/* Section 1 */}
@@ -255,11 +255,11 @@ export default function UserAgreement() {
           </p>
         </section>
 
-        <div style={{ borderTop:"1px solid rgba(255,255,255,.08)", paddingTop:"2rem", marginTop:"2rem", textAlign:"center" }}>
-          <p style={{ fontSize:".78rem", color:"rgba(190,205,235,.3)" }}>
+        <div style={{ borderTop:"1px solid rgba(var(--ff-fg), .08)", paddingTop:"2rem", marginTop:"2rem", textAlign:"center" }}>
+          <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .3)" }}>
             &copy; {new Date().getFullYear()} Freddy FixIt Contractors Inc. &nbsp;·&nbsp;
-            <a href="/privacy-policy" style={{ color:"rgba(190,205,235,.4)" }}>Privacy Policy</a> &nbsp;·&nbsp;
-            <a href="/homeowner-protection-promise" style={{ color:"rgba(190,205,235,.4)" }}>Protection Promise</a>
+            <a href="/privacy-policy" style={{ color:"rgba(var(--ff-muted), .4)" }}>Privacy Policy</a> &nbsp;·&nbsp;
+            <a href="/homeowner-protection-promise" style={{ color:"rgba(var(--ff-muted), .4)" }}>Protection Promise</a>
           </p>
         </div>
       </div>

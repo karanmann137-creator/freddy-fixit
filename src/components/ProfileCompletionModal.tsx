@@ -76,11 +76,11 @@ export default function ProfileCompletionModal({
 
   return (
     <div onClick={close} style={{ position:"fixed", inset:0, zIndex:9999, background:"rgba(8,12,22,.72)", backdropFilter:"blur(3px)", display:"flex", alignItems:"center", justifyContent:"center", padding:"1.2rem" }}>
-      <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:"440px", background:"#1a2236", border:"1px solid rgba(234,107,20,.35)", borderRadius:"16px", padding:"1.7rem 1.5rem 1.4rem", boxShadow:"0 24px 70px rgba(0,0,0,.55)", fontFamily:"'DM Sans',sans-serif", color:"#f0f4ff", position:"relative", maxHeight:"90vh", overflowY:"auto" }}>
-        <button onClick={close} aria-label="Close" style={{ position:"absolute", top:".7rem", right:".9rem", background:"none", border:"none", color:"rgba(190,205,235,.6)", fontSize:"1.4rem", lineHeight:1, cursor:"pointer", fontFamily:"inherit" }}>×</button>
+      <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:"440px", background:"var(--ff-bg)", border:"1px solid rgba(234,107,20,.35)", borderRadius:"16px", padding:"1.7rem 1.5rem 1.4rem", boxShadow:"0 24px 70px rgba(0,0,0,.55)", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)", position:"relative", maxHeight:"90vh", overflowY:"auto" }}>
+        <button onClick={close} aria-label="Close" style={{ position:"absolute", top:".7rem", right:".9rem", background:"none", border:"none", color:"rgba(var(--ff-muted), .6)", fontSize:"1.4rem", lineHeight:1, cursor:"pointer", fontFamily:"inherit" }}>×</button>
 
-        <h3 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.7rem", letterSpacing:".02em", margin:"0 0 .35rem", color:"#f0f4ff" }}>Finish setting up your profile</h3>
-        <p style={{ fontSize:".92rem", lineHeight:1.5, color:"rgba(208,219,242,.85)", margin:"0 0 1.1rem" }}>
+        <h3 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.7rem", letterSpacing:".02em", margin:"0 0 .35rem", color:"var(--ff-text)" }}>Finish setting up your profile</h3>
+        <p style={{ fontSize:".92rem", lineHeight:1.5, color:"rgba(var(--ff-muted), .85)", margin:"0 0 1.1rem" }}>
           {role === "contractor"
             ? "A couple of things still need your attention before you're fully ready to take jobs and get paid:"
             : "Just a couple of details left so your jobs run smoothly:"}
@@ -91,8 +91,8 @@ export default function ProfileCompletionModal({
             <div key={it.key} style={{ display:"flex", gap:".7rem", alignItems:"flex-start", padding:".75rem .85rem", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.3)", borderRadius:"12px" }}>
               <span style={{ flexShrink:0, width:"22px", height:"22px", borderRadius:"50%", background:"#ea6b14", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:".8rem", fontWeight:700, marginTop:"1px" }}>!</span>
               <div>
-                <div style={{ fontWeight:600, fontSize:".95rem", color:"#f0f4ff", marginBottom:".15rem" }}>{it.label}</div>
-                <div style={{ fontSize:".82rem", lineHeight:1.45, color:"rgba(208,219,242,.78)" }}>{it.detail}</div>
+                <div style={{ fontWeight:600, fontSize:".95rem", color:"var(--ff-text)", marginBottom:".15rem" }}>{it.label}</div>
+                <div style={{ fontSize:".82rem", lineHeight:1.45, color:"rgba(var(--ff-muted), .78)" }}>{it.detail}</div>
               </div>
             </div>
           ))}
@@ -104,7 +104,7 @@ export default function ProfileCompletionModal({
         </div>
 
         <button onClick={primary} style={{ width:"100%", padding:".85rem 1rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"10px", fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:".95rem", cursor:"pointer", marginBottom:".55rem" }}>{primaryLabel}</button>
-        <button onClick={close} style={{ width:"100%", padding:".6rem", background:"rgba(255,255,255,.06)", color:"rgba(208,219,242,.8)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"9px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer" }}>I'll do it later</button>
+        <button onClick={close} style={{ width:"100%", padding:".6rem", background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"9px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer" }}>I'll do it later</button>
       </div>
     </div>
   );

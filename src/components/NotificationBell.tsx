@@ -91,11 +91,11 @@ export default function NotificationBell({ userId, dashboardPath }: { userId: st
         aria-label="Notifications"
         style={{
           position: "relative", width: 40, height: 40, borderRadius: "999px",
-          background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.12)",
+          background: "rgba(var(--ff-fg), .05)", border: "1px solid rgba(var(--ff-fg), .12)",
           cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
         }}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(240,244,255,.85)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(var(--ff-fg), .85)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
@@ -104,7 +104,7 @@ export default function NotificationBell({ userId, dashboardPath }: { userId: st
             position: "absolute", top: -2, right: -2, minWidth: 18, height: 18, padding: "0 4px",
             borderRadius: "999px", background: "#ea6b14", color: "#fff", fontSize: ".68rem",
             fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 0 0 2px #1a2236",
+            boxShadow: "0 0 0 2px var(--ff-bg)",
           }}>{unread > 9 ? "9+" : unread}</span>
         )}
       </button>
@@ -113,14 +113,14 @@ export default function NotificationBell({ userId, dashboardPath }: { userId: st
         <div style={{
           position: "fixed", top: 64, right: 10, width: "min(320px, calc(100vw - 20px))",
           maxHeight: "min(420px, calc(100vh - 84px))", overflowY: "auto",
-          background: "#151d2e", border: "1px solid rgba(255,255,255,.12)", borderRadius: 14,
+          background: "var(--ff-surface)", border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: 14,
           boxShadow: "0 18px 50px rgba(0,0,0,.5)", zIndex: 200, fontFamily: "'DM Sans', sans-serif",
         }}>
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: ".8rem 1rem", borderBottom: "1px solid rgba(255,255,255,.08)",
+            padding: ".8rem 1rem", borderBottom: "1px solid rgba(var(--ff-fg), .08)",
           }}>
-            <span style={{ color: "#f0f4ff", fontWeight: 600, fontSize: ".92rem" }}>Notifications</span>
+            <span style={{ color: "var(--ff-text)", fontWeight: 600, fontSize: ".92rem" }}>Notifications</span>
             {unread > 0 && (
               <button onClick={markAllRead} style={{
                 background: "none", border: "none", color: "#ea6b14", cursor: "pointer",
@@ -130,7 +130,7 @@ export default function NotificationBell({ userId, dashboardPath }: { userId: st
           </div>
 
           {notes.length === 0 ? (
-            <div style={{ padding: "1.6rem 1rem", textAlign: "center", color: "rgba(240,244,255,.5)", fontSize: ".85rem" }}>
+            <div style={{ padding: "1.6rem 1rem", textAlign: "center", color: "rgba(var(--ff-fg), .5)", fontSize: ".85rem" }}>
               You're all caught up.
             </div>
           ) : (
@@ -140,17 +140,17 @@ export default function NotificationBell({ userId, dashboardPath }: { userId: st
                 onClick={() => openNote(n)}
                 style={{
                   display: "block", width: "100%", textAlign: "left", cursor: "pointer",
-                  padding: ".75rem 1rem", border: "none", borderBottom: "1px solid rgba(255,255,255,.05)",
+                  padding: ".75rem 1rem", border: "none", borderBottom: "1px solid rgba(var(--ff-fg), .05)",
                   background: n.read_at ? "transparent" : "rgba(234,107,20,.08)",
                   fontFamily: "'DM Sans', sans-serif",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: ".5rem" }}>
                   {!n.read_at && <span style={{ width: 7, height: 7, borderRadius: "999px", background: "#ea6b14", flexShrink: 0 }} />}
-                  <span style={{ color: "#f0f4ff", fontWeight: 600, fontSize: ".85rem", flex: 1 }}>{n.title ?? "Update"}</span>
-                  <span style={{ color: "rgba(240,244,255,.4)", fontSize: ".7rem", flexShrink: 0 }}>{timeAgo(n.created_at)}</span>
+                  <span style={{ color: "var(--ff-text)", fontWeight: 600, fontSize: ".85rem", flex: 1 }}>{n.title ?? "Update"}</span>
+                  <span style={{ color: "rgba(var(--ff-fg), .4)", fontSize: ".7rem", flexShrink: 0 }}>{timeAgo(n.created_at)}</span>
                 </div>
-                {n.body && <div style={{ color: "rgba(240,244,255,.65)", fontSize: ".8rem", marginTop: ".25rem", lineHeight: 1.4 }}>{n.body}</div>}
+                {n.body && <div style={{ color: "rgba(var(--ff-fg), .65)", fontSize: ".8rem", marginTop: ".25rem", lineHeight: 1.4 }}>{n.body}</div>}
               </button>
             ))
           )}

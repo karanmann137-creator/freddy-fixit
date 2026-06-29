@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import NotificationBell from "@/components/NotificationBell";
+import SettingsModal from "@/components/SettingsModal";
 
 const CONTACT_EMAIL = "hello@freddyfixit.ca";
 
@@ -16,6 +17,7 @@ export default function TopNav() {
   const [role, setRole] = useState<string | null>(null);
   const [uid, setUid] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -77,9 +79,9 @@ export default function TopNav() {
         .ff-brand { transition: transform .18s ease; }
         .ff-brand:hover { transform: scale(1.08); }
         .ff-nav-btn { transition: background .2s ease, color .2s ease, border-color .2s ease; }
-        .ff-nav-btn-ghost:hover { background: rgba(255,255,255,.12); color: #f0f4ff; }
+        .ff-nav-btn-ghost:hover { background: rgba(var(--ff-fg), .12); color: var(--ff-text); }
         .ff-nav-btn-accent:hover { background: #f5781f; }
-        .ff-menu-item:hover { background: rgba(255,255,255,.06); }
+        .ff-menu-item:hover { background: rgba(var(--ff-fg), .06); }
         @media (max-width: 560px) {
           .ff-nav-wrap { padding: .7rem .9rem !important; }
           .ff-brand { font-size: 1.4rem !important; }
@@ -123,7 +125,7 @@ export default function TopNav() {
                 {uid && (
                   <div style={menuRow}>
                     <NotificationBell userId={uid} dashboardPath={dashboardPath} />
-                    <span style={{ color: "rgba(240,244,255,.85)", fontSize: ".9rem" }}>Notifications</span>
+                    <span style={{ color: "rgba(var(--ff-fg), .85)", fontSize: ".9rem" }}>Notifications</span>
                   </div>
                 )}
                 <a
@@ -135,6 +137,13 @@ export default function TopNav() {
                   Contact us
                 </a>
                 <button
+                  onClick={() => { setMenuOpen(false); setSettingsOpen(true); }}
+                  className="ff-menu-item"
+                  style={menuItem}
+                >
+                  Settings
+                </button>
+                <button
                   onClick={logOut}
                   className="ff-menu-item"
                   style={{ ...menuItem, color: "#ff9a6b" }}
@@ -145,10 +154,17 @@ export default function TopNav() {
             )}
           </div>
         ) : (
-          // Logged out: simple two-button header, no menu.
-          <button onClick={() => setLocation("/login")} className="ff-nav-btn ff-nav-btn-ghost" style={{ ...btn, ...ghostBtn }}>Sign In</button>
+          // Logged out: simple header — gear for settings + Sign In.
+          <>
+            <button aria-label="Settings" onClick={() => setSettingsOpen(true)} className="ff-nav-btn ff-nav-btn-ghost" style={{ ...btn, ...ghostBtn, padding:".5rem", display:"inline-flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+            <button onClick={() => setLocation("/login")} className="ff-nav-btn ff-nav-btn-ghost" style={{ ...btn, ...ghostBtn }}>Sign In</button>
+          </>
         )}
       </div>
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} role={(authed ? (role as any) : null)} />
     </div>
   );
 }
@@ -169,11 +185,11 @@ const btn: React.CSSProperties = {
   fontWeight: 500, cursor: "pointer", border: "1px solid", fontFamily: "'DM Sans', sans-serif",
 };
 const accentBtn: React.CSSProperties = { background: "#ea6b14", color: "#fff", borderColor: "#ea6b14" };
-const ghostBtn: React.CSSProperties = { background: "rgba(255,255,255,.05)", color: "rgba(240,244,255,.8)", borderColor: "rgba(255,255,255,.12)" };
+const ghostBtn: React.CSSProperties = { background: "rgba(var(--ff-fg), .05)", color: "rgba(var(--ff-fg), .8)", borderColor: "rgba(var(--ff-fg), .12)" };
 const hbar: React.CSSProperties = { width: "16px", height: "2px", borderRadius: "2px", background: "currentColor", display: "block" };
 const menuPanel: React.CSSProperties = {
   position: "absolute", top: "calc(100% + .5rem)", right: 0, minWidth: "200px",
-  background: "#151d2e", border: "1px solid rgba(255,255,255,.12)", borderRadius: "14px",
+  background: "var(--ff-surface)", border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: "14px",
   padding: ".4rem", boxShadow: "0 14px 40px rgba(0,0,0,.45)", zIndex: 200,
   display: "flex", flexDirection: "column", gap: ".15rem",
 };
@@ -184,7 +200,7 @@ const menuRow: React.CSSProperties = {
 const menuItem: React.CSSProperties = {
   display: "block", width: "100%", textAlign: "left",
   padding: ".6rem .7rem", borderRadius: "10px", border: "none",
-  background: "transparent", color: "rgba(240,244,255,.85)",
+  background: "transparent", color: "rgba(var(--ff-fg), .85)",
   fontSize: ".9rem", fontFamily: "'DM Sans', sans-serif", cursor: "pointer",
   textDecoration: "none", boxSizing: "border-box",
 };

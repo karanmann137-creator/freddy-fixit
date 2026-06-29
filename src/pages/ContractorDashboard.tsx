@@ -311,27 +311,27 @@ export default function ContractorDashboard() {
   const STATUS_COLORS: Record<string,string> = { pending:"#f59e0b", matched:"#3b82f6", in_progress:"#ea6b14", completed:"#22c55e", cancelled:"#ef4444", assigned:"#3b82f6" };
 
   const s = {
-    wrap: { minHeight:"100vh", background:"#1a2236", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), radial-gradient(rgba(255,255,255,0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"#f0f4ff" },
-    header: { background:"rgba(255,255,255,.03)", borderBottom:"1px solid rgba(255,255,255,.07)", padding:".75rem 1.5rem", display:"flex", justifyContent:"space-between", alignItems:"center" },
+    wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
+    header: { background:"rgba(var(--ff-fg), .03)", borderBottom:"1px solid rgba(var(--ff-fg), .07)", padding:".75rem 1.5rem", display:"flex", justifyContent:"space-between", alignItems:"center" },
     logo: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.4rem", letterSpacing:".1em" },
-    tabsBar: { background:"rgba(255,255,255,.02)", borderBottom:"1px solid rgba(255,255,255,.06)", padding:"0 1.5rem", overflowX:"auto" as const },
+    tabsBar: { background:"rgba(var(--ff-fg), .02)", borderBottom:"1px solid rgba(var(--ff-fg), .06)", padding:"0 1.5rem", overflowX:"auto" as const },
     tabsInner: { maxWidth:"900px", margin:"0 auto", display:"flex", gap:".25rem" },
-    tab: { padding:".85rem 1.25rem", background:"none", border:"none", borderBottom:"2px solid transparent", color:"rgba(190,205,235,.5)", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", whiteSpace:"nowrap" as const },
+    tab: { padding:".85rem 1.25rem", background:"none", border:"none", borderBottom:"2px solid transparent", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", whiteSpace:"nowrap" as const },
     activeTab: { color:"#ea6b14", borderBottomColor:"#ea6b14" },
     content: { maxWidth:"900px", margin:"0 auto", padding:"2rem 1.5rem" },
-    card: { background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"14px", padding:"1.75rem", marginBottom:"1.5rem" },
+    card: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"1.75rem", marginBottom:"1.5rem" },
     cardTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", color:"#ea6b14", marginBottom:"1.25rem" },
-    jobCard: { background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"12px", padding:"1.5rem", marginBottom:"1rem", cursor:"pointer" },
-    btn: { padding:".5rem 1rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.1)", borderRadius:"6px", color:"rgba(190,205,235,.7)", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer" },
-    earnCard: { background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"12px", padding:"1.25rem", textAlign:"center" as const },
-    chip: { padding:".3rem .75rem", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.25)", borderRadius:"99px", fontSize:".78rem", color:"rgba(190,205,235,.8)", display:"inline-block", margin:".2rem" },
-    slot: { padding:".38rem .85rem", borderRadius:"99px", fontSize:".78rem", cursor:"pointer", border:"1px solid rgba(255,255,255,.1)", background:"rgba(255,255,255,.04)", color:"rgba(190,205,235,.7)", fontFamily:"inherit", margin:".2rem" },
-    slotSel: { background:"rgba(234,107,20,.15)", borderColor:"rgba(234,107,20,.5)", color:"#f0f4ff" },
+    jobCard: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.5rem", marginBottom:"1rem", cursor:"pointer" },
+    btn: { padding:".5rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"6px", color:"rgba(var(--ff-muted), .7)", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer" },
+    earnCard: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.25rem", textAlign:"center" as const },
+    chip: { padding:".3rem .75rem", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.25)", borderRadius:"99px", fontSize:".78rem", color:"rgba(var(--ff-muted), .8)", display:"inline-block", margin:".2rem" },
+    slot: { padding:".38rem .85rem", borderRadius:"99px", fontSize:".78rem", cursor:"pointer", border:"1px solid rgba(var(--ff-fg), .1)", background:"rgba(var(--ff-fg), .04)", color:"rgba(var(--ff-muted), .7)", fontFamily:"inherit", margin:".2rem" },
+    slotSel: { background:"rgba(234,107,20,.15)", borderColor:"rgba(234,107,20,.5)", color:"var(--ff-text)" },
   };
 
   if (loading) return (
     <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ textAlign:"center", color:"rgba(190,205,235,.5)" }}>
+      <div style={{ textAlign:"center", color:"rgba(var(--ff-muted), .5)" }}>
         <div style={{ marginBottom:"1rem" }}><Ic name="settings" size={36} color="#ea6b14" /></div>Loading your dashboard…
       </div>
     </div>
@@ -342,7 +342,7 @@ export default function ContractorDashboard() {
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       <div style={{ height: "3.75rem" }} />
       <div style={s.header}>
-        <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.6)" }}>
+        <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .6)" }}>
           {contractor?.status === "pending" ? "Profile under review" : contractor?.status === "active" ? "Active" : "Account inactive"}
         </div>
       </div>
@@ -367,7 +367,7 @@ export default function ContractorDashboard() {
               <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".85rem", fontWeight:600, color:"#ea6b14", marginBottom:".3rem" }}>
                 <Ic name="alert-triangle" size={14} />Finish payout setup to get paid
               </div>
-              <div style={{ fontSize:".8rem", color:"rgba(190,205,235,.8)", lineHeight:1.5 }}>
+              <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
                 {contractor.stripe_account_id
                   ? "Your bank connection isn't finished yet. Until it is, money for completed jobs can't be sent to you."
                   : "You haven't connected a bank account. Until you do, you won't be paid for completed jobs — clients can still book and pay, but your payout stays on hold."}
@@ -385,15 +385,15 @@ export default function ContractorDashboard() {
               <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
                 <div style={{ marginBottom:"1rem" }}><Ic name="clipboard-list" size={48} color="#ea6b14" /></div>
                 <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", marginBottom:".5rem" }}>No Jobs Yet</h2>
-                <p style={{ color:"rgba(190,205,235,.5)" }}>Once matched with a client, your jobs appear here.</p>
+                <p style={{ color:"rgba(var(--ff-muted), .5)" }}>Once matched with a client, your jobs appear here.</p>
               </div>
             ) : myJobs.map(job => (
               <div key={job.id} style={s.jobCard} onClick={() => openJob(job)}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:".75rem" }}>
                   <div>
                     <div style={{ fontSize:"1rem", fontWeight:500, marginBottom:".3rem" }}>{job.request?.service_needed ?? "Job"}</div>
-                    <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.6)", marginBottom:".2rem" }}><Ic name="user" size={13} style={{ marginRight:4 }} />{job.client?.first_name || "Your client"}</div>
-                    <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.5)" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{job.request?.location}</div>
+                    <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", marginBottom:".2rem" }}><Ic name="user" size={13} style={{ marginRight:4 }} />{job.client?.first_name || "Your client"}</div>
+                    <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .5)" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{job.request?.location}</div>
                   </div>
                   <div style={{ textAlign:"right" }}>
                     <div style={{ fontSize:".78rem", fontWeight:500, color: STATUS_COLORS[job.status] }}>● {job.status.replace("_"," ")}</div>
@@ -401,12 +401,12 @@ export default function ContractorDashboard() {
                   </div>
                 </div>
                 {activeJobId === job.id && (
-                  <div onClick={e => e.stopPropagation()} style={{ marginTop:"1rem", borderTop:"1px solid rgba(255,255,255,.07)", paddingTop:"1rem" }}>
+                  <div onClick={e => e.stopPropagation()} style={{ marginTop:"1rem", borderTop:"1px solid rgba(var(--ff-fg), .07)", paddingTop:"1rem" }}>
                     <RequestPhotoQuote requestId={job.request_id} photoPath={job.request?.photo_path} estimatedQuote={job.request?.estimated_quote} quoteNotes={job.request?.quote_notes} canQuote />
 
                     {(job.client_approved_at || job.status === "scheduled" || job.status === "pending_confirmation" || job.status === "completed") && (
-                      <div style={{ margin:"1rem 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.07)" }}>
-                        <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.45)", marginBottom:".75rem" }}>Job progress</div>
+                      <div style={{ margin:"1rem 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .07)" }}>
+                        <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)", marginBottom:".75rem" }}>Job progress</div>
                         <JobTimeline job={job} />
                       </div>
                     )}
@@ -422,11 +422,11 @@ export default function ContractorDashboard() {
                           <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".82rem", fontWeight:600, color:"#fbbf24", marginBottom:".6rem" }}>
                             <Ic name="alert-triangle" size={14} />{open ? "The client filed a claim on this job" : "Claim resolved"}
                           </div>
-                          <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.85)", lineHeight:1.5, marginBottom:".5rem" }}>
+                          <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .85)", lineHeight:1.5, marginBottom:".5rem" }}>
                             Your payout is paused while our team reviews. <strong>{d.reason}</strong>
                           </div>
-                          {d.description && <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.75)", lineHeight:1.5, marginBottom:".5rem" }}>&ldquo;{d.description}&rdquo;</div>}
-                          <div style={{ fontSize:".76rem", color:"rgba(190,205,235,.6)", lineHeight:1.6, marginBottom:".6rem" }}>
+                          {d.description && <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.5, marginBottom:".5rem" }}>&ldquo;{d.description}&rdquo;</div>}
+                          <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.6, marginBottom:".6rem" }}>
                             {d.requested_remedy && <div>Requested outcome: {d.requested_remedy}</div>}
                             {d.service_date && <div>Date of service: {d.service_date}</div>}
                           </div>
@@ -434,7 +434,7 @@ export default function ContractorDashboard() {
                             <div style={{ display:"flex", flexWrap:"wrap" as const, gap:".4rem", marginBottom:".7rem" }}>
                               {(d.photo_paths ?? []).map((p: string) => claimPhotos[p] ? (
                                 <a key={p} href={claimPhotos[p]} target="_blank" rel="noopener noreferrer">
-                                  <img src={claimPhotos[p]} alt="Claim photo" style={{ width:"68px", height:"68px", objectFit:"cover" as const, borderRadius:"8px", border:"1px solid rgba(255,255,255,.12)" }} />
+                                  <img src={claimPhotos[p]} alt="Claim photo" style={{ width:"68px", height:"68px", objectFit:"cover" as const, borderRadius:"8px", border:"1px solid rgba(var(--ff-fg), .12)" }} />
                                 </a>
                               ) : null)}
                             </div>
@@ -451,7 +451,7 @@ export default function ContractorDashboard() {
                           {responded && (
                             <div style={{ fontSize:".8rem", color:"#86efac", lineHeight:1.5 }}>
                               <Ic name="check-circle" size={13} style={{ marginRight:4 }} />Your response was submitted. Our team is reviewing both sides.
-                              <div style={{ fontSize:".8rem", color:"rgba(190,205,235,.75)", marginTop:".4rem" }}>&ldquo;{d.contractor_response}&rdquo;</div>
+                              <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .75)", marginTop:".4rem" }}>&ldquo;{d.contractor_response}&rdquo;</div>
                             </div>
                           )}
                         </div>
@@ -466,10 +466,10 @@ export default function ContractorDashboard() {
                           )}
                           <ScheduleField value={proposeForm.when} onChange={(v) => setProposeForm(f => ({ ...f, when: v }))} />
                           <div>
-                            <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".25rem" }}>Price ($)</div>
-                            <input type="number" min="0" value={proposeForm.amount} placeholder="e.g. 250" onChange={e => setProposeForm(f => ({ ...f, amount: e.target.value }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const }} />
+                            <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".25rem" }}>Price ($)</div>
+                            <input type="number" min="0" value={proposeForm.amount} placeholder="e.g. 250" onChange={e => setProposeForm(f => ({ ...f, amount: e.target.value }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const }} />
                           </div>
-                          <textarea value={proposeForm.notes} rows={2} placeholder="Notes for the client (optional)" onChange={e => setProposeForm(f => ({ ...f, notes: e.target.value }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const }} />
+                          <textarea value={proposeForm.notes} rows={2} placeholder="Notes for the client (optional)" onChange={e => setProposeForm(f => ({ ...f, notes: e.target.value }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const }} />
                           <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                             <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyJob} onClick={() => proposeSchedule(job)}>{busyJob ? "Sending…" : (job.schedule_proposed_at ? "Update proposal" : "Propose time & price")}</button>
                             <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJob} onClick={() => withdrawJob(job)}>Withdraw</button>
@@ -482,11 +482,11 @@ export default function ContractorDashboard() {
                           {job.on_my_way_at ? (
                             <div style={{ fontSize:".82rem", color:"#86efac" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />You let the client know you're on the way.</div>
                           ) : (
-                            <button style={{ ...s.btn, color:"#f0f4ff", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.12)", alignSelf:"flex-start" }} disabled={busyJob} onClick={() => onMyWay(job)}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{busyJob ? "…" : "I'm on my way"}</button>
+                            <button style={{ ...s.btn, color:"var(--ff-text)", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.12)", alignSelf:"flex-start" }} disabled={busyJob} onClick={() => onMyWay(job)}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{busyJob ? "…" : "I'm on my way"}</button>
                           )}
                           <div>
-                            <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".25rem" }}>Completion photo (optional)</div>
-                            <input type="file" accept="image/*" onChange={e => setPhotoFile(e.target.files?.[0] ?? null)} style={{ fontSize:".8rem", color:"rgba(190,205,235,.7)" }} />
+                            <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".25rem" }}>Completion photo (optional)</div>
+                            <input type="file" accept="image/*" onChange={e => setPhotoFile(e.target.files?.[0] ?? null)} style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)" }} />
                           </div>
                           <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                             <button style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none", fontWeight:600 }} disabled={busyJob} onClick={() => markComplete(job)}>{busyJob ? "Working…" : "✓ Mark complete"}</button>
@@ -504,7 +504,7 @@ export default function ContractorDashboard() {
 
                     <button
                       onClick={() => setChatJob(job)}
-                      style={{ display:"flex", alignItems:"center", gap:".5rem", width:"100%", justifyContent:"center", padding:".7rem 1rem", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.3)", borderRadius:"10px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".88rem", fontWeight:500, cursor:"pointer" }}>
+                      style={{ display:"flex", alignItems:"center", gap:".5rem", width:"100%", justifyContent:"center", padding:".7rem 1rem", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.3)", borderRadius:"10px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".88rem", fontWeight:500, cursor:"pointer" }}>
                       <Ic name="message-square" size={15} />
                       {job.status === "completed"
                         ? `View chat with ${job.client?.first_name || "your client"}`
@@ -519,12 +519,12 @@ export default function ContractorDashboard() {
 
         {activeTab === "available" && (
           <div>
-            <p style={{ fontSize:".82rem", color:"rgba(190,205,235,.45)", marginBottom:"1rem" }}>Open job requests in your area.</p>
+            <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .45)", marginBottom:"1rem" }}>Open job requests in your area.</p>
             {availableJobs.length === 0 ? (
               <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
                 <div style={{ marginBottom:"1rem" }}><Ic name="clipboard-list" size={48} color="#ea6b14" /></div>
                 <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", marginBottom:".5rem" }}>No Open Jobs Right Now</h2>
-                <p style={{ color:"rgba(190,205,235,.5)" }}>New job requests in your area will show up here.</p>
+                <p style={{ color:"rgba(var(--ff-muted), .5)" }}>New job requests in your area will show up here.</p>
               </div>
             ) : availableJobs.map(r => (
               <div key={r.id} style={s.jobCard}>
@@ -532,20 +532,20 @@ export default function ContractorDashboard() {
                   <div style={{ fontSize:"1rem", fontWeight:500 }}>{r.service_needed}</div>
                   <div style={{ fontSize:".78rem", color:"#ea6b14" }}><Ic name="timer" size={12} style={{ marginRight:4 }} />{r.preferred_schedule}</div>
                 </div>
-                <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.55)", marginBottom:".6rem" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{r.location}</div>
-                <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.65)", marginBottom:"1rem", lineHeight:1.5 }}>{r.job_description}</div>
+                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .55)", marginBottom:".6rem" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{r.location}</div>
+                <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .65)", marginBottom:"1rem", lineHeight:1.5 }}>{r.job_description}</div>
                 <RequestPhotoQuote requestId={r.id} photoPath={r.photo_path} estimatedQuote={r.estimated_quote} quoteNotes={r.quote_notes} />
-                <div style={{ margin:".75rem 0", padding:".75rem", borderRadius:"10px", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.08)" }}>
+                <div style={{ margin:".75rem 0", padding:".75rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:".5rem" }}>
-                    <span style={{ fontSize:".75rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.5)" }}>Bids</span>
+                    <span style={{ fontSize:".75rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .5)" }}>Bids</span>
                     <span style={{ fontSize:".78rem", fontWeight:600, color: (r.bid_count ?? 0) >= 3 ? "#ef4444" : "#86efac" }}>{r.bid_count ?? 0}/3</span>
                   </div>
-                  {r.my_amount != null && <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.75)", marginBottom:".5rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />You bid {"$" + r.my_amount}. You can update it below.</div>}
+                  {r.my_amount != null && <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".5rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />You bid {"$" + r.my_amount}. You can update it below.</div>}
                   {r.my_amount == null && (r.bid_count ?? 0) >= 3 && <div style={{ fontSize:".82rem", color:"#fbbf24" }}>This job already has 3 bids.</div>}
                   {(r.my_amount != null || (r.bid_count ?? 0) < 3) && (
                     <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center" }}>
-                      <input type="number" min="0" placeholder="Price $" value={bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "")} onChange={e => setBidForm(p => ({ ...p, [r.id]: { amount: e.target.value, message: p[r.id]?.message ?? (r.my_message ?? "") } }))} style={{ width:"100px", padding:".5rem .6rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".85rem" }} />
-                      <input placeholder="Short message (optional)" value={bidForm[r.id]?.message ?? (r.my_message ?? "")} onChange={e => setBidForm(p => ({ ...p, [r.id]: { message: e.target.value, amount: p[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "") } }))} style={{ flex:"1 1 150px", padding:".5rem .6rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".85rem" }} />
+                      <input type="number" min="0" placeholder="Price $" value={bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "")} onChange={e => setBidForm(p => ({ ...p, [r.id]: { amount: e.target.value, message: p[r.id]?.message ?? (r.my_message ?? "") } }))} style={{ width:"100px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
+                      <input placeholder="Short message (optional)" value={bidForm[r.id]?.message ?? (r.my_message ?? "")} onChange={e => setBidForm(p => ({ ...p, [r.id]: { message: e.target.value, amount: p[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "") } }))} style={{ flex:"1 1 150px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
                       <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyBid === r.id} onClick={() => placeBid(r)}>{busyBid === r.id ? "…" : (r.my_amount != null ? "Update bid" : "Place bid")}</button>
                     </div>
                   )}
@@ -562,20 +562,20 @@ export default function ContractorDashboard() {
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".75rem", marginBottom:"1.25rem" }}>
                 {[["Name", `${profile?.first_name} ${profile?.last_name}`], ["Email", profile?.email], ["Phone", profile?.phone], ["Experience", `${contractor?.years_of_experience ?? 0} years`], ["Rating", contractor?.rating ? `⭐ ${contractor.rating}` : "No ratings"], ["Status", contractor?.status]].map(([l,v]) => (
                   <div key={l}>
-                    <div style={{ fontSize:".7rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.4)" }}>{l}</div>
-                    <div style={{ fontSize:".9rem", color:"#f0f4ff" }}>{v}</div>
+                    <div style={{ fontSize:".7rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)" }}>{l}</div>
+                    <div style={{ fontSize:".9rem", color:"var(--ff-text)" }}>{v}</div>
                   </div>
                 ))}
               </div>
               {(contractor?.specialties?.length ?? 0) > 0 && (
                 <div style={{ marginBottom:"1rem" }}>
-                  <div style={{ fontSize:".7rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".5rem" }}>Specialties</div>
+                  <div style={{ fontSize:".7rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".5rem" }}>Specialties</div>
                   {contractor.specialties.map((sp: string) => <span key={sp} style={s.chip}>{sp}</span>)}
                 </div>
               )}
               {(contractor?.service_area?.length ?? 0) > 0 && (
                 <div>
-                  <div style={{ fontSize:".7rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".5rem" }}>Service Area</div>
+                  <div style={{ fontSize:".7rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".5rem" }}>Service Area</div>
                   {contractor.service_area.map((z: string) => <span key={z} style={s.chip}><Ic name="map-pin" size={11} style={{ marginRight:3 }} />{z}</span>)}
                 </div>
               )}
@@ -583,38 +583,38 @@ export default function ContractorDashboard() {
             <div style={s.card}>
               <div style={s.cardTitle}>Portfolio &amp; Reviews</div>
               <div style={{ marginBottom:"1.25rem" }}>
-                <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".35rem" }}>Google reviews link</div>
+                <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".35rem" }}>Google reviews link</div>
                 <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
-                  <input value={googleUrl} placeholder="https://g.page/your-business/review" onChange={e => setGoogleUrl(e.target.value)} style={{ flex:"1 1 220px", padding:".55rem .7rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".85rem" }} />
+                  <input value={googleUrl} placeholder="https://g.page/your-business/review" onChange={e => setGoogleUrl(e.target.value)} style={{ flex:"1 1 220px", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
                   <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyPf} onClick={saveGoogleUrl}>Save link</button>
                 </div>
               </div>
-              <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".35rem" }}>Past work photos</div>
-              {portfolio.length === 0 && <p style={{ fontSize:".82rem", color:"rgba(190,205,235,.45)", marginBottom:".75rem" }}>No portfolio items yet. Add your best past jobs below.</p>}
+              <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".35rem" }}>Past work photos</div>
+              {portfolio.length === 0 && <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .45)", marginBottom:".75rem" }}>No portfolio items yet. Add your best past jobs below.</p>}
               {portfolio.length > 0 && (
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap:".75rem", marginBottom:"1rem" }}>
                   {portfolio.map(item => (
-                    <div key={item.id} style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"10px", overflow:"hidden" }}>
+                    <div key={item.id} style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"10px", overflow:"hidden" }}>
                       {item.photo_path && <img src={pfUrl(item.photo_path)} alt={item.title || "Past job"} style={{ width:"100%", height:"100px", objectFit:"cover" as const, display:"block" }} />}
                       <div style={{ padding:".5rem .6rem" }}>
-                        {item.title && <div style={{ fontSize:".8rem", fontWeight:600, color:"#f0f4ff" }}>{item.title}</div>}
-                        {item.description && <div style={{ fontSize:".72rem", color:"rgba(190,205,235,.6)", marginTop:".15rem" }}>{item.description}</div>}
+                        {item.title && <div style={{ fontSize:".8rem", fontWeight:600, color:"var(--ff-text)" }}>{item.title}</div>}
+                        {item.description && <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .6)", marginTop:".15rem" }}>{item.description}</div>}
                         <button onClick={() => deletePortfolioItem(item)} style={{ marginTop:".4rem", fontSize:".7rem", color:"#ef4444", background:"none", border:"none", cursor:"pointer", padding:0 }}>Remove</button>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-              <div style={{ display:"flex", flexDirection:"column", gap:".5rem", borderTop:"1px solid rgba(255,255,255,.07)", paddingTop:".9rem" }}>
-                <input value={pfForm.title} placeholder="Title (e.g. Kitchen sink replacement)" onChange={e => setPfForm(f => ({ ...f, title: e.target.value }))} style={{ padding:".55rem .7rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const }} />
-                <textarea value={pfForm.description} rows={2} placeholder="Short description (optional)" onChange={e => setPfForm(f => ({ ...f, description: e.target.value }))} style={{ padding:".55rem .7rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const }} />
-                <input type="file" accept="image/*" onChange={e => setPfForm(f => ({ ...f, file: e.target.files?.[0] ?? null }))} style={{ fontSize:".8rem", color:"rgba(190,205,235,.7)" }} />
+              <div style={{ display:"flex", flexDirection:"column", gap:".5rem", borderTop:"1px solid rgba(var(--ff-fg), .07)", paddingTop:".9rem" }}>
+                <input value={pfForm.title} placeholder="Title (e.g. Kitchen sink replacement)" onChange={e => setPfForm(f => ({ ...f, title: e.target.value }))} style={{ padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const }} />
+                <textarea value={pfForm.description} rows={2} placeholder="Short description (optional)" onChange={e => setPfForm(f => ({ ...f, description: e.target.value }))} style={{ padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const }} />
+                <input type="file" accept="image/*" onChange={e => setPfForm(f => ({ ...f, file: e.target.files?.[0] ?? null }))} style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)" }} />
                 <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", alignSelf:"flex-start" as const }} disabled={busyPf} onClick={addPortfolioItem}>{busyPf ? "Adding…" : "+ Add portfolio item"}</button>
               </div>
             </div>
             <div style={s.card}>
               <div style={s.cardTitle}>Availability</div>
-              <p style={{ fontSize:".82rem", color:"rgba(190,205,235,.5)", marginBottom:"1.25rem", lineHeight:1.5 }}>
+              <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .5)", marginBottom:"1.25rem", lineHeight:1.5 }}>
                 Tap the time slots you can usually work. Changes save automatically.
               </p>
               {DAYS.map(day => {
@@ -622,9 +622,9 @@ export default function ContractorDashboard() {
                 const slots = getSlots(day);
                 const allOn = slots.every(sl => sel.includes(sl));
                 return (
-                  <div key={day} style={{ marginBottom:".9rem", paddingBottom:".9rem", borderBottom:"1px solid rgba(255,255,255,.05)" }}>
+                  <div key={day} style={{ marginBottom:".9rem", paddingBottom:".9rem", borderBottom:"1px solid rgba(var(--ff-fg), .05)" }}>
                     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:".55rem", flexWrap:"wrap" as const, gap:".5rem" }}>
-                      <div style={{ fontSize:".82rem", fontWeight:600, letterSpacing:".04em", color:"#f0f4ff" }}>{day}</div>
+                      <div style={{ fontSize:".82rem", fontWeight:600, letterSpacing:".04em", color:"var(--ff-text)" }}>{day}</div>
                       <div style={{ display:"flex", gap:".4rem", alignItems:"center" }}>
                         <button
                           onClick={() => setDayAll(day, !allOn)}
@@ -635,7 +635,7 @@ export default function ContractorDashboard() {
                           <button
                             onClick={() => copyDayToAll(day)}
                             title={"Copy " + day + "'s hours to every day"}
-                            style={{ background:"none", border:"1px solid rgba(255,255,255,.12)", borderRadius:"6px", cursor:"pointer", fontFamily:"inherit", fontSize:".72rem", color:"rgba(190,205,235,.7)", padding:".2rem .5rem" }}>
+                            style={{ background:"none", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"6px", cursor:"pointer", fontFamily:"inherit", fontSize:".72rem", color:"rgba(var(--ff-muted), .7)", padding:".2rem .5rem" }}>
                             Copy to all days
                           </button>
                         )}
@@ -666,7 +666,7 @@ export default function ContractorDashboard() {
               {[["$" + totalEarned.toFixed(2), "Total Earned"], [contractor?.total_jobs ?? 0, "Jobs Completed"], [myJobs.filter(j=>j.status==="assigned"||j.status==="in_progress").length, "Active Jobs"], [contractor?.rating ? `⭐ ${contractor.rating}` : "—", "Avg Rating"]].map(([v,l]) => (
                 <div key={String(l)} style={s.earnCard}>
                   <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(1.5rem,6vw,2rem)", letterSpacing:".04em", color:"#ea6b14", marginBottom:".25rem" }}>{v}</div>
-                  <div style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.45)" }}>{l}</div>
+                  <div style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)" }}>{l}</div>
                 </div>
               ))}
             </div>
@@ -679,7 +679,7 @@ export default function ContractorDashboard() {
                 </div>
               ) : (
                 <div>
-                  <p style={{ color:"rgba(190,205,235,.7)", fontSize:".88rem", marginBottom:".9rem", lineHeight:1.5 }}>
+                  <p style={{ color:"rgba(var(--ff-muted), .7)", fontSize:".88rem", marginBottom:".9rem", lineHeight:1.5 }}>
                     {contractor?.stripe_account_id
                       ? "Your payout account needs a few more details before you can be paid. Finish setup with Stripe below."
                       : "Connect a bank account through Stripe to get paid for completed jobs. Funds for each job are released to you after the client confirms the work is done."}
@@ -699,19 +699,19 @@ export default function ContractorDashboard() {
                   </button>
                 )}
               </div>
-              {myJobs.length === 0 ? <p style={{ color:"rgba(190,205,235,.45)" }}>No jobs yet.</p> : myJobs.map(job => (
-                <div key={job.id} style={{ display:"flex", justifyContent:"space-between", padding:".85rem 0", borderBottom:"1px solid rgba(255,255,255,.06)" }}>
+              {myJobs.length === 0 ? <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No jobs yet.</p> : myJobs.map(job => (
+                <div key={job.id} style={{ display:"flex", justifyContent:"space-between", padding:".85rem 0", borderBottom:"1px solid rgba(var(--ff-fg), .06)" }}>
                   <div>
                     <div style={{ fontSize:".9rem" }}>{job.request?.service_needed ?? "Job"}</div>
-                    <div style={{ fontSize:".75rem", color:"rgba(190,205,235,.4)" }}>{new Date(job.created_at).toLocaleDateString()}</div>
+                    <div style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .4)" }}>{new Date(job.created_at).toLocaleDateString()}</div>
                   </div>
                   <div style={{ textAlign:"right" }}>
                     {job.amount ? (
                       <>
                         <div style={{ fontSize:".95rem", fontWeight:600, color:"#22c55e" }}>${netPayout(job).toFixed(2)}</div>
-                        <div style={{ fontSize:".66rem", color:"rgba(190,205,235,.4)" }}>your payout · ${job.amount} quote</div>
+                        <div style={{ fontSize:".66rem", color:"rgba(var(--ff-muted), .4)" }}>your payout · ${job.amount} quote</div>
                       </>
-                    ) : <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.4)" }}>TBD</div>}
+                    ) : <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)" }}>TBD</div>}
                     <div style={{ fontSize:".72rem", textTransform:"capitalize", color: STATUS_COLORS[job.status], marginTop:".15rem" }}>{job.status.replace("_"," ")}</div>
                   </div>
                 </div>
@@ -726,7 +726,7 @@ export default function ContractorDashboard() {
               <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
                 <div style={{ marginBottom:"1rem" }}><Ic name="star" size={48} color="#ea6b14" /></div>
                 <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", marginBottom:".5rem" }}>No Reviews Yet</h2>
-                <p style={{ color:"rgba(190,205,235,.5)" }}>Reviews from clients appear here after jobs are completed.</p>
+                <p style={{ color:"rgba(var(--ff-muted), .5)" }}>Reviews from clients appear here after jobs are completed.</p>
               </div>
             ) : (
               <>
@@ -737,23 +737,23 @@ export default function ContractorDashboard() {
                     ["Results", myReviews.reduce((a,r)=>a+(r.result_score??0),0)/myReviews.length || 0],
                   ].map(([label, avg]) => (
                     <div key={String(label)} style={s.earnCard}>
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"#ea6b14", marginBottom:".25rem" }}>{(avg as number).toFixed(1)}<span style={{ fontSize:"1rem", color:"rgba(190,205,235,.4)" }}>/10</span></div>
-                      <div style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(190,205,235,.45)" }}>{label}</div>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"#ea6b14", marginBottom:".25rem" }}>{(avg as number).toFixed(1)}<span style={{ fontSize:"1rem", color:"rgba(var(--ff-muted), .4)" }}>/10</span></div>
+                      <div style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)" }}>{label}</div>
                     </div>
                   ))}
                 </div>
                 {myReviews.map(r => (
                   <div key={r.id} style={{ ...s.card, marginBottom:"1rem" }}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:".75rem" }}>
-                      <div style={{ fontWeight:500, color:"#f0f4ff" }}>{r.client?.first_name ?? "Client"}</div>
-                      <div style={{ fontSize:".75rem", color:"rgba(190,205,235,.4)" }}>{new Date(r.created_at).toLocaleDateString()}</div>
+                      <div style={{ fontWeight:500, color:"var(--ff-text)" }}>{r.client?.first_name ?? "Client"}</div>
+                      <div style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .4)" }}>{new Date(r.created_at).toLocaleDateString()}</div>
                     </div>
                     <div style={{ display:"flex", gap:".5rem", marginBottom:".75rem", flexWrap:"wrap" as const }}>
                       {[["Price", r.price_score], ["Experience", r.experience_score], ["Results", r.result_score]].map(([l, v]) => v != null && (
                         <span key={String(l)} style={{ ...s.chip, background:"rgba(234,107,20,.08)", fontSize:".76rem" }}>{l}: <strong style={{ color:"#ea6b14" }}>{v}/10</strong></span>
                       ))}
                     </div>
-                    {r.comment && <p style={{ fontSize:".88rem", color:"rgba(190,205,235,.75)", lineHeight:1.6, margin:0 }}>{r.comment}</p>}
+                    {r.comment && <p style={{ fontSize:".88rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.6, margin:0 }}>{r.comment}</p>}
                   </div>
                 ))}
               </>

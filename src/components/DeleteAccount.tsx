@@ -41,16 +41,16 @@ export default function DeleteAccount() {
   const s = {
     card:    { background:"rgba(239,68,68,.05)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"14px", padding:"1.5rem", marginBottom:"1.5rem" },
     title:   { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", color:"#ef4444", marginBottom:".75rem" },
-    desc:    { color:"rgba(190,205,235,.6)", fontSize:".88rem", lineHeight:1.5, marginBottom:"1.1rem" },
+    desc:    { color:"rgba(var(--ff-muted), .6)", fontSize:".88rem", lineHeight:1.5, marginBottom:"1.1rem" },
     danger:  { padding:".6rem 1.1rem", background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.4)", borderRadius:"8px", color:"#fca5a5", fontFamily:"inherit", fontSize:".85rem", fontWeight:500, cursor:"pointer" },
     overlay: { position:"fixed" as const, inset:0, background:"rgba(10,14,24,.7)", display:"flex", alignItems:"center", justifyContent:"center", padding:"1.5rem", zIndex:1000 },
-    modal:   { background:"#151d2e", border:"1px solid rgba(255,255,255,.1)", borderRadius:"16px", padding:"1.75rem", maxWidth:"440px", width:"100%", fontFamily:"'DM Sans',sans-serif", color:"#f0f4ff" },
+    modal:   { background:"var(--ff-surface)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"16px", padding:"1.75rem", maxWidth:"440px", width:"100%", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
     mTitle:  { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".04em", marginBottom:"1rem" },
-    mText:   { color:"rgba(190,205,235,.75)", fontSize:".9rem", lineHeight:1.6, marginBottom:"1rem" },
-    input:   { width:"100%", boxSizing:"border-box" as const, padding:".7rem 1rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".95rem", letterSpacing:".05em", outline:"none", marginBottom:"1rem" },
+    mText:   { color:"rgba(var(--ff-muted), .75)", fontSize:".9rem", lineHeight:1.6, marginBottom:"1rem" },
+    input:   { width:"100%", boxSizing:"border-box" as const, padding:".7rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".95rem", letterSpacing:".05em", outline:"none", marginBottom:"1rem" },
     err:     { color:"#fca5a5", fontSize:".82rem", marginBottom:"1rem" },
     row:     { display:"flex", gap:".75rem", justifyContent:"flex-end", flexWrap:"wrap" as const },
-    cancel:  { padding:".6rem 1.1rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"rgba(190,205,235,.8)", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer" },
+    cancel:  { padding:".6rem 1.1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"rgba(var(--ff-muted), .8)", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer" },
     confirm: { padding:".6rem 1.1rem", background:"#ef4444", border:"none", borderRadius:"8px", color:"#fff", fontFamily:"inherit", fontSize:".85rem", fontWeight:600, cursor:"pointer" },
   };
 

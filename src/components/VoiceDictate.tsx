@@ -101,7 +101,7 @@ export default function VoiceDictate({
         {listening ? "Listening... tap to stop" : "Speak instead of typing"}
       </button>
       {listening && interim && (
-        <p style={{ margin: "0.4rem 0 0", fontSize: "0.85rem", color: "rgba(190,205,235,.65)", fontStyle: "italic" }}>
+        <p style={{ margin: "0.4rem 0 0", fontSize: "0.85rem", color: "rgba(var(--ff-muted), .65)", fontStyle: "italic" }}>
           {interim}
         </p>
       )}

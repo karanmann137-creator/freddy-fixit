@@ -191,55 +191,55 @@ export default function NewRequest() {
     }
   };
 
-  const inp = { width:"100%", padding:".75rem 1rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.1)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".95rem", outline:"none", boxSizing:"border-box" as const };
+  const inp = { width:"100%", padding:".75rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".95rem", outline:"none", boxSizing:"border-box" as const };
   const s = {
-    wrap: { minHeight:"100vh", background:"#1a2236", padding:"3rem 1rem 4rem", fontFamily:"'DM Sans',sans-serif", color:"#f0f4ff" },
+    wrap: { minHeight:"100vh", background:"var(--ff-bg)", padding:"3rem 1rem 4rem", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
     inner: { maxWidth:"580px", margin:"0 auto" },
-    card: { background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"14px", padding:"2rem" },
-    label: { display:"block", fontSize:".78rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.6)", marginBottom:".6rem" },
+    card: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"2rem" },
+    label: { display:"block", fontSize:".78rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .6)", marginBottom:".6rem" },
     err: { fontSize:".78rem", color:"#f87171", marginTop:".35rem" },
-    svcBtn: { display:"flex", alignItems:"center", gap:".65rem", padding:".9rem 1rem", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"10px", color:"rgba(190,205,235,.8)", fontFamily:"inherit", fontSize:".88rem", cursor:"pointer", textAlign:"left" as const, width:"100%" },
-    svcBtnSel: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.5)", color:"#f0f4ff" },
-    schedBtn: { display:"flex", alignItems:"center", gap:"1rem", padding:"1rem 1.2rem", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"10px", color:"rgba(190,205,235,.8)", fontFamily:"inherit", cursor:"pointer", textAlign:"left" as const, width:"100%", marginBottom:".75rem" },
-    schedBtnSel: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.5)", color:"#f0f4ff" },
-    addrBtn: { display:"flex", alignItems:"center", gap:".6rem", padding:".85rem 1rem", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"10px", color:"rgba(190,205,235,.85)", fontFamily:"inherit", fontSize:".9rem", cursor:"pointer", textAlign:"left" as const, width:"100%", marginBottom:".6rem" },
-    addrBtnSel: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.5)", color:"#f0f4ff" },
+    svcBtn: { display:"flex", alignItems:"center", gap:".65rem", padding:".9rem 1rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"10px", color:"rgba(var(--ff-muted), .8)", fontFamily:"inherit", fontSize:".88rem", cursor:"pointer", textAlign:"left" as const, width:"100%" },
+    svcBtnSel: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.5)", color:"var(--ff-text)" },
+    schedBtn: { display:"flex", alignItems:"center", gap:"1rem", padding:"1rem 1.2rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"10px", color:"rgba(var(--ff-muted), .8)", fontFamily:"inherit", cursor:"pointer", textAlign:"left" as const, width:"100%", marginBottom:".75rem" },
+    schedBtnSel: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.5)", color:"var(--ff-text)" },
+    addrBtn: { display:"flex", alignItems:"center", gap:".6rem", padding:".85rem 1rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"10px", color:"rgba(var(--ff-muted), .85)", fontFamily:"inherit", fontSize:".9rem", cursor:"pointer", textAlign:"left" as const, width:"100%", marginBottom:".6rem" },
+    addrBtnSel: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.5)", color:"var(--ff-text)" },
     navBtn: { flex:1, padding:".85rem 1.5rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer", border:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:".4rem" },
   };
 
-  if (loading) return <div style={{ minHeight:"100vh", background:"#1a2236" }} />;
+  if (loading) return <div style={{ minHeight:"100vh", background:"var(--ff-bg)" }} />;
 
   return (
     <div style={s.wrap}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       <div style={s.inner}>
-        <button onClick={() => setLocation("/client-dashboard")} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(190,205,235,.5)", fontFamily:"inherit", fontSize:".82rem", textTransform:"uppercase", letterSpacing:".08em", padding:0, marginBottom:"2rem", display:"block" }}>
+        <button onClick={() => setLocation("/client-dashboard")} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".82rem", textTransform:"uppercase", letterSpacing:".08em", padding:0, marginBottom:"2rem", display:"block" }}>
           ← Dashboard
         </button>
         <p style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".15em", color:"#ea6b14", marginBottom:".4rem" }}>New Request</p>
         <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:".4rem" }}>
           Welcome back{profile?.first_name ? ", " + profile.first_name : ""}
         </h1>
-        <p style={{ color:"rgba(190,205,235,.6)", fontSize:".9rem", marginBottom:"2rem" }}>
+        <p style={{ color:"rgba(var(--ff-muted), .6)", fontSize:".9rem", marginBottom:"2rem" }}>
           We've got your details on file — just tell us about this job.
         </p>
 
         <div style={s.card}>
           {/* Contact summary (read-only) */}
-          <div style={{ marginBottom:"1.75rem", paddingBottom:"1.25rem", borderBottom:"1px solid rgba(255,255,255,.08)" }}>
+          <div style={{ marginBottom:"1.75rem", paddingBottom:"1.25rem", borderBottom:"1px solid rgba(var(--ff-fg), .08)" }}>
             <div style={s.label}>Submitting as</div>
             <div style={{ fontSize:".95rem", fontWeight:500 }}>
               {[profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Your account"}
-              {isBusiness && lastReq?.business_name ? <span style={{ color:"rgba(190,205,235,.6)", fontWeight:400 }}> · {lastReq.business_name}</span> : null}
+              {isBusiness && lastReq?.business_name ? <span style={{ color:"rgba(var(--ff-muted), .6)", fontWeight:400 }}> · {lastReq.business_name}</span> : null}
             </div>
-            <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.55)", marginTop:".2rem" }}>
+            <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .55)", marginTop:".2rem" }}>
               {[profile?.email, profile?.phone].filter(Boolean).join(" · ")}
             </div>
-            <p style={{ fontSize:".75rem", color:"rgba(190,205,235,.4)", marginTop:".5rem" }}>Need to change your name or phone? Update it in your profile.</p>
+            <p style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .4)", marginTop:".5rem" }}>Need to change your name or phone? Update it in your profile.</p>
           </div>
 
           {/* Services */}
-          <p style={s.label}>What do you need? <span style={{ color:"rgba(190,205,235,.4)", textTransform:"none", letterSpacing:0 }}>(select all that apply)</span></p>
+          <p style={s.label}>What do you need? <span style={{ color:"rgba(var(--ff-muted), .4)", textTransform:"none", letterSpacing:0 }}>(select all that apply)</span></p>
           <div style={{ maxWidth:"100%", overflowX:"hidden", display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:".75rem", marginBottom:".5rem" }}>
             {SERVICES.map(sv => (
               <button key={sv.label} style={{ ...s.svcBtn, ...(selectedServices.includes(sv.label) ? s.svcBtnSel : {}) }} onClick={() => toggleService(sv.label)}>
@@ -256,7 +256,7 @@ export default function NewRequest() {
           {SCHEDULES.map(sc => (
             <button key={sc.label} style={{ ...s.schedBtn, ...(schedule === sc.label ? s.schedBtnSel : {}) }} onClick={() => { setSchedule(sc.label); setErrors(e => ({ ...e, schedule:"" })); }}>
               <span style={{ fontSize:"1.5rem" }}><Ic name={sc.iconName as any} size={22} color="#ea6b14" /></span>
-              <div><div style={{ fontSize:".95rem", fontWeight:500 }}>{sc.label}</div><div style={{ fontSize:".78rem", color:"rgba(190,205,235,.5)" }}>{sc.sub}</div></div>
+              <div><div style={{ fontSize:".95rem", fontWeight:500 }}>{sc.label}</div><div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .5)" }}>{sc.sub}</div></div>
             </button>
           ))}
           {errors.schedule && <p style={s.err}>{errors.schedule}</p>}
@@ -270,9 +270,9 @@ export default function NewRequest() {
                     <button key={f} type="button"
                       onClick={() => setRecurringFrequency(f)}
                       style={{ padding:".6rem 1.1rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", border:"1px solid",
-                        background: recurringFrequency===f ? "rgba(234,107,20,.2)" : "rgba(255,255,255,.04)",
-                        borderColor: recurringFrequency===f ? "#ea6b14" : "rgba(255,255,255,.12)",
-                        color: recurringFrequency===f ? "#f0f4ff" : "rgba(190,205,235,.7)" }}>
+                        background: recurringFrequency===f ? "rgba(234,107,20,.2)" : "rgba(var(--ff-fg), .04)",
+                        borderColor: recurringFrequency===f ? "#ea6b14" : "rgba(var(--ff-fg), .12)",
+                        color: recurringFrequency===f ? "var(--ff-text)" : "rgba(var(--ff-muted), .7)" }}>
                       {{ weekly:"Every Week", biweekly:"Every 2 Weeks", monthly:"Once a Month", seasonal:"Seasonal" }[f]}
                     </button>
                   ))}
@@ -284,7 +284,7 @@ export default function NewRequest() {
                   <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
                     {SEASON_PRESETS.map(sp => (
                       <button key={sp.label} type="button" onClick={() => applySeason(sp)}
-                        style={{ padding:".5rem .9rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer", border:"1px solid rgba(255,255,255,.15)", background:"rgba(255,255,255,.05)", color:"rgba(190,205,235,.8)" }}>
+                        style={{ padding:".5rem .9rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer", border:"1px solid rgba(var(--ff-fg), .15)", background:"rgba(var(--ff-fg), .05)", color:"rgba(var(--ff-muted), .8)" }}>
                         {sp.label}
                       </button>
                     ))}
@@ -317,13 +317,13 @@ export default function NewRequest() {
                 {prevAddress && !lastIsSaved && (
                   <button style={{ ...s.addrBtn, ...(addrChoice === "last" ? s.addrBtnSel : {}) }} onClick={() => pick("last")}>
                     <span><Ic name={addrChoice === "last" ? "radio-on" : "radio-off"} size={16} color="#ea6b14" /></span>
-                    <span>Same as last time — <span style={{ color:"rgba(190,205,235,.6)" }}>{prevAddress}</span></span>
+                    <span>Same as last time — <span style={{ color:"rgba(var(--ff-muted), .6)" }}>{prevAddress}</span></span>
                   </button>
                 )}
                 {savedAddresses.map(a => (
                   <button key={a.id} style={{ ...s.addrBtn, ...(addrChoice === a.id ? s.addrBtnSel : {}) }} onClick={() => pick(a.id)}>
                     <span><Ic name={addrChoice === a.id ? "radio-on" : "radio-off"} size={16} color="#ea6b14" /></span>
-                    <span>{a.label ? <strong style={{ marginRight:6 }}>{a.label}</strong> : null}<span style={{ color:"rgba(190,205,235,.75)" }}>{a.address}</span></span>
+                    <span>{a.label ? <strong style={{ marginRight:6 }}>{a.label}</strong> : null}<span style={{ color:"rgba(var(--ff-muted), .75)" }}>{a.address}</span></span>
                   </button>
                 ))}
                 <button style={{ ...s.addrBtn, ...(addrChoice === "new" ? s.addrBtnSel : {}) }} onClick={() => pick("new")}>
@@ -332,8 +332,8 @@ export default function NewRequest() {
                 </button>
                 {addrChoice === "new" && (
                   <>
-                    <input style={{ ...inp, marginTop:".4rem", borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} placeholder="e.g. 123 Main St NW" value={newLocation} onChange={e => { setNewLocation(e.target.value); setErrors(er => ({ ...er, location:"" })); }} />
-                    <label style={{ display:"flex", alignItems:"center", gap:".5rem", cursor:"pointer", fontSize:".82rem", color:"rgba(190,205,235,.7)", marginTop:".5rem" }}>
+                    <input style={{ ...inp, marginTop:".4rem", borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="e.g. 123 Main St NW" value={newLocation} onChange={e => { setNewLocation(e.target.value); setErrors(er => ({ ...er, location:"" })); }} />
+                    <label style={{ display:"flex", alignItems:"center", gap:".5rem", cursor:"pointer", fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginTop:".5rem" }}>
                       <input type="checkbox" checked={saveNewAddress} onChange={e => setSaveNewAddress(e.target.checked)} style={{ width:"15px", height:"15px", accentColor:"#ea6b14" }} />
                       Save this address for next time
                     </label>
@@ -368,7 +368,7 @@ export default function NewRequest() {
                     <input style={{ ...inp, flex:"1 1 110px", minWidth:0 }} placeholder="Make" value={vehMake} onChange={e => setVehMake(e.target.value)} />
                     <input style={{ ...inp, flex:"1 1 110px", minWidth:0 }} placeholder="Model" value={vehModel} onChange={e => setVehModel(e.target.value)} />
                   </div>
-                  <label style={{ display:"flex", alignItems:"center", gap:".5rem", cursor:"pointer", fontSize:".82rem", color:"rgba(190,205,235,.7)", marginTop:".5rem" }}>
+                  <label style={{ display:"flex", alignItems:"center", gap:".5rem", cursor:"pointer", fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginTop:".5rem" }}>
                     <input type="checkbox" checked={saveNewVehicle} onChange={e => setSaveNewVehicle(e.target.checked)} style={{ width:"15px", height:"15px", accentColor:"#ea6b14" }} />
                     Save this vehicle for next time
                   </label>
@@ -378,7 +378,7 @@ export default function NewRequest() {
           )}
 
           {isBusiness && (
-            <label style={{ display:"flex", alignItems:"center", gap:".5rem", cursor:"pointer", fontSize:".88rem", color:"rgba(240,244,255,.85)", marginTop:"1rem" }}>
+            <label style={{ display:"flex", alignItems:"center", gap:".5rem", cursor:"pointer", fontSize:".88rem", color:"rgba(var(--ff-fg), .85)", marginTop:"1rem" }}>
               <input type="checkbox" checked={recurring} onChange={e => setRecurring(e.target.checked)} style={{ width:"16px", height:"16px", accentColor:"#ea6b14" }} />
               This is recurring / scheduled maintenance
             </label>
@@ -387,7 +387,7 @@ export default function NewRequest() {
           {/* Description */}
           <div style={{ marginTop:"1.75rem", marginBottom:"1.2rem" }}>
             <label style={s.label}>Describe the job</label>
-            <textarea style={{ ...inp, resize:"vertical", minHeight:"120px", borderColor: errors.description ? "rgba(239,68,68,.6)" : "rgba(255,255,255,.1)" }} placeholder="Tell us what's broken or what you need done." value={description} onChange={e => { setDescription(e.target.value); setErrors(er => ({ ...er, description:"" })); }} />
+            <textarea style={{ ...inp, resize:"vertical", minHeight:"120px", borderColor: errors.description ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="Tell us what's broken or what you need done." value={description} onChange={e => { setDescription(e.target.value); setErrors(er => ({ ...er, description:"" })); }} />
             <VoiceDictate onAppend={(t) => { setDescription(d => (d.trim() ? d.trim() + " " : "") + t); setErrors(er => ({ ...er, description:"" })); }} />
             {errors.description && <p style={s.err}>{errors.description}</p>}
           </div>
@@ -395,13 +395,13 @@ export default function NewRequest() {
           {/* Photo */}
           <div style={{ marginBottom:"1.2rem" }}>
             <label style={s.label}>Photo of the problem <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
-            <label htmlFor="nr-photo-upload" style={{ display:"flex", alignItems:"center", gap:".75rem", border:"2px dashed " + (photoFile ? "rgba(234,107,20,.5)" : "rgba(255,255,255,.12)"), borderRadius:"10px", padding:"1rem 1.25rem", cursor:"pointer", background: photoFile ? "rgba(234,107,20,.05)" : "transparent", transition:"border-color .2s,background .2s" }}>
+            <label htmlFor="nr-photo-upload" style={{ display:"flex", alignItems:"center", gap:".75rem", border:"2px dashed " + (photoFile ? "rgba(234,107,20,.5)" : "rgba(var(--ff-fg), .12)"), borderRadius:"10px", padding:"1rem 1.25rem", cursor:"pointer", background: photoFile ? "rgba(234,107,20,.05)" : "transparent", transition:"border-color .2s,background .2s" }}>
               <Ic name="camera" size={22} color="#ea6b14" style={{ flexShrink:0 }} />
               <div>
-                <p style={{ margin:0, fontSize:".85rem", color: photoFile ? "#ea6b14" : "rgba(190,205,235,.7)", fontWeight:500 }}>
+                <p style={{ margin:0, fontSize:".85rem", color: photoFile ? "#ea6b14" : "rgba(var(--ff-muted), .7)", fontWeight:500 }}>
                   {photoFile ? photoFile.name : "Attach a photo"}
                 </p>
-                <p style={{ margin:".2rem 0 0", fontSize:".74rem", color:"rgba(190,205,235,.4)" }}>
+                <p style={{ margin:".2rem 0 0", fontSize:".74rem", color:"rgba(var(--ff-muted), .4)" }}>
                   {photoFile ? "Tap to change" : "Tap to choose — max 5 MB"}
                 </p>
               </div>
@@ -409,7 +409,7 @@ export default function NewRequest() {
             </label>
           </div>
 
-          <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", marginTop:"1.5rem", padding:"1rem", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"8px" }}>
+          <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", marginTop:"1.5rem", padding:"1rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
             <input
               type="checkbox"
               id="nr-agree-terms"
@@ -417,7 +417,7 @@ export default function NewRequest() {
               onChange={e => { setAgreedToTerms(e.target.checked); if (e.target.checked) setSubmitError(""); }}
               style={{ marginTop:"2px", accentColor:"#ea6b14", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }}
             />
-            <label htmlFor="nr-agree-terms" style={{ fontSize:".82rem", color:"rgba(190,205,235,.7)", lineHeight:1.6, cursor:"pointer", fontWeight:300 }}>
+            <label htmlFor="nr-agree-terms" style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.6, cursor:"pointer", fontWeight:300 }}>
               I agree to Freddy Fix It&rsquo;s{" "}
               <a href="/user-agreement" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>User Agreement</a>
               {" "}and{" "}
@@ -429,7 +429,7 @@ export default function NewRequest() {
         </div>
 
         <div style={{ display:"flex", gap:".75rem", marginTop:"2rem" }}>
-          <button style={{ ...s.navBtn, background:"rgba(255,255,255,.06)", color:"rgba(190,205,235,.8)", border:"1px solid rgba(255,255,255,.1)" }} onClick={() => setLocation("/client-dashboard")}>← Cancel</button>
+          <button style={{ ...s.navBtn, background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"1px solid rgba(var(--ff-fg), .1)" }} onClick={() => setLocation("/client-dashboard")}>← Cancel</button>
           <button style={{ ...s.navBtn, background:"linear-gradient(135deg,#ea6b14,#f09020)", color:"#fff", opacity: submitting ? .6 : 1 }} onClick={submit} disabled={submitting}>
             {submitting ? "Submitting…" : "Submit Request →"}
           </button>

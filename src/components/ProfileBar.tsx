@@ -93,10 +93,10 @@ export default function ProfileBar({ role, onSaved }: { role: Role; onSaved?: ()
     }
   };
 
-  const wrap: React.CSSProperties = { background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: "12px", padding: "1rem 1.25rem", marginBottom: "1.5rem" };
-  const inp: React.CSSProperties = { width: "100%", padding: ".6rem .8rem", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.1)", borderRadius: "8px", color: "#f0f4ff", fontFamily: "inherit", fontSize: ".9rem", outline: "none", boxSizing: "border-box" };
-  const lbl: React.CSSProperties = { display: "block", fontSize: ".7rem", textTransform: "uppercase", letterSpacing: ".1em", color: "rgba(190,205,235,.5)", marginBottom: ".35rem" };
-  const ghostBtn: React.CSSProperties = { padding: ".55rem 1.1rem", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.12)", borderRadius: "8px", color: "rgba(190,205,235,.8)", fontFamily: "inherit", fontSize: ".83rem", cursor: "pointer" };
+  const wrap: React.CSSProperties = { background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: "12px", padding: "1rem 1.25rem", marginBottom: "1.5rem" };
+  const inp: React.CSSProperties = { width: "100%", padding: ".6rem .8rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .1)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".9rem", outline: "none", boxSizing: "border-box" };
+  const lbl: React.CSSProperties = { display: "block", fontSize: ".7rem", textTransform: "uppercase", letterSpacing: ".1em", color: "rgba(var(--ff-muted), .5)", marginBottom: ".35rem" };
+  const ghostBtn: React.CSSProperties = { padding: ".55rem 1.1rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: "8px", color: "rgba(var(--ff-muted), .8)", fontFamily: "inherit", fontSize: ".83rem", cursor: "pointer" };
   const primaryBtn: React.CSSProperties = { padding: ".55rem 1.3rem", background: "#ea6b14", border: "none", borderRadius: "8px", color: "#fff", fontFamily: "inherit", fontSize: ".83rem", fontWeight: 500, cursor: "pointer" };
 
   if (loading) return null;
@@ -108,11 +108,11 @@ export default function ProfileBar({ role, onSaved }: { role: Role; onSaved?: ()
           <Ic name="user" size={18} color="#ea6b14" />
         </div>
         <div style={{ flex: 1, minWidth: "160px" }}>
-          <div style={{ fontSize: ".95rem", fontWeight: 500, color: "#f0f4ff" }}>
+          <div style={{ fontSize: ".95rem", fontWeight: 500, color: "var(--ff-text)" }}>
             {displayName}
             <span style={{ fontSize: ".62rem", textTransform: "uppercase", letterSpacing: ".08em", background: "rgba(234,107,20,.15)", color: "#ea6b14", borderRadius: "4px", padding: ".12rem .4rem", marginLeft: ".5rem", verticalAlign: "middle" }}>{roleLabel}</span>
           </div>
-          <div style={{ fontSize: ".8rem", color: "rgba(190,205,235,.5)" }}>{email}{form.phone ? " · " + form.phone : ""}</div>
+          <div style={{ fontSize: ".8rem", color: "rgba(var(--ff-muted), .5)" }}>{email}{form.phone ? " · " + form.phone : ""}</div>
         </div>
         <button style={open ? ghostBtn : primaryBtn} onClick={() => { setOpen(o => !o); setSaved(false); setError(""); }}>
           {open ? "Close" : "Edit profile"}
@@ -120,7 +120,7 @@ export default function ProfileBar({ role, onSaved }: { role: Role; onSaved?: ()
       </div>
 
       {open && (
-        <div style={{ marginTop: "1.1rem", borderTop: "1px solid rgba(255,255,255,.07)", paddingTop: "1.1rem" }}>
+        <div style={{ marginTop: "1.1rem", borderTop: "1px solid rgba(var(--ff-fg), .07)", paddingTop: "1.1rem" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".9rem" }}>
             <div>
               <label style={lbl}>First name</label>
@@ -135,13 +135,13 @@ export default function ProfileBar({ role, onSaved }: { role: Role; onSaved?: ()
               <input style={inp} type="tel" value={form.phone} onChange={e => setF("phone", e.target.value)} placeholder="403-555-0100" />
             </div>
             <div>
-              <label style={lbl}>Email <span style={{ textTransform: "none", letterSpacing: 0, color: "rgba(190,205,235,.4)" }}>(sign-in — can't be changed here)</span></label>
+              <label style={lbl}>Email <span style={{ textTransform: "none", letterSpacing: 0, color: "rgba(var(--ff-muted), .4)" }}>(sign-in — can't be changed here)</span></label>
               <input style={{ ...inp, opacity: .6, cursor: "not-allowed" }} value={email} disabled readOnly />
             </div>
             {role === "contractor" && (
               <>
                 <div>
-                  <label style={lbl}>Company <span style={{ textTransform: "none", letterSpacing: 0, color: "rgba(190,205,235,.4)" }}>(optional)</span></label>
+                  <label style={lbl}>Company <span style={{ textTransform: "none", letterSpacing: 0, color: "rgba(var(--ff-muted), .4)" }}>(optional)</span></label>
                   <input style={inp} value={form.companyName} onChange={e => setF("companyName", e.target.value)} placeholder="Company name" />
                 </div>
                 <div>

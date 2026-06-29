@@ -486,10 +486,10 @@ function upsertMeta(selector: string, attr: "name" | "property" | "rel", key: st
   el.setAttribute(valueAttr, content);
 }
 
-const NAVY = "#1a2236";
+const NAVY = "var(--ff-bg)";
 const ORANGE = "#ea6b14";
-const TEXT = "#f0f4ff";
-const MUTED = "rgba(190,205,235,.82)";
+const TEXT = "var(--ff-text)";
+const MUTED = "rgba(var(--ff-muted), .82)";
 
 export default function ServiceLanding() {
   const params = useParams<{ slug: string }>();
@@ -561,10 +561,10 @@ export default function ServiceLanding() {
   return (
     <div style={{ fontFamily: "'DM Sans',sans-serif", background: NAVY, color: TEXT, minHeight: "100vh", padding: "6rem 1.5rem 5rem" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-      <style>{"h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.05em} .sl-btn{background:#ea6b14;color:#fff;border:none;padding:.85rem 1.6rem;border-radius:8px;font-size:1.02rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:transform .15s,box-shadow .15s} .sl-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(234,107,20,.32)} .sl-link{color:#ea6b14;text-decoration:none} .sl-link:hover{text-decoration:underline} .sl-card{background:#151d2e;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:1.1rem 1.2rem}"}</style>
+      <style>{"h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.05em} .sl-btn{background:#ea6b14;color:#fff;border:none;padding:.85rem 1.6rem;border-radius:8px;font-size:1.02rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:transform .15s,box-shadow .15s} .sl-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(234,107,20,.32)} .sl-link{color:#ea6b14;text-decoration:none} .sl-link:hover{text-decoration:underline} .sl-card{background:var(--ff-surface);border:1px solid rgba(var(--ff-fg), .07);border-radius:12px;padding:1.1rem 1.2rem}"}</style>
 
       <div style={{ maxWidth: 820, margin: "0 auto" }}>
-        <button onClick={() => setLocation("/services")} style={{ background: "transparent", border: "1px solid rgba(255,255,255,.12)", color: "rgba(190,205,235,.6)", padding: ".4rem .9rem", borderRadius: 6, cursor: "pointer", fontSize: ".82rem", fontFamily: "'DM Sans',sans-serif" }}>← All services</button>
+        <button onClick={() => setLocation("/services")} style={{ background: "transparent", border: "1px solid rgba(var(--ff-fg), .12)", color: "rgba(var(--ff-muted), .6)", padding: ".4rem .9rem", borderRadius: 6, cursor: "pointer", fontSize: ".82rem", fontFamily: "'DM Sans',sans-serif" }}>← All services</button>
 
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginTop: "1.4rem" }}>
           <div style={{ width: 56, height: 56, borderRadius: 14, background: "rgba(234,107,20,.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -588,7 +588,7 @@ export default function ServiceLanding() {
             { icon: "dollar", t: "Payment held until you confirm" },
             { icon: "map-pin", t: "Calgary local" },
           ].map((b) => (
-            <div key={b.t} style={{ display: "flex", alignItems: "center", gap: ".45rem", background: "#151d2e", border: "1px solid rgba(255,255,255,.07)", borderRadius: 999, padding: ".4rem .9rem", fontSize: ".86rem", color: MUTED }}>
+            <div key={b.t} style={{ display: "flex", alignItems: "center", gap: ".45rem", background: "var(--ff-surface)", border: "1px solid rgba(var(--ff-fg), .07)", borderRadius: 999, padding: ".4rem .9rem", fontSize: ".86rem", color: MUTED }}>
               <Ic name={b.icon as any} size={15} color={ORANGE} />{b.t}
             </div>
           ))}
@@ -631,7 +631,7 @@ export default function ServiceLanding() {
         <h2 style={{ color: ORANGE, fontSize: "1.3rem", marginBottom: "1rem" }}>Related services</h2>
         <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap", marginBottom: "3rem" }}>
           {svc.related.filter((r) => SERVICES[r]).map((r) => (
-            <a key={r} className="sl-link" href={"/services/" + r} style={{ background: "#151d2e", border: "1px solid rgba(255,255,255,.07)", borderRadius: 999, padding: ".4rem .9rem", fontSize: ".88rem" }}>{SERVICES[r].name}</a>
+            <a key={r} className="sl-link" href={"/services/" + r} style={{ background: "var(--ff-surface)", border: "1px solid rgba(var(--ff-fg), .07)", borderRadius: 999, padding: ".4rem .9rem", fontSize: ".88rem" }}>{SERVICES[r].name}</a>
           ))}
         </div>
 

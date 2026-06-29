@@ -71,7 +71,7 @@ export default function ChatWidget() {
         <div style={{
           position: "fixed", bottom: "5.5rem", right: "1.5rem",
           width: "360px", maxHeight: "520px",
-          background: "#1a2236", border: "1px solid rgba(255,255,255,.12)",
+          background: "var(--ff-bg)", border: "1px solid rgba(var(--ff-fg), .12)",
           borderRadius: "16px", display: "flex", flexDirection: "column",
           boxShadow: "0 20px 60px rgba(0,0,0,.6)", zIndex: 9999,
           fontFamily: "'DM Sans', sans-serif",
@@ -80,7 +80,7 @@ export default function ChatWidget() {
           {/* Header */}
           <div style={{
             padding: "1rem 1.25rem", background: "rgba(234,107,20,.12)",
-            borderBottom: "1px solid rgba(255,255,255,.08)",
+            borderBottom: "1px solid rgba(var(--ff-fg), .08)",
             display: "flex", alignItems: "center", justifyContent: "space-between",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: ".75rem" }}>
@@ -91,7 +91,7 @@ export default function ChatWidget() {
                 fontSize: "1.1rem",
               }}>🔧</div>
               <div>
-                <div style={{ fontSize: ".9rem", fontWeight: 600, color: "#f0f4ff" }}>Freddy</div>
+                <div style={{ fontSize: ".9rem", fontWeight: 600, color: "var(--ff-text)" }}>Freddy</div>
                 <div style={{ fontSize: ".72rem", color: "#ea6b14", display: "flex", alignItems: "center", gap: ".3rem" }}>
                   <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
                   AI assistant · Online
@@ -100,7 +100,7 @@ export default function ChatWidget() {
             </div>
             <button onClick={() => setOpen(false)} style={{
               background: "none", border: "none", cursor: "pointer",
-              color: "rgba(190,205,235,.5)", fontSize: "1.2rem", lineHeight: 1, padding: 4,
+              color: "rgba(var(--ff-muted), .5)", fontSize: "1.2rem", lineHeight: 1, padding: 4,
             }}>✕</button>
           </div>
 
@@ -108,7 +108,7 @@ export default function ChatWidget() {
           <div style={{
             flex: 1, overflowY: "auto", padding: "1rem",
             display: "flex", flexDirection: "column", gap: ".75rem",
-            scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,.1) transparent",
+            scrollbarWidth: "thin", scrollbarColor: "rgba(var(--ff-fg), .1) transparent",
           }}>
             {messages.map((m, i) => (
               <div key={i} style={{
@@ -120,10 +120,10 @@ export default function ChatWidget() {
                   borderRadius: m.role === "user" ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
                   background: m.role === "user"
                     ? "linear-gradient(135deg, #ea6b14, #f09020)"
-                    : "rgba(255,255,255,.06)",
-                  color: "#f0f4ff",
+                    : "rgba(var(--ff-fg), .06)",
+                  color: "var(--ff-text)",
                   fontSize: ".88rem", lineHeight: 1.5,
-                  border: m.role === "assistant" ? "1px solid rgba(255,255,255,.08)" : "none",
+                  border: m.role === "assistant" ? "1px solid rgba(var(--ff-fg), .08)" : "none",
                   whiteSpace: "pre-wrap",
                 }}>
                   {m.content}
@@ -134,7 +134,7 @@ export default function ChatWidget() {
               <div style={{ display: "flex", justifyContent: "flex-start" }}>
                 <div style={{
                   padding: ".6rem .9rem", borderRadius: "12px 12px 12px 2px",
-                  background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.08)",
+                  background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .08)",
                   display: "flex", gap: ".3rem", alignItems: "center",
                 }}>
                   {[0,1,2].map(j => (
@@ -152,7 +152,7 @@ export default function ChatWidget() {
 
           {/* Input */}
           <div style={{
-            padding: ".75rem 1rem", borderTop: "1px solid rgba(255,255,255,.08)",
+            padding: ".75rem 1rem", borderTop: "1px solid rgba(var(--ff-fg), .08)",
             display: "flex", gap: ".5rem", alignItems: "center",
           }}>
             <input
@@ -163,8 +163,8 @@ export default function ChatWidget() {
               placeholder="Ask Freddy anything…"
               style={{
                 flex: 1, padding: ".6rem .9rem",
-                background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.1)",
-                borderRadius: "8px", color: "#f0f4ff", fontFamily: "inherit",
+                background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .1)",
+                borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit",
                 fontSize: ".88rem", outline: "none",
               }}
             />
@@ -173,8 +173,8 @@ export default function ChatWidget() {
               disabled={!input.trim() || loading}
               style={{
                 padding: ".6rem .9rem", borderRadius: "8px", border: "none",
-                background: input.trim() && !loading ? "#ea6b14" : "rgba(255,255,255,.08)",
-                color: input.trim() && !loading ? "#fff" : "rgba(190,205,235,.3)",
+                background: input.trim() && !loading ? "#ea6b14" : "rgba(var(--ff-fg), .08)",
+                color: input.trim() && !loading ? "#fff" : "rgba(var(--ff-muted), .3)",
                 cursor: input.trim() && !loading ? "pointer" : "default",
                 fontFamily: "inherit", fontSize: ".88rem", fontWeight: 600,
                 transition: "all .2s",
@@ -187,7 +187,7 @@ export default function ChatWidget() {
           {/* AI disclosure */}
           <div style={{
             padding: "0 1rem .6rem", textAlign: "center",
-            fontSize: ".66rem", color: "rgba(190,205,235,.4)", lineHeight: 1.4,
+            fontSize: ".66rem", color: "rgba(var(--ff-muted), .4)", lineHeight: 1.4,
           }}>
             Freddy is an automated AI assistant and can make mistakes.
           </div>
@@ -208,7 +208,7 @@ export default function ChatWidget() {
         style={{
           position: "fixed", bottom: "1.5rem", right: "1.5rem",
           width: 56, height: 56, borderRadius: "50%", border: "none",
-          background: open ? "rgba(255,255,255,.1)" : "linear-gradient(135deg, #ea6b14, #f09020)",
+          background: open ? "rgba(var(--ff-fg), .1)" : "linear-gradient(135deg, #ea6b14, #f09020)",
           color: "#fff", fontSize: open ? "1.2rem" : "1.4rem",
           cursor: "pointer", zIndex: 9999,
           boxShadow: "0 4px 20px rgba(234,107,20,.5)",

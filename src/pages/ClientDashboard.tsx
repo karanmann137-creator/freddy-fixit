@@ -210,10 +210,10 @@ export default function ClientDashboard() {
     const esc = (v: any) => String(v ?? "").replace(/[<>&]/g, (c: string) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" } as any)[c]);
     const html =
       "<!doctype html><html><head><meta charset='utf-8'><title>Receipt " + esc(ref) + "</title>" +
-      "<style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#1a2236;max-width:560px;margin:40px auto;padding:0 20px}" +
+      "<style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ff-bg);max-width:560px;margin:40px auto;padding:0 20px}" +
       "h1{font-size:22px;color:#ea6b14;margin:0 0 2px}.sub{color:#667;font-size:13px;margin-bottom:24px}" +
       "table{width:100%;border-collapse:collapse;margin:18px 0}td{padding:9px 0;font-size:14px;border-bottom:1px solid #eee}" +
-      "td.r{text-align:right}.tot td{font-weight:700;font-size:16px;border-bottom:none;border-top:2px solid #1a2236;padding-top:12px}" +
+      "td.r{text-align:right}.tot td{font-weight:700;font-size:16px;border-bottom:none;border-top:2px solid var(--ff-bg);padding-top:12px}" +
       ".muted{color:#778;font-size:12px}@media print{button{display:none}}" +
       "button{margin-top:18px;padding:10px 18px;background:#ea6b14;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer}</style></head><body>" +
       "<h1>FREDDY FIX IT</h1><div class='sub'>Payment receipt · " + esc(paidOn) + "</div>" +
@@ -355,22 +355,22 @@ export default function ClientDashboard() {
   };
 
   const s = {
-    wrap: { minHeight:"100vh", background:"#1a2236", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), radial-gradient(rgba(255,255,255,0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"#f0f4ff" },
-    header: { background:"rgba(255,255,255,.03)", borderBottom:"1px solid rgba(255,255,255,.07)", padding:".75rem 1.5rem", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const, gap:".75rem" },
+    wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
+    header: { background:"rgba(var(--ff-fg), .03)", borderBottom:"1px solid rgba(var(--ff-fg), .07)", padding:".75rem 1.5rem", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const, gap:".75rem" },
     logo: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.4rem", letterSpacing:".1em" },
     content: { maxWidth:"800px", margin:"0 auto", padding:"1.5rem" },
-    card: { background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"14px", padding:"1.5rem", marginBottom:"1.5rem" },
+    card: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"1.5rem", marginBottom:"1.5rem" },
     cardTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", color:"#ea6b14", marginBottom:"1.25rem" },
-    btn: { padding:".5rem 1rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.1)", borderRadius:"6px", color:"rgba(190,205,235,.7)", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer" },
+    btn: { padding:".5rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"6px", color:"rgba(var(--ff-muted), .7)", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer" },
     primaryBtn: { padding:".75rem 1.5rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer" },
     tabs: { display:"flex", gap:".5rem", marginBottom:"1.5rem", flexWrap:"wrap" as const },
-    tab: { padding:".6rem 1.2rem", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"8px", color:"rgba(190,205,235,.6)", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem" },
-    activeTab: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.4)", color:"#f0f4ff" },
+    tab: { padding:".6rem 1.2rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px", color:"rgba(var(--ff-muted), .6)", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem" },
+    activeTab: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.4)", color:"var(--ff-text)" },
   };
 
   if (loading) return (
     <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ textAlign:"center", color:"rgba(190,205,235,.5)" }}>
+      <div style={{ textAlign:"center", color:"rgba(var(--ff-muted), .5)" }}>
         <div style={{ marginBottom:"1rem" }}><Ic name="settings" size={36} color="#ea6b14" /></div>Loading your dashboard…
       </div>
     </div>
@@ -382,7 +382,7 @@ export default function ClientDashboard() {
 
       <div style={{ height: "3.75rem" }} />
       <div style={s.header}>
-        <div style={{ fontSize:".95rem", color:"rgba(190,205,235,.7)" }}>Welcome back, {profile?.first_name}</div>
+        <div style={{ fontSize:".95rem", color:"rgba(var(--ff-muted), .7)" }}>Welcome back, {profile?.first_name}</div>
         <div style={{ display:"flex", gap:".75rem", flexWrap:"wrap" as const }}>
           <button style={s.primaryBtn} onClick={() => setLocation("/client-onboarding")}>+ New Request</button>
         </div>
@@ -397,14 +397,14 @@ export default function ClientDashboard() {
               <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
                 <div style={{ marginBottom:"1rem" }}><Ic name="home" size={48} color="#ea6b14" /></div>
                 <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", marginBottom:".5rem" }}>No Requests Yet</h2>
-                <p style={{ color:"rgba(190,205,235,.5)", marginBottom:"1.5rem" }}>Submit your first job request and we'll get you sorted.</p>
+                <p style={{ color:"rgba(var(--ff-muted), .5)", marginBottom:"1.5rem" }}>Submit your first job request and we'll get you sorted.</p>
                 <button style={s.primaryBtn} onClick={() => setLocation("/client-onboarding")}>Submit a Request →</button>
               </div>
             ) : (
               <>
                 {openReqs.length > 1 && (
                   <div style={{ ...s.card, padding:"1rem 1.25rem" }}>
-                    <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.45)", marginBottom:".6rem" }}>Your open requests ({openReqs.length})</div>
+                    <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)", marginBottom:".6rem" }}>Your open requests ({openReqs.length})</div>
                     <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
                       {openReqs.map(r => {
                         const on = r.id === activeReq?.id;
@@ -424,14 +424,14 @@ export default function ClientDashboard() {
                     <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:".75rem 1.5rem", marginBottom:"1.25rem" }}>
                       {[["Service", activeReq.service_needed], ["Location", activeReq.location], ["Schedule", activeReq.preferred_schedule], ["Submitted", new Date(activeReq.created_at).toLocaleDateString()]].map(([l,v]) => (
                         <div key={l}>
-                          <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.4)" }}>{l}</div>
-                          <div style={{ fontSize:".9rem", color:"#f0f4ff", marginTop:".1rem", wordBreak:"break-word" as const }}>{v}</div>
+                          <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)" }}>{l}</div>
+                          <div style={{ fontSize:".9rem", color:"var(--ff-text)", marginTop:".1rem", wordBreak:"break-word" as const }}>{v}</div>
                         </div>
                       ))}
                     </div>
-                    <div style={{ background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.06)", borderRadius:"8px", padding:"1rem", marginBottom:"1rem" }}>
-                      <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".4rem" }}>Job Description</div>
-                      <div style={{ fontSize:".88rem", color:"rgba(190,205,235,.75)", lineHeight:1.6 }}>{activeReq.job_description}</div>
+                    <div style={{ background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .06)", borderRadius:"8px", padding:"1rem", marginBottom:"1rem" }}>
+                      <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".4rem" }}>Job Description</div>
+                      <div style={{ fontSize:".88rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.6 }}>{activeReq.job_description}</div>
                     </div>
                     <RequestPhotoQuote requestId={activeReq.id} photoPath={activeReq.photo_path} estimatedQuote={activeReq.estimated_quote} quoteNotes={activeReq.quote_notes} canUpload />
                     <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" }}>
@@ -451,10 +451,10 @@ export default function ClientDashboard() {
                       <div style={{ marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)" }}>
                         <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".6rem" }}>Choose your contractor ({clientBids.length} bid{clientBids.length === 1 ? "" : "s"})</div>
                         {clientBids.map(b => (
-                          <div key={b.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", padding:".6rem .7rem", marginBottom:".5rem", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"8px", flexWrap:"wrap" as const }}>
+                          <div key={b.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", padding:".6rem .7rem", marginBottom:".5rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px", flexWrap:"wrap" as const }}>
                             <div style={{ flex:"1 1 160px" }}>
-                              <div style={{ fontSize:".88rem", color:"#f0f4ff" }}>{bidNames[b.contractor_id] ?? "Contractor"}{b.amount != null ? " — $" + b.amount : ""}</div>
-                              {b.message && <div style={{ fontSize:".78rem", color:"rgba(190,205,235,.65)", marginTop:".15rem" }}>{b.message}</div>}
+                              <div style={{ fontSize:".88rem", color:"var(--ff-text)" }}>{bidNames[b.contractor_id] ?? "Contractor"}{b.amount != null ? " — $" + b.amount : ""}</div>
+                              {b.message && <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .65)", marginTop:".15rem" }}>{b.message}</div>}
                             </div>
                             <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f", padding:".5rem 1rem" }} disabled={busyPick === b.id} onClick={() => pickBid(b.id)}>{busyPick === b.id ? "…" : "Choose"}</button>
                           </div>
@@ -463,8 +463,8 @@ export default function ClientDashboard() {
                     )}
 
                     {activeJob && (activeJob.client_approved_at || activeJob.status === "scheduled" || activeJob.status === "pending_confirmation" || activeJob.status === "completed") && (
-                      <div style={{ marginTop:"1rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.07)" }}>
-                        <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.45)", marginBottom:".75rem" }}>Job progress</div>
+                      <div style={{ marginTop:"1rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .07)" }}>
+                        <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)", marginBottom:".75rem" }}>Job progress</div>
                         <JobTimeline job={activeJob} />
                       </div>
                     )}
@@ -472,7 +472,7 @@ export default function ClientDashboard() {
                     {activeJob && activeJob.payment_status === "disputed" && (
                       <div style={{ marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(251,191,36,.08)", border:"1px solid rgba(251,191,36,.35)" }}>
                         <div style={{ fontSize:".9rem", fontWeight:600, color:"#fbbf24", marginBottom:".4rem" }}><Ic name="alert-triangle" size={14} style={{ marginRight:5 }} />Claim filed — under review</div>
-                        <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.8)", lineHeight:1.55 }}>Your payment is <strong>frozen and protected</strong> while our team reviews your claim. The contractor has a few days to respond, then we'll decide. Nothing has been released to them in the meantime. We'll email you as soon as it's resolved.</div>
+                        <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.55 }}>Your payment is <strong>frozen and protected</strong> while our team reviews your claim. The contractor has a few days to respond, then we'll decide. Nothing has been released to them in the meantime. We'll email you as soon as it's resolved.</div>
                       </div>
                     )}
 
@@ -481,7 +481,7 @@ export default function ClientDashboard() {
                         {activeJob.status === "assigned" && activeJob.schedule_proposed_at && !activeJob.client_approved_at && (
                           <>
                             <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}>Your contractor proposed a time</div>
-                            <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.8)", marginBottom:".75rem" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />{activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "—"}{activeJob.amount ? " · $" + activeJob.amount : ""}</div>
+                            <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .8)", marginBottom:".75rem" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />{activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "—"}{activeJob.amount ? " · $" + activeJob.amount : ""}</div>
                             <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                               <button style={s.primaryBtn} disabled={busyReq} onClick={approveSchedule}>{busyReq ? "…" : "Approve & schedule"}</button>
                               <button style={s.btn} disabled={busyReq} onClick={requestReschedule}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Request a different time</button>
@@ -489,7 +489,7 @@ export default function ClientDashboard() {
                           </>
                         )}
                         {activeJob.status === "assigned" && !activeJob.schedule_proposed_at && (
-                          <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.75)" }}><Ic name="check-circle" size={14} style={{ marginRight:4 }} />Matched! Waiting for your contractor to propose a time and price.</div>
+                          <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .75)" }}><Ic name="check-circle" size={14} style={{ marginRight:4 }} />Matched! Waiting for your contractor to propose a time and price.</div>
                         )}
                         {activeJob.status === "scheduled" && (
                           <>
@@ -504,7 +504,7 @@ export default function ClientDashboard() {
                                 {activeJob.payment_status === "failed" && (
                                   <div style={{ fontSize:".82rem", color:"#fca5a5", marginBottom:".6rem", lineHeight:1.5 }}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />Your last payment didn't go through. No charge was made — please try again below.</div>
                                 )}
-                                <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.75)", marginBottom:".6rem", lineHeight:1.5 }}>Pay now to secure the job. Your money is <strong>held safely</strong> and only released to the contractor after you confirm the work is done. Total includes a 3% service fee.</div>
+                                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".6rem", lineHeight:1.5 }}>Pay now to secure the job. Your money is <strong>held safely</strong> and only released to the contractor after you confirm the work is done. Total includes a 3% service fee.</div>
                                 <button style={s.primaryBtn} disabled={busyPay} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " (held until you confirm)"}</button>
                               </>
                             ) : null}
@@ -516,7 +516,7 @@ export default function ClientDashboard() {
                             {completionPhotoUrl && <img src={completionPhotoUrl} alt="Completed work" style={{ width:"100%", maxWidth:"320px", borderRadius:"10px", margin:".5rem 0", display:"block" }} />}
                             {(activeJob.payment_status === "held" || activeJob.payment_status === "released") ? (
                               <>
-                                <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.7)", marginBottom:".75rem" }}>Confirm the work is done and we'll release your held payment to the contractor. If you don't, it auto-confirms in a few days.</div>
+                                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".75rem" }}>Confirm the work is done and we'll release your held payment to the contractor. If you don't, it auto-confirms in a few days.</div>
                                 <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                                   <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm & release payment"}</button>
                                   <button style={{ ...s.btn, color:"#fbbf24", borderColor:"rgba(251,191,36,.35)", background:"rgba(251,191,36,.08)" }} disabled={busyReq} onClick={() => setReportOpen(true)}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />File a claim</button>
@@ -525,12 +525,12 @@ export default function ClientDashboard() {
                               </>
                             ) : activeJob.amount ? (
                               <>
-                                <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.7)", marginBottom:".6rem", lineHeight:1.5 }}>Pay for the job, then confirm. Your payment is held and only released to the contractor once you confirm. Total includes a 3% service fee.</div>
+                                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".6rem", lineHeight:1.5 }}>Pay for the job, then confirm. Your payment is held and only released to the contractor once you confirm. Total includes a 3% service fee.</div>
                                 <button style={s.primaryBtn} disabled={busyPay} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " now"}</button>
                               </>
                             ) : (
                               <>
-                                <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.7)", marginBottom:".75rem" }}>Please confirm the work is done. If you don't, it auto-confirms in a few days.</div>
+                                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".75rem" }}>Please confirm the work is done. If you don't, it auto-confirms in a few days.</div>
                                 <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm completion"}</button>
                               </>
                             )}
@@ -544,14 +544,14 @@ export default function ClientDashboard() {
                               <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".5rem" }}>Rate your contractor (out of 10)</div>
                               {(["price","experience","result"] as const).map(k => (
                                 <div key={k} style={{ marginBottom:".55rem" }}>
-                                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:".8rem", color:"rgba(190,205,235,.8)", marginBottom:".2rem" }}>
+                                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", marginBottom:".2rem" }}>
                                     <span style={{ textTransform:"capitalize" as const }}>{k === "result" ? "End result" : k}</span>
                                     <span style={{ color:"#ea6b14", fontWeight:600 }}>{ratingForm[k]}/10</span>
                                   </div>
                                   <input type="range" min={1} max={10} value={ratingForm[k]} onChange={e => setRatingForm(f => ({ ...f, [k]: Number(e.target.value) }))} style={{ width:"100%", accentColor:"#ea6b14" }} />
                                 </div>
                               ))}
-                              <textarea value={ratingForm.comment} rows={2} placeholder="Optional comment" onChange={e => setRatingForm(f => ({ ...f, comment: e.target.value }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const, margin:".25rem 0 .6rem" }} />
+                              <textarea value={ratingForm.comment} rows={2} placeholder="Optional comment" onChange={e => setRatingForm(f => ({ ...f, comment: e.target.value }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const, margin:".25rem 0 .6rem" }} />
                               <button style={s.primaryBtn} disabled={busyReq} onClick={submitReview}>{busyReq ? "…" : "Submit rating"}</button>
                             </div>
                           )
@@ -560,18 +560,18 @@ export default function ClientDashboard() {
                     )}
 
                     {editingId === activeReq.id ? (
-                      <div style={{ marginTop:"1rem", borderTop:"1px solid rgba(255,255,255,.07)", paddingTop:"1rem", display:"flex", flexDirection:"column", gap:".6rem" }}>
+                      <div style={{ marginTop:"1rem", borderTop:"1px solid rgba(var(--ff-fg), .07)", paddingTop:"1rem", display:"flex", flexDirection:"column", gap:".6rem" }}>
                         {([["Service","service"],["Schedule","schedule"],["Location","location"]] as const).map(([label,key]) => (
                           <div key={key}>
-                            <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".25rem" }}>{label}</div>
+                            <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".25rem" }}>{label}</div>
                             <input value={(editForm as any)[key]} onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
-                              style={{ width:"100%", padding:".6rem .8rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".88rem", boxSizing:"border-box" as const }} />
+                              style={{ width:"100%", padding:".6rem .8rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".88rem", boxSizing:"border-box" as const }} />
                           </div>
                         ))}
                         <div>
-                          <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.4)", marginBottom:".25rem" }}>Job Description</div>
+                          <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".25rem" }}>Job Description</div>
                           <textarea value={editForm.description} rows={3} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
-                            style={{ width:"100%", padding:".6rem .8rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".88rem", boxSizing:"border-box" as const, resize:"vertical" as const }} />
+                            style={{ width:"100%", padding:".6rem .8rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".88rem", boxSizing:"border-box" as const, resize:"vertical" as const }} />
                         </div>
                         <div style={{ display:"flex", gap:".6rem" }}>
                           <button style={s.primaryBtn} disabled={busyReq} onClick={() => saveEdit(activeReq.id)}>{busyReq ? "Saving…" : "Save changes"}</button>
@@ -596,10 +596,10 @@ export default function ClientDashboard() {
                       </div>
                       <div>
                         <div style={{ fontSize:"1rem", fontWeight:500 }}>{contractor.first_name} {contractor.last_name}</div>
-                        <div style={{ fontSize:".82rem", color:"rgba(190,205,235,.5)" }}>{contractor.specialties?.[0] ?? "Your contractor"}</div>
+                        <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .5)" }}>{contractor.specialties?.[0] ?? "Your contractor"}</div>
                       </div>
                       {activeJob && (
-                        <button style={{ ...s.btn, marginLeft:"auto", color:"#f0f4ff", borderColor:"rgba(234,107,20,.35)", background:"rgba(234,107,20,.12)", display:"flex", alignItems:"center", gap:".4rem" }} onClick={() => setChatOpen(true)}>
+                        <button style={{ ...s.btn, marginLeft:"auto", color:"var(--ff-text)", borderColor:"rgba(234,107,20,.35)", background:"rgba(234,107,20,.12)", display:"flex", alignItems:"center", gap:".4rem" }} onClick={() => setChatOpen(true)}>
                           <Ic name="message-square" size={14} />
                           {activeJob.status === "completed" ? "View chat" : "Message " + contractor.first_name}
                         </button>
@@ -633,12 +633,12 @@ export default function ClientDashboard() {
                         ))}
                       </div>
                       {shown.length === 0 ? (
-                        <div style={{ fontSize:".85rem", color:"rgba(190,205,235,.5)", padding:".5rem 0" }}>No {histFilter === "all" ? "" : histFilter + " "}requests to show.</div>
+                        <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .5)", padding:".5rem 0" }}>No {histFilter === "all" ? "" : histFilter + " "}requests to show.</div>
                       ) : shown.map(r => (
-                        <div key={r.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:".85rem 0", borderBottom:"1px solid rgba(255,255,255,.06)", gap:"1rem", flexWrap:"wrap" as const }}>
+                        <div key={r.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:".85rem 0", borderBottom:"1px solid rgba(var(--ff-fg), .06)", gap:"1rem", flexWrap:"wrap" as const }}>
                           <div>
                             <div style={{ fontSize:".9rem" }}>{r.service_needed}</div>
-                            <div style={{ fontSize:".75rem", color:"rgba(190,205,235,.4)" }}>{new Date(r.created_at).toLocaleDateString()}</div>
+                            <div style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .4)" }}>{new Date(r.created_at).toLocaleDateString()}</div>
                           </div>
                           <div style={{ display:"flex", alignItems:"center", gap:".75rem" }}>
                             {r.status !== "completed" && r.status !== "cancelled" && (

@@ -115,7 +115,7 @@ export default function AdminDashboard() {
       <div style={{ display:"flex", gap:".75rem", alignItems:"center", justifyContent:"center", marginTop:"1.25rem" }}>
         <button style={{ ...s.btn, opacity: page[which] <= 0 ? .4 : 1 }} disabled={page[which] <= 0}
           onClick={() => setPage(p => ({ ...p, [which]: Math.max(0, p[which] - 1) }))}>← Prev</button>
-        <span style={{ color:"rgba(190,205,235,.6)", fontSize:".82rem" }}>Page {page[which] + 1} of {pageCount(which)}</span>
+        <span style={{ color:"rgba(var(--ff-muted), .6)", fontSize:".82rem" }}>Page {page[which] + 1} of {pageCount(which)}</span>
         <button style={{ ...s.btn, opacity: page[which] >= pageCount(which) - 1 ? .4 : 1 }} disabled={page[which] >= pageCount(which) - 1}
           onClick={() => setPage(p => ({ ...p, [which]: p[which] + 1 }))}>Next →</button>
       </div>
@@ -187,7 +187,7 @@ export default function AdminDashboard() {
     await loadAll();
   };
 
-  const s = { wrap: { minHeight:"100vh", background:"#1a2236", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), radial-gradient(rgba(255,255,255,0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"#f0f4ff" }, header: { background:"rgba(255,255,255,.03)", borderBottom:"1px solid rgba(255,255,255,.07)", padding:"1rem 1.5rem", display:"flex", justifyContent:"space-between", alignItems:"center" }, logo: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.4rem", letterSpacing:".1em" }, content: { maxWidth:"1000px", margin:"0 auto", padding:"2rem 1.5rem" }, tabs: { display:"flex", gap:".5rem", marginBottom:"1.5rem", flexWrap:"wrap" as const }, tab: { padding:".6rem 1.2rem", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"8px", color:"rgba(190,205,235,.6)", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem" }, activeTab: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.4)", color:"#f0f4ff" }, card: { background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"12px", padding:"1.25rem", marginBottom:"1rem" }, title: { fontSize:".95rem", fontWeight:500, color:"#f0f4ff", marginBottom:".35rem" }, meta: { fontSize:".78rem", color:"rgba(190,205,235,.5)", marginBottom:".2rem" }, badge: { fontSize:".75rem", fontWeight:500, color:"#ea6b14" }, btn: { padding:".5rem 1rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.1)", borderRadius:"6px", color:"rgba(190,205,235,.7)", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer" } };
+  const s = { wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" }, header: { background:"rgba(var(--ff-fg), .03)", borderBottom:"1px solid rgba(var(--ff-fg), .07)", padding:"1rem 1.5rem", display:"flex", justifyContent:"space-between", alignItems:"center" }, logo: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.4rem", letterSpacing:".1em" }, content: { maxWidth:"1000px", margin:"0 auto", padding:"2rem 1.5rem" }, tabs: { display:"flex", gap:".5rem", marginBottom:"1.5rem", flexWrap:"wrap" as const }, tab: { padding:".6rem 1.2rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px", color:"rgba(var(--ff-muted), .6)", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem" }, activeTab: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.4)", color:"var(--ff-text)" }, card: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.25rem", marginBottom:"1rem" }, title: { fontSize:".95rem", fontWeight:500, color:"var(--ff-text)", marginBottom:".35rem" }, meta: { fontSize:".78rem", color:"rgba(var(--ff-muted), .5)", marginBottom:".2rem" }, badge: { fontSize:".75rem", fontWeight:500, color:"#ea6b14" }, btn: { padding:".5rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"6px", color:"rgba(var(--ff-muted), .7)", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer" } };
 
   if (loading) return <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>Loading…</div>;
 
@@ -196,7 +196,7 @@ export default function AdminDashboard() {
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       <div style={{ height: "3.75rem" }} />
       <div style={s.header}>
-        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.3rem", letterSpacing:".08em", color:"#f0f4ff" }}>ADMIN <span style={{ fontSize:".6rem", background:"#ea6b14", color:"#fff", borderRadius:"4px", padding:".15rem .45rem", verticalAlign:"middle", letterSpacing:".05em" }}>DASHBOARD</span></div>
+        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.3rem", letterSpacing:".08em", color:"var(--ff-text)" }}>ADMIN <span style={{ fontSize:".6rem", background:"#ea6b14", color:"#fff", borderRadius:"4px", padding:".15rem .45rem", verticalAlign:"middle", letterSpacing:".05em" }}>DASHBOARD</span></div>
       </div>
 
       <div style={s.content}>
@@ -222,7 +222,7 @@ export default function AdminDashboard() {
 
         {tab === "requests" && (
           <div>
-            {requests.length === 0 && <p style={{ color:"rgba(190,205,235,.45)" }}>No requests yet.</p>}
+            {requests.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No requests yet.</p>}
             {requests.map(r => (
               <div key={r.id} style={s.card}>
                 <div style={s.title}>{r.service_needed}</div>
@@ -232,15 +232,15 @@ export default function AdminDashboard() {
                 <div style={{ ...s.badge, marginTop:".5rem" }}>● {r.status}</div>
                 {r.status === "pending" && (bidsBy[r.id]?.length ?? 0) > 0 && (
                   <div style={{ marginTop:".75rem" }}>
-                    <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.45)", marginBottom:".4rem" }}>Bids ({bidsBy[r.id].length}/3)</div>
+                    <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)", marginBottom:".4rem" }}>Bids ({bidsBy[r.id].length}/3)</div>
                     {bidsBy[r.id].map((b: any) => {
                       const con = activeContractors.find(c => c.id === b.contractor_id);
                       const nm = con ? ((con.first_name ?? "") + " " + (con.last_name ? con.last_name[0] + "." : "")).trim() : "Contractor";
                       return (
-                        <div key={b.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", padding:".5rem .6rem", marginBottom:".4rem", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"8px", flexWrap:"wrap" as const }}>
+                        <div key={b.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", padding:".5rem .6rem", marginBottom:".4rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px", flexWrap:"wrap" as const }}>
                           <div style={{ flex:"1 1 160px" }}>
-                            <div style={{ fontSize:".85rem", color:"#f0f4ff" }}>{nm}{b.amount != null ? " — $" + b.amount : ""}</div>
-                            {b.message && <div style={{ fontSize:".75rem", color:"rgba(190,205,235,.6)" }}>{b.message}</div>}
+                            <div style={{ fontSize:".85rem", color:"var(--ff-text)" }}>{nm}{b.amount != null ? " — $" + b.amount : ""}</div>
+                            {b.message && <div style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .6)" }}>{b.message}</div>}
                           </div>
                           <button style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none" }} disabled={busyAcceptBid === b.id} onClick={() => acceptBid(b.id)}>{busyAcceptBid === b.id ? "…" : "Accept"}</button>
                         </div>
@@ -251,7 +251,7 @@ export default function AdminDashboard() {
                 {r.status === "pending" && (
                   <div style={{ display:"flex", gap:".5rem", marginTop:".75rem", flexWrap:"wrap" as const, alignItems:"center" }}>
                     <select value={assignSel[r.id] ?? ""} onChange={e => setAssignSel(p => ({ ...p, [r.id]: e.target.value }))}
-                      style={{ padding:".5rem .7rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"6px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".82rem" }}>
+                      style={{ padding:".5rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"6px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".82rem" }}>
                       <option value="">Select contractor…</option>
                       {activeContractors.map(c => (
                         <option key={c.id} value={c.id}>{c.first_name} {c.last_name ? c.last_name[0] + "." : ""}{(c.specialties && c.specialties.length) ? " — " + c.specialties[0] : ""}</option>
@@ -275,7 +275,7 @@ export default function AdminDashboard() {
 
         {tab === "contractors" && (
           <div>
-            {contractors.length === 0 && <p style={{ color:"rgba(190,205,235,.45)" }}>No contractors yet.</p>}
+            {contractors.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No contractors yet.</p>}
             {contractors.map(c => (
               <div key={c.id} style={s.card}>
                 <div style={s.title}>{c.company_name || [c.profile?.first_name, c.profile?.last_name].filter(Boolean).join(" ") || "Unnamed contractor"}</div>
@@ -290,7 +290,7 @@ export default function AdminDashboard() {
                 {(c.profile?.email || c.profile?.phone) && <div style={s.meta}>{[c.profile?.email, c.profile?.phone].filter(Boolean).join(" · ")}</div>}
                 <div style={s.meta}>Specialties: {(c.specialties ?? []).join(", ") || "—"}</div>
                 <div style={s.meta}>Area: {(c.service_area ?? []).join(", ") || "—"}</div>
-                <div style={{ ...s.meta, marginTop:".4rem", color:"rgba(190,205,235,.55)" }}>
+                <div style={{ ...s.meta, marginTop:".4rem", color:"rgba(var(--ff-muted), .55)" }}>
                   {"Licensed: "}{c.licensed === true ? ("Yes" + (c.license_number ? " (#" + c.license_number + ")" : "")) : c.licensed === false ? "No" : "—"}
                   {"  ·  Insurance: "}{c.has_liability_insurance === true ? ("Yes" + (c.insurance_provider ? " (" + c.insurance_provider + (c.insurance_expiry ? ", exp " + c.insurance_expiry : "") + ")" : "")) : c.has_liability_insurance === false ? "No" : "—"}
                   {"  ·  WCB: "}{c.has_wcb === true ? "Yes" : c.has_wcb === false ? "No" : "—"}
@@ -322,7 +322,7 @@ export default function AdminDashboard() {
 
         {tab === "jobs" && (
           <div>
-            {jobs.length === 0 && <p style={{ color:"rgba(190,205,235,.45)" }}>No jobs yet.</p>}
+            {jobs.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No jobs yet.</p>}
             {jobs.map(j => (
               <div key={j.id} style={s.card}>
                 <div style={s.title}>Job {j.id.slice(0,8)}</div>
@@ -337,7 +337,7 @@ export default function AdminDashboard() {
 
         {tab === "disputes" && (
           <div>
-            {disputes.length === 0 && <p style={{ color:"rgba(190,205,235,.45)" }}>No disputes yet.</p>}
+            {disputes.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No disputes yet.</p>}
             {disputes.map(d => {
               const job = d.job ?? {};
               const charged = Number(job.total_charged ?? job.amount ?? 0);
@@ -360,25 +360,25 @@ export default function AdminDashboard() {
                   <div style={s.meta}>Job {String(d.job_id).slice(0,8)} · Charged ${charged.toFixed(2)} · Contractor payout ${payout.toFixed(2)}</div>
                   <div style={s.meta}>Reported {new Date(d.created_at).toLocaleString("en-CA", { dateStyle:"medium", timeStyle:"short" })}</div>
                   {d.description && (
-                    <div style={{ marginTop:".5rem", padding:".6rem .8rem", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.06)", borderRadius:"8px", fontSize:".85rem", color:"rgba(190,205,235,.8)", lineHeight:1.5 }}>{d.description}</div>
+                    <div style={{ marginTop:".5rem", padding:".6rem .8rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .06)", borderRadius:"8px", fontSize:".85rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>{d.description}</div>
                   )}
                   {(disputePhotos[d.id]?.length ?? 0) > 0 && (
                     <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginTop:".6rem" }}>
                       {disputePhotos[d.id].map((url, i) => (
                         <a key={i} href={url} target="_blank" rel="noreferrer">
-                          <img src={url} alt={"Evidence " + (i+1)} style={{ width:"110px", height:"110px", objectFit:"cover", borderRadius:"8px", border:"1px solid rgba(255,255,255,.12)" }} />
+                          <img src={url} alt={"Evidence " + (i+1)} style={{ width:"110px", height:"110px", objectFit:"cover", borderRadius:"8px", border:"1px solid rgba(var(--ff-fg), .12)" }} />
                         </a>
                       ))}
                     </div>
                   )}
 
                   {(d.agreed_scope || d.requested_remedy || d.service_date || d.amount_in_dispute != null || d.declarant_name) && (
-                    <div style={{ marginTop:".6rem", padding:".6rem .8rem", background:"rgba(255,255,255,.02)", border:"1px solid rgba(255,255,255,.06)", borderRadius:"8px", fontSize:".8rem", color:"rgba(190,205,235,.75)", lineHeight:1.6 }}>
-                      {d.service_date && <div>Date of service: <strong style={{ color:"rgba(240,244,255,.9)" }}>{d.service_date}</strong></div>}
+                    <div style={{ marginTop:".6rem", padding:".6rem .8rem", background:"rgba(var(--ff-fg), .02)", border:"1px solid rgba(var(--ff-fg), .06)", borderRadius:"8px", fontSize:".8rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.6 }}>
+                      {d.service_date && <div>Date of service: <strong style={{ color:"rgba(var(--ff-fg), .9)" }}>{d.service_date}</strong></div>}
                       {d.agreed_scope && <div>What was agreed: {d.agreed_scope}</div>}
-                      {d.requested_remedy && <div>Requested outcome: <strong style={{ color:"rgba(240,244,255,.9)" }}>{d.requested_remedy}</strong></div>}
+                      {d.requested_remedy && <div>Requested outcome: <strong style={{ color:"rgba(var(--ff-fg), .9)" }}>{d.requested_remedy}</strong></div>}
                       {d.amount_in_dispute != null && <div>Amount in dispute: ${Number(d.amount_in_dispute).toFixed(2)}</div>}
-                      {d.declarant_name && <div style={{ marginTop:".3rem", fontStyle:"italic" as const, color:"rgba(190,205,235,.6)" }}>Declared true &amp; signed by {d.declarant_name}</div>}
+                      {d.declarant_name && <div style={{ marginTop:".3rem", fontStyle:"italic" as const, color:"rgba(var(--ff-muted), .6)" }}>Declared true &amp; signed by {d.declarant_name}</div>}
                     </div>
                   )}
 
@@ -386,12 +386,12 @@ export default function AdminDashboard() {
                     {d.contractor_responded_at ? (
                       <>
                         <div style={{ fontWeight:600, color:"#93c5fd", marginBottom:".3rem" }}>Contractor responded</div>
-                        <div style={{ color:"rgba(190,205,235,.85)" }}>{d.contractor_response}</div>
+                        <div style={{ color:"rgba(var(--ff-muted), .85)" }}>{d.contractor_response}</div>
                         {(disputeRespPhotos[d.id]?.length ?? 0) > 0 && (
                           <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginTop:".5rem" }}>
                             {disputeRespPhotos[d.id].map((url, i) => (
                               <a key={i} href={url} target="_blank" rel="noreferrer">
-                                <img src={url} alt={"Response " + (i+1)} style={{ width:"90px", height:"90px", objectFit:"cover" as const, borderRadius:"8px", border:"1px solid rgba(255,255,255,.12)" }} />
+                                <img src={url} alt={"Response " + (i+1)} style={{ width:"90px", height:"90px", objectFit:"cover" as const, borderRadius:"8px", border:"1px solid rgba(var(--ff-fg), .12)" }} />
                               </a>
                             ))}
                           </div>
@@ -405,10 +405,10 @@ export default function AdminDashboard() {
                   </div>
 
                   {d.status === "open" ? (
-                    <div style={{ marginTop:".9rem", borderTop:"1px solid rgba(255,255,255,.07)", paddingTop:".9rem" }}>
+                    <div style={{ marginTop:".9rem", borderTop:"1px solid rgba(var(--ff-fg), .07)", paddingTop:".9rem" }}>
                       <textarea value={resolveNote[d.id] ?? ""} rows={2} placeholder="Resolution note (optional, shared internally)"
                         onChange={e => setResolveNote(p => ({ ...p, [d.id]: e.target.value }))}
-                        style={{ width:"100%", padding:".55rem .7rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"8px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".82rem", boxSizing:"border-box" as const, resize:"vertical" as const, marginBottom:".7rem" }} />
+                        style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".82rem", boxSizing:"border-box" as const, resize:"vertical" as const, marginBottom:".7rem" }} />
                       <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center" }}>
                         <button style={{ ...s.btn, background:"#ef4444", color:"#fff", border:"none" }} disabled={busyResolve === d.id} onClick={() => resolveDispute(d, "refund_full")}>{busyResolve === d.id ? "…" : "Refund client in full"}</button>
                         <button style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none" }} disabled={busyResolve === d.id} onClick={() => resolveDispute(d, "release")}>Release to contractor</button>
@@ -416,10 +416,10 @@ export default function AdminDashboard() {
                       <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center", marginTop:".6rem" }}>
                         <input type="number" min={0} max={charged} step="0.01" value={partialAmt[d.id] ?? ""} placeholder="Partial $"
                           onChange={e => setPartialAmt(p => ({ ...p, [d.id]: e.target.value }))}
-                          style={{ width:"110px", padding:".5rem .6rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.12)", borderRadius:"6px", color:"#f0f4ff", fontFamily:"inherit", fontSize:".82rem" }} />
+                          style={{ width:"110px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"6px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".82rem" }} />
                         <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyResolve === d.id} onClick={() => resolveDispute(d, "refund_partial")}>Partial refund + pay contractor</button>
                       </div>
-                      <div style={{ fontSize:".74rem", color:"rgba(190,205,235,.45)", marginTop:".55rem", lineHeight:1.45 }}>Full refund returns the whole charge to the client and pays nothing out. Partial refund returns part to the client and still pays the contractor their payout. Release pays the contractor and keeps the charge.</div>
+                      <div style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .45)", marginTop:".55rem", lineHeight:1.45 }}>Full refund returns the whole charge to the client and pays nothing out. Partial refund returns part to the client and still pays the contractor their payout. Release pays the contractor and keeps the charge.</div>
                     </div>
                   ) : (
                     <div style={{ ...s.meta, marginTop:".6rem", color:"#86efac" }}>
@@ -436,10 +436,10 @@ export default function AdminDashboard() {
 
         {tab === "leads" && (
           <div>
-            <p style={{ color:"rgba(190,205,235,.5)", fontSize:".82rem", marginBottom:"1rem", lineHeight:1.5 }}>
+            <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".82rem", marginBottom:"1rem", lineHeight:1.5 }}>
               Quote requests from visitors who haven't signed up. Reach out, then mark them contacted.
             </p>
-            {leads.length === 0 && <p style={{ color:"rgba(190,205,235,.45)" }}>No quote leads yet.</p>}
+            {leads.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No quote leads yet.</p>}
             {leads.map(l => (
               <div key={l.id} style={{ ...s.card, ...(l.status === "new" ? { borderColor:"rgba(234,107,20,.4)" } : {}) }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const, gap:".5rem" }}>
@@ -454,9 +454,9 @@ export default function AdminDashboard() {
                 </div>
                 {l.location && <div style={s.meta}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{l.location}</div>}
                 {l.details && (
-                  <div style={{ marginTop:".5rem", padding:".6rem .8rem", background:"rgba(255,255,255,.03)", border:"1px solid rgba(255,255,255,.06)", borderRadius:"8px", fontSize:".85rem", color:"rgba(190,205,235,.8)", lineHeight:1.5 }}>{l.details}</div>
+                  <div style={{ marginTop:".5rem", padding:".6rem .8rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .06)", borderRadius:"8px", fontSize:".85rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>{l.details}</div>
                 )}
-                <div style={{ ...s.meta, marginTop:".4rem", color:"rgba(190,205,235,.45)" }}>Received {new Date(l.created_at).toLocaleString("en-CA", { dateStyle:"medium", timeStyle:"short" })}</div>
+                <div style={{ ...s.meta, marginTop:".4rem", color:"rgba(var(--ff-muted), .45)" }}>Received {new Date(l.created_at).toLocaleString("en-CA", { dateStyle:"medium", timeStyle:"short" })}</div>
                 {l.status === "new" && (
                   <div style={{ marginTop:".75rem" }}>
                     <button style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none" }} disabled={busyLead === l.id} onClick={() => markLeadContacted(l.id)}>{busyLead === l.id ? "…" : "Mark contacted"}</button>
@@ -469,10 +469,10 @@ export default function AdminDashboard() {
 
         {tab === "health" && (
           <div>
-            <p style={{ color:"rgba(190,205,235,.5)", fontSize:".82rem", marginBottom:"1rem", lineHeight:1.5 }}>
+            <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".82rem", marginBottom:"1rem", lineHeight:1.5 }}>
               Things that may need your attention. Buckets only show items that have been waiting too long.
             </p>
-            {!health && <p style={{ color:"rgba(190,205,235,.45)" }}>Loading…</p>}
+            {!health && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>Loading…</p>}
             {health && (() => {
               const buckets: { key:string; title:string; hint:string; count:number; items:any[] }[] = [
                 { key:"no_bid", title:"Requests with no bids", hint:"Pending & unassigned for over 24h — may need a contractor invited.", count: health.no_bid_count||0, items: health.no_bid||[] },
@@ -486,18 +486,18 @@ export default function AdminDashboard() {
                   <div style={{ display:"flex", gap:".75rem", flexWrap:"wrap" as const, marginBottom:"1.25rem" }}>
                     <div style={{ ...s.card, flex:"1 1 180px", margin:0, textAlign:"center" as const }}>
                       <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"#ea6b14", lineHeight:1 }}>{health.new_leads_count ?? 0}</div>
-                      <div style={{ fontSize:".78rem", color:"rgba(190,205,235,.6)", marginTop:".35rem" }}>New quote leads</div>
+                      <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", marginTop:".35rem" }}>New quote leads</div>
                     </div>
                     <div style={{ ...s.card, flex:"1 1 180px", margin:0, textAlign:"center" as const }}>
                       <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"#fbbf24", lineHeight:1 }}>{health.pending_contractors_count ?? 0}</div>
-                      <div style={{ fontSize:".78rem", color:"rgba(190,205,235,.6)", marginTop:".35rem" }}>Contractors awaiting review</div>
+                      <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", marginTop:".35rem" }}>Contractors awaiting review</div>
                     </div>
                   </div>
                   {allClear && <p style={{ color:"#86efac", fontSize:".9rem" }}>● All clear — nothing is overdue right now.</p>}
                   {buckets.map(b => b.count > 0 && (
                     <div key={b.key} style={{ marginBottom:"1.5rem" }}>
                       <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.1rem", letterSpacing:".04em", color:"#fbbf24" }}>{b.title} ({b.count})</div>
-                      <div style={{ fontSize:".78rem", color:"rgba(190,205,235,.5)", marginBottom:".6rem" }}>{b.hint}</div>
+                      <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .5)", marginBottom:".6rem" }}>{b.hint}</div>
                       {b.items.map((it:any) => (
                         <div key={it.id} style={{ ...s.card, borderColor:"rgba(251,191,36,.25)" }}>
                           <div style={s.title}>{it.service_needed || it.service || it.reason || "Item"}</div>
@@ -505,7 +505,7 @@ export default function AdminDashboard() {
                             <div style={s.meta}><Ic name="user" size={13} style={{ marginRight:4 }} />{it.client_name || `${it.first_name||""} ${it.last_name||""}`.trim()}</div>
                           )}
                           {it.location && <div style={s.meta}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{it.location}</div>}
-                          {(it.created_at || it.since) && <div style={{ ...s.meta, color:"rgba(190,205,235,.45)" }}>Since {new Date(it.created_at || it.since).toLocaleString("en-CA", { dateStyle:"medium", timeStyle:"short" })}</div>}
+                          {(it.created_at || it.since) && <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .45)" }}>Since {new Date(it.created_at || it.since).toLocaleString("en-CA", { dateStyle:"medium", timeStyle:"short" })}</div>}
                         </div>
                       ))}
                     </div>

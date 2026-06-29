@@ -60,12 +60,12 @@ export default function ContractorProfile() {
   };
 
   const s = {
-    wrap:  { minHeight:"100vh", background:"#1a2236", fontFamily:"'DM Sans',sans-serif", color:"#f0f4ff" },
+    wrap:  { minHeight:"100vh", background:"var(--ff-bg)", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
     inner: { maxWidth:"860px", margin:"0 auto", padding:"2rem 1.5rem" },
-    card:  { background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"14px", padding:"1.75rem", marginBottom:"1.5rem" },
-    chip:  { padding:".3rem .75rem", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.25)", borderRadius:"99px", fontSize:".78rem", color:"rgba(190,205,235,.8)", display:"inline-block", margin:".2rem" },
+    card:  { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"1.75rem", marginBottom:"1.5rem" },
+    chip:  { padding:".3rem .75rem", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.25)", borderRadius:"99px", fontSize:".78rem", color:"rgba(var(--ff-muted), .8)", display:"inline-block", margin:".2rem" },
     btn:   { padding:".65rem 1.4rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer" },
-    scoreCard: { background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"12px", padding:"1.25rem", textAlign:"center" as const },
+    scoreCard: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.25rem", textAlign:"center" as const },
   };
 
   if (loading) return (
@@ -78,7 +78,7 @@ export default function ContractorProfile() {
   if (!contractor) return (
     <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ textAlign:"center" }}>
-        <p style={{ color:"rgba(190,205,235,.5)" }}>Contractor not found.</p>
+        <p style={{ color:"rgba(var(--ff-muted), .5)" }}>Contractor not found.</p>
         <button style={s.btn} onClick={goBack}>← Back</button>
       </div>
     </div>
@@ -91,7 +91,7 @@ export default function ContractorProfile() {
       <div style={s.inner}>
 
         {/* Back */}
-        <button onClick={goBack} style={{ background:"none", border:"none", color:"rgba(190,205,235,.5)", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", marginBottom:"1.25rem", padding:0 }}>
+        <button onClick={goBack} style={{ background:"none", border:"none", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", marginBottom:"1.25rem", padding:0 }}>
           ← Back
         </button>
 
@@ -108,9 +108,9 @@ export default function ContractorProfile() {
               {contractor.first_name} {contractor.last_name}
             </div>
             {contractor.company_name && (
-              <div style={{ fontSize:".9rem", color:"rgba(190,205,235,.6)", marginBottom:".4rem" }}>{contractor.company_name}</div>
+              <div style={{ fontSize:".9rem", color:"rgba(var(--ff-muted), .6)", marginBottom:".4rem" }}>{contractor.company_name}</div>
             )}
-            <div style={{ display:"flex", gap:"1rem", flexWrap:"wrap" as const, fontSize:".82rem", color:"rgba(190,205,235,.55)", marginBottom:".75rem" }}>
+            <div style={{ display:"flex", gap:"1rem", flexWrap:"wrap" as const, fontSize:".82rem", color:"rgba(var(--ff-muted), .55)", marginBottom:".75rem" }}>
               {contractor.years_of_experience != null && (
                 <span><Ic name="briefcase" size={13} style={{ marginRight:4 }} />{contractor.years_of_experience} yrs exp</span>
               )}
@@ -127,7 +127,7 @@ export default function ContractorProfile() {
               </div>
             )}
             {(contractor.service_area?.length ?? 0) > 0 && (
-              <div style={{ fontSize:".8rem", color:"rgba(190,205,235,.5)" }}>
+              <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .5)" }}>
                 <Ic name="map-pin" size={13} style={{ marginRight:4 }} />
                 {contractor.service_area.join(" · ")}
               </div>
@@ -137,7 +137,7 @@ export default function ContractorProfile() {
             <button style={s.btn} onClick={() => setLocation("/client-onboarding")}>Book This Contractor →</button>
             {contractor.google_reviews_url && (
               <a href={contractor.google_reviews_url} target="_blank" rel="noopener noreferrer"
-                style={{ padding:".5rem 1rem", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.1)", borderRadius:"8px", color:"rgba(190,205,235,.7)", fontSize:".82rem", textAlign:"center" as const, textDecoration:"none" }}>
+                style={{ padding:".5rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"8px", color:"rgba(var(--ff-muted), .7)", fontSize:".82rem", textAlign:"center" as const, textDecoration:"none" }}>
                 Google Reviews ↗
               </a>
             )}
@@ -152,9 +152,9 @@ export default function ContractorProfile() {
               return avg ? (
                 <div key={key} style={s.scoreCard}>
                   <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"#ea6b14", marginBottom:".2rem" }}>
-                    {avg}<span style={{ fontSize:"1rem", color:"rgba(190,205,235,.4)" }}>/10</span>
+                    {avg}<span style={{ fontSize:"1rem", color:"rgba(var(--ff-muted), .4)" }}>/10</span>
                   </div>
-                  <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(190,205,235,.45)" }}>{label}</div>
+                  <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)" }}>{label}</div>
                 </div>
               ) : null;
             })}
@@ -167,12 +167,12 @@ export default function ContractorProfile() {
             <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", color:"#ea6b14", marginBottom:"1.25rem" }}>Past Work</div>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap:".75rem" }}>
               {portfolio.map((item: any) => (
-                <div key={item.id} style={{ background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:"10px", overflow:"hidden" }}>
+                <div key={item.id} style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"10px", overflow:"hidden" }}>
                   {item.photo_path && <img src={pfUrl(item.photo_path)} alt={item.title || "Past job"} style={{ width:"100%", height:"110px", objectFit:"cover" as const, display:"block" }} />}
                   {(item.title || item.description) && (
                     <div style={{ padding:".5rem .6rem" }}>
                       {item.title && <div style={{ fontSize:".8rem", fontWeight:600 }}>{item.title}</div>}
-                      {item.description && <div style={{ fontSize:".72rem", color:"rgba(190,205,235,.55)", marginTop:".1rem" }}>{item.description}</div>}
+                      {item.description && <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .55)", marginTop:".1rem" }}>{item.description}</div>}
                     </div>
                   )}
                 </div>
@@ -186,10 +186,10 @@ export default function ContractorProfile() {
           <div style={s.card}>
             <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", color:"#ea6b14", marginBottom:"1.25rem" }}>Client Reviews</div>
             {reviews.map((r: any) => (
-              <div key={r.id} style={{ padding:"1rem 0", borderBottom:"1px solid rgba(255,255,255,.06)" }}>
+              <div key={r.id} style={{ padding:"1rem 0", borderBottom:"1px solid rgba(var(--ff-fg), .06)" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:".5rem" }}>
                   <span style={{ fontWeight:500 }}>{r.reviewer_first_name ?? "Client"}</span>
-                  <span style={{ fontSize:".75rem", color:"rgba(190,205,235,.4)" }}>{new Date(r.created_at).toLocaleDateString()}</span>
+                  <span style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .4)" }}>{new Date(r.created_at).toLocaleDateString()}</span>
                 </div>
                 <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginBottom:".5rem" }}>
                   {[["Price", r.price_score], ["Experience", r.experience_score], ["Results", r.result_score]].map(([l, v]) => v != null && (
@@ -198,7 +198,7 @@ export default function ContractorProfile() {
                     </span>
                   ))}
                 </div>
-                {r.comment && <p style={{ fontSize:".88rem", color:"rgba(190,205,235,.7)", lineHeight:1.6, margin:0 }}>{r.comment}</p>}
+                {r.comment && <p style={{ fontSize:".88rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.6, margin:0 }}>{r.comment}</p>}
               </div>
             ))}
           </div>

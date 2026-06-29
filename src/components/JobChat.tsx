@@ -54,14 +54,14 @@ export default function JobChat({
         onClick={e => e.stopPropagation()}
         style={{
           width: "100%", maxWidth: "440px", height: "100%",
-          background: "#1a2236", borderLeft: "1px solid rgba(255,255,255,.1)",
+          background: "var(--ff-bg)", borderLeft: "1px solid rgba(var(--ff-fg), .1)",
           display: "flex", flexDirection: "column", boxShadow: "-20px 0 60px rgba(0,0,0,.5)",
         }}
       >
         {/* Header */}
         <div style={{
           padding: "1rem 1.25rem", background: "rgba(234,107,20,.1)",
-          borderBottom: "1px solid rgba(255,255,255,.08)",
+          borderBottom: "1px solid rgba(var(--ff-fg), .08)",
           display: "flex", alignItems: "center", justifyContent: "space-between",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: ".7rem" }}>
@@ -71,13 +71,13 @@ export default function JobChat({
               display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem",
             }}>💬</div>
             <div>
-              <div style={{ fontSize: ".95rem", fontWeight: 600, color: "#f0f4ff" }}>{title}</div>
-              {readOnly && <div style={{ fontSize: ".72rem", color: "rgba(190,205,235,.5)" }}>Conversation closed — job completed</div>}
+              <div style={{ fontSize: ".95rem", fontWeight: 600, color: "var(--ff-text)" }}>{title}</div>
+              {readOnly && <div style={{ fontSize: ".72rem", color: "rgba(var(--ff-muted), .5)" }}>Conversation closed — job completed</div>}
             </div>
           </div>
           <button onClick={onClose} aria-label="Close chat" style={{
             background: "none", border: "none", cursor: "pointer",
-            color: "rgba(190,205,235,.55)", fontSize: "1.3rem", lineHeight: 1, padding: 4,
+            color: "rgba(var(--ff-muted), .55)", fontSize: "1.3rem", lineHeight: 1, padding: 4,
           }}>✕</button>
         </div>
 
@@ -87,7 +87,7 @@ export default function JobChat({
           display: "flex", flexDirection: "column", gap: ".6rem",
         }}>
           {messages.length === 0 && (
-            <p style={{ textAlign: "center", fontSize: ".85rem", color: "rgba(190,205,235,.35)", marginTop: "2rem" }}>
+            <p style={{ textAlign: "center", fontSize: ".85rem", color: "rgba(var(--ff-muted), .35)", marginTop: "2rem" }}>
               No messages yet. Say hello 👋
             </p>
           )}
@@ -98,9 +98,9 @@ export default function JobChat({
                 <div style={{
                   maxWidth: "78%", padding: ".6rem .9rem",
                   borderRadius: mine ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
-                  background: mine ? "linear-gradient(135deg,#ea6b14,#f09020)" : "rgba(255,255,255,.07)",
-                  border: mine ? "none" : "1px solid rgba(255,255,255,.08)",
-                  color: "#f0f4ff", fontSize: ".88rem", lineHeight: 1.5, whiteSpace: "pre-wrap",
+                  background: mine ? "linear-gradient(135deg,#ea6b14,#f09020)" : "rgba(var(--ff-fg), .07)",
+                  border: mine ? "none" : "1px solid rgba(var(--ff-fg), .08)",
+                  color: "var(--ff-text)", fontSize: ".88rem", lineHeight: 1.5, whiteSpace: "pre-wrap",
                 }}>{m.content}</div>
               </div>
             );
@@ -111,14 +111,14 @@ export default function JobChat({
         {/* Input or closed notice */}
         {readOnly ? (
           <div style={{
-            padding: "1rem 1.25rem", borderTop: "1px solid rgba(255,255,255,.08)",
-            fontSize: ".82rem", color: "rgba(190,205,235,.5)", textAlign: "center",
+            padding: "1rem 1.25rem", borderTop: "1px solid rgba(var(--ff-fg), .08)",
+            fontSize: ".82rem", color: "rgba(var(--ff-muted), .5)", textAlign: "center",
           }}>
             This job is complete, so messaging is closed.
           </div>
         ) : (
           <div style={{
-            padding: ".85rem 1rem", borderTop: "1px solid rgba(255,255,255,.08)",
+            padding: ".85rem 1rem", borderTop: "1px solid rgba(var(--ff-fg), .08)",
             display: "flex", gap: ".5rem", alignItems: "center",
           }}>
             <input
@@ -129,8 +129,8 @@ export default function JobChat({
               placeholder="Type a message…"
               style={{
                 flex: 1, padding: ".7rem .9rem",
-                background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.1)",
-                borderRadius: "9px", color: "#f0f4ff", fontFamily: "inherit", fontSize: ".9rem", outline: "none",
+                background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .1)",
+                borderRadius: "9px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".9rem", outline: "none",
               }}
             />
             <button
@@ -138,8 +138,8 @@ export default function JobChat({
               disabled={!input.trim() || sending}
               style={{
                 padding: ".7rem 1.1rem", borderRadius: "9px", border: "none",
-                background: input.trim() && !sending ? "#ea6b14" : "rgba(255,255,255,.08)",
-                color: input.trim() && !sending ? "#fff" : "rgba(190,205,235,.3)",
+                background: input.trim() && !sending ? "#ea6b14" : "rgba(var(--ff-fg), .08)",
+                color: input.trim() && !sending ? "#fff" : "rgba(var(--ff-muted), .3)",
                 cursor: input.trim() && !sending ? "pointer" : "default",
                 fontFamily: "inherit", fontSize: ".9rem", fontWeight: 600,
               }}
