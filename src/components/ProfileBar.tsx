@@ -155,7 +155,7 @@ export default function ProfileBar({ role, onSaved }: { role: Role; onSaved?: ()
             )}
           </div>
 
-          {error && <p style={{ fontSize: ".82rem", color: "#f87171", marginTop: ".8rem" }}>{error}</p>}
+          {error && <p style={{ fontSize: ".82rem", color: "var(--ff-danger)", marginTop: ".8rem" }}>{error}</p>}
 
           <div style={{ display: "flex", alignItems: "center", gap: ".75rem", marginTop: "1.1rem" }}>
             <button style={{ ...primaryBtn, opacity: saving ? .6 : 1 }} onClick={save} disabled={saving}>

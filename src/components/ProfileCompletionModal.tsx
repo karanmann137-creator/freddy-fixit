@@ -100,7 +100,7 @@ export default function ProfileCompletionModal({
 
         <div style={{ display:"flex", gap:".6rem", alignItems:"flex-start", padding:".8rem .9rem", background:"rgba(120,200,160,.08)", border:"1px solid rgba(120,200,160,.3)", borderRadius:"12px", marginBottom:"1.2rem" }}>
           <span aria-hidden style={{ flexShrink:0, fontSize:"1.1rem" }}>🛡️</span>
-          <div style={{ fontSize:".84rem", lineHeight:1.5, color:"rgba(214,235,224,.92)" }}>{escrow}</div>
+          <div style={{ fontSize:".84rem", lineHeight:1.5, color:"var(--ff-text)" }}>{escrow}</div>
         </div>
 
         <button onClick={primary} style={{ width:"100%", padding:".85rem 1rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"10px", fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:".95rem", cursor:"pointer", marginBottom:".55rem" }}>{primaryLabel}</button>

@@ -61,7 +61,7 @@ export default function GetQuote() {
     inner: { maxWidth:"560px", margin:"0 auto" },
     card: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"2rem" },
     label: { display:"block", fontSize:".78rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .6)", marginBottom:".6rem", marginTop:"1.25rem" },
-    err: { fontSize:".78rem", color:"#f87171", marginTop:".35rem" },
+    err: { fontSize:".78rem", color:"var(--ff-danger)", marginTop:".35rem" },
     btn: { padding:".85rem 1.5rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".95rem", fontWeight:600, cursor:"pointer", border:"none", background:"linear-gradient(135deg,#ea6b14,#f09020)", color:"#fff", width:"100%" },
   };
 
@@ -128,7 +128,7 @@ export default function GetQuote() {
           <textarea style={{ ...inp, resize:"vertical", minHeight:"110px", borderColor: errors.details ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="What needs doing? The more detail, the better the quote." value={details} onChange={e => { setDetails(e.target.value); setErrors(x => ({ ...x, details:"" })); }} />
           {errors.details && <p style={s.err}>{errors.details}</p>}
 
-          {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"#fca5a5", marginTop:"1.25rem" }}>{submitError}</div>}
+          {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"var(--ff-danger)", marginTop:"1.25rem" }}>{submitError}</div>}
 
           <div style={{ marginTop:"1.75rem" }}>
             <button style={{ ...s.btn, opacity: submitting ? .6 : 1 }} onClick={submit} disabled={submitting}>

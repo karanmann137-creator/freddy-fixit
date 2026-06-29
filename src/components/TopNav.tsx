@@ -153,7 +153,7 @@ export default function TopNav() {
                 <button
                   onClick={logOut}
                   className="ff-menu-item"
-                  style={{ ...menuItem, color: "#ff9a6b" }}
+                  style={{ ...menuItem, color: "#ea6b14" }}
                 >
                   Log out
                 </button>

@@ -86,7 +86,7 @@ export default function ScheduleField({ value, onChange }: Props) {
           <select value={m} onChange={e => changeMonth(Number(e.target.value))}
             style={{ flex: "1 1 auto", padding: ".5rem .6rem", background: fieldBg, border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".85rem" }}>
             {MONTHS.map((name, i) => (
-              <option key={name} value={i} disabled={i < monthsDisabledBefore} style={{ color: "var(--ff-bg)" }}>{name}</option>
+              <option key={name} value={i} disabled={i < monthsDisabledBefore} style={{ color: "#1a2236" }}>{name}</option>
             ))}
           </select>
           <input type="number" value={y} min={now.getFullYear()} onChange={e => changeYear(e.target.value)}

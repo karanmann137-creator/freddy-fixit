@@ -64,7 +64,7 @@ export default function JobTimeline({ job }: { job: any }) {
         );
       })}
       {disputed && (
-        <div style={{ marginTop: ".5rem", fontSize: ".78rem", color: "#fbbf24" }}>
+        <div style={{ marginTop: ".5rem", fontSize: ".78rem", color: "var(--ff-warn)" }}>
           <Ic name="alert-triangle" size={12} style={{ marginRight: 4 }} />Paused — a problem was reported and is under review.
         </div>
       )}

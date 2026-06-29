@@ -213,7 +213,7 @@ export default function AdminDashboard() {
               : t === "disputes" ? `Disputes (${openDisputes})`
               : `Leads (${newLeads})`;
             return (
-              <button key={t} style={{ ...s.tab, ...(tab===t ? s.activeTab : {}), ...(t === "health" && healthAlerts > 0 ? { borderColor:"rgba(251,191,36,.5)", color:"#fbbf24" } : {}), ...(t === "disputes" && openDisputes > 0 ? { borderColor:"rgba(251,191,36,.5)", color:"#fbbf24" } : {}), ...(t === "leads" && newLeads > 0 ? { borderColor:"rgba(234,107,20,.5)", color:"#ea6b14" } : {}) }} onClick={() => setTab(t)}>
+              <button key={t} style={{ ...s.tab, ...(tab===t ? s.activeTab : {}), ...(t === "health" && healthAlerts > 0 ? { borderColor:"rgba(251,191,36,.5)", color:"var(--ff-warn)" } : {}), ...(t === "disputes" && openDisputes > 0 ? { borderColor:"rgba(251,191,36,.5)", color:"var(--ff-warn)" } : {}), ...(t === "leads" && newLeads > 0 ? { borderColor:"rgba(234,107,20,.5)", color:"#ea6b14" } : {}) }} onClick={() => setTab(t)}>
                 {label}
               </button>
             );
@@ -261,7 +261,7 @@ export default function AdminDashboard() {
                   </div>
                 )}
                 {r.status !== "pending" && r.assigned_contractor_id && (
-                  <div style={{ ...s.meta, marginTop:".5rem", color:"#86efac" }}>Assigned ✓</div>
+                  <div style={{ ...s.meta, marginTop:".5rem", color:"var(--ff-success)" }}>Assigned ✓</div>
                 )}
                 <RequestPhotoQuote requestId={r.id} photoPath={r.photo_path} estimatedQuote={r.estimated_quote} quoteNotes={r.quote_notes} canQuote />
                 <div style={{ marginTop:".75rem" }}>
@@ -280,7 +280,7 @@ export default function AdminDashboard() {
               <div key={c.id} style={s.card}>
                 <div style={s.title}>{c.company_name || [c.profile?.first_name, c.profile?.last_name].filter(Boolean).join(" ") || "Unnamed contractor"}</div>
                 {flagMatches[c.id] && (
-                  <div style={{ marginTop:".5rem", padding:".6rem .8rem", background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.4)", borderRadius:"8px", color:"#fca5a5", fontSize:".8rem", lineHeight:1.45 }}>
+                  <div style={{ marginTop:".5rem", padding:".6rem .8rem", background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.4)", borderRadius:"8px", color:"var(--ff-danger)", fontSize:".8rem", lineHeight:1.45 }}>
                     {"Possible re-signup — matches a previously deleted account that had poor reviews (avg "}
                     {flagMatches[c.id].avg}{"/10 over "}{flagMatches[c.id].count}{" review"}{flagMatches[c.id].count === 1 ? "" : "s"}{", deleted "}
                     {new Date(flagMatches[c.id].date).toLocaleDateString()}{"). Matched on "}{flagMatches[c.id].fields.join(", ")}{"."}
@@ -302,13 +302,13 @@ export default function AdminDashboard() {
                     View Profile ↗
                   </button>
                   {c.status !== "active" && (
-                    <button style={{ ...s.btn, color:"#86efac", borderColor:"rgba(34,197,94,.35)" }}
+                    <button style={{ ...s.btn, color:"var(--ff-success)", borderColor:"rgba(34,197,94,.35)" }}
                       onClick={() => supabase.rpc("admin_set_contractor_status", { p_id: c.id, p_status: "active" }).then(loadAll)}>
                       Approve
                     </button>
                   )}
                   {c.status === "active" && (
-                    <button style={{ ...s.btn, color:"#fca5a5", borderColor:"rgba(239,68,68,.3)" }}
+                    <button style={{ ...s.btn, color:"var(--ff-danger)", borderColor:"rgba(239,68,68,.3)" }}
                       onClick={() => supabase.rpc("admin_set_contractor_status", { p_id: c.id, p_status: "inactive" }).then(loadAll)}>
                       Deactivate
                     </button>
@@ -350,7 +350,7 @@ export default function AdminDashboard() {
                 resolved_released: "Resolved — released to contractor",
                 rejected: "Rejected",
               };
-              const statusColor = d.status === "open" ? "#fbbf24" : "#86efac";
+              const statusColor = d.status === "open" ? "var(--ff-warn)" : "var(--ff-success)";
               return (
                 <div key={d.id} style={{ ...s.card, ...(d.status === "open" ? { borderColor:"rgba(251,191,36,.4)" } : {}) }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const, gap:".5rem" }}>
@@ -385,7 +385,7 @@ export default function AdminDashboard() {
                   <div style={{ marginTop:".6rem", padding:".6rem .8rem", background: d.contractor_responded_at ? "rgba(59,130,246,.07)" : "rgba(251,191,36,.06)", border: "1px solid " + (d.contractor_responded_at ? "rgba(59,130,246,.3)" : "rgba(251,191,36,.25)"), borderRadius:"8px", fontSize:".82rem", lineHeight:1.5 }}>
                     {d.contractor_responded_at ? (
                       <>
-                        <div style={{ fontWeight:600, color:"#93c5fd", marginBottom:".3rem" }}>Contractor responded</div>
+                        <div style={{ fontWeight:600, color:"var(--ff-info)", marginBottom:".3rem" }}>Contractor responded</div>
                         <div style={{ color:"rgba(var(--ff-muted), .85)" }}>{d.contractor_response}</div>
                         {(disputeRespPhotos[d.id]?.length ?? 0) > 0 && (
                           <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginTop:".5rem" }}>
@@ -398,7 +398,7 @@ export default function AdminDashboard() {
                         )}
                       </>
                     ) : (
-                      <div style={{ color:"#fbbf24" }}>
+                      <div style={{ color:"var(--ff-warn)" }}>
                         Awaiting contractor response{d.response_deadline ? " — due " + new Date(d.response_deadline).toLocaleDateString("en-CA", { dateStyle:"medium" }) : ""}.
                       </div>
                     )}
@@ -422,7 +422,7 @@ export default function AdminDashboard() {
                       <div style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .45)", marginTop:".55rem", lineHeight:1.45 }}>Full refund returns the whole charge to the client and pays nothing out. Partial refund returns part to the client and still pays the contractor their payout. Release pays the contractor and keeps the charge.</div>
                     </div>
                   ) : (
-                    <div style={{ ...s.meta, marginTop:".6rem", color:"#86efac" }}>
+                    <div style={{ ...s.meta, marginTop:".6rem", color:"var(--ff-success)" }}>
                       {d.refund_amount != null ? `Refunded $${Number(d.refund_amount).toFixed(2)}. ` : ""}
                       {d.resolved_at ? "Resolved " + new Date(d.resolved_at).toLocaleDateString() : ""}
                       {d.resolution_note ? ` — ${d.resolution_note}` : ""}
@@ -444,7 +444,7 @@ export default function AdminDashboard() {
               <div key={l.id} style={{ ...s.card, ...(l.status === "new" ? { borderColor:"rgba(234,107,20,.4)" } : {}) }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const, gap:".5rem" }}>
                   <div style={s.title}>{l.service_needed || "General enquiry"}</div>
-                  <div style={{ fontSize:".78rem", fontWeight:500, color: l.status === "new" ? "#ea6b14" : "#86efac" }}>● {l.status === "new" ? "New" : "Contacted"}</div>
+                  <div style={{ fontSize:".78rem", fontWeight:500, color: l.status === "new" ? "#ea6b14" : "var(--ff-success)" }}>● {l.status === "new" ? "New" : "Contacted"}</div>
                 </div>
                 <div style={s.meta}><Ic name="user" size={13} style={{ marginRight:4 }} />{l.name || "—"}</div>
                 <div style={s.meta}>
@@ -489,14 +489,14 @@ export default function AdminDashboard() {
                       <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", marginTop:".35rem" }}>New quote leads</div>
                     </div>
                     <div style={{ ...s.card, flex:"1 1 180px", margin:0, textAlign:"center" as const }}>
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"#fbbf24", lineHeight:1 }}>{health.pending_contractors_count ?? 0}</div>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"var(--ff-warn)", lineHeight:1 }}>{health.pending_contractors_count ?? 0}</div>
                       <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", marginTop:".35rem" }}>Contractors awaiting review</div>
                     </div>
                   </div>
-                  {allClear && <p style={{ color:"#86efac", fontSize:".9rem" }}>● All clear — nothing is overdue right now.</p>}
+                  {allClear && <p style={{ color:"var(--ff-success)", fontSize:".9rem" }}>● All clear — nothing is overdue right now.</p>}
                   {buckets.map(b => b.count > 0 && (
                     <div key={b.key} style={{ marginBottom:"1.5rem" }}>
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.1rem", letterSpacing:".04em", color:"#fbbf24" }}>{b.title} ({b.count})</div>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.1rem", letterSpacing:".04em", color:"var(--ff-warn)" }}>{b.title} ({b.count})</div>
                       <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .5)", marginBottom:".6rem" }}>{b.hint}</div>
                       {b.items.map((it:any) => (
                         <div key={it.id} style={{ ...s.card, borderColor:"rgba(251,191,36,.25)" }}>

@@ -61,7 +61,7 @@ export default function ConfirmDialog({
         <p style={{ fontSize: ".92rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .85)", margin: "0 0 .5rem" }}>
           {state.message}
         </p>
-        <p style={{ fontSize: ".8rem", color: danger ? "#fca5a5" : "#fbbf24", margin: "0 0 1.4rem", fontWeight: 500 }}>
+        <p style={{ fontSize: ".8rem", color: danger ? "var(--ff-danger)" : "var(--ff-warn)", margin: "0 0 1.4rem", fontWeight: 500 }}>
           This action can’t be undone.
         </p>
 

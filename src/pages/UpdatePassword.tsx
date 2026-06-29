@@ -93,6 +93,6 @@ const s: Record<string, React.CSSProperties> = {
   logo: { fontFamily: "'Bebas Neue',sans-serif", fontSize: "2.2rem", letterSpacing: ".1em", textAlign: "center", marginBottom: "2rem", color: "#ea6b14" },
   card: { background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: "14px", padding: "2rem" },
   heading: { fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.8rem", letterSpacing: ".06em", marginBottom: ".25rem" },
-  err: { background: "rgba(239,68,68,.1)", border: "1px solid rgba(239,68,68,.25)", borderRadius: "8px", padding: ".75rem 1rem", fontSize: ".83rem", color: "#fca5a5", marginBottom: "1rem" },
+  err: { background: "rgba(239,68,68,.1)", border: "1px solid rgba(239,68,68,.25)", borderRadius: "8px", padding: ".75rem 1rem", fontSize: ".83rem", color: "var(--ff-danger)", marginBottom: "1rem" },
   btn: { width: "100%", padding: ".9rem", background: "#ea6b14", color: "#fff", border: "none", borderRadius: "8px", fontFamily: "inherit", fontSize: ".95rem", fontWeight: 500, cursor: "pointer", boxSizing: "border-box" },
 };

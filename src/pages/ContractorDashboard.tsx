@@ -419,7 +419,7 @@ export default function ContractorDashboard() {
                       const overdue = deadline ? deadline.getTime() < Date.now() : false;
                       return (
                         <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(251,191,36,.07)", border:"1px solid rgba(251,191,36,.35)" }}>
-                          <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".82rem", fontWeight:600, color:"#fbbf24", marginBottom:".6rem" }}>
+                          <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".82rem", fontWeight:600, color:"var(--ff-warn)", marginBottom:".6rem" }}>
                             <Ic name="alert-triangle" size={14} />{open ? "The client filed a claim on this job" : "Claim resolved"}
                           </div>
                           <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .85)", lineHeight:1.5, marginBottom:".5rem" }}>
@@ -441,7 +441,7 @@ export default function ContractorDashboard() {
                           )}
                           {open && !responded && (
                             <>
-                              <div style={{ fontSize:".78rem", color: overdue ? "#f87171" : "#fbbf24", marginBottom:".6rem" }}>
+                              <div style={{ fontSize:".78rem", color: overdue ? "var(--ff-danger)" : "var(--ff-warn)", marginBottom:".6rem" }}>
                                 <Ic name="clock" size={12} style={{ marginRight:4 }} />
                                 {overdue ? "Your response window has passed — you can still respond until our team decides." : `Please respond by ${deadline ? deadline.toLocaleDateString() : "the deadline"}.`}
                               </div>
@@ -449,7 +449,7 @@ export default function ContractorDashboard() {
                             </>
                           )}
                           {responded && (
-                            <div style={{ fontSize:".8rem", color:"#86efac", lineHeight:1.5 }}>
+                            <div style={{ fontSize:".8rem", color:"var(--ff-success)", lineHeight:1.5 }}>
                               <Ic name="check-circle" size={13} style={{ marginRight:4 }} />Your response was submitted. Our team is reviewing both sides.
                               <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .75)", marginTop:".4rem" }}>&ldquo;{d.contractor_response}&rdquo;</div>
                             </div>
@@ -462,7 +462,7 @@ export default function ContractorDashboard() {
                       {job.status === "assigned" && (
                         <>
                           {job.schedule_proposed_at && !job.client_approved_at && (
-                            <div style={{ fontSize:".8rem", color:"#fbbf24" }}><Ic name="clock" size={13} style={{ marginRight:4 }} />Waiting for the client to approve {job.scheduled_at ? new Date(job.scheduled_at).toLocaleString() : "your proposed time"}. You can update it below.</div>
+                            <div style={{ fontSize:".8rem", color:"var(--ff-warn)" }}><Ic name="clock" size={13} style={{ marginRight:4 }} />Waiting for the client to approve {job.scheduled_at ? new Date(job.scheduled_at).toLocaleString() : "your proposed time"}. You can update it below.</div>
                           )}
                           <ScheduleField value={proposeForm.when} onChange={(v) => setProposeForm(f => ({ ...f, when: v }))} />
                           <div>
@@ -478,9 +478,9 @@ export default function ContractorDashboard() {
                       )}
                       {(job.status === "scheduled" || job.status === "in_progress") && (
                         <>
-                          <div style={{ fontSize:".85rem", color:"#86efac" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Booked for {job.scheduled_at ? new Date(job.scheduled_at).toLocaleString() : "the agreed time"}{job.amount ? " · $" + job.amount : ""}.</div>
+                          <div style={{ fontSize:".85rem", color:"var(--ff-success)" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Booked for {job.scheduled_at ? new Date(job.scheduled_at).toLocaleString() : "the agreed time"}{job.amount ? " · $" + job.amount : ""}.</div>
                           {job.on_my_way_at ? (
-                            <div style={{ fontSize:".82rem", color:"#86efac" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />You let the client know you're on the way.</div>
+                            <div style={{ fontSize:".82rem", color:"var(--ff-success)" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />You let the client know you're on the way.</div>
                           ) : (
                             <button style={{ ...s.btn, color:"var(--ff-text)", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.12)", alignSelf:"flex-start" }} disabled={busyJob} onClick={() => onMyWay(job)}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{busyJob ? "…" : "I'm on my way"}</button>
                           )}
@@ -495,10 +495,10 @@ export default function ContractorDashboard() {
                         </>
                       )}
                       {job.status === "pending_confirmation" && (
-                        <div style={{ fontSize:".85rem", color:"#fbbf24" }}><Ic name="clock" size={13} style={{ marginRight:4 }} />You marked this complete — waiting for the client to confirm.</div>
+                        <div style={{ fontSize:".85rem", color:"var(--ff-warn)" }}><Ic name="clock" size={13} style={{ marginRight:4 }} />You marked this complete — waiting for the client to confirm.</div>
                       )}
                       {job.status === "completed" && (
-                        <div style={{ fontSize:".85rem", color:"#86efac" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Job completed and confirmed.</div>
+                        <div style={{ fontSize:".85rem", color:"var(--ff-success)" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Job completed and confirmed.</div>
                       )}
                     </div>
 
@@ -538,10 +538,10 @@ export default function ContractorDashboard() {
                 <div style={{ margin:".75rem 0", padding:".75rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:".5rem" }}>
                     <span style={{ fontSize:".75rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .5)" }}>Bids</span>
-                    <span style={{ fontSize:".78rem", fontWeight:600, color: (r.bid_count ?? 0) >= 3 ? "#ef4444" : "#86efac" }}>{r.bid_count ?? 0}/3</span>
+                    <span style={{ fontSize:".78rem", fontWeight:600, color: (r.bid_count ?? 0) >= 3 ? "#ef4444" : "var(--ff-success)" }}>{r.bid_count ?? 0}/3</span>
                   </div>
                   {r.my_amount != null && <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".5rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />You bid {"$" + r.my_amount}. You can update it below.</div>}
-                  {r.my_amount == null && (r.bid_count ?? 0) >= 3 && <div style={{ fontSize:".82rem", color:"#fbbf24" }}>This job already has 3 bids.</div>}
+                  {r.my_amount == null && (r.bid_count ?? 0) >= 3 && <div style={{ fontSize:".82rem", color:"var(--ff-warn)" }}>This job already has 3 bids.</div>}
                   {(r.my_amount != null || (r.bid_count ?? 0) < 3) && (
                     <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center" }}>
                       <input type="number" min="0" placeholder="Price $" value={bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "")} onChange={e => setBidForm(p => ({ ...p, [r.id]: { amount: e.target.value, message: p[r.id]?.message ?? (r.my_message ?? "") } }))} style={{ width:"100px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />

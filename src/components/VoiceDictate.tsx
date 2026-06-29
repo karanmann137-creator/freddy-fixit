@@ -87,7 +87,7 @@ export default function VoiceDictate({
           borderRadius: "999px",
           border: "1px solid " + (listening ? "rgba(239,68,68,.7)" : "rgba(234,107,20,.55)"),
           background: listening ? "rgba(239,68,68,.16)" : "rgba(234,107,20,.12)",
-          color: listening ? "#fca5a5" : "#ea6b14",
+          color: listening ? "var(--ff-danger)" : "#ea6b14",
           fontSize: "0.85rem",
           fontWeight: 600,
           cursor: "pointer",
@@ -106,7 +106,7 @@ export default function VoiceDictate({
         </p>
       )}
       {error && (
-        <p style={{ margin: "0.4rem 0 0", fontSize: "0.8rem", color: "#fca5a5" }}>{error}</p>
+        <p style={{ margin: "0.4rem 0 0", fontSize: "0.8rem", color: "var(--ff-danger)" }}>{error}</p>
       )}
     </div>
   );

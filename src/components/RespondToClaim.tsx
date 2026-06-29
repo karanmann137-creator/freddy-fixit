@@ -114,7 +114,7 @@ export default function RespondToClaim({
           )}
         </div>
 
-        {err && <div style={{ fontSize: ".82rem", color: "#f87171", marginBottom: ".75rem" }}>{err}</div>}
+        {err && <div style={{ fontSize: ".82rem", color: "var(--ff-danger)", marginBottom: ".75rem" }}>{err}</div>}
 
         <div style={{ display: "flex", gap: ".6rem", marginTop: ".5rem" }}>
           <button

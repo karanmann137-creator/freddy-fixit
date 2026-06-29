@@ -20,6 +20,10 @@ style.textContent = `
     --ff-surface-2: #111827;     /* footer / deep */
     --ff-surface-0e: #0e1422;
     --ff-surface-1f: #1f2937;
+    --ff-success: #86efac;
+    --ff-warn: #fbbf24;
+    --ff-danger: #f87171;
+    --ff-info: #93c5fd;
   }
   :root[data-theme="light"] {
     --ff-fg: 30,41,59;           /* slate ink replaces white */
@@ -32,6 +36,10 @@ style.textContent = `
     --ff-surface-2: #e4e9f2;
     --ff-surface-0e: #dfe5f0;
     --ff-surface-1f: #ffffff;
+    --ff-success: #15803d;
+    --ff-warn: #b45309;
+    --ff-danger: #dc2626;
+    --ff-info: #2563eb;
   }
   *, *::before, *::after { box-sizing: border-box; }
   html { font-size: calc(100% * var(--ff-font-scale, 1)); }

@@ -41,7 +41,7 @@ function calcJobScore(r: any): { score: number; max: number; label: string; colo
   const max = isVehicle ? 10 : 8;
   const pct = score / max;
   const label = pct >= 0.75 ? "Strong listing" : pct >= 0.45 ? "Good listing" : "Add more details";
-  const color = pct >= 0.75 ? "#86efac" : pct >= 0.45 ? "#fbbf24" : "#f87171";
+  const color = pct >= 0.75 ? "var(--ff-success)" : pct >= 0.45 ? "var(--ff-warn)" : "var(--ff-danger)";
   return { score, max, label, color };
 }
 
@@ -210,7 +210,7 @@ export default function ClientDashboard() {
     const esc = (v: any) => String(v ?? "").replace(/[<>&]/g, (c: string) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" } as any)[c]);
     const html =
       "<!doctype html><html><head><meta charset='utf-8'><title>Receipt " + esc(ref) + "</title>" +
-      "<style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ff-bg);max-width:560px;margin:40px auto;padding:0 20px}" +
+      "<style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#1a2236;max-width:560px;margin:40px auto;padding:0 20px}" +
       "h1{font-size:22px;color:#ea6b14;margin:0 0 2px}.sub{color:#667;font-size:13px;margin-bottom:24px}" +
       "table{width:100%;border-collapse:collapse;margin:18px 0}td{padding:9px 0;font-size:14px;border-bottom:1px solid #eee}" +
       "td.r{text-align:right}.tot td{font-weight:700;font-size:16px;border-bottom:none;border-top:2px solid var(--ff-bg);padding-top:12px}" +
@@ -471,7 +471,7 @@ export default function ClientDashboard() {
 
                     {activeJob && activeJob.payment_status === "disputed" && (
                       <div style={{ marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(251,191,36,.08)", border:"1px solid rgba(251,191,36,.35)" }}>
-                        <div style={{ fontSize:".9rem", fontWeight:600, color:"#fbbf24", marginBottom:".4rem" }}><Ic name="alert-triangle" size={14} style={{ marginRight:5 }} />Claim filed — under review</div>
+                        <div style={{ fontSize:".9rem", fontWeight:600, color:"var(--ff-warn)", marginBottom:".4rem" }}><Ic name="alert-triangle" size={14} style={{ marginRight:5 }} />Claim filed — under review</div>
                         <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.55 }}>Your payment is <strong>frozen and protected</strong> while our team reviews your claim. The contractor has a few days to respond, then we'll decide. Nothing has been released to them in the meantime. We'll email you as soon as it's resolved.</div>
                       </div>
                     )}
@@ -493,16 +493,16 @@ export default function ClientDashboard() {
                         )}
                         {activeJob.status === "scheduled" && (
                           <>
-                            <div style={{ fontSize:".85rem", color:"#86efac", marginBottom: (activeJob.payment_status === "held" || activeJob.payment_status === "released") ? 0 : ".75rem" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Scheduled for {activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "the agreed time"}{activeJob.amount ? " · $" + activeJob.amount : ""}.</div>
+                            <div style={{ fontSize:".85rem", color:"var(--ff-success)", marginBottom: (activeJob.payment_status === "held" || activeJob.payment_status === "released") ? 0 : ".75rem" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Scheduled for {activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "the agreed time"}{activeJob.amount ? " · $" + activeJob.amount : ""}.</div>
                             {(activeJob.payment_status === "held" || activeJob.payment_status === "released") ? (
                               <>
-                                <div style={{ fontSize:".82rem", color:"#86efac", marginBottom:".6rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Payment secured — we'll release it to your contractor once you confirm the work is done.</div>
+                                <div style={{ fontSize:".82rem", color:"var(--ff-success)", marginBottom:".6rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Payment secured — we'll release it to your contractor once you confirm the work is done.</div>
                                 <button style={s.btn} onClick={() => downloadReceipt(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Download receipt</button>
                               </>
                             ) : activeJob.amount ? (
                               <>
                                 {activeJob.payment_status === "failed" && (
-                                  <div style={{ fontSize:".82rem", color:"#fca5a5", marginBottom:".6rem", lineHeight:1.5 }}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />Your last payment didn't go through. No charge was made — please try again below.</div>
+                                  <div style={{ fontSize:".82rem", color:"var(--ff-danger)", marginBottom:".6rem", lineHeight:1.5 }}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />Your last payment didn't go through. No charge was made — please try again below.</div>
                                 )}
                                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".6rem", lineHeight:1.5 }}>Pay now to secure the job. Your money is <strong>held safely</strong> and only released to the contractor after you confirm the work is done. Total includes a 3% service fee.</div>
                                 <button style={s.primaryBtn} disabled={busyPay} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " (held until you confirm)"}</button>
@@ -519,7 +519,7 @@ export default function ClientDashboard() {
                                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".75rem" }}>Confirm the work is done and we'll release your held payment to the contractor. If you don't, it auto-confirms in a few days.</div>
                                 <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                                   <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm & release payment"}</button>
-                                  <button style={{ ...s.btn, color:"#fbbf24", borderColor:"rgba(251,191,36,.35)", background:"rgba(251,191,36,.08)" }} disabled={busyReq} onClick={() => setReportOpen(true)}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />File a claim</button>
+                                  <button style={{ ...s.btn, color:"var(--ff-warn)", borderColor:"rgba(251,191,36,.35)", background:"rgba(251,191,36,.08)" }} disabled={busyReq} onClick={() => setReportOpen(true)}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />File a claim</button>
                                   <button style={s.btn} onClick={() => downloadReceipt(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Download receipt</button>
                                 </div>
                               </>
@@ -538,7 +538,7 @@ export default function ClientDashboard() {
                         )}
                         {activeJob.status === "completed" && (
                           hasReviewed ? (
-                            <div style={{ fontSize:".85rem", color:"#86efac" }}><Ic name="check-circle" size={14} style={{ marginRight:4 }} />Completed — thanks for rating your contractor!</div>
+                            <div style={{ fontSize:".85rem", color:"var(--ff-success)" }}><Ic name="check-circle" size={14} style={{ marginRight:4 }} />Completed — thanks for rating your contractor!</div>
                           ) : (
                             <div>
                               <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".5rem" }}>Rate your contractor (out of 10)</div>
