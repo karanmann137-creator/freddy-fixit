@@ -614,47 +614,55 @@ export default function ContractorDashboard() {
             </div>
             <div style={s.card}>
               <div style={s.cardTitle}>Availability</div>
-              <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .5)", marginBottom:"1.25rem", lineHeight:1.5 }}>
-                Tap the time slots you can usually work. Changes save automatically.
+              <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .5)", marginBottom:"1.1rem", lineHeight:1.5 }}>
+                Tap a slot to toggle it. Changes save automatically.
               </p>
-              {DAYS.map(day => {
-                const sel = (contractor?.availability ?? {})[day] ?? [];
-                const slots = getSlots(day);
-                const allOn = slots.every(sl => sel.includes(sl));
+              {(() => {
+                const tpl = "58px repeat(3,1fr) 50px 28px";
+                const colHead = { fontSize:".6rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .55)", textAlign:"center" as const };
                 return (
-                  <div key={day} style={{ marginBottom:".9rem", paddingBottom:".9rem", borderBottom:"1px solid rgba(var(--ff-fg), .05)" }}>
-                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:".55rem", flexWrap:"wrap" as const, gap:".5rem" }}>
-                      <div style={{ fontSize:".82rem", fontWeight:600, letterSpacing:".04em", color:"var(--ff-text)" }}>{day}</div>
-                      <div style={{ display:"flex", gap:".4rem", alignItems:"center" }}>
-                        <button
-                          onClick={() => setDayAll(day, !allOn)}
-                          style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:".74rem", color: allOn ? "#ef4444" : "#ea6b14", padding:".15rem .3rem" }}>
-                          {allOn ? "Clear" : "All day"}
-                        </button>
-                        {sel.length > 0 && (
-                          <button
-                            onClick={() => copyDayToAll(day)}
-                            title={"Copy " + day + "'s hours to every day"}
-                            style={{ background:"none", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"6px", cursor:"pointer", fontFamily:"inherit", fontSize:".72rem", color:"rgba(var(--ff-muted), .7)", padding:".2rem .5rem" }}>
-                            Copy to all days
-                          </button>
-                        )}
-                      </div>
+                  <div>
+                    <div style={{ display:"grid", gridTemplateColumns: tpl, gap:".4rem", alignItems:"center", marginBottom:".45rem", paddingBottom:".3rem" }}>
+                      <div></div>
+                      <div style={colHead}>Morning</div>
+                      <div style={colHead}>Afternoon</div>
+                      <div style={colHead}>Evening</div>
+                      <div></div>
+                      <div></div>
                     </div>
-                    <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const }}>
-                      {slots.map(slot => {
-                        const on = sel.includes(slot);
-                        return (
-                          <button key={slot} onClick={() => toggleSlot(day, slot)}
-                            style={{ ...s.slot, margin:0, ...(on ? s.slotSel : {}) }}>
-                            {on ? "✓ " : ""}{slot}
+                    {DAYS.map(day => {
+                      const sel = (contractor?.availability ?? {})[day] ?? [];
+                      const slots = getSlots(day);
+                      const allOn = slots.every(sl => sel.includes(sl));
+                      return (
+                        <div key={day} style={{ display:"grid", gridTemplateColumns: tpl, gap:".4rem", alignItems:"center", padding:".32rem 0", borderTop:"1px solid rgba(var(--ff-fg), .06)" }}>
+                          <div style={{ fontSize:".82rem", fontWeight:600, color:"var(--ff-text)" }}>{day.slice(0,3)}</div>
+                          {["Morning","Afternoon","Evening"].map(slot => {
+                            if (!slots.includes(slot)) return <div key={slot} style={{ textAlign:"center" as const, color:"rgba(var(--ff-muted), .3)", fontSize:".8rem" }}>\u2014</div>;
+                            const on = sel.includes(slot);
+                            return (
+                              <button key={slot} onClick={() => toggleSlot(day, slot)} aria-label={day + " " + slot}
+                                style={{ padding:".46rem 0", borderRadius:"8px", cursor:"pointer", fontFamily:"inherit", fontSize:".82rem", fontWeight:700, border: on ? "1px solid rgba(234,107,20,.55)" : "1px solid rgba(var(--ff-fg), .12)", background: on ? "rgba(234,107,20,.16)" : "rgba(var(--ff-fg), .04)", color: on ? "#ea6b14" : "rgba(var(--ff-muted), .45)" }}>
+                                {on ? "\u2713" : "+"}
+                              </button>
+                            );
+                          })}
+                          <button onClick={() => setDayAll(day, !allOn)}
+                            style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:".72rem", color: allOn ? "#ef4444" : "#ea6b14", padding:".1rem", textAlign:"center" as const }}>
+                            {allOn ? "Clear" : "All"}
                           </button>
-                        );
-                      })}
-                    </div>
+                          {sel.length > 0 ? (
+                            <button onClick={() => copyDayToAll(day)} title={"Copy " + day + "'s hours to every day"}
+                              style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(var(--ff-muted), .55)", fontSize:".95rem", padding:0, lineHeight:1 }}>
+                              \u29c9
+                            </button>
+                          ) : <div></div>}
+                        </div>
+                      );
+                    })}
                   </div>
                 );
-              })}
+              })()}
             </div>
             <DeleteAccount />
           </div>
