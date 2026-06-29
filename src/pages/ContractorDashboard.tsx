@@ -23,6 +23,7 @@ export default function ContractorDashboard() {
   const [confirmState, setConfirmState] = useState<ConfirmState|null>(null);
   const [loading, setLoading]         = useState(true);
   const [activeTab, setActiveTab]     = useState<"jobs"|"available"|"profile"|"earnings"|"reviews">("jobs");
+  const [showCustomAvail, setShowCustomAvail] = useState(false);
   const [proposeForm, setProposeForm] = useState({ when:"", amount:"", notes:"" });
   const [photoFile, setPhotoFile]     = useState<File | null>(null);
   const [busyJob, setBusyJob]         = useState(false);
@@ -285,6 +286,14 @@ export default function ContractorDashboard() {
     DAYS.forEach(d => { avail[d] = getSlots(d).filter(sl => src.includes(sl)); });
     saveAvailability(avail);
   };
+  // Turn a whole set of days fully on (all their slots) and the rest off.
+  const setDaysOn = (onDays: string[]) => {
+    const avail: Record<string, string[]> = {};
+    DAYS.forEach(d => { avail[d] = onDays.includes(d) ? [...getSlots(d)] : []; });
+    saveAvailability(avail);
+  };
+  // A day counts as "available" if it has at least one slot selected.
+  const dayIsOn = (day: string) => ((contractor?.availability ?? {})[day] ?? []).length > 0;
 
   async function setupPayouts() {
     setBusyStripe(true);
@@ -615,58 +624,64 @@ export default function ContractorDashboard() {
             <div style={s.card}>
               <div style={s.cardTitle}>Availability</div>
               <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .5)", marginBottom:"1.1rem", lineHeight:1.5 }}>
-                Tap a slot to toggle it. Changes save automatically.
+                Pick a typical week. You can fine-tune any day. Changes save automatically.
               </p>
               {(() => {
-                const tpl = "52px repeat(3,1fr) 46px 26px";
-                const colHead = { fontSize:".58rem", fontWeight:700, textTransform:"uppercase" as const, letterSpacing:".09em", color:"rgba(var(--ff-muted), .55)", textAlign:"center" as const };
-                const cellBase = { display:"flex", alignItems:"center", justifyContent:"center", gap:".3rem", height:"38px", borderRadius:"9px", cursor:"pointer", fontFamily:"inherit", fontSize:".78rem", fontWeight:600, transition:"all .12s ease", width:"100%", boxSizing:"border-box" as const };
+                const onDays = DAYS.filter(dayIsOn);
+                const eq = (a: string[]) => a.length === onDays.length && a.every(d => onDays.includes(d));
+                const WEEKDAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday"];
+                const WEEKENDS = ["Saturday","Sunday"];
+                const active = eq(DAYS) ? "every" : eq(WEEKDAYS) ? "weekdays" : eq(WEEKENDS) ? "weekends" : (onDays.length ? "custom" : "none");
+                const presets: [string,string,string[]][] = [
+                  ["weekdays","Weekdays", WEEKDAYS],
+                  ["every","Every day", DAYS],
+                  ["weekends","Weekends only", WEEKENDS],
+                ];
+                const presetBtn = (selected: boolean) => ({
+                  padding:".5rem .9rem", borderRadius:"99px", cursor:"pointer", fontFamily:"inherit", fontSize:".82rem", fontWeight:600,
+                  border: selected ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .14)",
+                  background: selected ? "#ea6b14" : "rgba(var(--ff-fg), .05)",
+                  color: selected ? "#fff" : "var(--ff-text)",
+                });
+                const showChips = showCustomAvail || active === "custom";
                 return (
                   <div>
-                    <div style={{ display:"grid", gridTemplateColumns: tpl, gap:".45rem", alignItems:"center", marginBottom:".5rem" }}>
-                      <div></div>
-                      <div style={colHead}>Morning</div>
-                      <div style={colHead}>Afternoon</div>
-                      <div style={colHead}>Evening</div>
-                      <div></div>
-                      <div></div>
+                    <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
+                      {presets.map(([key,label,days]) => (
+                        <button key={key} onClick={() => { setShowCustomAvail(false); setDaysOn(days); }} style={presetBtn(active === key)}>
+                          {label}
+                        </button>
+                      ))}
+                      <button onClick={() => setShowCustomAvail(v => !v || active !== "custom" ? true : false)} style={presetBtn(active === "custom")}>
+                        Custom
+                      </button>
                     </div>
-                    {DAYS.map((day, di) => {
-                      const sel = (contractor?.availability ?? {})[day] ?? [];
-                      const slots = getSlots(day);
-                      const allOn = slots.every(sl => sel.includes(sl));
-                      return (
-                        <div key={day} style={{ display:"grid", gridTemplateColumns: tpl, gap:".45rem", alignItems:"center", marginBottom:".45rem" }}>
-                          <div style={{ fontSize:".82rem", fontWeight:700, color:"var(--ff-text)" }}>{day.slice(0,3)}</div>
-                          {["Morning","Afternoon","Evening"].map(slot => {
-                            if (!slots.includes(slot)) return <div key={slot} style={{ ...cellBase, cursor:"default", background:"transparent", color:"rgba(var(--ff-muted), .3)", fontSize:".9rem" }}>—</div>;
-                            const on = sel.includes(slot);
+                    {showChips && (
+                      <div style={{ marginTop:"1.1rem", paddingTop:"1.1rem", borderTop:"1px solid rgba(var(--ff-fg), .07)" }}>
+                        <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .55)", marginBottom:".7rem" }}>
+                          Tap the days you usually work
+                        </div>
+                        <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
+                          {DAYS.map(day => {
+                            const on = dayIsOn(day);
                             return (
-                              <button key={slot} onClick={() => toggleSlot(day, slot)} aria-label={day + " " + slot}
-                                style={{ ...cellBase,
-                                  border: on ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .12)",
-                                  background: on ? "#ea6b14" : "rgba(var(--ff-fg), .05)",
-                                  color: on ? "#fff" : "rgba(var(--ff-muted), .5)" }}>
-                                {on ? <span style={{ fontSize:".82rem" }}>✓</span> : <span style={{ fontSize:"1rem", fontWeight:400 }}>+</span>}
+                              <button key={day} onClick={() => setDayAll(day, !on)} aria-label={day}
+                                style={{ display:"flex", alignItems:"center", gap:".35rem", padding:".5rem .85rem", borderRadius:"99px", cursor:"pointer", fontFamily:"inherit", fontSize:".82rem", fontWeight:600,
+                                  border: on ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .14)",
+                                  background: on ? "rgba(234,107,20,.16)" : "rgba(var(--ff-fg), .05)",
+                                  color: on ? "#ea6b14" : "rgba(var(--ff-muted), .6)" }}>
+                                {on && <span style={{ fontSize:".78rem" }}>✓</span>}{day.slice(0,3)}
                               </button>
                             );
                           })}
-                          <button onClick={() => setDayAll(day, !allOn)}
-                            style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:".72rem", fontWeight:600, color: allOn ? "#ef4444" : "#ea6b14", padding:0, textAlign:"center" as const }}>
-                            {allOn ? "Clear" : "All"}
-                          </button>
-                          {sel.length > 0 ? (
-                            <button onClick={() => copyDayToAll(day)} title={"Copy " + day + "'s hours to every day"}
-                              style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(var(--ff-muted), .5)", fontSize:"1rem", padding:0, lineHeight:1, textAlign:"center" as const }}>
-                              ⧉
-                            </button>
-                          ) : <div></div>}
                         </div>
-                      );
-                    })}
-                    <p style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .45)", marginTop:".9rem", marginBottom:0, lineHeight:1.5 }}>
-                      Use the ⧉ icon to copy a day's hours to every day.
-                    </p>
+                      </div>
+                    )}
+                    {onDays.length === 0 && !showChips && (
+                      <p style={{ fontSize:".78rem", color:"var(--ff-warn)", marginTop:".9rem", marginBottom:0 }}>
+                        No availability set yet — pick a preset or Custom so clients know when to reach you.
+                      </p>
+                    )}
                   </div>
                 );
               })()}
