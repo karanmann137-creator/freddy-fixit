@@ -128,6 +128,13 @@ export default function TopNav() {
                     <span style={{ color: "rgba(var(--ff-fg), .85)", fontSize: ".9rem" }}>Notifications</span>
                   </div>
                 )}
+                <button
+                  onClick={() => { setMenuOpen(false); setLocation(dashboardPath); }}
+                  className="ff-menu-item"
+                  style={menuItem}
+                >
+                  My Dashboard
+                </button>
                 <a
                   href={`mailto:${CONTACT_EMAIL}`}
                   className="ff-menu-item"
