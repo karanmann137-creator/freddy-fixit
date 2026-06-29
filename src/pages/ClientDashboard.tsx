@@ -10,6 +10,7 @@ import JobChat from "@/components/JobChat";
 import JobTimeline from "@/components/JobTimeline";
 import ReportProblem from "@/components/ReportProblem";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
+import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 
 
 const VEHICLE_SERVICES = ["Oil Change","Tire Swap / Rotation","Battery / Brakes","Vehicle Maintenance"];
@@ -388,6 +389,7 @@ export default function ClientDashboard() {
       </div>
 
       <div style={s.content}>
+        <ProfileCompletionModal role="client" profile={profile} />
         <ProfileBar role="client" />
 
         <>

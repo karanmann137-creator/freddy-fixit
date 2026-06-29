@@ -10,6 +10,7 @@ import JobChat from "@/components/JobChat";
 import JobTimeline from "@/components/JobTimeline";
 import RespondToClaim from "@/components/RespondToClaim";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
+import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 
 export default function ContractorDashboard() {
   const [, setLocation] = useLocation();
@@ -357,6 +358,7 @@ export default function ContractorDashboard() {
       </div>
 
       <div style={s.content}>
+        <ProfileCompletionModal role="contractor" profile={profile} contractor={contractor} onSetupPayouts={setupPayouts} />
         <ProfileBar role="contractor" />
 
         {contractor && !contractor.stripe_payouts_enabled && (
