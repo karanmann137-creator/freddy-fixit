@@ -618,11 +618,12 @@ export default function ContractorDashboard() {
                 Tap a slot to toggle it. Changes save automatically.
               </p>
               {(() => {
-                const tpl = "58px repeat(3,1fr) 50px 28px";
-                const colHead = { fontSize:".6rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .55)", textAlign:"center" as const };
+                const tpl = "52px repeat(3,1fr) 46px 26px";
+                const colHead = { fontSize:".58rem", fontWeight:700, textTransform:"uppercase" as const, letterSpacing:".09em", color:"rgba(var(--ff-muted), .55)", textAlign:"center" as const };
+                const cellBase = { display:"flex", alignItems:"center", justifyContent:"center", gap:".3rem", height:"38px", borderRadius:"9px", cursor:"pointer", fontFamily:"inherit", fontSize:".78rem", fontWeight:600, transition:"all .12s ease", width:"100%", boxSizing:"border-box" as const };
                 return (
                   <div>
-                    <div style={{ display:"grid", gridTemplateColumns: tpl, gap:".4rem", alignItems:"center", marginBottom:".45rem", paddingBottom:".3rem" }}>
+                    <div style={{ display:"grid", gridTemplateColumns: tpl, gap:".45rem", alignItems:"center", marginBottom:".5rem" }}>
                       <div></div>
                       <div style={colHead}>Morning</div>
                       <div style={colHead}>Afternoon</div>
@@ -630,36 +631,42 @@ export default function ContractorDashboard() {
                       <div></div>
                       <div></div>
                     </div>
-                    {DAYS.map(day => {
+                    {DAYS.map((day, di) => {
                       const sel = (contractor?.availability ?? {})[day] ?? [];
                       const slots = getSlots(day);
                       const allOn = slots.every(sl => sel.includes(sl));
                       return (
-                        <div key={day} style={{ display:"grid", gridTemplateColumns: tpl, gap:".4rem", alignItems:"center", padding:".32rem 0", borderTop:"1px solid rgba(var(--ff-fg), .06)" }}>
-                          <div style={{ fontSize:".82rem", fontWeight:600, color:"var(--ff-text)" }}>{day.slice(0,3)}</div>
+                        <div key={day} style={{ display:"grid", gridTemplateColumns: tpl, gap:".45rem", alignItems:"center", marginBottom:".45rem" }}>
+                          <div style={{ fontSize:".82rem", fontWeight:700, color:"var(--ff-text)" }}>{day.slice(0,3)}</div>
                           {["Morning","Afternoon","Evening"].map(slot => {
-                            if (!slots.includes(slot)) return <div key={slot} style={{ textAlign:"center" as const, color:"rgba(var(--ff-muted), .3)", fontSize:".8rem" }}>\u2014</div>;
+                            if (!slots.includes(slot)) return <div key={slot} style={{ ...cellBase, cursor:"default", background:"transparent", color:"rgba(var(--ff-muted), .3)", fontSize:".9rem" }}>—</div>;
                             const on = sel.includes(slot);
                             return (
                               <button key={slot} onClick={() => toggleSlot(day, slot)} aria-label={day + " " + slot}
-                                style={{ padding:".46rem 0", borderRadius:"8px", cursor:"pointer", fontFamily:"inherit", fontSize:".82rem", fontWeight:700, border: on ? "1px solid rgba(234,107,20,.55)" : "1px solid rgba(var(--ff-fg), .12)", background: on ? "rgba(234,107,20,.16)" : "rgba(var(--ff-fg), .04)", color: on ? "#ea6b14" : "rgba(var(--ff-muted), .45)" }}>
-                                {on ? "\u2713" : "+"}
+                                style={{ ...cellBase,
+                                  border: on ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .12)",
+                                  background: on ? "#ea6b14" : "rgba(var(--ff-fg), .05)",
+                                  color: on ? "#fff" : "rgba(var(--ff-muted), .5)" }}>
+                                {on ? <span style={{ fontSize:".82rem" }}>✓</span> : <span style={{ fontSize:"1rem", fontWeight:400 }}>+</span>}
                               </button>
                             );
                           })}
                           <button onClick={() => setDayAll(day, !allOn)}
-                            style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:".72rem", color: allOn ? "#ef4444" : "#ea6b14", padding:".1rem", textAlign:"center" as const }}>
+                            style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:".72rem", fontWeight:600, color: allOn ? "#ef4444" : "#ea6b14", padding:0, textAlign:"center" as const }}>
                             {allOn ? "Clear" : "All"}
                           </button>
                           {sel.length > 0 ? (
                             <button onClick={() => copyDayToAll(day)} title={"Copy " + day + "'s hours to every day"}
-                              style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(var(--ff-muted), .55)", fontSize:".95rem", padding:0, lineHeight:1 }}>
-                              \u29c9
+                              style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(var(--ff-muted), .5)", fontSize:"1rem", padding:0, lineHeight:1, textAlign:"center" as const }}>
+                              ⧉
                             </button>
                           ) : <div></div>}
                         </div>
                       );
                     })}
+                    <p style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .45)", marginTop:".9rem", marginBottom:0, lineHeight:1.5 }}>
+                      Use the ⧉ icon to copy a day's hours to every day.
+                    </p>
                   </div>
                 );
               })()}
