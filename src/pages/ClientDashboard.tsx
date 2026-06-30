@@ -12,6 +12,27 @@ import ReportProblem from "@/components/ReportProblem";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 
+function QuoteBreakdownView({ row, assumptionsKey = "assumptions" }: { row: any; assumptionsKey?: string }) {
+  const items: [string, any][] = [["Labour", row?.labour_amount], ["Parts & materials", row?.parts_amount], ["Call-out", row?.callout_fee]];
+  const present = items.filter(([, v]) => v != null);
+  const assumptions = row?.[assumptionsKey];
+  if (present.length === 0 && !assumptions && !row?.subject_to_inspection) return null;
+  return (
+    <div style={{ marginTop:".5rem", padding:".55rem .7rem", borderRadius:"8px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)" }}>
+      {present.length > 0 && (
+        <div style={{ fontSize:".68rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .45)", marginBottom:".3rem" }}>Price breakdown</div>
+      )}
+      {present.map(([l, v]) => (
+        <div key={l} style={{ display:"flex", justifyContent:"space-between", fontSize:".8rem", color:"rgba(var(--ff-muted), .8)" }}>
+          <span>{l}</span><span>${Number(v).toFixed(2)}</span>
+        </div>
+      ))}
+      {assumptions && <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .65)", marginTop: present.length ? ".4rem" : 0, lineHeight:1.45 }}>{assumptions}</div>}
+      {row?.subject_to_inspection && <div style={{ fontSize:".76rem", color:"var(--ff-warn)", marginTop:".4rem", lineHeight:1.4 }}>Heads up: the final price may change after the contractor inspects the job on-site.</div>}
+    </div>
+  );
+}
+
 
 const VEHICLE_SERVICES = ["Oil Change","Tire Swap / Rotation","Battery / Brakes","Vehicle Maintenance"];
 
@@ -455,6 +476,7 @@ export default function ClientDashboard() {
                             <div style={{ flex:"1 1 160px" }}>
                               <div style={{ fontSize:".88rem", color:"var(--ff-text)" }}>{bidNames[b.contractor_id] ?? "Contractor"}{b.amount != null ? " — $" + b.amount : ""}</div>
                               {b.message && <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .65)", marginTop:".15rem" }}>{b.message}</div>}
+                              <QuoteBreakdownView row={b} assumptionsKey="assumptions" />
                             </div>
                             <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f", padding:".5rem 1rem" }} disabled={busyPick === b.id} onClick={() => pickBid(b.id)}>{busyPick === b.id ? "…" : "Choose"}</button>
                           </div>
@@ -480,8 +502,12 @@ export default function ClientDashboard() {
                       <div style={{ marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)" }}>
                         {activeJob.status === "assigned" && activeJob.schedule_proposed_at && !activeJob.client_approved_at && (
                           <>
-                            <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}>Your contractor proposed a time</div>
-                            <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .8)", marginBottom:".75rem" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />{activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "—"}{activeJob.amount ? " · $" + activeJob.amount : ""}</div>
+                            <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}>Your contractor proposed a time &amp; price</div>
+                            <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .8)", marginBottom:".5rem" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />{activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "—"}{activeJob.amount ? " · $" + activeJob.amount : ""}</div>
+                            <QuoteBreakdownView row={activeJob} assumptionsKey="quote_assumptions" />
+                            {activeJob.notes && /Price update:/.test(activeJob.notes) && (
+                              <div style={{ fontSize:".8rem", color:"var(--ff-warn)", margin:".5rem 0 .75rem", lineHeight:1.45 }}>{activeJob.notes.split("\n").filter((l: string) => l.startsWith("Price update:")).pop()}</div>
+                            )}
                             <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                               <button style={s.primaryBtn} disabled={busyReq} onClick={approveSchedule}>{busyReq ? "…" : "Approve & schedule"}</button>
                               <button style={s.btn} disabled={busyReq} onClick={requestReschedule}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Request a different time</button>

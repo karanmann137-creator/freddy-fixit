@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Ic } from "@/components/Ic";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { trackEvent } from "@/lib/analytics";
@@ -127,6 +128,7 @@ export default function GetQuote() {
           <label style={s.label}>Tell us about the job</label>
           <textarea style={{ ...inp, resize:"vertical", minHeight:"110px", borderColor: errors.details ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="What needs doing? The more detail, the better the quote." value={details} onChange={e => { setDetails(e.target.value); setErrors(x => ({ ...x, details:"" })); }} />
           {errors.details && <p style={s.err}>{errors.details}</p>}
+          <p style={{ margin:".5rem 0 0", fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.45 }}><Ic name="camera" size={13} style={{ marginRight:5, verticalAlign:"-2px" }} />Have a photo of the problem? You'll be able to attach one when you confirm your request — it helps contractors give a faster, more accurate quote.</p>
 
           {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"var(--ff-danger)", marginTop:"1.25rem" }}>{submitError}</div>}
 
