@@ -53,6 +53,13 @@ Deno.serve(async (req) => {
         await admin.from("jobs")
           .update({ payment_status: "held", paid_at: new Date().toISOString(), stripe_payment_intent_id: pi.id })
           .eq("id", jobId).eq("payment_status", "processing");
+        // Mark a referred-client first-job fee waiver as consumed now that the
+        // charge actually succeeded (no-op if this client wasn't eligible).
+        const clientId = pi.metadata?.client_id;
+        if (clientId) {
+          try { await admin.rpc("consume_referral_waiver", { p_client: clientId, p_job_id: jobId }); }
+          catch (_) { /* best-effort */ }
+        }
       }
     } else if (event.type === "payment_intent.payment_failed") {
       const pi = event.data.object as Stripe.PaymentIntent;

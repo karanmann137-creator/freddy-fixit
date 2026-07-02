@@ -11,6 +11,7 @@ import JobTimeline from "@/components/JobTimeline";
 import ReportProblem from "@/components/ReportProblem";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
+import FreddyRewind from "@/components/FreddyRewind";
 
 function QuoteBreakdownView({ row, assumptionsKey = "assumptions" }: { row: any; assumptionsKey?: string }) {
   const items: [string, any][] = [["Labour", row?.labour_amount], ["Parts & materials", row?.parts_amount], ["Call-out", row?.callout_fee]];
@@ -100,6 +101,10 @@ export default function ClientDashboard() {
   const [selectedReqId, setSelectedReqId] = useState<string|null>(null);
   const [histFilter, setHistFilter] = useState<"all"|"active"|"completed"|"cancelled">("all");
   const [histLimit, setHistLimit] = useState(5);
+  const [pros, setPros]             = useState<any[]>([]);
+  const [referral, setReferral]     = useState<any>(null);
+  const [rewindOpen, setRewindOpen] = useState(false);
+  const [refCopied, setRefCopied]   = useState(false);
 
   const askConfirm = (o: Omit<ConfirmState, "resolve">) =>
     new Promise<boolean>(resolve => setConfirmState({ ...o, resolve }));
@@ -116,12 +121,16 @@ export default function ClientDashboard() {
       if (!user) return;
 
       // profile + requests have no inter-dependency — fetch them together.
-      const [{ data: prof }, { data: reqs }] = await Promise.all([
+      const [{ data: prof }, { data: reqs }, { data: myPros }, { data: ref }] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", user.id).single(),
         supabase.from("client_requests").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+        supabase.rpc("list_my_pros"),
+        supabase.rpc("get_my_referral"),
       ]);
       setProfile(prof);
       setRequests(reqs ?? []);
+      setPros(myPros ?? []);
+      setReferral(ref ?? null);
       // All clients pay the standard 3% service fee (feeRate defaults to 0.03).
       setLoading(false);
     };
@@ -169,6 +178,30 @@ export default function ClientDashboard() {
   }, [activeReq?.id]);
 
   const handleSignOut = async () => { await supabase.auth.signOut(); setLocation("/"); };
+
+  const toggleFav = async (contractorId: string) => {
+    // optimistic flip
+    setPros(prev => prev.map(x => x.contractor_id === contractorId ? { ...x, is_favorite: !x.is_favorite } : x));
+    const { data, error } = await supabase.rpc("toggle_favorite", { p_contractor_id: contractorId });
+    if (error) { setPros(prev => prev.map(x => x.contractor_id === contractorId ? { ...x, is_favorite: !x.is_favorite } : x)); return; }
+    setPros(prev => prev.map(x => x.contractor_id === contractorId ? { ...x, is_favorite: data === true } : x));
+  };
+
+  const rehire = (pro: any) => {
+    const q = new URLSearchParams();
+    q.set("pro", pro.contractor_id);
+    if (pro.last_service) q.set("service", pro.last_service);
+    setLocation("/new-request?" + q.toString());
+  };
+
+  const copyReferral = async () => {
+    const code = referral?.code;
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(`Get your first Freddy Fix It service fee waived with my code ${code}: https://freddyfixit.ca/?ref=${code}`);
+      setRefCopied(true); setTimeout(() => setRefCopied(false), 2000);
+    } catch { /* ignore */ }
+  };
 
   const startEdit = (r: any) => {
     setEditingId(r.id);
@@ -407,6 +440,7 @@ export default function ClientDashboard() {
       <div style={s.header}>
         <div style={{ fontSize:".95rem", color:"rgba(var(--ff-muted), .7)" }}>Welcome back, {profile?.first_name}</div>
         <div style={{ display:"flex", gap:".75rem", flexWrap:"wrap" as const }}>
+          <button style={{ ...s.tab, display:"inline-flex", alignItems:"center", gap:".35rem" }} onClick={() => setRewindOpen(true)}><Ic name="star" size={13} color="#ea6b14" />My Rewind</button>
           <button style={s.primaryBtn} onClick={() => setLocation("/client-onboarding")}>+ New Request</button>
         </div>
       </div>
@@ -414,6 +448,51 @@ export default function ClientDashboard() {
       <div style={s.content}>
         <ProfileCompletionModal role="client" profile={profile} />
         <ProfileBar role="client" />
+        {rewindOpen && <FreddyRewind mode="client" onClose={() => setRewindOpen(false)} />}
+
+        {pros.length > 0 && (
+          <div style={{ ...s.card }}>
+            <div style={s.cardTitle}>Your pros</div>
+            <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .55)", marginTop:"-.4rem", marginBottom:".9rem" }}>Rebook someone you trust — they'll be requested directly.</div>
+            <div style={{ display:"flex", gap:".8rem", overflowX:"auto" as const, paddingBottom:".3rem" }}>
+              {pros.map(pro => (
+                <div key={pro.contractor_id} style={{ minWidth:"210px", flex:"0 0 auto", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"12px", padding:"1rem", background:"rgba(var(--ff-fg), .03)" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:".5rem" }}>
+                    <div>
+                      <div style={{ fontSize:".95rem", fontWeight:600, color:"var(--ff-text)" }}>{pro.company_name || pro.name || "Your pro"}</div>
+                      <div style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .5)" }}>
+                        {pro.rating ? `⭐ ${Number(pro.rating).toFixed(1)}` : "New"}{pro.jobs_together ? ` · ${pro.jobs_together} job${pro.jobs_together===1?"":"s"} together` : ""}
+                      </div>
+                    </div>
+                    <button onClick={() => toggleFav(pro.contractor_id)} title={pro.is_favorite ? "Remove favourite" : "Add favourite"} style={{ background:"none", border:"none", cursor:"pointer", fontSize:"1.1rem", lineHeight:1, color: pro.is_favorite ? "#ea6b14" : "rgba(var(--ff-muted), .4)" }}>
+                      {pro.is_favorite ? "♥" : "♡"}
+                    </button>
+                  </div>
+                  {pro.last_service && <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .45)", marginTop:".5rem" }}>Last: {pro.last_service}</div>}
+                  <button style={{ ...s.primaryBtn, width:"100%", marginTop:".7rem", padding:".5rem", fontSize:".82rem" }} onClick={() => rehire(pro)}>Book again</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {referral?.code && (
+          <div style={{ ...s.card, background:"linear-gradient(135deg, rgba(234,107,20,.10), rgba(var(--ff-fg),.03))", borderColor:"rgba(234,107,20,.28)" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".75rem", flexWrap:"wrap" as const }}>
+              <div>
+                <div style={{ ...s.cardTitle, marginBottom:".2rem" }}>Invite a friend, they save</div>
+                <div style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.5 }}>
+                  Friends who join with your code get the <strong>3% service fee waived on their first job</strong>.
+                  {referral.invited ? ` You've invited ${referral.invited}${referral.rewarded ? `, ${referral.rewarded} booked` : ""}.` : ""}
+                </div>
+              </div>
+              <div style={{ textAlign:"center" }}>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.8rem", letterSpacing:".12em", color:"#ea6b14", border:"1px dashed rgba(234,107,20,.5)", borderRadius:"10px", padding:".35rem .9rem" }}>{referral.code}</div>
+                <button style={{ ...s.tab, marginTop:".45rem", fontSize:".78rem" }} onClick={copyReferral}>{refCopied ? "Copied!" : "Copy invite link"}</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <>
             {requests.length === 0 ? (

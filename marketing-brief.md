@@ -3,7 +3,7 @@
 *Calgary's on-demand marketplace for home repair & vehicle service.*
 Use this as the starting context for any marketing-focused chat.
 
-> **Last reviewed:** 2026-06-26. **Payment protection is now LIVE** — see "Claims & compliance" (you can now make present-tense payment-held claims). Also see "Positioning statement," "Goals & KPIs."
+> **Last reviewed:** 2026-06-25. See "Positioning statement," "Goals & KPIs," and "Claims & compliance" sections (added in this pass).
 
 ---
 
@@ -54,7 +54,7 @@ Finding a trustworthy local pro is slow and stressful: endless phone tag, vague 
 - **Payment protection / escrow** baked in — money isn't released until the client is satisfied.
 - **Both home repair AND vehicle maintenance** in one place.
 - **Active vetting** (license/insurance/WCB/references), not self-reported badges.
-- **Trusted repeat relationships** — clients can rebook the same vetted pro and keep their job history in one place. *(Note: the earlier "3% service fee waived on repeat bookings" perk was retired — all clients now pay the 3% fee. Don't advertise a fee waiver. A future loyalty/referral reward is TBD.)*
+- **Repeat-customer perk** — loyal clients get rewarded (service fee waived on repeat bookings).
 
 ---
 
@@ -109,7 +109,7 @@ Marketing exists to grow **demand** (job posts) without starving **supply** (ava
 - **North-star:** completed, client-confirmed jobs per month.
 - **Acquisition:** new free-quote requests; signups; cost per quote request.
 - **Activation:** % of quote requests that become posted jobs; quote-turnaround time.
-- **Retention:** repeat-booking rate (rebook the same vetted pro, job history in one place); reviews collected.
+- **Retention:** repeat-booking rate (lean on the repeat-customer perk); reviews collected.
 - **Supply health:** active vetted contractors; avg # quotes per request (target: 3).
 - **SEO:** ranking blog posts, organic sessions, organic → quote conversion.
 
@@ -120,7 +120,7 @@ Every campaign should name which funnel stage it serves and point to the free-qu
 
 ## Claims & compliance (READ BEFORE PUBLISHING)
 
-- **Payment protection is LIVE (as of 2026-06-26).** Stripe Connect is built and running on live keys. The client pays through the site, the money is **held**, and it's only released to the contractor after the client confirms the work is done (or after a 3-day auto-confirm). You may now make present-tense protection claims: "your payment is held until you confirm the work," "you don't pay until the job's done right," "money's protected while we review a dispute." Keep wording to **"payment held / protected until you confirm"** rather than the legal term "escrow," and don't imply it's a bank/insurance product — it's a platform-held payment with a dispute process. The Homeowner Protection Promise itself is a discretionary, claims-based satisfaction program (not insurance) — describe it that way.
+- **Payment protection / escrow is not live yet.** Stripe Connect is decided but not built — no charge currently moves through the site. Do **not** run ads or pages that state money is "held in escrow" or "released on confirmation" as a present-tense fact until it ships. Until then, frame protection as the **dispute process + pay-on-completion workflow** ("you confirm the work before it's marked done"), which is accurate, or mark it "coming soon."
 - **Vetting claims must be true per pro.** Only say "licensed / insured / WCB-covered / reference-checked" where the contractor's vetting answers are on file. Avoid blanket guarantees you can't back per job.
 - **Reviews:** only "verified" reviews tied to real completed jobs. No incentivized or fabricated reviews (Alberta / Competition Act).
 - **Local + comparison claims** (vs HomeStars/Jiffy): keep to factual differences (fixed-price quotes, active vetting). Avoid disparaging unverifiable claims.
@@ -129,7 +129,7 @@ Every campaign should name which funnel stage it serves and point to the free-qu
 
 - **Local SEO** — keep publishing cost/checklist posts targeting "Calgary + [trade] + cost/near me."
 - **Social** — before/after job photos, contractor spotlights, seasonal tips.
-- **Referral** — add a refer-a-friend angle (loyalty/referral reward TBD; no fee-waiver claim).
+- **Referral** — lean on the repeat-customer perk; add a refer-a-friend angle.
 - **Community / local** — Calgary homeowner groups, neighborhood pages, local partnerships.
 
 ---

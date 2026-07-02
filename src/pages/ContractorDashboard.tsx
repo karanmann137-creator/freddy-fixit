@@ -11,6 +11,7 @@ import JobTimeline from "@/components/JobTimeline";
 import RespondToClaim from "@/components/RespondToClaim";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
+import FreddyRewind from "@/components/FreddyRewind";
 import { useServicePricing, rangeText, money, type ServicePrice } from "@/lib/servicePricing";
 
 const ffInp = { width:"100%", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const };
@@ -105,6 +106,10 @@ export default function ContractorDashboard() {
   const [disputes, setDisputes]       = useState<Record<string, any>>({});
   const [claimPhotos, setClaimPhotos] = useState<Record<string, string>>({});
   const [claimToAnswer, setClaimToAnswer] = useState<any|null>(null);
+  const [earn, setEarn]               = useState<any>(null);
+  const [goalInput, setGoalInput]     = useState("");
+  const [savingGoal, setSavingGoal]   = useState(false);
+  const [rewindOpen, setRewindOpen]   = useState(false);
 
   const askConfirm = (o: Omit<ConfirmState, "resolve">) =>
     new Promise<boolean>(resolve => setConfirmState({ ...o, resolve }));
@@ -151,6 +156,7 @@ export default function ContractorDashboard() {
         { data: open },
         { data: revs },
         { data: disp },
+        { data: earnStats },
       ] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", user.id).single(),
         supabase.from("contractors").select("*").eq("id", user.id).single(),
@@ -167,10 +173,13 @@ export default function ContractorDashboard() {
           .select("*")
           .eq("contractor_id", user.id)
           .order("created_at", { ascending: false }),
+        supabase.rpc("get_contractor_earnings_stats"),
       ]);
 
       setProfile(prof);
       setContractor(con);
+      setEarn(earnStats ?? null);
+      setGoalInput(earnStats?.weekly_goal ? String(earnStats.weekly_goal) : "");
       setGoogleUrl(con?.google_reviews_url ?? "");
       // Sync live Stripe payout status (no account.updated webhook needed)
       if (con?.stripe_account_id && !con?.stripe_payouts_enabled) {
@@ -455,6 +464,16 @@ export default function ContractorDashboard() {
   }
 
   const totalEarned = Number(contractor?.total_earned ?? 0);
+
+  const saveGoal = async () => {
+    setSavingGoal(true);
+    const g = Number(goalInput) || 0;
+    const { error } = await supabase.rpc("set_weekly_goal", { p_goal: g });
+    setSavingGoal(false);
+    if (error) { alert("Could not save your goal: " + error.message); return; }
+    setEarn((e: any) => e ? { ...e, weekly_goal: g || null } : e);
+  };
+
   // What the contractor actually receives = 93% of the quote (platform keeps 7%).
   const netPayout = (job: any) => job?.contractor_payout != null
     ? Number(job.contractor_payout)
@@ -889,6 +908,67 @@ export default function ContractorDashboard() {
 
         {activeTab === "earnings" && (
           <div>
+            {earn && (() => {
+              const week = Number(earn.this_week || 0);
+              const goal = Number(earn.weekly_goal || 0);
+              const pct = goal > 0 ? Math.min(100, Math.round((week / goal) * 100)) : 0;
+              const trend = Array.isArray(earn.trend) ? earn.trend : [];
+              const peak = Math.max(1, ...trend.map((t: any) => Number(t.amount || 0)));
+              return (
+                <div style={{ ...s.card, marginBottom:"1.5rem", background:"linear-gradient(135deg, rgba(234,107,20,.10), rgba(var(--ff-fg),.03))", borderColor:"rgba(234,107,20,.3)" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:".75rem", flexWrap:"wrap" as const }}>
+                    <div>
+                      <div style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(var(--ff-muted), .5)" }}>This week</div>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(2rem,9vw,3rem)", letterSpacing:".03em", color:"#ea6b14", lineHeight:1.05 }}>${week.toFixed(0)}</div>
+                      <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)" }}>{earn.jobs_this_week || 0} job{(earn.jobs_this_week===1)?"":"s"} paid out this week</div>
+                    </div>
+                    <button style={{ ...s.btn, display:"inline-flex", alignItems:"center", gap:".4rem", background:"rgba(234,107,20,.9)", color:"#fff", border:"none" }} onClick={() => setRewindOpen(true)}>
+                      <Ic name="star" size={13} />My Rewind
+                    </button>
+                  </div>
+
+                  <div style={{ marginTop:"1.1rem" }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", fontSize:".74rem", color:"rgba(var(--ff-muted), .6)", marginBottom:".35rem" }}>
+                      <span>Weekly goal</span>
+                      <span>{goal > 0 ? `$${week.toFixed(0)} / $${goal.toFixed(0)} · ${pct}%` : "Set a goal to track your week"}</span>
+                    </div>
+                    {goal > 0 && (
+                      <div style={{ height:"10px", borderRadius:"999px", background:"rgba(var(--ff-fg),.1)", overflow:"hidden" }}>
+                        <div style={{ width:`${pct}%`, height:"100%", background: pct>=100 ? "#22c55e" : "#ea6b14", borderRadius:"999px", transition:"width .4s" }} />
+                      </div>
+                    )}
+                    <div style={{ display:"flex", gap:".5rem", marginTop:".6rem", alignItems:"center" }}>
+                      <input type="number" inputMode="numeric" placeholder="e.g. 1500" value={goalInput} onChange={e=>setGoalInput(e.target.value)} style={{ ...ffInp, maxWidth:"140px" }} />
+                      <button style={{ ...s.btn }} disabled={savingGoal} onClick={saveGoal}>{savingGoal ? "Saving…" : (goal>0 ? "Update goal" : "Set goal")}</button>
+                    </div>
+                  </div>
+
+                  {trend.length > 0 && (
+                    <div style={{ marginTop:"1.3rem" }}>
+                      <div style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(var(--ff-muted), .5)", marginBottom:".5rem" }}>Last 8 weeks</div>
+                      <div style={{ display:"flex", alignItems:"flex-end", gap:".35rem", height:"70px" }}>
+                        {trend.map((t: any, i: number) => {
+                          const h = Math.round((Number(t.amount || 0) / peak) * 100);
+                          const isNow = i === trend.length - 1;
+                          return (
+                            <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:".25rem" }} title={`${t.week}: $${Number(t.amount||0).toFixed(0)}`}>
+                              <div style={{ width:"100%", height:`${Math.max(3,h)}%`, minHeight:"3px", background: isNow ? "#ea6b14" : "rgba(234,107,20,.4)", borderRadius:"4px 4px 0 0" }} />
+                              <div style={{ fontSize:".58rem", color:"rgba(var(--ff-muted), .4)", whiteSpace:"nowrap" }}>{String(t.week).split(" ")[1]}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ display:"flex", gap:"1.5rem", marginTop:"1.3rem", flexWrap:"wrap" as const, fontSize:".82rem" }}>
+                    <div><span style={{ color:"rgba(var(--ff-muted),.5)" }}>This month </span><strong style={{ color:"var(--ff-text)" }}>${Number(earn.this_month||0).toFixed(0)}</strong></div>
+                    <div><span style={{ color:"rgba(var(--ff-muted),.5)" }}>Last month </span><strong style={{ color:"var(--ff-text)" }}>${Number(earn.last_month||0).toFixed(0)}</strong></div>
+                    <div><span style={{ color:"rgba(var(--ff-muted),.5)" }}>This year </span><strong style={{ color:"var(--ff-text)" }}>${Number(earn.this_year||0).toFixed(0)}</strong></div>
+                  </div>
+                </div>
+              );
+            })()}
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))", gap:"1rem", marginBottom:"1.5rem" }}>
               {[["$" + totalEarned.toFixed(2), "Total Earned"], [contractor?.total_jobs ?? 0, "Jobs Completed"], [myJobs.filter(j=>j.status==="assigned"||j.status==="in_progress").length, "Active Jobs"], [contractor?.rating ? `⭐ ${contractor.rating}` : "—", "Avg Rating"]].map(([v,l]) => (
                 <div key={String(l)} style={s.earnCard}>
@@ -1023,7 +1103,8 @@ export default function ContractorDashboard() {
           }}
         />
       )}
-      <ConfirmDialog state={confirmState} onClose={(ok) => { confirmState?.resolve(ok); setConfirmState(null); }} />
+      {rewindOpen && <FreddyRewind mode="contractor" onClose={() => setRewindOpen(false)} />}
+        <ConfirmDialog state={confirmState} onClose={(ok) => { confirmState?.resolve(ok); setConfirmState(null); }} />
     </div>
   );
 }

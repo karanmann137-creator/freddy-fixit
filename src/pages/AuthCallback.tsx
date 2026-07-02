@@ -59,6 +59,11 @@ export default function AuthCallback() {
       if (wantedRole === "client") {
         // role stays/clamps to client; new homeowners can post a request next.
         if (profile?.role === "admin" || profile?.role === "contractor") { routeByRole(profile.role); return; }
+        // Apply a referral code stashed before the email-confirm hop.
+        try {
+          const ref = localStorage.getItem("ff_ref_code");
+          if (ref) { await supabase.rpc("apply_referral_code", { p_code: ref }); localStorage.removeItem("ff_ref_code"); }
+        } catch {}
         setLocation("/client-dashboard");
         return;
       }

@@ -84,6 +84,14 @@ export default function NewRequest() {
     })();
   }, []);
 
+  // Rehire: a "Book again" link carries ?pro=<contractorId> so this request is
+  // sent directly to that pro (they get an in-app "a past client wants you" ping).
+  const [preferredPro, setPreferredPro] = useState<string | null>(null);
+  useEffect(() => {
+    const pro = new URLSearchParams(window.location.search).get("pro");
+    if (pro) setPreferredPro(pro);
+  }, []);
+
   // Pre-select a service if the home page linked here with ?service=…
   useEffect(() => {
     const raw = new URLSearchParams(window.location.search).get("service");
@@ -168,6 +176,7 @@ export default function NewRequest() {
         email: profile?.email ?? user.email ?? null,
         phone: profile?.phone ?? null,
         service_needed: selectedServices.join(", "),
+        preferred_contractor_id: preferredPro,
         preferred_schedule: schedule,
         location,
         job_description: description.trim(),
@@ -225,6 +234,13 @@ export default function NewRequest() {
         <p style={{ color:"rgba(var(--ff-muted), .6)", fontSize:".9rem", marginBottom:"2rem" }}>
           We've got your details on file — just tell us about this job.
         </p>
+
+        {preferredPro && (
+          <div style={{ ...s.card, marginBottom:"1rem", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.07)", display:"flex", alignItems:"center", gap:".6rem" }}>
+            <Ic name="star" size={16} color="#ea6b14" />
+            <div style={{ fontSize:".86rem", color:"var(--ff-text)" }}>You're rebooking a pro you've worked with — they'll be notified directly to send you a quote.</div>
+          </div>
+        )}
 
         <div style={s.card}>
           {/* Contact summary (read-only) */}

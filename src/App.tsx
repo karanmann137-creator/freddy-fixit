@@ -76,6 +76,12 @@ function ScrollToTop() {
   useEffect(() => {
     if (!window.location.hash) window.scrollTo(0, 0);
     trackPageView(location);
+    // Capture a referral code from any inbound link (?ref=CODE) and stash it
+    // until the visitor signs up. Persist so it survives the email-confirm hop.
+    try {
+      const ref = new URLSearchParams(window.location.search).get("ref");
+      if (ref && !localStorage.getItem("ff_ref_code")) localStorage.setItem("ff_ref_code", ref.trim().toUpperCase());
+    } catch {}
   }, [location]);
   return null;
 }

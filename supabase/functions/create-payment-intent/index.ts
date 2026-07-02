@@ -4,9 +4,9 @@
 // point release-payment transfers 93% of the quote to the contractor and the
 // platform retains the 7% fee. Returns a Checkout URL to redirect the client to.
 //
-// NOTE: All clients pay the standard 3% service fee. (The previous returning-
-// client fee waiver has been removed per business decision — every client is
-// charged 3%.)
+// NOTE: Clients pay a standard 3% service fee, EXCEPT a referred client's very
+// first job, where the 3% is waived (referral reward). Eligibility is checked
+// read-only here; stripe-webhook consumes the reward only on a successful charge.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@16.12.0?target=deno";
@@ -46,8 +46,15 @@ Deno.serve(async (req) => {
       return json({ error: "This job is already paid" }, 409);
 
     const amount = Number(job.amount);
-    // All clients pay the standard 3% service fee.
-    const feeRate = 0.03;
+    // Standard 3% service fee — waived on a referred client's FIRST job.
+    // Eligibility is checked read-only here; stripe-webhook consumes the reward
+    // only once the charge actually succeeds (so an abandoned checkout keeps it).
+    let waived = false;
+    try {
+      const { data: elig } = await admin.rpc("referral_waiver_eligible", { p_client: user.id, p_job_id: job.id });
+      waived = elig === true;
+    } catch (_) { /* fee waiver is best-effort; never block checkout */ }
+    const feeRate = waived ? 0 : 0.03;
     const clientFee = r2(amount * feeRate);
     const total = r2(amount + clientFee);
     const platformFee = r2(amount * 0.07);
@@ -68,7 +75,9 @@ Deno.serve(async (req) => {
           unit_amount: Math.round(total * 100),
           product_data: {
             name: "Freddy Fix It — service payment",
-            description: `Service $${amount.toFixed(2)} + 3% service fee $${clientFee.toFixed(2)}`,
+            description: waived
+              ? `Service $${amount.toFixed(2)} — 3% service fee waived (referral reward \u{1F389})`
+              : `Service $${amount.toFixed(2)} + 3% service fee $${clientFee.toFixed(2)}`,
           },
         },
       }],
@@ -87,7 +96,7 @@ Deno.serve(async (req) => {
       contractor_payout: payout, payment_status: "processing",
     }).eq("id", job.id);
 
-    return json({ url: session.url, amount: total, client_fee: clientFee, quote: amount });
+    return json({ url: session.url, amount: total, client_fee: clientFee, quote: amount, fee_waived: waived });
   } catch (err) {
     console.error("create-payment-intent:", String(err));
     return json({ error: String(err) }, 500);

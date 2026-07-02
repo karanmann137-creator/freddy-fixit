@@ -181,6 +181,11 @@ export default function ClientOnboarding() {
           if (reqRow) await supabase.from("client_requests").update({ photo_path: path }).eq("id", reqRow.id);
         }
       }
+      // Apply a stashed referral code now that the client has an active session.
+      try {
+        const ref = localStorage.getItem("ff_ref_code");
+        if (ref) { await supabase.rpc("apply_referral_code", { p_code: ref }); localStorage.removeItem("ff_ref_code"); }
+      } catch {}
       trackEvent("sign_up", { method: "client" }); trackEvent("post_job"); requestGoogleReview("signup"); requestGoogleReview("job_posted");
       setSuccess(true); window.scrollTo(0,0);
     } catch (err: any) {
