@@ -16,7 +16,8 @@ function QuoteBreakdownView({ row, assumptionsKey = "assumptions" }: { row: any;
   const items: [string, any][] = [["Labour", row?.labour_amount], ["Parts & materials", row?.parts_amount], ["Call-out", row?.callout_fee]];
   const present = items.filter(([, v]) => v != null);
   const assumptions = row?.[assumptionsKey];
-  if (present.length === 0 && !assumptions && !row?.subject_to_inspection) return null;
+  const hasRange = row?.price_low != null && row?.price_high != null;
+  if (present.length === 0 && !assumptions && !row?.subject_to_inspection && !hasRange) return null;
   return (
     <div style={{ marginTop:".5rem", padding:".55rem .7rem", borderRadius:"8px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)" }}>
       {present.length > 0 && (
@@ -27,7 +28,8 @@ function QuoteBreakdownView({ row, assumptionsKey = "assumptions" }: { row: any;
           <span>{l}</span><span>${Number(v).toFixed(2)}</span>
         </div>
       ))}
-      {assumptions && <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .65)", marginTop: present.length ? ".4rem" : 0, lineHeight:1.45 }}>{assumptions}</div>}
+      {hasRange && <div style={{ fontSize:".8rem", color:"var(--ff-text)", fontWeight:600, marginTop: present.length ? ".4rem" : 0 }}>Estimated range: ${Number(row.price_low).toFixed(0)}–${Number(row.price_high).toFixed(0)}</div>}
+      {assumptions && <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .65)", marginTop: (present.length || hasRange) ? ".4rem" : 0, lineHeight:1.45 }}>{assumptions}</div>}
       {row?.subject_to_inspection && <div style={{ fontSize:".76rem", color:"var(--ff-warn)", marginTop:".4rem", lineHeight:1.4 }}>Heads up: the final price may change after the contractor inspects the job on-site.</div>}
     </div>
   );

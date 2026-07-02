@@ -5,6 +5,7 @@ import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
 import { SERVICES, SCHEDULES } from "@/pages/ClientOnboarding";
+import { useServicePricing, fromText } from "@/lib/servicePricing";
 
 // Shown when an already-signed-in client starts another request. Unlike the
 // first-time onboarding flow, this never creates an account — it reuses the
@@ -17,6 +18,7 @@ export default function NewRequest() {
   const [lastReq, setLastReq] = useState<any>(null);
 
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const pricing = useServicePricing();
   const [schedule, setSchedule] = useState("");
   const [sameAddress, setSameAddress] = useState(true);
   const [newLocation, setNewLocation] = useState("");
@@ -244,7 +246,10 @@ export default function NewRequest() {
             {SERVICES.map(sv => (
               <button key={sv.label} style={{ ...s.svcBtn, ...(selectedServices.includes(sv.label) ? s.svcBtnSel : {}) }} onClick={() => toggleService(sv.label)}>
                 <span style={{ fontSize:"1.2rem", flexShrink:0 }}><Ic name={sv.iconName as any} size={20} color="#ea6b14" style={{ marginRight:8, flexShrink:0 }} /></span>
-                <span>{sv.label}</span>
+                <span style={{ display:"flex", flexDirection:"column", minWidth:0 }}>
+                  <span>{sv.label}</span>
+                  {fromText(pricing[sv.label]) && <span style={{ fontSize:".68rem", color:"rgba(var(--ff-muted), .55)", marginTop:"1px" }}>{fromText(pricing[sv.label])}</span>}
+                </span>
                 {selectedServices.includes(sv.label) && <span style={{ marginLeft:"auto", color:"#ea6b14", fontSize:"1rem" }}>✓</span>}
               </button>
             ))}

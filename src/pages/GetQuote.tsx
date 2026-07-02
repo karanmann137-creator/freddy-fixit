@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { trackEvent } from "@/lib/analytics";
 import { SERVICES } from "@/pages/ClientOnboarding";
+import { useServicePricing, rangeText } from "@/lib/servicePricing";
 
 // Public, no-signup lead capture. A visitor can request a ballpark quote with
 // just their contact details + what they need — we store it as a quote_lead
@@ -16,6 +17,7 @@ export default function GetQuote() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [service, setService] = useState("");
+  const pricing = useServicePricing();
   const [location, setLoc] = useState("");
   const [details, setDetails] = useState("");
 
@@ -121,6 +123,7 @@ export default function GetQuote() {
             ))}
           </select>
           {errors.service && <p style={s.err}>{errors.service}</p>}
+          {service && rangeText(pricing[service]) && <p style={{ margin:".4rem 0 0", fontSize:".8rem", color:"#ea6b14", fontWeight:600 }}>Typical range: {rangeText(pricing[service])}{pricing[service]?.unit ? " (" + pricing[service].unit + ")" : ""}</p>}
 
           <label style={s.label}>Area / neighbourhood <span style={{ opacity:.5, textTransform:"none", letterSpacing:0 }}>(optional)</span></label>
           <input style={inp} placeholder="e.g. NW Calgary, Beltline…" value={location} onChange={e => setLoc(e.target.value)} />

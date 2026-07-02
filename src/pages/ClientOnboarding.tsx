@@ -5,6 +5,7 @@ import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { trackEvent } from "@/lib/analytics";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
+import { useServicePricing, fromText } from "@/lib/servicePricing";
 import NewRequest from "@/components/NewRequest";
 import OAuthButtons from "@/components/OAuthButtons";
 
@@ -94,6 +95,7 @@ export default function ClientOnboarding() {
     setRecurringEndDate(endYr + s.end);
   };
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const pricing = useServicePricing();
   const [errors, setErrors] = useState<Record<string,string>>({});
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -326,7 +328,10 @@ export default function ClientOnboarding() {
                 {SERVICES.map(sv => (
                   <button key={sv.label} style={{ ...s.svcBtn, ...(selectedServices.includes(sv.label) ? s.svcBtnSel : {}) }} onClick={() => toggleService(sv.label)}>
                     <span style={{ fontSize:"1.2rem", flexShrink:0 }}><Ic name={sv.iconName as any} size={20} color="#ea6b14" style={{ marginRight:8, flexShrink:0 }} /></span>
-                    <span>{sv.label}</span>
+                    <span style={{ display:"flex", flexDirection:"column", minWidth:0 }}>
+                      <span>{sv.label}</span>
+                      {fromText(pricing[sv.label]) && <span style={{ fontSize:".68rem", color:"rgba(var(--ff-muted), .55)", marginTop:"1px" }}>{fromText(pricing[sv.label])}</span>}
+                    </span>
                     {selectedServices.includes(sv.label) && <span style={{ marginLeft:"auto", color:"#ea6b14", fontSize:"1rem" }}>✓</span>}
                   </button>
                 ))}

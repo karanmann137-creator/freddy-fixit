@@ -11,6 +11,7 @@ import JobTimeline from "@/components/JobTimeline";
 import RespondToClaim from "@/components/RespondToClaim";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
+import { useServicePricing, rangeText, money, type ServicePrice } from "@/lib/servicePricing";
 
 const ffInp = { width:"100%", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const };
 const ffLbl = { fontSize:".66rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .45)", marginBottom:".2rem" };
@@ -22,22 +23,47 @@ function quoteTotal(f: any): number | null {
   return f?.amount ? Number(f.amount) : null;
 }
 
-function QuoteBreakdown({ v, on, calloutHint }: { v: any; on: (patch: any) => void; calloutHint?: number | null }) {
+function QuoteBreakdown({ v, on, calloutHint, price }: { v: any; on: (patch: any) => void; calloutHint?: number | null; price?: ServicePrice | null }) {
   const keys: [string,string,string][] = [["labour","Labour",""],["parts","Parts",""],["callout","Call-out", calloutHint != null ? String(calloutHint) : ""]];
   const any = ["labour","parts","callout"].some(k => v?.[k] !== "" && v?.[k] != null);
   const sum = ["labour","parts","callout"].reduce((t,k) => t + (v?.[k] ? Number(v[k]) : 0), 0);
+  const hasRef = !!price && (price.base_price != null || (price.typical_low != null && price.typical_high != null));
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:".55rem", flexBasis:"100%", width:"100%" }}>
+      {hasRef && (
+        <div style={{ display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".5rem", padding:".5rem .6rem", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.25)", borderRadius:"8px" }}>
+          <span style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .8)" }}>
+            {price!.base_price != null && <>Platform base <b style={{ color:"var(--ff-text)" }}>{money(price!.base_price)}</b></>}
+            {price!.typical_low != null && price!.typical_high != null && <> · Typical {money(price!.typical_low)}–{money(price!.typical_high)}</>}
+            {price!.unit && <span style={{ opacity:.7 }}> ({price!.unit})</span>}
+          </span>
+          {price!.base_price != null && (
+            <button type="button" onClick={() => on({ amount: String(price!.base_price), labour:"", parts:"", callout:"", used_base_price: true })}
+              style={{ marginLeft:"auto", padding:".3rem .6rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"6px", fontSize:".74rem", fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+              Use base price
+            </button>
+          )}
+        </div>
+      )}
+      {v?.used_base_price && <div style={{ fontSize:".74rem", color:"var(--ff-success)", fontWeight:600 }}><Ic name="check-circle" size={12} style={{ marginRight:4 }} />Using platform base price</div>}
       <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .5)", lineHeight:1.4 }}>Itemise your price (optional) — clients trust and approve detailed quotes faster.</div>
       <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
         {keys.map(([key,label,ph]) => (
           <div key={key} style={{ flex:"1 1 80px" }}>
             <div style={ffLbl}>{label}</div>
-            <input type="number" min="0" value={v?.[key] ?? ""} placeholder={ph ? ("$" + ph) : "$"} onChange={e => on({ [key]: e.target.value })} style={ffInp} />
+            <input type="number" min="0" value={v?.[key] ?? ""} placeholder={ph ? ("$" + ph) : "$"} onChange={e => on({ [key]: e.target.value, used_base_price:false })} style={ffInp} />
           </div>
         ))}
       </div>
       {any && <div style={{ fontSize:".82rem", color:"var(--ff-success)", fontWeight:600 }}>Itemised total: ${sum.toFixed(2)}</div>}
+      <div>
+        <div style={ffLbl}>Price range (optional) — show the client a low–high estimate</div>
+        <div style={{ display:"flex", gap:".5rem", alignItems:"center" }}>
+          <input type="number" min="0" value={v?.price_low ?? ""} placeholder={price?.typical_low != null ? ("$" + price.typical_low) : "Low $"} onChange={e => on({ price_low: e.target.value })} style={ffInp} />
+          <span style={{ color:"rgba(var(--ff-muted), .5)" }}>–</span>
+          <input type="number" min="0" value={v?.price_high ?? ""} placeholder={price?.typical_high != null ? ("$" + price.typical_high) : "High $"} onChange={e => on({ price_high: e.target.value })} style={ffInp} />
+        </div>
+      </div>
       <label style={{ display:"flex", alignItems:"center", gap:".5rem", fontSize:".8rem", color:"rgba(var(--ff-muted), .75)", cursor:"pointer" }}>
         <input type="checkbox" checked={!!v?.subject} onChange={e => on({ subject: e.target.checked })} />
         Final price subject to on-site inspection
@@ -48,6 +74,8 @@ function QuoteBreakdown({ v, on, calloutHint }: { v: any; on: (patch: any) => vo
 
 export default function ContractorDashboard() {
   const [, setLocation] = useLocation();
+  const pricing = useServicePricing();
+  const priceFor = (svc?: string | null): ServicePrice | null => pricing[(svc || "").split(",")[0].trim()] ?? null;
   const [profile, setProfile]         = useState<any>(null);
   const [contractor, setContractor]   = useState<any>(null);
   const [myJobs, setMyJobs]           = useState<any[]>([]);
@@ -58,16 +86,16 @@ export default function ContractorDashboard() {
   const [loading, setLoading]         = useState(true);
   const [activeTab, setActiveTab]     = useState<"jobs"|"available"|"profile"|"earnings"|"reviews">("jobs");
   const [showCustomAvail, setShowCustomAvail] = useState(false);
-  const [proposeForm, setProposeForm] = useState({ when:"", amount:"", notes:"", labour:"", parts:"", callout:"", subject:false });
+  const [proposeForm, setProposeForm] = useState({ when:"", amount:"", notes:"", labour:"", parts:"", callout:"", subject:false, price_low:"", price_high:"", used_base_price:false });
   const [photoFile, setPhotoFile]     = useState<File | null>(null);
   const [busyJob, setBusyJob]         = useState(false);
   const [portfolio, setPortfolio]     = useState<any[]>([]);
   const [pfForm, setPfForm]           = useState<{ title:string; description:string; file:File|null }>({ title:"", description:"", file:null });
   const [googleUrl, setGoogleUrl]     = useState("");
   const [busyPf, setBusyPf]           = useState(false);
-  const [bidForm, setBidForm]         = useState<Record<string,{amount:string;message:string;labour?:string;parts?:string;callout?:string;assumptions?:string;subject?:boolean}>>({});
+  const [bidForm, setBidForm]         = useState<Record<string,{amount:string;message:string;labour?:string;parts?:string;callout?:string;assumptions?:string;subject?:boolean;price_low?:string;price_high?:string;used_base_price?:boolean}>>({});
   const [requoteOpen, setRequoteOpen] = useState<Record<string,boolean>>({});
-  const [requoteForm, setRequoteForm] = useState<Record<string,{amount:string;reason:string;labour:string;parts:string;callout:string;subject:boolean}>>({});
+  const [requoteForm, setRequoteForm] = useState<Record<string,{amount:string;reason:string;labour:string;parts:string;callout:string;subject:boolean;price_low?:string;price_high?:string;used_base_price?:boolean}>>({});
   const [pricingForm, setPricingForm] = useState({ hourly:"", callout:"" });
   const [busyPricing, setBusyPricing] = useState(false);
   const [hiding, setHiding]           = useState<string|null>(null);
@@ -215,6 +243,9 @@ export default function ContractorDashboard() {
       p_parts: proposeForm.parts ? Number(proposeForm.parts) : null,
       p_callout: proposeForm.callout ? Number(proposeForm.callout) : null,
       p_subject_to_inspection: !!proposeForm.subject,
+      p_price_low: proposeForm.price_low ? Number(proposeForm.price_low) : null,
+      p_price_high: proposeForm.price_high ? Number(proposeForm.price_high) : null,
+      p_used_base_price: !!proposeForm.used_base_price,
     });
     setBusyJob(false);
     if (error) { alert("Couldn't send proposal: " + error.message); return; }
@@ -316,6 +347,9 @@ export default function ContractorDashboard() {
       p_callout: f.callout ? Number(f.callout) : null,
       p_assumptions: f.assumptions || null,
       p_subject_to_inspection: !!f.subject,
+      p_price_low: f.price_low ? Number(f.price_low) : null,
+      p_price_high: f.price_high ? Number(f.price_high) : null,
+      p_used_base_price: !!f.used_base_price,
     });
     setBusyBid(null);
     if (error) { alert("Couldn't place bid: " + error.message); return; }
@@ -340,6 +374,9 @@ export default function ContractorDashboard() {
       p_parts: f.parts ? Number(f.parts) : null,
       p_callout: f.callout ? Number(f.callout) : null,
       p_subject_to_inspection: !!f.subject,
+      p_price_low: f.price_low ? Number(f.price_low) : null,
+      p_price_high: f.price_high ? Number(f.price_high) : null,
+      p_used_base_price: !!f.used_base_price,
     });
     setBusyJob(false);
     if (error) { alert("Couldn't send price change: " + error.message); return; }
@@ -585,10 +622,10 @@ export default function ContractorDashboard() {
                           <ScheduleField value={proposeForm.when} onChange={(v) => setProposeForm(f => ({ ...f, when: v }))} />
                           <div>
                             <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".25rem" }}>Price ($)</div>
-                            <input type="number" min="0" value={proposeForm.amount} placeholder="e.g. 250" onChange={e => setProposeForm(f => ({ ...f, amount: e.target.value }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const }} />
+                            <input type="number" min="0" value={proposeForm.amount} placeholder="e.g. 250" onChange={e => setProposeForm(f => ({ ...f, amount: e.target.value, used_base_price:false }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const }} />
                           </div>
                           <textarea value={proposeForm.notes} rows={2} placeholder="Notes for the client (optional)" onChange={e => setProposeForm(f => ({ ...f, notes: e.target.value }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const }} />
-                          <QuoteBreakdown v={proposeForm} on={pp => setProposeForm(f => ({ ...f, ...pp }))} calloutHint={contractor?.min_callout ?? null} />
+                          <QuoteBreakdown v={proposeForm} on={pp => setProposeForm(f => ({ ...f, ...pp }))} calloutHint={contractor?.min_callout ?? null} price={priceFor(job.request?.service_needed)} />
                           <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                             <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyJob} onClick={() => proposeSchedule(job)}>{busyJob ? "Sending…" : (job.schedule_proposed_at ? "Update proposal" : "Propose time & price")}</button>
                             <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJob} onClick={() => withdrawJob(job)}>Withdraw</button>
@@ -624,7 +661,7 @@ export default function ContractorDashboard() {
                                   <div style={{ display:"flex", flexDirection:"column", gap:".6rem" }}>
                                     <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.45 }}>Send the client a revised quote. They'll re-approve before you continue — your chat history stays.</div>
                                     <input type="number" min="0" value={rf.amount} placeholder="New total price $" onChange={e => setRf({ amount: e.target.value })} style={ffInp} />
-                                    <QuoteBreakdown v={rf} on={setRf} calloutHint={contractor?.min_callout ?? null} />
+                                    <QuoteBreakdown v={rf} on={setRf} calloutHint={contractor?.min_callout ?? null} price={priceFor(job.request?.service_needed)} />
                                     <textarea value={rf.reason} rows={2} placeholder="Reason for the change (e.g. found a cracked pipe behind the wall)" onChange={e => setRf({ reason: e.target.value })} style={{ ...ffInp, resize:"vertical" as const }} />
                                     <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                                       <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyJob} onClick={() => requestRequote(job)}>{busyJob ? "Sending…" : "Send revised quote"}</button>
@@ -673,7 +710,10 @@ export default function ContractorDashboard() {
             ) : availableJobs.map(r => (
               <div key={r.id} style={s.jobCard}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:".5rem" }}>
-                  <div style={{ fontSize:"1rem", fontWeight:500 }}>{r.service_needed}</div>
+                  <div>
+                    <div style={{ fontSize:"1rem", fontWeight:500 }}>{r.service_needed}</div>
+                    {rangeText(priceFor(r.service_needed)) && <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .5)", marginTop:"2px" }}>Typical {rangeText(priceFor(r.service_needed))}</div>}
+                  </div>
                   <div style={{ fontSize:".78rem", color:"#ea6b14" }}><Ic name="timer" size={12} style={{ marginRight:4 }} />{r.preferred_schedule}</div>
                 </div>
                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .55)", marginBottom:".6rem" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{r.location}</div>
@@ -688,10 +728,10 @@ export default function ContractorDashboard() {
                   {r.my_amount == null && (r.bid_count ?? 0) >= 3 && <div style={{ fontSize:".82rem", color:"var(--ff-warn)" }}>This job already has 3 bids.</div>}
                   {(r.my_amount != null || (r.bid_count ?? 0) < 3) && (
                     <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center" }}>
-                      <input type="number" min="0" placeholder="Price $" value={bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "")} onChange={e => setBidForm(p => ({ ...p, [r.id]: { amount: e.target.value, message: p[r.id]?.message ?? (r.my_message ?? "") } }))} style={{ width:"100px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
-                      <input placeholder="Short message (optional)" value={bidForm[r.id]?.message ?? (r.my_message ?? "")} onChange={e => setBidForm(p => ({ ...p, [r.id]: { message: e.target.value, amount: p[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "") } }))} style={{ flex:"1 1 150px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
+                      <input type="number" min="0" placeholder="Price $" value={bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "")} onChange={e => setBid(r.id, { amount: e.target.value, message: bidForm[r.id]?.message ?? (r.my_message ?? ""), used_base_price:false })} style={{ width:"100px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
+                      <input placeholder="Short message (optional)" value={bidForm[r.id]?.message ?? (r.my_message ?? "")} onChange={e => setBid(r.id, { message: e.target.value, amount: bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "") })} style={{ flex:"1 1 150px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
                       <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyBid === r.id} onClick={() => placeBid(r)}>{busyBid === r.id ? "…" : (r.my_amount != null ? "Update bid" : "Place bid")}</button>
-                      <QuoteBreakdown v={bidForm[r.id] ?? {}} on={patch => setBid(r.id, patch)} calloutHint={contractor?.min_callout ?? null} />
+                      <QuoteBreakdown v={bidForm[r.id] ?? {}} on={patch => setBid(r.id, patch)} calloutHint={contractor?.min_callout ?? null} price={priceFor(r.service_needed)} />
                       <input placeholder="Assumptions (optional, e.g. price assumes parts are accessible)" value={bidForm[r.id]?.assumptions ?? ""} onChange={e => setBid(r.id, { assumptions: e.target.value })} style={{ ...ffInp, flexBasis:"100%" }} />
                     </div>
                   )}
