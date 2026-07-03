@@ -694,16 +694,21 @@ export default function ContractorDashboard() {
 
         {activeTab === "available" && (
           <div>
-            <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .45)", marginBottom:"1rem" }}>Open job requests in your area.</p>
+            <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .45)", marginBottom:"1rem" }}>Open jobs that match your trades — lowest-competition first.</p>
             {availableJobs.length === 0 ? (
               <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
                 <div style={{ marginBottom:"1rem" }}><Ic name="clipboard-list" size={48} color="#ea6b14" /></div>
                 <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", marginBottom:".5rem" }}>No Open Jobs Right Now</h2>
-                <p style={{ color:"rgba(var(--ff-muted), .5)" }}>New job requests in your area will show up here.</p>
+                <p style={{ color:"rgba(var(--ff-muted), .5)" }}>New jobs matching your specialties will show up here. Add more specialties in your profile to see more work.</p>
                 <button onClick={() => setActiveTab("profile")} style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", marginTop:"1.25rem" }}>Check your availability &amp; service area</button>
               </div>
             ) : availableJobs.map(r => (
               <div key={r.id} style={s.jobCard}>
+                {r.is_preferred && (
+                  <div style={{ display:"inline-flex", alignItems:"center", gap:".35rem", padding:".25rem .6rem", borderRadius:"99px", background:"rgba(234,107,20,.16)", color:"#ea6b14", fontSize:".72rem", fontWeight:700, marginBottom:".6rem" }}>
+                    <Ic name="star" size={12} />This client requested you — reserved for 48h
+                  </div>
+                )}
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:".5rem" }}>
                   <div>
                     <div style={{ fontSize:"1rem", fontWeight:500 }}>{r.service_needed}</div>
