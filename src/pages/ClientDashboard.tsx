@@ -8,6 +8,7 @@ import DeleteAccount from "@/components/DeleteAccount";
 import ProfileBar from "@/components/ProfileBar";
 import JobChat from "@/components/JobChat";
 import JobTimeline from "@/components/JobTimeline";
+import MilestonePanel from "@/components/MilestonePanel";
 import ReportProblem from "@/components/ReportProblem";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
@@ -619,6 +620,10 @@ export default function ClientDashboard() {
                       </div>
                     )}
 
+                    {activeJob && activeJob.is_milestone && (
+                      <MilestonePanel role="client" job={activeJob} />
+                    )}
+
                     {activeJob && activeJob.payment_status === "disputed" && (
                       <div style={{ marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(251,191,36,.08)", border:"1px solid rgba(251,191,36,.35)" }}>
                         <div style={{ fontSize:".9rem", fontWeight:600, color:"var(--ff-warn)", marginBottom:".4rem" }}><Ic name="alert-triangle" size={14} style={{ marginRight:5 }} />Claim filed — under review</div>
@@ -645,7 +650,7 @@ export default function ClientDashboard() {
                         {activeJob.status === "assigned" && !activeJob.schedule_proposed_at && (
                           <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .75)" }}><Ic name="check-circle" size={14} style={{ marginRight:4 }} />Matched! Waiting for your contractor to propose a time and price.</div>
                         )}
-                        {activeJob.status === "scheduled" && (
+                        {activeJob.status === "scheduled" && !activeJob.is_milestone && (
                           <>
                             <div style={{ fontSize:".85rem", color:"var(--ff-success)", marginBottom: (activeJob.payment_status === "held" || activeJob.payment_status === "released") ? 0 : ".75rem" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Scheduled for {activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "the agreed time"}{activeJob.amount ? " · $" + activeJob.amount : ""}.</div>
                             {(activeJob.payment_status === "held" || activeJob.payment_status === "released") ? (

@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import ProfileBar from "@/components/ProfileBar";
+import MilestonePanel from "@/components/MilestonePanel";
 
 // Re-signup flagging is now computed server-side by the admin_resignup_matches()
 // RPC (hashes built in SQL via pgcrypto, joined against deleted_account_flags),
@@ -370,6 +371,7 @@ export default function AdminDashboard() {
                 <div style={s.meta}>Status: {j.status}</div>
                 {j.amount && <div style={s.meta}>Amount: ${j.amount}</div>}
                 {j.scheduled_at && <div style={s.meta}>Date: {new Date(j.scheduled_at).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" })}</div>}
+                {j.is_milestone && <MilestonePanel role="admin" job={j} />}
               </div>
             ))}
             {pager("jobs")}
