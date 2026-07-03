@@ -10,6 +10,38 @@ const POSTS = [
     tag: "Comparison",
   },
   {
+    slug: "basement-development-cost-calgary-2026",
+    title: "Basement Development Cost in Calgary: 2026 Price Guide",
+    excerpt: "One of the best returns on a Calgary home — but what does it actually cost? Per-square-foot ranges, lifestyle finish vs legal suite, permits, the 2026 suite fee amnesty, and the red flags to avoid.",
+    date: "July 1, 2026",
+    readTime: "6 min read",
+    tag: "Pricing",
+  },
+  {
+    slug: "calgary-windshield-rock-chip-repair-cost-2026",
+    title: "Windshield Rock Chip Repair in Calgary: 2026 Cost Guide",
+    excerpt: "In Calgary a rock chip is a matter of when, not if. Here's repair vs replacement pricing for 2026, when a chip can still be fixed, how Alberta insurance handles it, and why cold weather means acting fast.",
+    date: "July 2, 2026",
+    readTime: "5 min read",
+    tag: "Vehicle",
+  },
+  {
+    slug: "calgary-winter-tires-guide-2026",
+    title: "Winter Tires in Calgary: Costs, Timing & the Insurance Discount",
+    excerpt: "Are winter tires worth it, or are all-seasons good enough? The real difference, when to switch, what a 2026 set costs, and the 2–5% Alberta insurance discount most drivers never claim.",
+    date: "July 2, 2026",
+    readTime: "6 min read",
+    tag: "Vehicle",
+  },
+  {
+    slug: "winterize-your-vehicle-calgary",
+    title: "How to Winterize Your Vehicle for a Calgary Winter",
+    excerpt: "Chinook one day, -30 the next — Calgary's swings are brutal on a vehicle. A 6-point October checklist: battery, block heater, winter fluids, wipers, an emergency kit, and tires.",
+    date: "July 3, 2026",
+    readTime: "6 min read",
+    tag: "Vehicle",
+  },
+  {
     slug: "handyman-costs-calgary-2026",
     title: "How Much Does a Handyman Cost in Calgary? 2026 Pricing Guide",
     excerpt: "From minor repairs to full-day jobs — here's what Calgary homeowners actually pay for handyman and contractor services, broken down by trade.",
@@ -88,6 +120,7 @@ const TAG_COLORS: Record<string, string> = {
   Pricing: "#3b82f6",
   Maintenance: "#22c55e",
   Tips: "#a855f7",
+  Vehicle: "#14b8a6",
 };
 
 export default function Blog() {

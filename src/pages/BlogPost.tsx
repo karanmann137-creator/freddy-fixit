@@ -431,6 +431,162 @@ function ArticleHiringContractor() {
   );
 }
 
+function ArticleBasementCost() {
+  const [, setLocation] = useLocation();
+  return (
+    <article>
+      <p>A finished basement is one of the best returns on a Calgary home — extra living space, a rental suite, or a place for the kids to disappear during a long winter. But "how much does it cost?" is the first question, and the honest answer is: it depends on what you build. Here's a plain-language 2026 breakdown.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general 2026 estimates for illustration only, not quotes. Actual costs depend on your layout, finishes, and the contractor you hire. Always get a written quote before work begins.</p>
+
+      <h2>Cost Per Square Foot (2026)</h2>
+      <BarChart
+        title="Basement Development — Cost Per Sq Ft, Calgary 2026"
+        subtitle="All-in estimates in CAD; finishes and suite requirements drive the range"
+        unit=""
+        data={[
+          { label: "Legal suite (per sq ft)",   value: 95, color: "#ea6b14" },
+          { label: "Full finish + bath",        value: 75, color: "#f59e0b" },
+          { label: "Standard lifestyle finish", value: 60, color: "#3b82f6" },
+          { label: "Basic / open rec room",     value: 45, color: "#22c55e" },
+        ]}
+      />
+      <p>For a typical 800–1,000 sq ft Calgary basement, that works out to roughly <strong>$45,000–$65,000</strong> for a standard lifestyle finish and <strong>$65,000–$90,000+</strong> for a legal secondary suite with a kitchen, separate entrance, and egress windows.</p>
+
+      <h2>Where the Money Goes</h2>
+      <p><strong>Framing, insulation, and drywall</strong> form the base cost. On top of that, a <strong>bathroom</strong> is the single biggest line item — expect $8,000–$15,000 once plumbing, tile, and fixtures are in. A <strong>wet bar or suite kitchen</strong> adds several thousand more. Flooring, lighting, and trim finish out the budget, and higher-end materials can push the per-square-foot number well past the ranges above.</p>
+
+      <h2>Permits and the 2026 Suite Amnesty</h2>
+      <p>Basement development in Calgary requires a <strong>building permit</strong>, and electrical, plumbing, and gas work each require their own trade permits. Permit fees typically run <strong>$500–$1,500</strong> depending on scope, plus $1,500–$3,500 for the professional drawings the City needs and $800–$2,000 in engineering fees if you're touching anything structural.</p>
+      <p>Worth knowing: the City of Calgary is <strong>waiving development permit and registry fees for secondary suites until December 31, 2026</strong> under its suite incentive program. If a legal rental suite is on your radar, 2026 is a cheaper year to make it official.</p>
+
+      <h2>Lifestyle Finish vs Legal Suite</h2>
+      <p>The gap between the two comes down to code. A <strong>legal suite</strong> needs a separate entrance, egress (escape) windows sized to code, a compliant kitchen, sound and fire separation, and its own heating and ventilation considerations. Those requirements are what push a suite $20,000–$30,000 above a comparable lifestyle finish — but they're also what let you legally rent it out and recover the cost.</p>
+
+      <h2>Red Flags to Watch For</h2>
+      <p>Be cautious of any quote that skips permits to "save you money," lumps everything into one vague number with no breakdown, or asks for a large deposit before drawings exist. Unpermitted basement work is the classic problem that surfaces at resale — a home inspector flags it, and you pay to fix it twice. Every contractor on Freddy Fix It is licensed and insured, and pulls the permits the job needs.</p>
+
+      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Planning a basement? Get fixed-price quotes from licensed Calgary contractors.</p>
+        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
+      </div>
+    </article>
+  );
+}
+
+function ArticleWindshieldChip() {
+  const [, setLocation] = useLocation();
+  return (
+    <article>
+      <p>If you drive in Calgary, a rock chip is a matter of when, not if. Gravel on winter roads, construction on Deerfoot, and highway trips to the mountains all take a toll on your windshield. The good news: a small chip caught early is one of the cheapest fixes your vehicle will ever need. Ignore it, and it can spread into a crack that costs ten times as much.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> Figures below are general 2026 Calgary estimates, not quotes, and are not insurance advice. Coverage varies by policy — confirm the details with your own insurer.</p>
+
+      <h2>Repair vs Replace: The 2026 Cost Gap</h2>
+      <BarChart
+        title="Chip Repair vs Windshield Replacement — Calgary 2026"
+        subtitle="Typical all-in cost in CAD; replacement varies by vehicle and sensors"
+        unit="$"
+        data={[
+          { label: "Replace w/ ADAS calibration", value: 1000, color: "#ef4444" },
+          { label: "Replace (SUV / heated glass)", value: 600,  color: "#f59e0b" },
+          { label: "Replace (standard sedan)",      value: 375,  color: "#3b82f6" },
+          { label: "Single chip repair",            value: 90,   color: "#22c55e" },
+        ]}
+      />
+      <p>Chip repair in Calgary commonly runs <strong>$30–$150</strong> — many shops advertise a first chip around $30 and a small discount for a second. A full <strong>windshield replacement</strong> starts near $300–$400 for a basic sedan and climbs to <strong>$800–$1,000+</strong> for newer vehicles that need ADAS (driver-assist camera) recalibration after the glass is swapped.</p>
+
+      <h2>When a Chip Can Still Be Repaired</h2>
+      <p>As a rule of thumb, a chip smaller than a <strong>toonie</strong> and a crack shorter than about <strong>15 cm</strong> can usually be repaired — as long as it's not directly in the driver's line of sight and hasn't reached the edge of the glass. Repairs work by injecting resin into the damage to stop it spreading and restore strength. They won't leave the glass perfectly invisible, but they halt the problem.</p>
+      <p><strong>Why speed matters in Calgary:</strong> our temperature swings are the enemy. A chip that's stable on a mild afternoon can run into a full crack overnight when it drops to -25°C, or when you blast the defroster onto cold glass. The sooner you get resin in it, the more likely repair beats replacement.</p>
+
+      <h2>How Insurance Usually Treats It</h2>
+      <p>Most comprehensive auto policies in Alberta cover chip repair with <strong>no deductible</strong> — insurers would much rather pay $90 now than $900 later, so many actively encourage it. A full replacement, by contrast, is typically subject to your <strong>comprehensive deductible</strong> (often $300–$500), which can mean you pay much of the cost out of pocket anyway. Check your policy, but for most drivers a no-deductible repair is close to a free fix.</p>
+
+      <h2>Don't Wait — Calgary Reasons</h2>
+      <p>Beyond cost, a cracked windshield in the driver's sightline can fail a commercial or out-of-province inspection and is a safety issue in low winter light. Catching chips early is the cheapest vehicle maintenance habit you can build living here.</p>
+
+      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Need mobile auto glass or vehicle maintenance in Calgary? Get a quote.</p>
+        <button onClick={() => setLocation("/client-onboarding?service=Vehicle Maintenance")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
+      </div>
+    </article>
+  );
+}
+
+function ArticleWinterTires() {
+  const [, setLocation] = useLocation();
+  return (
+    <article>
+      <p>Every Calgary fall, the same debate comes up: are winter tires actually worth it, or are all-seasons "good enough"? Having driven through a few -30 cold snaps and the first icy Crowchild commute of the season, most locals land in the same place. Here's the plain-language case, the 2026 costs, and when to make the swap.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> General 2026 information for Calgary drivers, not insurance or safety advice. Discounts, laws, and prices change — confirm specifics with your insurer and installer.</p>
+
+      <h2>Winter Tires vs All-Seasons: The Real Difference</h2>
+      <p>It isn't just about snow — it's about <strong>temperature</strong>. All-season rubber stiffens once it drops below about <strong>7°C</strong>, which means less grip even on bare, dry pavement. Winter tires use a softer compound and aggressive siping that stays pliable in the cold. Modern winter tires can offer up to 50% more traction than all-seasons and cut braking distance on ice by up to about 25% — often the difference between stopping and sliding through an intersection.</p>
+
+      <h2>When to Switch in Calgary</h2>
+      <p>The trigger is that <strong>7°C</strong> mark, not the first snowfall. In Calgary that's usually <strong>mid-October</strong>. Swap back in April once overnight lows stay above freezing. A useful local tip: book your install appointment in September — shops fill up fast the week after the first surprise snow.</p>
+
+      <h2>What a Set Costs in 2026</h2>
+      <BarChart
+        title="Winter Tire Setup — Typical Calgary Costs 2026"
+        subtitle="Estimates in CAD; varies by tire size and vehicle"
+        unit="$"
+        data={[
+          { label: "4 tires + rims (mounted)", value: 1400, color: "#ea6b14" },
+          { label: "Set of 4 quality tires",   value: 1000, color: "#3b82f6" },
+          { label: "Seasonal swap-over",        value: 90,   color: "#22c55e" },
+          { label: "Seasonal storage",          value: 80,   color: "#a855f7" },
+        ]}
+      />
+      <p>A quality set of four runs close to <strong>$1,000</strong>, and buying them on their own set of <strong>rims</strong> costs more up front but makes every seasonal swap faster and cheaper. Budget a <strong>$70–$100</strong> swap-over twice a year, plus optional storage if you don't have garage space.</p>
+
+      <h2>The Insurance Discount Most People Miss</h2>
+      <p>Alberta doesn't legally require winter tires on most roads (Banff and Jasper parks are the notable exception from November 1 to March 31), but many insurers offer a <strong>2–5% discount</strong> just for running a certified winter set. On a typical Calgary premium that quietly offsets a chunk of the swap-and-storage cost every year — call your broker and ask.</p>
+      <p>One more money angle: rotating between two sets means each set lasts far longer, so you're not really buying "extra" tires — you're splitting the wear. Over a few winters, they largely pay for themselves.</p>
+
+      <h2>Getting the Most From Them</h2>
+      <p>Run all four (never just two — a mismatched set can make handling worse), keep them properly inflated since cold air drops pressure, and pair them with the rest of your cold-weather prep. For the full battery, block-heater, and fluids rundown, see our guide to <strong>winterizing your vehicle in Calgary</strong>.</p>
+
+      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Need tires swapped or vehicle maintenance in Calgary? Get a quote.</p>
+        <button onClick={() => setLocation("/client-onboarding?service=Vehicle Maintenance")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
+      </div>
+    </article>
+  );
+}
+
+function ArticleWinterizeVehicle() {
+  const [, setLocation] = useLocation();
+  return (
+    <article>
+      <p>Calgary winters test a vehicle harder than almost anywhere in Canada — not because of constant deep cold, but because of the swings. A +5°C chinook one day and -30°C the next is brutal on batteries, fluids, and anything rubber. A little prep in October saves you from a no-start morning in January. Here's the checklist that actually matters here.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> General cold-weather guidance for Calgary drivers, not manufacturer-specific advice. Always follow your owner's manual for grades and intervals.</p>
+
+      <h2>1. Test Your Battery Before It Fails</h2>
+      <p>Cold is a battery killer: output can drop by <strong>up to 50%</strong> at sub-zero temperatures, and a battery that cranked fine in October can die on the first -25°C morning. Have it <strong>load-tested</strong> before winter — most shops do it free — and replace anything weak or older than about four years rather than gambling. If your car sits for days at a time, a battery maintainer keeps it topped up.</p>
+
+      <h2>2. Know How to Use Your Block Heater</h2>
+      <p>A block heater warms the coolant and, in turn, the oil, so the engine turns over easily and wears less on a cold start. The rule of thumb for Calgary: plug in once it's colder than about <strong>-15°C</strong>. You don't need it running all night — <strong>about 2 hours at -15°C, and closer to 4 hours below -30°C</strong> — so a simple outdoor timer set to switch on a few hours before you leave saves electricity and does the same job.</p>
+
+      <h2>3. Switch to Winter-Grade Fluids</h2>
+      <p>Two fluids matter most. First, <strong>washer fluid</strong>: use one rated to <strong>-40°C</strong>. Summer fluid freezes in the reservoir and lines exactly when Calgary slush is coating your windshield. Second, <strong>engine oil</strong>: a lower winter viscosity (the "W" grade in your manual) flows better on cold starts. Check your coolant's freeze protection too.</p>
+
+      <h2>4. Wipers, Lights, and Glass</h2>
+      <p>Swap tired wiper blades — winter or beam-style blades resist icing — and keep the glass clear; short winter days mean you're often driving in the dark. A cracked or chipped windshield is more likely to spread in the cold, so get chips fixed before the deep freeze (see our Calgary rock-chip guide).</p>
+
+      <h2>5. Build a Winter Emergency Kit</h2>
+      <p>Keep it in the vehicle, not the garage: a booster pack or cables, a small shovel and traction aid (sand, cat litter, or traction mats), an ice scraper and brush, a blanket, gloves, a flashlight, and some snacks and water. If you slide into a ditch on a rural road outside the city, this kit is what keeps you comfortable until help arrives.</p>
+
+      <h2>6. Don't Forget the Tires</h2>
+      <p>All the prep above matters less if you're still on all-seasons in January. Winter tires are the single biggest safety upgrade for Calgary driving — we cover timing, cost, and the insurance discount in our dedicated <strong>Calgary winter tires guide</strong>.</p>
+
+      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Want your vehicle winter-ready? Get a maintenance quote from a Calgary pro.</p>
+        <button onClick={() => setLocation("/client-onboarding?service=Vehicle Maintenance")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
+      </div>
+    </article>
+  );
+}
+
 const POSTS: Record<string, {
   title: string; date: string; readTime: string; tag: string;
   content: React.ComponentType;
@@ -485,10 +641,30 @@ const POSTS: Record<string, {
     date: "June 24, 2026", readTime: "6 min read", tag: "Tips",
     content: ArticleHiringContractor,
   },
+  "basement-development-cost-calgary-2026": {
+    title: "Basement Development Cost in Calgary: 2026 Price Guide",
+    date: "July 1, 2026", readTime: "6 min read", tag: "Pricing",
+    content: ArticleBasementCost,
+  },
+  "calgary-windshield-rock-chip-repair-cost-2026": {
+    title: "Windshield Rock Chip Repair in Calgary: 2026 Cost Guide (Repair vs Replace)",
+    date: "July 2, 2026", readTime: "5 min read", tag: "Vehicle",
+    content: ArticleWindshieldChip,
+  },
+  "calgary-winter-tires-guide-2026": {
+    title: "Winter Tires in Calgary: Costs, Timing & the Insurance Discount (2026)",
+    date: "July 2, 2026", readTime: "6 min read", tag: "Vehicle",
+    content: ArticleWinterTires,
+  },
+  "winterize-your-vehicle-calgary": {
+    title: "How to Winterize Your Vehicle for a Calgary Winter: 6-Point Checklist",
+    date: "July 3, 2026", readTime: "6 min read", tag: "Vehicle",
+    content: ArticleWinterizeVehicle,
+  },
 };
 
 const TAG_COLORS: Record<string, string> = {
-  Comparison: "#ea6b14", Pricing: "#3b82f6", Maintenance: "#22c55e", Tips: "#a855f7",
+  Comparison: "#ea6b14", Pricing: "#3b82f6", Maintenance: "#22c55e", Tips: "#a855f7", Vehicle: "#14b8a6",
 };
 
 // Short, search-friendly summaries used for each post's <meta description> and
@@ -504,6 +680,10 @@ const POST_DESCRIPTIONS: Record<string, string> = {
   "calgary-electrician-cost-2026": "What Calgary electricians charge in 2026: typical costs for panel upgrades, EV chargers, new circuits and outlet work, plus permits, hourly rates and red flags.",
   "calgary-furnace-repair-replacement-cost-2026": "Calgary furnace repair vs replacement costs in 2026: repair prices, replacement ranges by efficiency, when to replace, permits, rebates and red flags.",
   "hiring-a-contractor-calgary-questions-permits": "The 7 questions every Calgary homeowner should ask before hiring a contractor, plus how City of Calgary permits work and the red flags that should end the conversation.",
+  "basement-development-cost-calgary-2026": "What it costs to develop a basement in Calgary in 2026: per-square-foot ranges, lifestyle finish vs legal suite, permits, the 2026 suite fee amnesty, and red flags to avoid.",
+  "calgary-windshield-rock-chip-repair-cost-2026": "Windshield rock chip repair costs in Calgary for 2026: repair vs replacement pricing, when a chip is repairable, how Alberta insurance handles it, and why cold weather means acting fast.",
+  "calgary-winter-tires-guide-2026": "Winter tires for Calgary drivers in 2026: winter vs all-season performance, when to switch, what a set costs, and the 2-5% Alberta insurance discount most people miss.",
+  "winterize-your-vehicle-calgary": "A 6-point checklist to winterize your vehicle for a Calgary winter: battery testing, block heater use, winter-grade fluids, wipers, an emergency kit, and winter tires.",
 };
 
 // Create or update a meta/link tag in <head> so each article has its own
@@ -526,6 +706,7 @@ const TAG_IMAGES: Record<string, string> = {
   Pricing:    "https://images.unsplash.com/photo-1685320198649-781e83a61de4?auto=format&fit=crop&w=1600&q=70",
   Tips:       "https://images.unsplash.com/photo-1685320198649-781e83a61de4?auto=format&fit=crop&w=1600&q=70",
   Maintenance:"https://images.unsplash.com/photo-1750128973550-750f796f431b?auto=format&fit=crop&w=1600&q=70",
+  Vehicle:    "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=1600&q=70",
 };
 
 // ── Page ─────────────────────────────────────────────────────────────────────
