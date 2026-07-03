@@ -1002,7 +1002,7 @@ export default function ContractorDashboard() {
                 <div style={{ display:"flex", alignItems:"center", gap:".6rem" }}>
                   <Ic name="key" size={16} color="#ea6b14" />
                   <div>
-                    <div style={{ fontSize:"1rem", fontWeight:600, color:"var(--ff-text)" }}>${awaitingTotal.toFixed(2)} in escrow</div>
+                    <div style={{ fontSize:"1rem", fontWeight:600, color:"var(--ff-text)" }}>${awaitingTotal.toFixed(2)} held securely</div>
                     <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .65)", lineHeight:1.45, marginTop:".1rem" }}>Held safely for {awaitingJobs.length} active job{awaitingJobs.length === 1 ? "" : "s"}. Released to you once the client confirms the work (or automatically after 3 days). Amounts shown are your 93% payout after the 7% platform fee.</div>
                   </div>
                 </div>

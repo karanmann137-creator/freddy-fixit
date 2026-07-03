@@ -97,7 +97,7 @@ export default function SettingsModal({
                 </>
               ) : role === "client" ? (
                 <p style={{ fontSize:".88rem", color:"rgb(var(--ff-muted))", margin:0, lineHeight:1.5 }}>
-                  You pay securely per job at checkout, and we hold the payment in escrow until the work is done and you confirm it — so you're protected if anything goes wrong. No card is stored on your account, so there's nothing to change here.
+                  You pay securely per job at checkout, and we hold your payment securely until the work is done and you confirm it — so you're protected if anything goes wrong. No card is stored on your account, so there's nothing to change here.
                 </p>
               ) : (
                 <p style={{ fontSize:".88rem", color:"rgb(var(--ff-muted))", margin:0, lineHeight:1.5 }}>No payment method is associated with admin accounts.</p>
