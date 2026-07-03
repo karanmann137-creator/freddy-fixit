@@ -2,6 +2,7 @@ import { Ic } from "@/components/Ic";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { AVAIL_DAYS, WEEKDAYS, TIME_OPTIONS, DEFAULT_START, DEFAULT_END } from "@/lib/availability";
 import { trackEvent } from "@/lib/analytics";
 import OAuthButtons from "@/components/OAuthButtons";
 
@@ -32,15 +33,6 @@ const SPECIALTIES = [
 ];
 
 const AREAS = ["NW","NE","SW","SE","Downtown / Beltline","Airdrie","Cochrane","Chestermere"];
-
-const AVAILABILITY_OPTIONS = [
-  { iconName: "sun", label: "Weekday Mornings",   sub: "Mon–Fri, 7am–12pm" },
-  { iconName: "cloud-sun", label: "Weekday Afternoons", sub: "Mon–Fri, 12pm–5pm" },
-  { iconName: "moon", label: "Weekday Evenings",   sub: "Mon–Fri, 5pm–9pm" },
-  { iconName: "calendar", label: "Weekends",           sub: "Sat & Sun, flexible hours" },
-  { iconName: "zap", label: "Urgent / On-Call",   sub: "Available for same-day jobs" },
-  { iconName: "refresh", label: "Fully Flexible",     sub: "Available anytime" },
-];
 
 // Primary work classification. This decides which credentials we actually
 // require: only regulated trades (electrical, gas, plumbing, HVAC) need a
@@ -75,7 +67,9 @@ export default function ContractorOnboarding() {
   const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", companyName:"", password:"", yearsOfExperience:"", photoUrl:"", workType:"", licensed:false, licenseNumber:"", hasInsurance:false, insuranceProvider:"", insuranceExpiry:"", hasWcb:false, workReferences:"" });
   const [selectedSpec,  setSelectedSpec]  = useState<string[]>([]);
   const [selectedArea,  setSelectedArea]  = useState<string[]>([]);
-  const [selectedAvail, setSelectedAvail] = useState<string[]>([]);
+  const [availDays, setAvailDays] = useState<string[]>([...WEEKDAYS]);
+  const [availStart, setAvailStart] = useState<string>(DEFAULT_START);
+  const [availEnd, setAvailEnd]     = useState<string>(DEFAULT_END);
   const [errors, setErrors]   = useState<Record<string,string>>({});
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -103,7 +97,8 @@ export default function ContractorOnboarding() {
   const setFB = (key: string, val: boolean) => { setForm(f => ({ ...f, [key]: val })); };
   const toggleSpec  = (l: string) => { setSelectedSpec(prev  => prev.includes(l)  ? prev.filter(x => x !== l)  : [...prev, l]);  setErrors(e => ({ ...e, spec: "" })); };
   const toggleArea  = (z: string) => { setSelectedArea(prev  => prev.includes(z)  ? prev.filter(x => x !== z)  : [...prev, z]);  setErrors(e => ({ ...e, area: "" })); };
-  const toggleAvail = (a: string) => { setSelectedAvail(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]); setErrors(e => ({ ...e, avail: "" })); };
+  const toggleDay = (d: string) => { setAvailDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]); setErrors(e => ({ ...e, avail: "" })); };
+  const setDays = (days: string[]) => { setAvailDays(days); setErrors(e => ({ ...e, avail: "" })); };
 
   const validate = () => {
     const errs: Record<string,string> = {};
@@ -116,7 +111,10 @@ export default function ContractorOnboarding() {
     }
     if (step === 2 && selectedSpec.length === 0)  errs.spec  = "Select at least one specialty";
     if (step === 3 && selectedArea.length === 0)  errs.area  = "Select at least one area";
-    if (step === 4 && selectedAvail.length === 0) errs.avail = "Select at least one availability window";
+    if (step === 4) {
+      if (availDays.length === 0) errs.avail = "Pick at least one day you're available";
+      else if (availEnd <= availStart) errs.avail = "End time must be after the start time";
+    }
     if (step === 5 && !form.workType)             errs.workType = "Select what best describes your work";
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -138,7 +136,7 @@ export default function ContractorOnboarding() {
         company_name: form.companyName,
         specialties: selectedSpec,
         service_area: selectedArea,
-        availability: { windows: selectedAvail },
+        availability: { days: availDays, start: availStart, end: availEnd },
         work_type: form.workType,
         years_of_experience: form.yearsOfExperience,
         licensed: form.licensed, license_number: form.licenseNumber,
@@ -186,7 +184,7 @@ export default function ContractorOnboarding() {
         if (!docErr) docUrls[key] = path;
       }
 
-      await supabase.from("contractors").upsert({ id: userId, company_name: form.companyName || null, specialties: selectedSpec, years_of_experience: form.yearsOfExperience === "" ? null : Number(form.yearsOfExperience), service_area: selectedArea, availability: { windows: selectedAvail }, work_type: form.workType || null, photo_url: photoPublicUrl, licensed: form.licensed, license_number: form.licenseNumber || null, has_liability_insurance: form.hasInsurance, insurance_provider: form.insuranceProvider || null, insurance_expiry: form.insuranceExpiry || null, has_wcb: form.hasWcb, work_references: form.workReferences || null, status: "pending", doc_urls: docUrls });
+      await supabase.from("contractors").upsert({ id: userId, company_name: form.companyName || null, specialties: selectedSpec, years_of_experience: form.yearsOfExperience === "" ? null : Number(form.yearsOfExperience), service_area: selectedArea, availability: { days: availDays, start: availStart, end: availEnd }, work_type: form.workType || null, photo_url: photoPublicUrl, licensed: form.licensed, license_number: form.licenseNumber || null, has_liability_insurance: form.hasInsurance, insurance_provider: form.insuranceProvider || null, insurance_expiry: form.insuranceExpiry || null, has_wcb: form.hasWcb, work_references: form.workReferences || null, status: "pending", doc_urls: docUrls });
 
       // Trigger automated document review (non-blocking)
       if (Object.keys(docUrls).length > 0) {
@@ -351,26 +349,64 @@ export default function ContractorOnboarding() {
             </div>
           )}
 
-          {/* Step 4 — Availability (simplified) */}
-          {step === 4 && (
+          {/* Step 4 — Availability: which days + typical hours */}
+          {step === 4 && (() => {
+            const isWeekdays = availDays.length === 5 && WEEKDAYS.every(d => availDays.includes(d));
+            const isEvery = availDays.length === 7;
+            const presetBtn = (sel: boolean) => ({
+              padding:".5rem 1rem", borderRadius:"99px", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem", fontWeight:600,
+              border: sel ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .14)",
+              background: sel ? "#ea6b14" : "rgba(var(--ff-fg), .05)", color: sel ? "#fff" : "var(--ff-text)",
+            });
+            return (
             <div>
-              <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .5)", marginBottom:"1.5rem", fontWeight:300, lineHeight:1.6 }}>
-                Select all the windows that generally work for you. You can update this anytime from your dashboard.
+              <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .5)", marginBottom:"1.25rem", fontWeight:300, lineHeight:1.6 }}>
+                Which days do you usually work? You can fine-tune this anytime from your dashboard.
               </p>
-              {AVAILABILITY_OPTIONS.map(a => (
-                <button key={a.label} style={{ ...s.availBtn, ...(selectedAvail.includes(a.label) ? s.availBtnSel : {}) }} onClick={() => toggleAvail(a.label)}>
-                  <span style={{ fontSize:"1.5rem", flexShrink:0 }}><Ic name={a.iconName as any} size={20} color="#ea6b14" style={{ marginRight:8, flexShrink:0 }} /></span>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:".95rem", fontWeight:500 }}>{a.label}</div>
-                    <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .5)", marginTop:".1rem" }}>{a.sub}</div>
+              <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginBottom:"1rem" }}>
+                <button type="button" onClick={() => setDays([...WEEKDAYS])} style={presetBtn(isWeekdays)}>Weekdays</button>
+                <button type="button" onClick={() => setDays([...AVAIL_DAYS])} style={presetBtn(isEvery)}>Every day</button>
+              </div>
+              <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .55)", marginBottom:".6rem" }}>
+                Tap the days you're available
+              </div>
+              <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
+                {AVAIL_DAYS.map(day => {
+                  const on = availDays.includes(day);
+                  return (
+                    <button type="button" key={day} onClick={() => toggleDay(day)} aria-label={day}
+                      style={{ display:"flex", alignItems:"center", gap:".35rem", padding:".55rem .9rem", borderRadius:"99px", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem", fontWeight:600,
+                        border: on ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .14)",
+                        background: on ? "rgba(234,107,20,.16)" : "rgba(var(--ff-fg), .05)",
+                        color: on ? "#ea6b14" : "rgba(var(--ff-muted), .6)" }}>
+                      {on && <span style={{ fontSize:".78rem" }}>✓</span>}{day.slice(0,3)}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {availDays.length > 0 && (
+                <div style={{ marginTop:"1.4rem", paddingTop:"1.3rem", borderTop:"1px solid rgba(var(--ff-fg), .07)" }}>
+                  <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .55)", marginBottom:".7rem" }}>
+                    What hours on those days?
                   </div>
-                  {selectedAvail.includes(a.label) && <span style={{ color:"#ea6b14", fontSize:"1.1rem", flexShrink:0 }}>✓</span>}
-                </button>
-              ))}
+                  <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const }}>
+                    <select value={availStart} onChange={e => { setAvailStart(e.target.value); setErrors(er => ({ ...er, avail: "" })); }}
+                      style={{ ...inp, width:"auto", minWidth:"120px", cursor:"pointer" }}>
+                      {TIME_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                    <span style={{ color:"rgba(var(--ff-muted), .6)", fontSize:".85rem" }}>to</span>
+                    <select value={availEnd} onChange={e => { setAvailEnd(e.target.value); setErrors(er => ({ ...er, avail: "" })); }}
+                      style={{ ...inp, width:"auto", minWidth:"120px", cursor:"pointer" }}>
+                      {TIME_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
               {errors.avail && <p style={s.err}>{errors.avail}</p>}
-              {selectedAvail.length > 0 && <p style={{ fontSize:".78rem", color:"#ea6b14" }}>✓ {selectedAvail.length} window{selectedAvail.length > 1 ? "s" : ""} selected</p>}
             </div>
-          )}
+            );
+          })()}
 
           {/* Step 5 — Trade / work type */}
           {step === 5 && (

@@ -8,6 +8,7 @@ import ProfileBar from "@/components/ProfileBar";
 import ScheduleField from "@/components/ScheduleField";
 import JobChat from "@/components/JobChat";
 import JobTimeline from "@/components/JobTimeline";
+import { AVAIL_DAYS, WEEKDAYS, TIME_OPTIONS, readAvailability } from "@/lib/availability";
 import RespondToClaim from "@/components/RespondToClaim";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
@@ -412,41 +413,18 @@ export default function ContractorDashboard() {
     setContractor((c: any) => ({ ...c, hourly_rate: pricingForm.hourly ? Number(pricingForm.hourly) : null, min_callout: pricingForm.callout ? Number(pricingForm.callout) : null }));
   };
 
-  const toggleSlot = async (day: string, slot: string) => {
-    if (!contractor || !profile) return;
-    const avail = { ...(contractor.availability ?? {}) };
-    const existing = avail[day] ?? [];
-    avail[day] = existing.includes(slot) ? existing.filter((s: string) => s !== slot) : [...existing, slot];
-    await supabase.from("contractors").update({ availability: avail }).eq("id", profile.id);
-    setContractor((c: any) => ({ ...c, availability: avail }));
-  };
-
-  const saveAvailability = async (avail: Record<string, string[]>) => {
+  // Availability is stored as { days: string[], start: "HH:MM", end: "HH:MM" }.
+  const avail = readAvailability(contractor?.availability);
+  const saveAvail = async (next: { days: string[]; start: string; end: string }) => {
     if (!profile) return;
-    setContractor((c: any) => ({ ...c, availability: avail }));
-    await supabase.from("contractors").update({ availability: avail }).eq("id", profile.id);
+    setContractor((c: any) => ({ ...c, availability: next }));
+    await supabase.from("contractors").update({ availability: next }).eq("id", profile.id);
   };
-  // Select or clear every slot for one day.
-  const setDayAll = (day: string, on: boolean) => {
-    const avail = { ...(contractor?.availability ?? {}) };
-    avail[day] = on ? [...getSlots(day)] : [];
-    saveAvailability(avail);
-  };
-  // Copy one day's selected slots to every day (respecting each day's valid slots).
-  const copyDayToAll = (day: string) => {
-    const src = (contractor?.availability ?? {})[day] ?? [];
-    const avail: Record<string, string[]> = {};
-    DAYS.forEach(d => { avail[d] = getSlots(d).filter(sl => src.includes(sl)); });
-    saveAvailability(avail);
-  };
-  // Turn a whole set of days fully on (all their slots) and the rest off.
-  const setDaysOn = (onDays: string[]) => {
-    const avail: Record<string, string[]> = {};
-    DAYS.forEach(d => { avail[d] = onDays.includes(d) ? [...getSlots(d)] : []; });
-    saveAvailability(avail);
-  };
-  // A day counts as "available" if it has at least one slot selected.
-  const dayIsOn = (day: string) => ((contractor?.availability ?? {})[day] ?? []).length > 0;
+  const setAvailDays  = (days: string[]) => saveAvail({ ...avail, days });
+  const toggleDay     = (day: string) => saveAvail({ ...avail, days: avail.days.includes(day) ? avail.days.filter(d => d !== day) : [...avail.days, day] });
+  const setAvailStart = (start: string) => saveAvail({ ...avail, start });
+  const setAvailEnd   = (end: string) => saveAvail({ ...avail, end });
+  const dayIsOn = (day: string) => avail.days.includes(day);
 
   async function setupPayouts() {
     setBusyStripe(true);
@@ -480,8 +458,6 @@ export default function ContractorDashboard() {
     : Math.round(Number(job?.amount ?? 0) * 0.93 * 100) / 100;
   const awaitingJobs = myJobs.filter(j => j.status === "pending_confirmation" || j.status === "scheduled" || j.status === "in_progress");
   const awaitingTotal = awaitingJobs.reduce((t,j) => t + (j.amount ? netPayout(j) : 0), 0);
-  const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-  const getSlots = (day: string) => ["Saturday","Sunday"].includes(day) ? ["Morning","Afternoon"] : ["Morning","Afternoon","Evening"];
   const STATUS_COLORS: Record<string,string> = { pending:"#f59e0b", matched:"#3b82f6", in_progress:"#ea6b14", completed:"#22c55e", cancelled:"#ef4444", assigned:"#3b82f6" };
 
   const s = {
@@ -843,15 +819,11 @@ export default function ContractorDashboard() {
                 Pick a typical week. You can fine-tune any day. Changes save automatically.
               </p>
               {(() => {
-                const onDays = DAYS.filter(dayIsOn);
-                const eq = (a: string[]) => a.length === onDays.length && a.every(d => onDays.includes(d));
-                const WEEKDAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday"];
-                const WEEKENDS = ["Saturday","Sunday"];
-                const active = eq(DAYS) ? "every" : eq(WEEKDAYS) ? "weekdays" : eq(WEEKENDS) ? "weekends" : (onDays.length ? "custom" : "none");
+                const eq = (a: string[]) => a.length === avail.days.length && a.every(d => avail.days.includes(d));
+                const active = eq(AVAIL_DAYS) ? "every" : eq(WEEKDAYS) ? "weekdays" : (avail.days.length ? "custom" : "none");
                 const presets: [string,string,string[]][] = [
                   ["weekdays","Weekdays", WEEKDAYS],
-                  ["every","Every day", DAYS],
-                  ["weekends","Weekends only", WEEKENDS],
+                  ["every","Every day", AVAIL_DAYS],
                 ];
                 const presetBtn = (selected: boolean) => ({
                   padding:".5rem .9rem", borderRadius:"99px", cursor:"pointer", fontFamily:"inherit", fontSize:".82rem", fontWeight:600,
@@ -860,11 +832,15 @@ export default function ContractorDashboard() {
                   color: selected ? "#fff" : "var(--ff-text)",
                 });
                 const showChips = showCustomAvail || active === "custom";
+                const sel = {
+                  padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)",
+                  borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer",
+                };
                 return (
                   <div>
                     <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
                       {presets.map(([key,label,days]) => (
-                        <button key={key} onClick={() => { setShowCustomAvail(false); setDaysOn(days); }} style={presetBtn(active === key)}>
+                        <button key={key} onClick={() => { setShowCustomAvail(false); setAvailDays(days); }} style={presetBtn(active === key)}>
                           {label}
                         </button>
                       ))}
@@ -878,10 +854,10 @@ export default function ContractorDashboard() {
                           Tap the days you usually work
                         </div>
                         <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
-                          {DAYS.map(day => {
+                          {AVAIL_DAYS.map(day => {
                             const on = dayIsOn(day);
                             return (
-                              <button key={day} onClick={() => setDayAll(day, !on)} aria-label={day}
+                              <button key={day} onClick={() => toggleDay(day)} aria-label={day}
                                 style={{ display:"flex", alignItems:"center", gap:".35rem", padding:".5rem .85rem", borderRadius:"99px", cursor:"pointer", fontFamily:"inherit", fontSize:".82rem", fontWeight:600,
                                   border: on ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .14)",
                                   background: on ? "rgba(234,107,20,.16)" : "rgba(var(--ff-fg), .05)",
@@ -893,7 +869,28 @@ export default function ContractorDashboard() {
                         </div>
                       </div>
                     )}
-                    {onDays.length === 0 && !showChips && (
+                    {avail.days.length > 0 && (
+                      <div style={{ marginTop:"1.1rem", paddingTop:"1.1rem", borderTop:"1px solid rgba(var(--ff-fg), .07)" }}>
+                        <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .55)", marginBottom:".7rem" }}>
+                          Hours you're usually available
+                        </div>
+                        <div style={{ display:"flex", gap:".6rem", alignItems:"center", flexWrap:"wrap" as const }}>
+                          <select value={avail.start} onChange={e => setAvailStart(e.target.value)} style={sel}>
+                            {TIME_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                          </select>
+                          <span style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)" }}>to</span>
+                          <select value={avail.end} onChange={e => setAvailEnd(e.target.value)} style={sel}>
+                            {TIME_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                          </select>
+                        </div>
+                        {avail.end <= avail.start && (
+                          <p style={{ fontSize:".78rem", color:"var(--ff-warn)", marginTop:".7rem", marginBottom:0 }}>
+                            End time should be after the start time.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {avail.days.length === 0 && !showChips && (
                       <p style={{ fontSize:".78rem", color:"var(--ff-warn)", marginTop:".9rem", marginBottom:0 }}>
                         No availability set yet — pick a preset or Custom so clients know when to reach you.
                       </p>
