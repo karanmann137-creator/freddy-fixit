@@ -97,7 +97,9 @@ export default function ClientDashboard() {
   const [bidNames, setBidNames] = useState<Record<string,string>>({});
   const [busyPick, setBusyPick] = useState<string|null>(null);
   const [busyPay, setBusyPay] = useState(false);
-  const [feeRate, setFeeRate] = useState(0.03);
+  const [feeRate] = useState(0.03);
+  const [waivedForJob, setWaivedForJob] = useState<string|null>(null); // job whose 3% fee a referral waives
+  const [loadError, setLoadError] = useState(false);
   const [selectedReqId, setSelectedReqId] = useState<string|null>(null);
   const [histFilter, setHistFilter] = useState<"all"|"active"|"completed"|"cancelled">("all");
   const [histLimit, setHistLimit] = useState(5);
@@ -117,22 +119,31 @@ export default function ClientDashboard() {
 
   useEffect(() => {
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      setLoadError(false);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setLoading(false); return; }
 
-      // profile + requests have no inter-dependency — fetch them together.
-      const [{ data: prof }, { data: reqs }, { data: myPros }, { data: ref }] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", user.id).single(),
-        supabase.from("client_requests").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
-        supabase.rpc("list_my_pros"),
-        supabase.rpc("get_my_referral"),
-      ]);
-      setProfile(prof);
-      setRequests(reqs ?? []);
-      setPros(myPros ?? []);
-      setReferral(ref ?? null);
-      // All clients pay the standard 3% service fee (feeRate defaults to 0.03).
-      setLoading(false);
+        // profile + requests have no inter-dependency — fetch them together.
+        const [prof, reqs, myPros, ref] = await Promise.all([
+          supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+          supabase.from("client_requests").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+          supabase.rpc("list_my_pros"),
+          supabase.rpc("get_my_referral"),
+        ]);
+        // A failed profile/requests read must show an error+retry, not a false "no jobs" empty state.
+        if (prof.error || reqs.error) { setLoadError(true); return; }
+        setProfile(prof.data);
+        setRequests(reqs.data ?? []);
+        setPros(myPros.data ?? []);
+        setReferral(ref.data ?? null);
+        // All clients pay the standard 3% service fee unless a referral waives it
+        // for a specific first job (checked per-job in the active-job effect below).
+      } catch {
+        setLoadError(true);
+      } finally {
+        setLoading(false);
+      }
     };
     load();
   }, []);
@@ -159,6 +170,14 @@ export default function ClientDashboard() {
       if (cancelled) return;
       setContractor(con ?? null);
       setActiveJob(job ?? null);
+      // Referral perk: the 3% service fee is waived on a referred client's first
+      // job. Check the specific job so the displayed total matches what Stripe charges.
+      if (job && job.payment_status !== "released" && job.total_charged == null) {
+        supabase.rpc("referral_waiver_eligible", { p_client: activeReq.user_id, p_job_id: job.id })
+          .then(({ data }) => { if (!cancelled) setWaivedForJob(data === true ? job.id : null); });
+      } else if (!cancelled) {
+        setWaivedForJob(null);
+      }
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -294,7 +313,8 @@ export default function ClientDashboard() {
   function jobTotal(j: any) {
     if (j?.total_charged != null) return Number(j.total_charged);
     const amt = Number(j?.amount ?? 0);
-    return r2(amt * (1 + feeRate));
+    const rate = (j?.id && waivedForJob === j.id) ? 0 : feeRate;
+    return r2(amt * (1 + rate));
   }
   const payForJob = async () => {
     if (!activeJob) return;
@@ -337,9 +357,20 @@ export default function ClientDashboard() {
     setActiveJob({ ...activeJob, status: "completed", client_confirmed_at: new Date().toISOString() });
     setRequests(prev => prev.map(r => r.id === activeJob.request_id ? { ...r, status: "completed" } : r));
     if (activeJob.payment_status === "held") {
-      supabase.functions.invoke("release-payment", { body: { job_id: activeJob.id } })
-        .then(() => setActiveJob((j: any) => j ? { ...j, payment_status: "released" } : j))
-        .catch(() => {});
+      // Try to release right away. If it doesn't go through (network blip, Stripe
+      // hiccup), the payout is NOT lost — the reconcile-payouts cron re-tries every
+      // 15 min for any confirmed-but-held job. So we reassure rather than alarm.
+      try {
+        const { data, error } = await supabase.functions.invoke("release-payment", { body: { job_id: activeJob.id } });
+        const failed = !!error || (data && (data as any).error);
+        if (failed) {
+          alert("Job confirmed. The payment to your contractor is being processed and will complete automatically within a few minutes — nothing more for you to do.");
+        } else {
+          setActiveJob((j: any) => j ? { ...j, payment_status: "released" } : j);
+        }
+      } catch {
+        alert("Job confirmed. The payment to your contractor is being processed and will complete automatically within a few minutes — nothing more for you to do.");
+      }
     }
   };
 
@@ -432,6 +463,18 @@ export default function ClientDashboard() {
     </div>
   );
 
+  // A read failure is distinct from "you have no jobs yet" — never show the empty
+  // state when the data simply didn't load; offer a retry instead.
+  if (loadError) return (
+    <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ textAlign:"center", color:"rgba(var(--ff-muted), .7)", maxWidth:"320px", padding:"1.5rem" }}>
+        <div style={{ marginBottom:".75rem", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".04em" }}>Couldn't load your dashboard</div>
+        <div style={{ fontSize:".9rem", marginBottom:"1.25rem" }}>Check your connection and try again.</div>
+        <button style={s.primaryBtn} onClick={() => window.location.reload()}>Retry</button>
+      </div>
+    </div>
+  );
+
   return (
     <div style={s.wrap}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
@@ -464,7 +507,7 @@ export default function ClientDashboard() {
                         {pro.rating ? `⭐ ${Number(pro.rating).toFixed(1)}` : "New"}{pro.jobs_together ? ` · ${pro.jobs_together} job${pro.jobs_together===1?"":"s"} together` : ""}
                       </div>
                     </div>
-                    <button onClick={() => toggleFav(pro.contractor_id)} title={pro.is_favorite ? "Remove favourite" : "Add favourite"} style={{ background:"none", border:"none", cursor:"pointer", fontSize:"1.1rem", lineHeight:1, color: pro.is_favorite ? "#ea6b14" : "rgba(var(--ff-muted), .4)" }}>
+                    <button onClick={() => toggleFav(pro.contractor_id)} aria-label={pro.is_favorite ? "Remove favourite" : "Add favourite"} title={pro.is_favorite ? "Remove favourite" : "Add favourite"} style={{ background:"none", border:"none", cursor:"pointer", fontSize:"1.1rem", lineHeight:1, color: pro.is_favorite ? "#ea6b14" : "rgba(var(--ff-muted), .4)" }}>
                       {pro.is_favorite ? "♥" : "♡"}
                     </button>
                   </div>

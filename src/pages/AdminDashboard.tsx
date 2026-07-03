@@ -27,7 +27,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeContractors, setActiveContractors] = useState<any[]>([]);
   const [assignSel, setAssignSel] = useState<Record<string,string>>({});
-  const [busyAssign, setBusyAssign] = useState(false);
+  const [busyAssign, setBusyAssign] = useState<string|null>(null); // request id being assigned
+  const [busyStatus, setBusyStatus] = useState<string|null>(null); // contractor id whose status is toggling
+  const [rankedBy, setRankedBy] = useState<Record<string, any[]>>({}); // best-fit contractors per pending request
   const [busyDelete, setBusyDelete] = useState(false);
   const [bidsBy, setBidsBy] = useState<Record<string, any[]>>({});
   const [busyAcceptBid, setBusyAcceptBid] = useState<string|null>(null);
@@ -68,29 +70,31 @@ export default function AdminDashboard() {
     setDisputes(disp ?? []);
     setLeads(leadsData ?? []);
     setHealth(healthData ?? null);
-    // Resolve signed URLs for any dispute photos (problem-photos is a private bucket).
+    // Resolve signed URLs for all dispute photos (problem-photos is private). Both
+    // the claim photos and the contractor-response photos are signed in a single
+    // parallel pass instead of two sequential per-dispute loops.
+    const sign = (paths: string[]) => Promise.all((paths ?? []).map((pp: string) =>
+      supabase.storage.from("problem-photos").createSignedUrl(pp, 3600)
+        .then(({ data }) => data?.signedUrl).catch(() => null)));
     const dp: Record<string, string[]> = {};
-    for (const d of (disp ?? [])) {
-      const paths: string[] = d.photo_paths ?? [];
-      if (paths.length) {
-        const signed = await Promise.all(paths.map((p: string) =>
-          supabase.storage.from("problem-photos").createSignedUrl(p, 3600).then(({ data }) => data?.signedUrl).catch(() => null)));
-        dp[d.id] = signed.filter(Boolean) as string[];
-      }
-    }
-    setDisputePhotos(dp);
     const rp: Record<string, string[]> = {};
-    for (const d of (disp ?? [])) {
-      const paths: string[] = d.contractor_response_photos ?? [];
-      if (paths.length) {
-        const signed = await Promise.all(paths.map((p: string) =>
-          supabase.storage.from("problem-photos").createSignedUrl(p, 3600).then(({ data }) => data?.signedUrl).catch(() => null)));
-        rp[d.id] = signed.filter(Boolean) as string[];
-      }
-    }
+    await Promise.all((disp ?? []).flatMap((d: any) => [
+      (d.photo_paths?.length ? sign(d.photo_paths).then(u => { dp[d.id] = u.filter(Boolean) as string[]; }) : Promise.resolve()),
+      (d.contractor_response_photos?.length ? sign(d.contractor_response_photos).then(u => { rp[d.id] = u.filter(Boolean) as string[]; }) : Promise.resolve()),
+    ]));
+    setDisputePhotos(dp);
     setDisputeRespPhotos(rp);
     setCounts({ requests: reqCount ?? 0, contractors: conCount ?? 0, jobs: jobCount ?? 0 });
     setActiveContractors(dir ?? []);
+    // Best-fit ranking for each pending request (specialty + zone, same map as the
+    // contractor feed). Fetched in parallel so the assign dropdown leads with the
+    // right pros instead of a flat alphabetical list.
+    const pendingReqs = (reqs ?? []).filter((r: any) => r.status === "pending");
+    Promise.all(pendingReqs.map((r: any) =>
+      supabase.rpc("admin_rank_contractors", { p_request_id: r.id })
+        .then(({ data }) => [r.id, data ?? []] as [string, any[]])
+        .catch(() => [r.id, []] as [string, any[]])
+    )).then(pairs => setRankedBy(Object.fromEntries(pairs)));
     const bb: Record<string, any[]> = {};
     (bids ?? []).forEach((b: any) => { if (!bb[b.request_id]) bb[b.request_id] = []; bb[b.request_id].push(b); });
     setBidsBy(bb);
@@ -138,11 +142,14 @@ export default function AdminDashboard() {
   const assignContractor = async (requestId: string) => {
     const cid = assignSel[requestId];
     if (!cid) { alert("Pick a contractor first."); return; }
-    setBusyAssign(true);
+    setBusyAssign(requestId);
     const { error } = await supabase.rpc("assign_job", { p_request_id: requestId, p_contractor_id: cid });
-    setBusyAssign(false);
+    setBusyAssign(null);
     if (error) { alert("Couldn't assign: " + error.message); return; }
-    await loadAll();
+    // Patch just this row rather than reloading the whole dashboard.
+    setRequests(prev => prev.map(x => x.id === requestId ? { ...x, status: "matched", assigned_contractor_id: cid } : x));
+    setAssignSel(p => { const n = { ...p }; delete n[requestId]; return n; });
+    setRankedBy(p => { const n = { ...p }; delete n[requestId]; return n; });
   };
   const acceptBid = async (bidId: string) => {
     if (!window.confirm("Accept this bid and assign this contractor?")) return;
@@ -151,6 +158,14 @@ export default function AdminDashboard() {
     setBusyAcceptBid(null);
     if (error) { alert("Couldn't accept bid: " + error.message); return; }
     await loadAll();
+  };
+
+  const setContractorStatus = async (contractorId: string, status: "active"|"inactive") => {
+    setBusyStatus(contractorId);
+    const { error } = await supabase.rpc("admin_set_contractor_status", { p_id: contractorId, p_status: status });
+    setBusyStatus(null);
+    if (error) { alert("Couldn't update contractor: " + error.message); return; }
+    setContractors(prev => prev.map(c => c.id === contractorId ? { ...c, status } : c));
   };
 
   const markLeadContacted = async (leadId: string) => {
@@ -250,14 +265,39 @@ export default function AdminDashboard() {
                 )}
                 {r.status === "pending" && (
                   <div style={{ display:"flex", gap:".5rem", marginTop:".75rem", flexWrap:"wrap" as const, alignItems:"center" }}>
-                    <select value={assignSel[r.id] ?? ""} onChange={e => setAssignSel(p => ({ ...p, [r.id]: e.target.value }))}
-                      style={{ padding:".5rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"6px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".82rem" }}>
-                      <option value="">Select contractor…</option>
-                      {activeContractors.map(c => (
-                        <option key={c.id} value={c.id}>{c.first_name} {c.last_name ? c.last_name[0] + "." : ""}{(c.specialties && c.specialties.length) ? " — " + c.specialties[0] : ""}</option>
-                      ))}
-                    </select>
-                    <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyAssign} onClick={() => assignContractor(r.id)}>{busyAssign ? "Assigning…" : "Assign"}</button>
+                    {(() => {
+                      const ranked = rankedBy[r.id];
+                      const label = (c: any) => `${c.first_name} ${c.last_name ? c.last_name[0] + "." : ""}${(c.specialties && c.specialties.length) ? " — " + c.specialties[0] : ""}`;
+                      // Lead with the pros the matcher ranked best (right trade + in the
+                      // client's zone); fall back to the flat directory until ranking loads.
+                      const best = (ranked ?? []).filter((c: any) => c.is_match);
+                      const others = (ranked ?? []).filter((c: any) => !c.is_match);
+                      return (
+                        <select value={assignSel[r.id] ?? ""} onChange={e => setAssignSel(p => ({ ...p, [r.id]: e.target.value }))}
+                          style={{ padding:".5rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"6px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".82rem" }}>
+                          <option value="">Select contractor…</option>
+                          {ranked ? (
+                            <>
+                              {best.length > 0 && (
+                                <optgroup label="Best matches">
+                                  {best.map((c: any) => (
+                                    <option key={c.id} value={c.id}>{c.in_zone ? "★ " : ""}{label(c)}</option>
+                                  ))}
+                                </optgroup>
+                              )}
+                              {others.length > 0 && (
+                                <optgroup label="Other contractors">
+                                  {others.map((c: any) => (<option key={c.id} value={c.id}>{label(c)}</option>))}
+                                </optgroup>
+                              )}
+                            </>
+                          ) : (
+                            activeContractors.map(c => (<option key={c.id} value={c.id}>{label(c)}</option>))
+                          )}
+                        </select>
+                      );
+                    })()}
+                    <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyAssign === r.id} onClick={() => assignContractor(r.id)}>{busyAssign === r.id ? "Assigning…" : "Assign"}</button>
                   </div>
                 )}
                 {r.status !== "pending" && r.assigned_contractor_id && (
@@ -303,14 +343,14 @@ export default function AdminDashboard() {
                   </button>
                   {c.status !== "active" && (
                     <button style={{ ...s.btn, color:"var(--ff-success)", borderColor:"rgba(34,197,94,.35)" }}
-                      onClick={() => supabase.rpc("admin_set_contractor_status", { p_id: c.id, p_status: "active" }).then(loadAll)}>
-                      Approve
+                      disabled={busyStatus === c.id} onClick={() => setContractorStatus(c.id, "active")}>
+                      {busyStatus === c.id ? "…" : "Approve"}
                     </button>
                   )}
                   {c.status === "active" && (
                     <button style={{ ...s.btn, color:"var(--ff-danger)", borderColor:"rgba(239,68,68,.3)" }}
-                      onClick={() => supabase.rpc("admin_set_contractor_status", { p_id: c.id, p_status: "inactive" }).then(loadAll)}>
-                      Deactivate
+                      disabled={busyStatus === c.id} onClick={() => setContractorStatus(c.id, "inactive")}>
+                      {busyStatus === c.id ? "…" : "Deactivate"}
                     </button>
                   )}
                 </div>

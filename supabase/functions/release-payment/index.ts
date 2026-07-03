@@ -42,9 +42,21 @@ Deno.serve(async (req) => {
     );
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return json({ error: "Not signed in" }, 401);
-    const { data: me } = await admin.from("profiles").select("role").eq("id", user.id).maybeSingle();
+    // Internal (server-to-server) calls present the service-role key as the bearer
+    // token — used by the reconcile-payouts cron so a failed/absent client-side
+    // release still gets paid out. External calls must be the owning client or an admin.
+    const internal =
+      (req.headers.get("Authorization") ?? "") === `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`;
+
+    let userId: string | null = null;
+    let meRole: string | null = null;
+    if (!internal) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return json({ error: "Not signed in" }, 401);
+      userId = user.id;
+      const { data: me } = await admin.from("profiles").select("role").eq("id", user.id).maybeSingle();
+      meRole = me?.role ?? null;
+    }
 
     const { job_id } = await req.json();
     if (!job_id) return json({ error: "Missing job_id" }, 400);
@@ -53,7 +65,7 @@ Deno.serve(async (req) => {
       .select("id, client_id, contractor_id, contractor_payout, payment_status, client_confirmed_at, stripe_transfer_id")
       .eq("id", job_id).maybeSingle();
     if (!job) return json({ error: "Job not found" }, 404);
-    if (job.client_id !== user.id && me?.role !== "admin")
+    if (!internal && job.client_id !== userId && meRole !== "admin")
       return json({ error: "Not authorized" }, 403);
     if (job.payment_status === "released") return json({ ok: true, already: true });
     if (job.payment_status !== "held") return json({ error: "Payment is not in a releasable (held) state" }, 409);

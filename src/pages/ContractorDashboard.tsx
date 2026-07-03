@@ -159,8 +159,8 @@ export default function ContractorDashboard() {
         { data: disp },
         { data: earnStats },
       ] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", user.id).single(),
-        supabase.from("contractors").select("*").eq("id", user.id).single(),
+        supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+        supabase.from("contractors").select("*").eq("id", user.id).maybeSingle(),
         supabase.from("portfolio_items").select("*").eq("contractor_id", user.id).order("created_at", { ascending: false }),
         supabase.from("jobs")
           .select("*, request:client_requests!jobs_request_id_fkey(service_needed, job_description, preferred_schedule, location, photo_path, estimated_quote, quote_notes, vehicle_details), client:profiles!jobs_client_id_fkey(first_name)")
@@ -237,6 +237,9 @@ export default function ContractorDashboard() {
       parts: job.parts_amount != null ? String(job.parts_amount) : "",
       callout: job.callout_fee != null ? String(job.callout_fee) : "",
       subject: !!job.subject_to_inspection,
+      price_low: job.price_low != null ? String(job.price_low) : "",
+      price_high: job.price_high != null ? String(job.price_high) : "",
+      used_base_price: !!job.used_base_price,
     });
   };
   const proposeSchedule = async (job: any) => {
@@ -417,8 +420,18 @@ export default function ContractorDashboard() {
   const avail = readAvailability(contractor?.availability);
   const saveAvail = async (next: { days: string[]; start: string; end: string }) => {
     if (!profile) return;
-    setContractor((c: any) => ({ ...c, availability: next }));
-    await supabase.from("contractors").update({ availability: next }).eq("id", profile.id);
+    // Reject an invalid window (end at/before start) before writing anything.
+    if (next.start && next.end && next.end <= next.start) {
+      alert("Your end time needs to be after your start time.");
+      return;
+    }
+    const prev = contractor?.availability;
+    setContractor((c: any) => ({ ...c, availability: next })); // optimistic
+    const { error } = await supabase.from("contractors").update({ availability: next }).eq("id", profile.id);
+    if (error) {
+      setContractor((c: any) => ({ ...c, availability: prev })); // roll back on failure
+      alert("Couldn't save your availability — please try again.");
+    }
   };
   const setAvailDays  = (days: string[]) => saveAvail({ ...avail, days });
   const toggleDay     = (day: string) => saveAvail({ ...avail, days: avail.days.includes(day) ? avail.days.filter(d => d !== day) : [...avail.days, day] });
