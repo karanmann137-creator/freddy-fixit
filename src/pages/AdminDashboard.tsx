@@ -85,15 +85,16 @@ export default function AdminDashboard() {
     setDisputePhotos(dp);
     setDisputeRespPhotos(rp);
     setCounts({ requests: reqCount ?? 0, contractors: conCount ?? 0, jobs: jobCount ?? 0 });
-    setActiveContractors(dir ?? []);
+    setActiveContractors((dir ?? []) as any[]);
     // Best-fit ranking for each pending request (specialty + zone, same map as the
     // contractor feed). Fetched in parallel so the assign dropdown leads with the
     // right pros instead of a flat alphabetical list.
     const pendingReqs = (reqs ?? []).filter((r: any) => r.status === "pending");
     Promise.all(pendingReqs.map((r: any) =>
-      supabase.rpc("admin_rank_contractors", { p_request_id: r.id })
-        .then(({ data }) => [r.id, data ?? []] as [string, any[]])
-        .catch(() => [r.id, []] as [string, any[]])
+      Promise.resolve(
+        supabase.rpc("admin_rank_contractors", { p_request_id: r.id })
+          .then(({ data }) => [r.id, data ?? []] as [string, any[]]),
+      ).catch(() => [r.id, []] as [string, any[]])
     )).then(pairs => setRankedBy(Object.fromEntries(pairs)));
     const bb: Record<string, any[]> = {};
     (bids ?? []).forEach((b: any) => { if (!bb[b.request_id]) bb[b.request_id] = []; bb[b.request_id].push(b); });

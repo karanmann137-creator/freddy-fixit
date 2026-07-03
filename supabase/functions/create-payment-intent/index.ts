@@ -54,7 +54,15 @@ Deno.serve(async (req) => {
       const { data: elig } = await admin.rpc("referral_waiver_eligible", { p_client: user.id, p_job_id: job.id });
       waived = elig === true;
     } catch (_) { /* fee waiver is best-effort; never block checkout */ }
-    const feeRate = waived ? 0 : 0.03;
+    // Base service-fee rate lives in ONE place: the platform_fee_rate() DB fn.
+    // Read it here so the charge can never drift from what the dashboard shows;
+    // fall back to 0.03 only if the read fails, and never block checkout.
+    let baseRate = 0.03;
+    try {
+      const { data: pr } = await admin.rpc("platform_fee_rate");
+      if (typeof pr === "number" && pr >= 0 && pr < 0.2) baseRate = Number(pr);
+    } catch (_) { /* keep fallback */ }
+    const feeRate = waived ? 0 : baseRate;
     const clientFee = r2(amount * feeRate);
     const total = r2(amount + clientFee);
     const platformFee = r2(amount * 0.07);

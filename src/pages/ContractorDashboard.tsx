@@ -371,7 +371,7 @@ export default function ContractorDashboard() {
       : x));
   };
 
-  const setBid = (id: string, patch: any) => setBidForm(p => ({ ...p, [id]: { amount:"", message:"", ...(p[id] ?? {}), ...patch } }));
+  const setBid = (id: string, patch: any) => setBidForm(p => ({ ...p, [id]: { ...{ amount:"", message:"" }, ...(p[id] ?? {}), ...patch } }));
 
   const requestRequote = async (job: any) => {
     const f = requoteForm[job.id] || { amount:"", reason:"", labour:"", parts:"", callout:"", subject:false };

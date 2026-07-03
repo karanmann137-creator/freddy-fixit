@@ -97,7 +97,7 @@ export default function ClientDashboard() {
   const [bidNames, setBidNames] = useState<Record<string,string>>({});
   const [busyPick, setBusyPick] = useState<string|null>(null);
   const [busyPay, setBusyPay] = useState(false);
-  const [feeRate] = useState(0.03);
+  const [feeRate, setFeeRate] = useState(0.03); // base service-fee rate; loaded from platform_fee_rate() so it matches what Stripe charges
   const [waivedForJob, setWaivedForJob] = useState<string|null>(null); // job whose 3% fee a referral waives
   const [loadError, setLoadError] = useState(false);
   const [selectedReqId, setSelectedReqId] = useState<string|null>(null);
@@ -125,12 +125,16 @@ export default function ClientDashboard() {
         if (!user) { setLoading(false); return; }
 
         // profile + requests have no inter-dependency — fetch them together.
-        const [prof, reqs, myPros, ref] = await Promise.all([
+        const [prof, reqs, myPros, ref, rate] = await Promise.all([
           supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
           supabase.from("client_requests").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
           supabase.rpc("list_my_pros"),
           supabase.rpc("get_my_referral"),
+          supabase.rpc("platform_fee_rate"),
         ]);
+        // Base fee rate comes from the DB (single source of truth) so the total
+        // shown here is exactly what create-payment-intent will charge.
+        if (typeof rate.data === "number" && rate.data >= 0 && rate.data < 0.2) setFeeRate(Number(rate.data));
         // A failed profile/requests read must show an error+retry, not a false "no jobs" empty state.
         if (prof.error || reqs.error) { setLoadError(true); return; }
         setProfile(prof.data);
@@ -297,7 +301,7 @@ export default function ClientDashboard() {
       "<tr><td>Service</td><td class='r'>" + esc(activeReq?.service_needed ?? "Home service") + "</td></tr>" +
       (contractor ? "<tr><td>Contractor</td><td class='r'>" + esc(contractor.first_name + " " + (contractor.last_name?.[0] ?? "") + ".") + "</td></tr>" : "") +
       "<tr><td>Job amount</td><td class='r'>$" + amt.toFixed(2) + "</td></tr>" +
-      "<tr><td>Service fee (3%)</td><td class='r'>$" + fee.toFixed(2) + "</td></tr>" +
+      "<tr><td>Service fee (" + (amt > 0 ? Math.round((fee / amt) * 100) : Math.round(feeRate * 100)) + "%)</td><td class='r'>$" + fee.toFixed(2) + "</td></tr>" +
       "<tr class='tot'><td>Total paid</td><td class='r'>$" + total.toFixed(2) + "</td></tr>" +
       "</table>" +
       "<div class='muted'>Status: " + esc((j.payment_status ?? "").replace("_", " ")) + ". Payment is held securely and released to your contractor after you confirm the work is complete.</div>" +
@@ -398,7 +402,7 @@ export default function ClientDashboard() {
           if (ids.length) {
             const { data: dir } = await supabase.rpc("get_contractor_directory").select("id, first_name, last_name").in("id", ids);
             const m: Record<string,string> = {};
-            (dir ?? []).forEach((c: any) => { m[c.id] = ((c.first_name ?? "") + " " + (c.last_name ? c.last_name[0] + "." : "")).trim() || "Contractor"; });
+            ((dir ?? []) as any[]).forEach((c: any) => { m[c.id] = ((c.first_name ?? "") + " " + (c.last_name ? c.last_name[0] + "." : "")).trim() || "Contractor"; });
             setBidNames(m);
           }
         });

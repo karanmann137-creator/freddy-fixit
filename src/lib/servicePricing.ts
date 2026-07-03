@@ -14,18 +14,19 @@ let _cache: Promise<Record<string, ServicePrice>> | null = null;
 // Fetch platform base prices once per session (public RPC, anon-readable).
 export function loadServicePricing(): Promise<Record<string, ServicePrice>> {
   if (!_cache) {
-    _cache = supabase
-      .rpc("get_service_pricing")
-      .then(({ data, error }) => {
-        const map: Record<string, ServicePrice> = {};
-        if (!error && Array.isArray(data)) {
-          for (const r of data as ServicePrice[]) map[r.service] = r;
-        }
-        return map;
-      })
-      .catch(() => ({} as Record<string, ServicePrice>));
+    _cache = Promise.resolve(
+      supabase
+        .rpc("get_service_pricing")
+        .then(({ data, error }) => {
+          const map: Record<string, ServicePrice> = {};
+          if (!error && Array.isArray(data)) {
+            for (const r of data as ServicePrice[]) map[r.service] = r;
+          }
+          return map;
+        }),
+    ).catch(() => ({} as Record<string, ServicePrice>));
   }
-  return _cache;
+  return _cache!;
 }
 
 export function useServicePricing(): Record<string, ServicePrice> {

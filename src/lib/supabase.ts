@@ -39,3 +39,6 @@ export interface Job {
 export interface Message {
   id: string; job_id: string; sender_id: string; content: string; created_at: string;
 }
+
+// Roles used across role-gated routes/dashboards.
+export type UserRole = "client" | "contractor" | "admin";

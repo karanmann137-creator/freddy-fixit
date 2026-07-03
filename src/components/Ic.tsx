@@ -12,7 +12,8 @@ export type IconName =
   | "settings" | "bell" | "search" | "alert-triangle" | "briefcase"
   | "user" | "user-check" | "radio-on" | "radio-off" | "wave"
   | "building2" | "garage-door" | "pipe"
-  | "key" | "refrigerator" | "trowel" | "download";
+  | "key" | "refrigerator" | "trowel" | "download"
+  | "star" | "check";
 
 type IcProps = {
   name: IconName;
@@ -22,6 +23,8 @@ type IcProps = {
 };
 
 const ICONS: Record<IconName, React.ReactNode> = {
+  star: <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />,
+  check: <polyline points="20 6 9 17 4 12" />,
   wrench: <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />,
   droplet: <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />,
   zap: <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />,
