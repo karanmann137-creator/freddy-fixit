@@ -19,7 +19,7 @@ type Role = "contractor" | "client" | "admin";
 type Milestone = {
   id: string; job_id: string; seq: number; title: string;
   amount: number; client_fee: number; contractor_payout: number; platform_fee: number;
-  status: "pending" | "funded" | "completed" | "released" | "disputed";
+  status: "pending" | "funded" | "completed" | "released" | "disputed" | "refunded";
   completion_photo_path: string | null;
   funded_at: string | null; completed_at: string | null;
   client_approved_at: string | null; released_at: string | null; disputed_at: string | null;
@@ -34,6 +34,7 @@ const STATUS_META: Record<Milestone["status"], { label: string; color: string }>
   completed: { label: "Done — awaiting your OK", color: "#f59e0b" },
   released:  { label: "Paid out", color: "#22c55e" },
   disputed:  { label: "Disputed", color: "#ef4444" },
+  refunded:  { label: "Refunded to client", color: "#a3a3a3" },
 };
 
 const DEFAULT_SPLIT = [
@@ -117,6 +118,8 @@ export default function MilestonePanel({ job, role, onUpdated }: { job: any; rol
   const approveSchedule = () => run(async () => {
     const { error } = await supabase.rpc("approve_milestone_schedule", { p_job_id: job.id });
     if (error) throw error;
+    // Email the client a written contract copy (Alberta: starts the 10-day cancellation clock).
+    supabase.functions.invoke("notify-email", { body: { event: "contract_copy", job_id: job.id } }).catch(() => {});
     setSchedStatus("approved"); setMsg("Plan approved — you can fund the first stage.");
     await load(); onUpdated?.();
   });
@@ -158,6 +161,15 @@ export default function MilestonePanel({ job, role, onUpdated }: { job: any; rol
     if (error) throw error;
     if (data?.error) throw new Error(data.error);
     setMsg("Stage released.");
+    await load(); onUpdated?.();
+  });
+
+  const adminRefund = (m: Milestone) => run(async () => {
+    if (!window.confirm("Refund this stage's held funds to the client? Use this for a valid cancellation of a stage that hasn't been paid out yet.")) return;
+    const { data, error } = await supabase.functions.invoke("refund-milestone", { body: { milestone_id: m.id } });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    setMsg("Stage refunded to the client.");
     await load(); onUpdated?.();
   });
 
@@ -322,6 +334,11 @@ export default function MilestonePanel({ job, role, onUpdated }: { job: any; rol
                   {m.status === "completed" && (
                     <div style={{ marginTop: ".4rem" }}>
                       <button style={{ ...btn, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => adminRelease(m)}>Manual release</button>
+                    </div>
+                  )}
+                  {(m.status === "funded" || m.status === "completed" || m.status === "disputed") && (
+                    <div style={{ marginTop: ".4rem" }}>
+                      <button style={{ ...btn, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => adminRefund(m)}>Refund stage to client</button>
                     </div>
                   )}
                 </div>

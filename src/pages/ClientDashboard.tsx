@@ -262,6 +262,8 @@ export default function ClientDashboard() {
     const { error } = await supabase.rpc("approve_job_schedule", { p_job_id: activeJob.id });
     setBusyReq(false);
     if (error) { alert("Couldn't approve: " + error.message); return; }
+    // Email the client a written contract copy (Alberta: starts the 10-day cancellation clock).
+    supabase.functions.invoke("notify-email", { body: { event: "contract_copy", job_id: activeJob.id } }).catch(() => {});
     setActiveJob({ ...activeJob, status: "scheduled", client_approved_at: new Date().toISOString() });
   };
   const requestReschedule = async () => {
