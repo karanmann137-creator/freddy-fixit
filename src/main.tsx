@@ -9,7 +9,7 @@ import { initPrefs } from "./lib/theme";
 const style = document.createElement("style");
 style.textContent = `
   :root {
-    --ff-font-scale: 1;
+    --ff-font-scale: 1.1;
     --ff-fg: 255,255,255;        /* foreground "ink" used in rgba overlays/text */
     --ff-muted: 190,205,235;     /* muted secondary text */
     --ff-text: #f0f4ff;          /* solid primary text */

@@ -5,17 +5,21 @@ export type Theme = "dark" | "light";
 const THEME_KEY = "ff_theme";
 const SCALE_KEY = "ff_text_scale";
 
-export const TEXT_SCALES = [0.9, 1, 1.1, 1.25] as const; // Small / Default / Large / Larger
-export const SCALE_LABELS: Record<number, string> = { 0.9: "Small", 1: "Default", 1.1: "Large", 1.25: "Largest" };
+// Default is now the previous "Large" (1.1). Everything is rem-based off
+// `html { font-size: calc(100% * var(--ff-font-scale)) }`, so this scales the
+// entire type system proportionally.
+export const DEFAULT_SCALE = 1.1;
+export const TEXT_SCALES = [1, 1.1, 1.25, 1.4] as const; // Small / Default / Large / Largest
+export const SCALE_LABELS: Record<number, string> = { 1: "Small", 1.1: "Default", 1.25: "Large", 1.4: "Largest" };
 
 export function getTheme(): Theme {
   try { return localStorage.getItem(THEME_KEY) === "light" ? "light" : "dark"; } catch { return "dark"; }
 }
 export function getTextScale(): number {
   try {
-    const v = parseFloat(localStorage.getItem(SCALE_KEY) || "1");
-    return TEXT_SCALES.includes(v as any) ? v : 1;
-  } catch { return 1; }
+    const v = parseFloat(localStorage.getItem(SCALE_KEY) || String(DEFAULT_SCALE));
+    return TEXT_SCALES.includes(v as any) ? v : DEFAULT_SCALE;
+  } catch { return DEFAULT_SCALE; }
 }
 
 export function applyTheme(theme: Theme) {
