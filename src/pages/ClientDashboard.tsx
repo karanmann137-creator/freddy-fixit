@@ -111,6 +111,8 @@ export default function ClientDashboard() {
   const [refCopied, setRefCopied]   = useState(false);
   const [plans, setPlans]           = useState<any[]>([]);
   const [busyPlan, setBusyPlan]     = useState<string|null>(null);
+  const [newVisitTime, setNewVisitTime] = useState<string>("");
+  const [showChangeTime, setShowChangeTime] = useState(false);
 
   const askConfirm = (o: Omit<ConfirmState, "resolve">) =>
     new Promise<boolean>(resolve => setConfirmState({ ...o, resolve }));
@@ -294,6 +296,33 @@ export default function ClientDashboard() {
     setBusyReq(false);
     if (error) { alert("Couldn't send your request: " + error.message); return; }
     alert("Sent! Your contractor will see your suggested time and propose a new one.");
+  };
+
+  const confirmVisit = async () => {
+    if (!activeJob) return;
+    setBusyReq(true);
+    const { error } = await supabase.rpc("confirm_visit", { p_job_id: activeJob.id });
+    setBusyReq(false);
+    if (error) { alert("Couldn't confirm: " + error.message); return; }
+    setActiveJob({ ...activeJob, client_confirmed_visit_at: new Date().toISOString() });
+  };
+
+  const changeVisitTime = async () => {
+    if (!activeJob || !newVisitTime) { alert("Pick a new date and time first."); return; }
+    if (!(await askConfirm({
+      title: "Change the time?",
+      message: "Heads up: your pro already blocked off the current time. Changing it means they have to accept the new time — they may not be available and could decline. If they can't make it, they'll suggest another time for you to approve.",
+      confirmLabel: "Yes, change the time",
+      danger: false,
+    }))) return;
+    const iso = new Date(newVisitTime).toISOString();
+    setBusyReq(true);
+    const { error } = await supabase.rpc("client_reschedule_visit", { p_job_id: activeJob.id, p_scheduled_at: iso });
+    setBusyReq(false);
+    if (error) { alert("Couldn't change the time: " + error.message); return; }
+    setShowChangeTime(false);
+    setNewVisitTime("");
+    setActiveJob({ ...activeJob, status: "assigned", scheduled_at: iso, schedule_proposed_at: new Date().toISOString(), client_approved_at: null, client_confirmed_visit_at: null, client_rescheduled_at: new Date().toISOString(), reschedule_accepted_at: null });
   };
 
   const togglePlan = async (plan: any) => {
@@ -730,7 +759,13 @@ export default function ClientDashboard() {
 
                     {activeJob && activeJob.payment_status !== "disputed" && (
                       <div style={{ marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)" }}>
-                        {activeJob.status === "assigned" && activeJob.schedule_proposed_at && !activeJob.client_approved_at && (
+                        {activeJob.status === "assigned" && activeJob.client_rescheduled_at && !activeJob.reschedule_accepted_at && (
+                          <div>
+                            <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}><Ic name="clock" size={14} style={{ marginRight:4 }} />Waiting for your pro to accept the new time</div>
+                            <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>You asked to move this to {activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "a new time"}. Your contractor will accept it or suggest another time for you to approve.</div>
+                          </div>
+                        )}
+                        {activeJob.status === "assigned" && activeJob.schedule_proposed_at && !activeJob.client_approved_at && !(activeJob.client_rescheduled_at && !activeJob.reschedule_accepted_at) && (
                           <>
                             <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}>Your contractor proposed a time &amp; price</div>
                             <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .8)", marginBottom:".5rem" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />{activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "—"}{activeJob.amount ? " · $" + activeJob.amount : ""}</div>
@@ -750,6 +785,26 @@ export default function ClientDashboard() {
                         {activeJob.status === "scheduled" && !activeJob.is_milestone && (
                           <>
                             <div style={{ fontSize:".85rem", color:"var(--ff-success)", marginBottom: (activeJob.payment_status === "held" || activeJob.payment_status === "released") ? 0 : ".75rem" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Scheduled for {activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "the agreed time"}{activeJob.amount ? " · $" + activeJob.amount : ""}.</div>
+                            <div style={{ margin:".25rem 0 .9rem", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .1)" }}>
+                              {activeJob.client_confirmed_visit_at ? (
+                                <div style={{ fontSize:".82rem", color:"var(--ff-success)", lineHeight:1.5 }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />You confirmed this visit. Need to change it? <button onClick={() => setShowChangeTime(v => !v)} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer", padding:0, textDecoration:"underline" }}>Change the time</button></div>
+                              ) : (
+                                <>
+                                  <div style={{ fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.5, marginBottom:".6rem" }}>Is this time still good? Confirm it, or pick a new day/time. The day before is your last easy change.</div>
+                                  <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
+                                    <button style={{ ...s.btn, color:"var(--ff-success)", borderColor:"rgba(34,197,94,.4)", background:"rgba(34,197,94,.1)" }} disabled={busyReq} onClick={confirmVisit}>{busyReq ? "…" : "✓ Confirm this time"}</button>
+                                    <button style={s.btn} disabled={busyReq} onClick={() => setShowChangeTime(v => !v)}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Change the time</button>
+                                  </div>
+                                </>
+                              )}
+                              {showChangeTime && (
+                                <div style={{ marginTop:".7rem" }}>
+                                  <div style={{ fontSize:".78rem", color:"var(--ff-warn)", lineHeight:1.5, marginBottom:".5rem" }}><Ic name="alert-triangle" size={12} style={{ marginRight:4 }} />Your pro already blocked off the current time. If you change it, they have to accept the new time and may decline if they're not free — they'll then suggest another time.</div>
+                                  <input type="datetime-local" value={newVisitTime} onChange={e => setNewVisitTime(e.target.value)} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, marginBottom:".55rem" }} />
+                                  <button style={{ ...s.primaryBtn }} disabled={busyReq || !newVisitTime} onClick={changeVisitTime}>{busyReq ? "…" : "Send new time to my pro"}</button>
+                                </div>
+                              )}
+                            </div>
                             {(activeJob.payment_status === "held" || activeJob.payment_status === "released") ? (
                               <>
                                 <div style={{ fontSize:".82rem", color:"var(--ff-success)", marginBottom:".6rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Payment secured — we'll release it to your contractor once you confirm the work is done.</div>

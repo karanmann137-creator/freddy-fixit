@@ -15,6 +15,7 @@ import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 import FreddyRewind from "@/components/FreddyRewind";
 import MilestonePanel from "@/components/MilestonePanel";
 import { useServicePricing, rangeText, money, type ServicePrice } from "@/lib/servicePricing";
+import { FREQ_LABELS, type Freq } from "@/lib/recurrence";
 
 const ffInp = { width:"100%", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const };
 const ffLbl = { fontSize:".66rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .45)", marginBottom:".2rem" };
@@ -164,7 +165,7 @@ export default function ContractorDashboard() {
         supabase.from("contractors").select("*").eq("id", user.id).maybeSingle(),
         supabase.from("portfolio_items").select("*").eq("contractor_id", user.id).order("created_at", { ascending: false }),
         supabase.from("jobs")
-          .select("*, request:client_requests!jobs_request_id_fkey(service_needed, job_description, preferred_schedule, location, photo_path, estimated_quote, quote_notes, vehicle_details), client:profiles!jobs_client_id_fkey(first_name)")
+          .select("*, request:client_requests!jobs_request_id_fkey(service_needed, job_description, preferred_schedule, location, photo_path, estimated_quote, quote_notes, vehicle_details, recurring, recurring_frequency), client:profiles!jobs_client_id_fkey(first_name)")
           .eq("contractor_id", user.id).order("created_at", { ascending: false }),
         supabase.rpc("list_open_jobs"),
         supabase.from("reviews")
@@ -271,6 +272,13 @@ export default function ContractorDashboard() {
     setBusyJob(false);
     if (error) { alert("Couldn't update: " + error.message); return; }
     setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, on_my_way_at: new Date().toISOString() } : j));
+  };
+  const acceptReschedule = async (job: any) => {
+    setBusyJob(true);
+    const { error } = await supabase.rpc("contractor_accept_reschedule", { p_job_id: job.id });
+    setBusyJob(false);
+    if (error) { alert("Couldn't accept the new time: " + error.message); return; }
+    setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: "scheduled", client_approved_at: new Date().toISOString(), reschedule_accepted_at: new Date().toISOString(), client_rescheduled_at: null } : j));
   };
   const markComplete = async (job: any) => {
     if (!(await askConfirm({
@@ -625,6 +633,23 @@ export default function ContractorDashboard() {
                     })()}
 
                     <div style={{ display:"flex", flexDirection:"column", gap:".7rem", marginBottom:"1.25rem" }}>
+                      {job.request?.recurring && (
+                        <div style={{ display:"flex", gap:".55rem", alignItems:"flex-start", padding:".7rem .8rem", borderRadius:"10px", background:"rgba(234,107,20,.10)", border:"1px solid rgba(234,107,20,.28)", marginBottom:".3rem" }}>
+                          <Ic name="refresh" size={16} color="#ea6b14" style={{ marginTop:1, flexShrink:0 }} />
+                          <div style={{ fontSize:".8rem", color:"var(--ff-text)", lineHeight:1.5 }}>
+                            <strong>Recurring job{job.request?.recurring_frequency ? " — " + (FREQ_LABELS[job.request.recurring_frequency as Freq] ?? job.request.recurring_frequency) : ""}.</strong> This client wants a regular pro. Taking it on means committing to show up at the agreed times each visit — reliable recurring work, but please only accept if you can keep the schedule.
+                          </div>
+                        </div>
+                      )}
+                      {job.client_rescheduled_at && !job.reschedule_accepted_at && (
+                        <div style={{ padding:".7rem .8rem", borderRadius:"10px", background:"rgba(59,130,246,.10)", border:"1px solid rgba(59,130,246,.30)", marginBottom:".3rem" }}>
+                          <div style={{ fontSize:".8rem", color:"var(--ff-text)", lineHeight:1.5, marginBottom:".55rem" }}>
+                            <Ic name="calendar" size={14} color="#3b82f6" style={{ marginRight:5 }} />
+                            <strong>The client changed the time</strong> to {job.scheduled_at ? new Date(job.scheduled_at).toLocaleString() : "a new time"}. Accept it, or propose a different time below if you're not available.
+                          </div>
+                          <button style={{ ...s.btn, background:"#3b82f6", color:"#fff", border:"none" }} disabled={busyJob} onClick={() => acceptReschedule(job)}>{busyJob ? "…" : "Accept new time"}</button>
+                        </div>
+                      )}
                       {job.status === "assigned" && (
                         <>
                           {job.schedule_proposed_at && !job.client_approved_at && (
@@ -725,6 +750,14 @@ export default function ContractorDashboard() {
                 {r.is_preferred && (
                   <div style={{ display:"inline-flex", alignItems:"center", gap:".35rem", padding:".25rem .6rem", borderRadius:"99px", background:"rgba(234,107,20,.16)", color:"#ea6b14", fontSize:".72rem", fontWeight:700, marginBottom:".6rem" }}>
                     <Ic name="star" size={12} />This client requested you — reserved for 48h
+                  </div>
+                )}
+                {r.is_recurring && (
+                  <div style={{ display:"flex", gap:".5rem", alignItems:"flex-start", padding:".6rem .7rem", borderRadius:"10px", background:"rgba(234,107,20,.10)", border:"1px solid rgba(234,107,20,.28)", marginBottom:".6rem" }}>
+                    <Ic name="refresh" size={15} color="#ea6b14" style={{ marginTop:1, flexShrink:0 }} />
+                    <div style={{ fontSize:".78rem", color:"var(--ff-text)", lineHeight:1.5 }}>
+                      <strong>Recurring{r.recurring_frequency ? " · " + (FREQ_LABELS[r.recurring_frequency as Freq] ?? r.recurring_frequency) : ""}.</strong> Winning this makes you the client's go-to pro — you'll be expected to return at the agreed times each visit.
+                    </div>
                   </div>
                 )}
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:".5rem" }}>
