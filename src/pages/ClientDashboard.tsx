@@ -13,7 +13,7 @@ import ReportProblem from "@/components/ReportProblem";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 import FreddyRewind from "@/components/FreddyRewind";
-import { FREQ_LABELS, type Freq } from "@/lib/recurrence";
+import { freqLabel } from "@/lib/recurrence";
 
 function QuoteBreakdownView({ row, assumptionsKey = "assumptions" }: { row: any; assumptionsKey?: string }) {
   const items: [string, any][] = [["Labour", row?.labour_amount], ["Parts & materials", row?.parts_amount], ["Call-out", row?.callout_fee]];
@@ -629,7 +629,7 @@ export default function ClientDashboard() {
                 const paused = pl.recurring_plan_status !== "active";
                 const cadence = pl.recurring_frequency === "per_km"
                   ? (pl.recurring_interval_km ? `Every ~${Number(pl.recurring_interval_km).toLocaleString()} km` : "By distance")
-                  : (FREQ_LABELS[pl.recurring_frequency as Freq] || pl.recurring_frequency || "Recurring");
+                  : (freqLabel(pl.recurring_frequency) || "Recurring");
                 const hasPool = pl.prepay_id && (pl.prepay_status === "held" || pl.prepay_status === "partially_released");
                 const remaining = hasPool ? Math.max(0, Number(pl.prepay_total || 0) - Number(pl.prepay_released || 0)) : 0;
                 return (

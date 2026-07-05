@@ -15,7 +15,7 @@ import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 import FreddyRewind from "@/components/FreddyRewind";
 import MilestonePanel from "@/components/MilestonePanel";
 import { useServicePricing, rangeText, money, type ServicePrice } from "@/lib/servicePricing";
-import { FREQ_LABELS, type Freq } from "@/lib/recurrence";
+import { freqLabel } from "@/lib/recurrence";
 
 const ffInp = { width:"100%", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const };
 const ffLbl = { fontSize:".66rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .45)", marginBottom:".2rem" };
@@ -637,7 +637,7 @@ export default function ContractorDashboard() {
                         <div style={{ display:"flex", gap:".55rem", alignItems:"flex-start", padding:".7rem .8rem", borderRadius:"10px", background:"rgba(234,107,20,.10)", border:"1px solid rgba(234,107,20,.28)", marginBottom:".3rem" }}>
                           <Ic name="refresh" size={16} color="#ea6b14" style={{ marginTop:1, flexShrink:0 }} />
                           <div style={{ fontSize:".8rem", color:"var(--ff-text)", lineHeight:1.5 }}>
-                            <strong>Recurring job{job.request?.recurring_frequency ? " — " + (FREQ_LABELS[job.request.recurring_frequency as Freq] ?? job.request.recurring_frequency) : ""}.</strong> This client wants a regular pro. Taking it on means committing to show up at the agreed times each visit — reliable recurring work, but please only accept if you can keep the schedule.
+                            <strong>Recurring job{job.request?.recurring_frequency ? " — " + freqLabel(job.request.recurring_frequency) : ""}.</strong> This client wants a regular pro. Taking it on means committing to show up at the agreed times each visit — reliable recurring work, but please only accept if you can keep the schedule.
                           </div>
                         </div>
                       )}
@@ -756,7 +756,7 @@ export default function ContractorDashboard() {
                   <div style={{ display:"flex", gap:".5rem", alignItems:"flex-start", padding:".6rem .7rem", borderRadius:"10px", background:"rgba(234,107,20,.10)", border:"1px solid rgba(234,107,20,.28)", marginBottom:".6rem" }}>
                     <Ic name="refresh" size={15} color="#ea6b14" style={{ marginTop:1, flexShrink:0 }} />
                     <div style={{ fontSize:".78rem", color:"var(--ff-text)", lineHeight:1.5 }}>
-                      <strong>Recurring{r.recurring_frequency ? " · " + (FREQ_LABELS[r.recurring_frequency as Freq] ?? r.recurring_frequency) : ""}.</strong> Winning this makes you the client's go-to pro — you'll be expected to return at the agreed times each visit.
+                      <strong>Recurring{r.recurring_frequency ? " · " + freqLabel(r.recurring_frequency) : ""}.</strong> Winning this makes you the client's go-to pro — you'll be expected to return at the agreed times each visit.
                     </div>
                   </div>
                 )}

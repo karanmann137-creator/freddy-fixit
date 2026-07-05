@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
 import { SERVICES, SCHEDULES } from "@/pages/ClientOnboarding";
 import { useServicePricing, fromText } from "@/lib/servicePricing";
-import { recurrenceOptionsFor, FREQ_LABELS, type Freq } from "@/lib/recurrence";
+import { isPerKmService, freqLabel, SLIDER_STOPS, SLIDER_SHORT } from "@/lib/recurrence";
 
 // Shown when an already-signed-in client starts another request. Unlike the
 // first-time onboarding flow, this never creates an account — it reuses the
@@ -36,7 +36,10 @@ export default function NewRequest() {
   const [saveNewVehicle, setSaveNewVehicle] = useState(true);
   const [description, setDescription] = useState("");
   const [recurring, setRecurring] = useState(false);
-  const [recurringFrequency, setRecurringFrequency] = useState<Freq | "">("");
+  const [recurringFrequency, setRecurringFrequency] = useState<string>("");
+  const [sliderIdx, setSliderIdx]                   = useState(3);
+  const [recurringDates, setRecurringDates]         = useState<string[]>([]);
+  const [newDate, setNewDate]                       = useState("");
   const [recurringKm, setRecurringKm]               = useState("");
   const [prepayPref, setPrepayPref]                 = useState(0);
   const [recurringStartDate, setRecurringStartDate] = useState("");
@@ -55,6 +58,22 @@ export default function NewRequest() {
     setRecurringStartDate(startYr + sp.start);
     setRecurringEndDate(endYr + sp.end);
   };
+
+  const pickSlider = (i: number) => {
+    const idx = Math.max(0, Math.min(SLIDER_STOPS.length - 1, i));
+    setSliderIdx(idx);
+    setRecurringFrequency(SLIDER_STOPS[idx]);
+  };
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const addDate = () => {
+    if (!newDate) return;
+    setRecurringDates(prev => prev.includes(newDate) ? prev : [...prev, newDate].sort());
+    setNewDate("");
+  };
+  const removeDate = (d: string) => setRecurringDates(prev => prev.filter(x => x !== d));
+  useEffect(() => {
+    if (schedule === "Recurring" && !recurringFrequency) setRecurringFrequency(SLIDER_STOPS[sliderIdx]);
+  }, [schedule]); // eslint-disable-line react-hooks/exhaustive-deps
   const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -195,6 +214,7 @@ export default function NewRequest() {
         recurring_prepay_pref: prepayPref || 0,
         recurring_start_date: recurringStartDate || null,
         recurring_end_date: recurringEndDate || null,
+        recurring_dates: recurringDates.length ? recurringDates : null,
         billing_preference: isBusiness ? (lastReq?.billing_preference ?? null) : null,
         vehicle_details: vehicleDetails,
       });
@@ -291,17 +311,50 @@ export default function NewRequest() {
             <div style={{ marginTop:".75rem", padding:"1rem", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"10px", display:"flex", flexDirection:"column" as const, gap:"1rem" }}>
               <div>
                 <p style={{ ...s.label, marginBottom:".6rem" }}>How often?</p>
+                {recurringFrequency !== "seasonal" && recurringFrequency !== "per_km" && (
+                  <div style={{ marginBottom:".8rem" }}>
+                    <input type="range" min={0} max={SLIDER_STOPS.length - 1} step={1}
+                      value={sliderIdx} onChange={e => pickSlider(parseInt(e.target.value, 10))}
+                      aria-label="How often"
+                      style={{ width:"100%", accentColor:"#ea6b14", cursor:"pointer" }} />
+                    <div style={{ display:"flex", justifyContent:"space-between", marginTop:".2rem" }}>
+                      {SLIDER_STOPS.map((stop, i) => (
+                        <span key={stop} onClick={() => pickSlider(i)}
+                          style={{ fontSize:".68rem", cursor:"pointer", textAlign:"center" as const, flex:1,
+                            color: i === sliderIdx ? "#ea6b14" : "rgba(var(--ff-muted), .5)",
+                            fontWeight: i === sliderIdx ? 600 : 400 }}>
+                          {SLIDER_SHORT[stop]}
+                        </span>
+                      ))}
+                    </div>
+                    <p style={{ fontSize:".85rem", color:"var(--ff-text)", marginTop:".45rem", fontWeight:500 }}>
+                      {freqLabel(SLIDER_STOPS[sliderIdx])}
+                    </p>
+                  </div>
+                )}
                 <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
-                  {recurrenceOptionsFor(selectedServices).map(f => (
-                    <button key={f} type="button"
-                      onClick={() => setRecurringFrequency(f)}
-                      style={{ padding:".6rem 1.1rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", border:"1px solid",
-                        background: recurringFrequency===f ? "rgba(234,107,20,.2)" : "rgba(var(--ff-fg), .04)",
-                        borderColor: recurringFrequency===f ? "#ea6b14" : "rgba(var(--ff-fg), .12)",
-                        color: recurringFrequency===f ? "var(--ff-text)" : "rgba(var(--ff-muted), .7)" }}>
-                      {FREQ_LABELS[f]}
+                  <button type="button" onClick={() => setRecurringFrequency("seasonal")}
+                    style={{ padding:".55rem 1.05rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", border:"1px solid",
+                      background: recurringFrequency==="seasonal" ? "rgba(234,107,20,.2)" : "rgba(var(--ff-fg), .04)",
+                      borderColor: recurringFrequency==="seasonal" ? "#ea6b14" : "rgba(var(--ff-fg), .12)",
+                      color: recurringFrequency==="seasonal" ? "var(--ff-text)" : "rgba(var(--ff-muted), .7)" }}>
+                    Seasonal
+                  </button>
+                  {selectedServices.some(isPerKmService) && (
+                    <button type="button" onClick={() => setRecurringFrequency("per_km")}
+                      style={{ padding:".55rem 1.05rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", border:"1px solid",
+                        background: recurringFrequency==="per_km" ? "rgba(234,107,20,.2)" : "rgba(var(--ff-fg), .04)",
+                        borderColor: recurringFrequency==="per_km" ? "#ea6b14" : "rgba(var(--ff-fg), .12)",
+                        color: recurringFrequency==="per_km" ? "var(--ff-text)" : "rgba(var(--ff-muted), .7)" }}>
+                      Per distance (km)
                     </button>
-                  ))}
+                  )}
+                  {(recurringFrequency==="seasonal" || recurringFrequency==="per_km") && (
+                    <button type="button" onClick={() => pickSlider(sliderIdx)}
+                      style={{ padding:".55rem 1.05rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", border:"1px solid rgba(var(--ff-fg), .12)", background:"rgba(var(--ff-fg), .04)", color:"rgba(var(--ff-muted), .7)" }}>
+                      Use slider instead
+                    </button>
+                  )}
                 </div>
               </div>
               {recurringFrequency === "per_km" && (
@@ -357,6 +410,31 @@ export default function NewRequest() {
                   <input type="date" value={recurringEndDate} onChange={e => setRecurringEndDate(e.target.value)}
                     style={{ ...inp, padding:".6rem .8rem", fontSize:".88rem", minWidth:0 }} />
                 </div>
+              </div>
+              <div>
+                <p style={{ ...s.label, marginBottom:".4rem" }}>Add specific visit dates <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></p>
+                <p style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .55)", marginBottom:".5rem" }}>
+                  Pick exact dates you also want a visit — each becomes a scheduled booking on top of your regular cadence.
+                </p>
+                <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center" }}>
+                  <input type="date" min={todayStr} value={newDate} onChange={e => setNewDate(e.target.value)}
+                    style={{ ...inp, padding:".6rem .8rem", fontSize:".88rem", maxWidth:"180px", minWidth:0 }} />
+                  <button type="button" onClick={addDate} disabled={!newDate}
+                    style={{ padding:".55rem 1rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor: newDate ? "pointer" : "default", border:"1px solid #ea6b14", background:"rgba(234,107,20,.15)", color:"var(--ff-text)", opacity: newDate ? 1 : .5 }}>
+                    + Add date
+                  </button>
+                </div>
+                {recurringDates.length > 0 && (
+                  <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginTop:".6rem" }}>
+                    {recurringDates.map(d => (
+                      <span key={d} style={{ display:"inline-flex", alignItems:"center", gap:".4rem", padding:".35rem .6rem", borderRadius:"999px", fontSize:".8rem", background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.3)", color:"var(--ff-text)" }}>
+                        {new Date(d + "T00:00:00").toLocaleDateString(undefined, { month:"short", day:"numeric", year:"numeric" })}
+                        <button type="button" onClick={() => removeDate(d)} aria-label="Remove date"
+                          style={{ border:"none", background:"none", color:"#ea6b14", cursor:"pointer", fontSize:"1rem", lineHeight:1, padding:0 }}>×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

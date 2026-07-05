@@ -80,3 +80,33 @@ export function cadenceHint(freq: Freq, km?: number | null): string {
   }
   return FREQ_LABELS[freq] ?? "";
 }
+
+// ── Slider cadence (1 week → 3 months) ───────────────────────────────────────
+// The booking picker is a slider whose stops step weekly, then monthly. These
+// tokens are understood by the DB `freq_interval()` (every_N_weeks / every_N_months).
+export const SLIDER_STOPS = [
+  "weekly", "biweekly", "every_3_weeks", "monthly", "every_2_months", "quarterly",
+] as const;
+export type SliderFreq = (typeof SLIDER_STOPS)[number];
+
+// Compact tick labels shown under the slider.
+export const SLIDER_SHORT: Record<string, string> = {
+  weekly: "1 wk",
+  biweekly: "2 wk",
+  every_3_weeks: "3 wk",
+  monthly: "1 mo",
+  every_2_months: "2 mo",
+  quarterly: "3 mo",
+};
+
+// Human-friendly label for ANY cadence token, including every_N_weeks / every_N_months.
+export function freqLabel(token?: string | null): string {
+  if (!token) return "";
+  const known = (FREQ_LABELS as Record<string, string>)[token];
+  if (known) return known;
+  let m = /^every_(\d+)_weeks?$/.exec(token);
+  if (m) { const n = +m[1]; return n === 1 ? "Every Week" : `Every ${n} Weeks`; }
+  m = /^every_(\d+)_months?$/.exec(token);
+  if (m) { const n = +m[1]; return n === 1 ? "Once a Month" : `Every ${n} Months`; }
+  return token;
+}
