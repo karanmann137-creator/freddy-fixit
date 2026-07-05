@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useLocation } from "wouter";
 
 const SUPABASE_URL = "https://kvypmjxbbaaknvddwwai.supabase.co";
 const ANON_KEY     = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2eXBtanhiYmFha252ZGR3d2FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3MTM3MTIsImV4cCI6MjA5NTI4OTcxMn0.5VMp6SerPxUUnnjr-43N29pHbh6kpgJc71USvL_Ooj4";
@@ -10,6 +11,8 @@ const INITIAL: Msg[] = [
 ];
 
 export default function ChatWidget() {
+  const [location] = useLocation();
+  const hideOn = ["/client-dashboard", "/contractor-dashboard", "/admin-dashboard"];
   const [open,     setOpen]     = useState(false);
   const [messages, setMessages] = useState<Msg[]>(INITIAL);
   const [input,    setInput]    = useState("");
@@ -23,6 +26,8 @@ export default function ChatWidget() {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [open, messages]);
+
+  if (hideOn.some(p => location === p || location.startsWith(p + "/"))) return null;
 
   const send = async () => {
     const text = input.trim();

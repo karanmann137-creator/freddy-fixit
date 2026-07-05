@@ -9,6 +9,7 @@ import { useServicePricing, fromText } from "@/lib/servicePricing";
 import { isPerKmService, freqLabel, SLIDER_STOPS, SLIDER_SHORT } from "@/lib/recurrence";
 import NewRequest from "@/components/NewRequest";
 import OAuthButtons from "@/components/OAuthButtons";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 export const SERVICES = [
   { iconName: "wrench", label: "General Handyman" },
@@ -53,6 +54,14 @@ const HOME_TO_SERVICE: Record<string,string> = {
   "HVAC": "HVAC Maintenance",
   "Drywall & Flooring": "Drywall / Flooring",
 };
+
+// Format a North-American phone as the user types: 403-555-0100.
+function fmtPhone(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 10);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return d.slice(0,3) + "-" + d.slice(3);
+  return d.slice(0,3) + "-" + d.slice(3,6) + "-" + d.slice(6);
+}
 
 export default function ClientOnboarding() {
   const [, setLocation] = useLocation();
@@ -151,7 +160,7 @@ export default function ClientOnboarding() {
     if (step === 3) {
       if (!form.firstName.trim()) errs.firstName = "Required";
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = "Valid email required";
-      if (form.phone.replace(/\D/g,"").length < 10) errs.phone = "10-digit phone required";
+      if (form.phone.trim() && form.phone.replace(/\D/g,"").length < 10) errs.phone = "Enter a 10-digit phone or leave it blank";
       if (form.password.length < 8) errs.password = "Minimum 8 characters";
     }
     setErrors(errs);
@@ -297,32 +306,30 @@ export default function ClientOnboarding() {
         <div style={s.card}>
           {step === 3 && (
             <div>
-              <OAuthButtons role="client" label="sign up in one tap with" />
-              <p style={{ textAlign:"center", fontSize:".78rem", color:"rgba(var(--ff-muted), .4)", margin:"1.25rem 0" }}>or with your email</p>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
                 <div style={{ marginBottom:"1.2rem" }}>
                   <label style={s.label}>First Name</label>
-                  <input style={{ ...inp, borderColor: errors.firstName ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="Alex" value={form.firstName} onChange={e => set("firstName",e.target.value)} />
+                  <input autoComplete="given-name" style={{ ...inp, borderColor: errors.firstName ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="Alex" value={form.firstName} onChange={e => set("firstName",e.target.value)} />
                   {errors.firstName && <p style={s.err}>{errors.firstName}</p>}
                 </div>
                 <div style={{ marginBottom:"1.2rem" }}>
                   <label style={s.label}>Last Name <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
-                  <input style={inp} placeholder="Johnson" value={form.lastName} onChange={e => set("lastName",e.target.value)} />
+                  <input autoComplete="family-name" style={inp} placeholder="Johnson" value={form.lastName} onChange={e => set("lastName",e.target.value)} />
                 </div>
               </div>
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Email</label>
-                <input style={{ ...inp, borderColor: errors.email ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="email" placeholder="alex@email.com" value={form.email} onChange={e => set("email",e.target.value)} />
+                <input autoComplete="email" style={{ ...inp, borderColor: errors.email ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="email" placeholder="alex@email.com" value={form.email} onChange={e => set("email",e.target.value)} />
                 {errors.email && <p style={s.err}>{errors.email}</p>}
               </div>
               <div style={{ marginBottom:"1.2rem" }}>
-                <label style={s.label}>Phone</label>
-                <input style={{ ...inp, borderColor: errors.phone ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="tel" placeholder="403-555-0100" value={form.phone} onChange={e => set("phone",e.target.value)} />
+                <label style={s.label}>Phone <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
+                <input autoComplete="tel" style={{ ...inp, borderColor: errors.phone ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="tel" placeholder="403-555-0100" value={form.phone} onChange={e => set("phone",fmtPhone(e.target.value))} />
                 {errors.phone && <p style={s.err}>{errors.phone}</p>}
               </div>
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Password (for your account)</label>
-                <input style={{ ...inp, borderColor: errors.password ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="password" placeholder="Min 8 characters" value={form.password} onChange={e => set("password",e.target.value)} />
+                <input autoComplete="new-password" style={{ ...inp, borderColor: errors.password ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="password" placeholder="Min 8 characters" value={form.password} onChange={e => set("password",e.target.value)} />
                 {errors.password && <p style={s.err}>{errors.password}</p>}
               </div>
               <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", margin:"1.5rem 0 .5rem", padding:"1rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
@@ -346,6 +353,8 @@ export default function ClientOnboarding() {
 
           {step === 1 && (
             <div>
+              <OAuthButtons role="client" label="sign up in one tap with" />
+              <p style={{ textAlign:"center", fontSize:".78rem", color:"rgba(var(--ff-muted), .4)", margin:"1.25rem 0" }}>or tell us what you need</p>
               <div style={{ marginBottom:"1.5rem" }}>
                 <label style={s.label}>I am requesting as</label>
                 <div style={{ display:"flex", gap:".6rem", marginTop:".4rem" }}>
@@ -549,7 +558,7 @@ export default function ClientOnboarding() {
               )}
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Your Address / Location</label>
-                <input style={{ ...inp, borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="e.g. 123 Main St NW" value={form.location} onChange={e => set("location",e.target.value)} />
+                <AddressAutocomplete autoComplete="street-address" style={{ ...inp, borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="e.g. 123 Main St NW" value={form.location} onChange={v => set("location", v)} />
                 {errors.location && <p style={s.err}>{errors.location}</p>}
               </div>
               <div style={{ marginBottom:"1.2rem" }}>

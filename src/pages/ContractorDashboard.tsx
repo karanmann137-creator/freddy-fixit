@@ -12,6 +12,7 @@ import { AVAIL_DAYS, WEEKDAYS, TIME_OPTIONS, readAvailability } from "@/lib/avai
 import RespondToClaim from "@/components/RespondToClaim";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
+import ContractorProfileCompletion from "@/components/ContractorProfileCompletion";
 import FreddyRewind from "@/components/FreddyRewind";
 import MilestonePanel from "@/components/MilestonePanel";
 import { useServicePricing, rangeText, money, type ServicePrice } from "@/lib/servicePricing";
@@ -797,6 +798,29 @@ export default function ContractorDashboard() {
 
         {activeTab === "profile" && (
           <div>
+            {(() => {
+              const missing: string[] = [];
+              if (!(contractor?.service_area?.length)) missing.push("service area");
+              if (!contractor?.work_type) missing.push("your trade");
+              if (!contractor?.has_liability_insurance && !contractor?.licensed) missing.push("licence or insurance");
+              if (!(contractor?.doc_urls && Object.keys(contractor.doc_urls).length)) missing.push("verification documents");
+              if (missing.length === 0) return null;
+              return (
+                <div style={{ ...s.card, border:"1px solid rgba(234,107,20,.35)", background:"rgba(234,107,20,.06)" }}>
+                  <div style={{ ...s.cardTitle, display:"flex", alignItems:"center", gap:".5rem" }}>
+                    <Ic name="bell" size={18} color="#ea6b14" /> Finish setting up your profile
+                  </div>
+                  <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.55, marginBottom:"1.25rem" }}>
+                    You still need to add: <strong style={{ color:"var(--ff-text)" }}>{missing.join(", ")}</strong>. Complete these so admin can approve you and you can start taking jobs.
+                  </p>
+                  <ContractorProfileCompletion
+                    profile={profile}
+                    contractor={contractor}
+                    onSaved={(patch: any) => setContractor((c: any) => ({ ...c, ...patch }))}
+                  />
+                </div>
+              );
+            })()}
             <div style={s.card}>
               <div style={s.cardTitle}>Your Profile</div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".75rem", marginBottom:"1.25rem" }}>

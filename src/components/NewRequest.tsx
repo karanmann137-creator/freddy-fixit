@@ -1,4 +1,5 @@
 import { Ic } from "@/components/Ic";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 import VoiceDictate from "@/components/VoiceDictate";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
@@ -465,7 +466,7 @@ export default function NewRequest() {
                 </button>
                 {addrChoice === "new" && (
                   <>
-                    <input style={{ ...inp, marginTop:".4rem", borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="e.g. 123 Main St NW" value={newLocation} onChange={e => { setNewLocation(e.target.value); setErrors(er => ({ ...er, location:"" })); }} />
+                    <AddressAutocomplete autoComplete="street-address" style={{ ...inp, marginTop:".4rem", borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="e.g. 123 Main St NW" value={newLocation} onChange={v => { setNewLocation(v); setErrors(er => ({ ...er, location:"" })); }} />
                     <label style={{ display:"flex", alignItems:"center", gap:".5rem", cursor:"pointer", fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginTop:".5rem" }}>
                       <input type="checkbox" checked={saveNewAddress} onChange={e => setSaveNewAddress(e.target.checked)} style={{ width:"15px", height:"15px", accentColor:"#ea6b14" }} />
                       Save this address for next time

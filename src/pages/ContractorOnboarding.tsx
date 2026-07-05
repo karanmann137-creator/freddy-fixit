@@ -60,6 +60,14 @@ const STEP_SUBS   = [
 
 type DocFiles = { insurance: File|null; wcb: File|null; certification: File|null; gov_id: File|null };
 
+// Format a North-American phone as the user types: 403-555-0100.
+function fmtPhone(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 10);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return d.slice(0,3) + "-" + d.slice(3);
+  return d.slice(0,3) + "-" + d.slice(3,6) + "-" + d.slice(6);
+}
+
 export default function ContractorOnboarding() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
@@ -106,7 +114,7 @@ export default function ContractorOnboarding() {
       if (!form.firstName.trim()) errs.firstName = "Required";
       if (!form.lastName.trim())  errs.lastName  = "Required";
       if (!authedUserId && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = "Valid email required";
-      if (form.phone.replace(/\D/g,"").length < 10) errs.phone = "10-digit phone required";
+      if (form.phone.trim() && form.phone.replace(/\D/g,"").length < 10) errs.phone = "Enter a 10-digit phone or leave it blank";
       if (!authedUserId && form.password.length < 8) errs.password = "Minimum 8 characters";
     }
     if (step === 2 && selectedSpec.length === 0)  errs.spec  = "Select at least one specialty";
@@ -254,7 +262,7 @@ export default function ContractorOnboarding() {
         <p style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".15em", color:"#ea6b14", marginBottom:".4rem" }}>Contractor Registration · Step {step} of {TOTAL}</p>
         <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:".4rem" }}>{STEP_TITLES[step-1]}</h1>
         <p style={{ color:"rgba(var(--ff-muted), .6)", fontSize:".9rem", marginBottom:".5rem" }}>{STEP_SUBS[step-1]}</p>
-        <p style={{ color:"rgba(var(--ff-muted), .4)", fontSize:".8rem", marginBottom:"2rem" }}>Free to join · no monthly fees</p>
+        <p style={{ color:"rgba(var(--ff-muted), .4)", fontSize:".8rem", marginBottom:"2rem" }}>Takes about 2 minutes · free to join, no monthly fees</p>
         <div style={{ display:"flex", gap:"6px", marginBottom:"2.5rem" }}>
           {Array.from({length:TOTAL},(_,i) => (
             <div key={i} style={{ height:"3px", flex:1, borderRadius:"99px", background: i+1===step ? "#ea6b14" : i+1<step ? "rgba(234,107,20,.45)" : "rgba(var(--ff-fg), .1)" }} />
@@ -274,29 +282,29 @@ export default function ContractorOnboarding() {
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
                 <div style={{ marginBottom:"1.2rem" }}>
                   <label style={s.label}>First Name</label>
-                  <input style={{ ...inp, borderColor: errors.firstName ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="Mike" value={form.firstName} onChange={e => setF("firstName",e.target.value)} />
+                  <input autoComplete="given-name" style={{ ...inp, borderColor: errors.firstName ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="Mike" value={form.firstName} onChange={e => setF("firstName",e.target.value)} />
                   {errors.firstName && <p style={s.err}>{errors.firstName}</p>}
                 </div>
                 <div style={{ marginBottom:"1.2rem" }}>
                   <label style={s.label}>Last Name</label>
-                  <input style={{ ...inp, borderColor: errors.lastName ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="Taylor" value={form.lastName} onChange={e => setF("lastName",e.target.value)} />
+                  <input autoComplete="family-name" style={{ ...inp, borderColor: errors.lastName ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="Taylor" value={form.lastName} onChange={e => setF("lastName",e.target.value)} />
                   {errors.lastName && <p style={s.err}>{errors.lastName}</p>}
                 </div>
               </div>
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Email</label>
-                <input style={{ ...inp, borderColor: errors.email ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="email" placeholder="mike@email.com" value={form.email} onChange={e => setF("email",e.target.value)} />
+                <input autoComplete="email" style={{ ...inp, borderColor: errors.email ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="email" placeholder="mike@email.com" value={form.email} onChange={e => setF("email",e.target.value)} />
                 {errors.email && <p style={s.err}>{errors.email}</p>}
               </div>
               <div style={{ marginBottom:"1.2rem" }}>
-                <label style={s.label}>Phone</label>
-                <input style={{ ...inp, borderColor: errors.phone ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="tel" placeholder="403-555-0100" value={form.phone} onChange={e => setF("phone",e.target.value)} />
+                <label style={s.label}>Phone <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
+                <input autoComplete="tel" style={{ ...inp, borderColor: errors.phone ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="tel" placeholder="403-555-0100" value={form.phone} onChange={e => setF("phone",fmtPhone(e.target.value))} />
                 {errors.phone && <p style={s.err}>{errors.phone}</p>}
               </div>
               {!authedUserId && (
                 <div style={{ marginBottom:"1.2rem" }}>
                   <label style={s.label}>Password (for your account)</label>
-                  <input style={{ ...inp, borderColor: errors.password ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="password" placeholder="Min 8 characters" value={form.password} onChange={e => setF("password",e.target.value)} />
+                  <input autoComplete="new-password" style={{ ...inp, borderColor: errors.password ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="password" placeholder="Min 8 characters" value={form.password} onChange={e => setF("password",e.target.value)} />
                   {errors.password && <p style={s.err}>{errors.password}</p>}
                 </div>
               )}
@@ -329,6 +337,40 @@ export default function ContractorOnboarding() {
               </div>
               {errors.spec && <p style={s.err}>{errors.spec}</p>}
               {selectedSpec.length > 0 && <p style={{ fontSize:".78rem", color:"#ea6b14", marginTop:".75rem" }}>✓ {selectedSpec.length} specialt{selectedSpec.length > 1 ? "ies" : "y"} selected</p>}
+
+              {/* Fast-track: create the account now with just name + specialties,
+                  and finish the rest (service area, availability, credentials,
+                  documents) later from the dashboard checklist. */}
+              {selectedSpec.length > 0 && (
+                <div style={{ marginTop:"1.75rem", padding:"1.1rem", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.22)", borderRadius:"12px" }}>
+                  <p style={{ fontSize:".9rem", fontWeight:600, color:"var(--ff-text)", marginBottom:".3rem" }}>In a hurry? Sign up now, finish later</p>
+                  <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.55, marginBottom:".9rem", fontWeight:300 }}>
+                    Create your account with just your name and specialties. You can add your service area, availability, licensing and documents anytime from your dashboard — you’ll need them approved before taking jobs.
+                  </p>
+                  <div style={{ display:"flex", alignItems:"flex-start", gap:".7rem", marginBottom:".9rem" }}>
+                    <input
+                      type="checkbox"
+                      id="agreeTermsQuick"
+                      checked={agreedToTerms}
+                      onChange={e => { setAgreedToTerms(e.target.checked); if (e.target.checked) setSubmitError(""); }}
+                      style={{ marginTop:"2px", accentColor:"#ea6b14", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }}
+                    />
+                    <label htmlFor="agreeTermsQuick" style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.55, cursor:"pointer", fontWeight:300 }}>
+                      I agree to Freddy Fix It&rsquo;s{" "}
+                      <a href="/user-agreement" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>User Agreement</a>
+                      {" "}and{" "}
+                      <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>Privacy Policy</a>.
+                    </label>
+                  </div>
+                  {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".6rem .85rem", fontSize:".8rem", color:"var(--ff-danger)", marginBottom:".75rem" }}>{submitError}</div>}
+                  <button
+                    onClick={handleSubmit}
+                    disabled={loading}
+                    style={{ ...s.navBtn, width:"100%", background:"linear-gradient(135deg,#ea6b14,#f09020)", color:"#fff", opacity: loading ? .6 : 1 }}>
+                    {loading ? "Creating your account…" : "Create my account — finish later"}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
