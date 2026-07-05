@@ -13,6 +13,7 @@ import ReportProblem from "@/components/ReportProblem";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 import FreddyRewind from "@/components/FreddyRewind";
+import { FREQ_LABELS, type Freq } from "@/lib/recurrence";
 
 function QuoteBreakdownView({ row, assumptionsKey = "assumptions" }: { row: any; assumptionsKey?: string }) {
   const items: [string, any][] = [["Labour", row?.labour_amount], ["Parts & materials", row?.parts_amount], ["Call-out", row?.callout_fee]];
@@ -108,6 +109,8 @@ export default function ClientDashboard() {
   const [referral, setReferral]     = useState<any>(null);
   const [rewindOpen, setRewindOpen] = useState(false);
   const [refCopied, setRefCopied]   = useState(false);
+  const [plans, setPlans]           = useState<any[]>([]);
+  const [busyPlan, setBusyPlan]     = useState<string|null>(null);
 
   const askConfirm = (o: Omit<ConfirmState, "resolve">) =>
     new Promise<boolean>(resolve => setConfirmState({ ...o, resolve }));
@@ -126,12 +129,13 @@ export default function ClientDashboard() {
         if (!user) { setLoading(false); return; }
 
         // profile + requests have no inter-dependency — fetch them together.
-        const [prof, reqs, myPros, ref, rate] = await Promise.all([
+        const [prof, reqs, myPros, ref, rate, planRows] = await Promise.all([
           supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
           supabase.from("client_requests").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
           supabase.rpc("list_my_pros"),
           supabase.rpc("get_my_referral"),
           supabase.rpc("platform_fee_rate"),
+          supabase.rpc("list_my_recurring_plans"),
         ]);
         // Base fee rate comes from the DB (single source of truth) so the total
         // shown here is exactly what create-payment-intent will charge.
@@ -142,6 +146,7 @@ export default function ClientDashboard() {
         setRequests(reqs.data ?? []);
         setPros(myPros.data ?? []);
         setReferral(ref.data ?? null);
+        setPlans(planRows.data ?? []);
         // All clients pay the standard 3% service fee unless a referral waives it
         // for a specific first job (checked per-job in the active-job effect below).
       } catch {
@@ -264,7 +269,15 @@ export default function ClientDashboard() {
     if (error) { alert("Couldn't approve: " + error.message); return; }
     // Email the client a written contract copy (Alberta: starts the 10-day cancellation clock).
     supabase.functions.invoke("notify-email", { body: { event: "contract_copy", job_id: activeJob.id } }).catch(() => {});
-    setActiveJob({ ...activeJob, status: "scheduled", client_approved_at: new Date().toISOString() });
+    // If this job is covered by a prepaid recurring pool, draw down one occurrence
+    // now (links the job to the held funds — no separate checkout needed).
+    let covered = false;
+    try {
+      const { data: used } = await supabase.rpc("consume_prepaid_occurrence", { p_job: activeJob.id });
+      covered = used === true;
+    } catch { /* no pool / not eligible — falls through to normal pay flow */ }
+    setActiveJob({ ...activeJob, status: "scheduled", client_approved_at: new Date().toISOString(),
+      ...(covered ? { payment_status: "held", paid_at: new Date().toISOString() } : {}) });
   };
   const requestReschedule = async () => {
     if (!activeJob || !profile) return;
@@ -281,6 +294,37 @@ export default function ClientDashboard() {
     setBusyReq(false);
     if (error) { alert("Couldn't send your request: " + error.message); return; }
     alert("Sent! Your contractor will see your suggested time and propose a new one.");
+  };
+
+  const togglePlan = async (plan: any) => {
+    const next = plan.recurring_plan_status === "active" ? "paused" : "active";
+    setBusyPlan(plan.request_id);
+    const { error } = await supabase.rpc("set_recurring_plan_status", { p_request: plan.request_id, p_status: next });
+    setBusyPlan(null);
+    if (error) { alert("Couldn't update plan: " + error.message); return; }
+    setPlans(prev => prev.map(p => p.request_id === plan.request_id ? { ...p, recurring_plan_status: next } : p));
+  };
+  const prepayPlan = async (plan: any, n: number) => {
+    if (!(await askConfirm({
+      title: `Prepay ${n} visit${n===1?"":"s"}?`,
+      message: "You'll go to a secure checkout for the total. Each visit is held securely and released to your pro one at a time as it's completed. Unused visits are refundable.",
+      confirmLabel: "Continue to checkout",
+      danger: false,
+    }))) return;
+    setBusyPlan(plan.request_id);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-recurring-prepayment", {
+        body: { plan_request_id: plan.request_id, occurrences: n },
+      });
+      if (error) throw error;
+      if (data?.url) { window.location.href = data.url; return; }
+      throw new Error(data?.error || "Could not start checkout");
+    } catch (e: any) {
+      let msg = e?.message || String(e);
+      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
+      alert("Prepay couldn't start: " + msg);
+      setBusyPlan(null);
+    }
   };
 
   const downloadReceipt = (j: any) => {
@@ -368,7 +412,10 @@ export default function ClientDashboard() {
       // hiccup), the payout is NOT lost — the reconcile-payouts cron re-tries every
       // 15 min for any confirmed-but-held job. So we reassure rather than alarm.
       try {
-        const { data, error } = await supabase.functions.invoke("release-payment", { body: { job_id: activeJob.id } });
+        const releaseBody = activeJob.prepayment_id
+          ? { prepayment_id: activeJob.prepayment_id, job_id: activeJob.id }
+          : { job_id: activeJob.id };
+        const { data, error } = await supabase.functions.invoke("release-payment", { body: releaseBody });
         const failed = !!error || (data && (data as any).error);
         if (failed) {
           alert("Job confirmed. The payment to your contractor is being processed and will complete automatically within a few minutes — nothing more for you to do.");
@@ -540,6 +587,54 @@ export default function ClientDashboard() {
                 <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.8rem", letterSpacing:".12em", color:"#ea6b14", border:"1px dashed rgba(234,107,20,.5)", borderRadius:"10px", padding:".35rem .9rem" }}>{referral.code}</div>
                 <button style={{ ...s.tab, marginTop:".45rem", fontSize:".78rem" }} onClick={copyReferral}>{refCopied ? "Copied!" : "Copy invite link"}</button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {plans.length > 0 && (
+          <div style={{ ...s.card }}>
+            <div style={s.cardTitle}>Recurring plans</div>
+            <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .55)", marginTop:"-.4rem", marginBottom:".9rem" }}>We'll line up each visit automatically. Prepay ahead to lock it in — held securely, released one visit at a time.</div>
+            <div style={{ display:"flex", flexDirection:"column" as const, gap:".8rem" }}>
+              {plans.map(pl => {
+                const paused = pl.recurring_plan_status !== "active";
+                const cadence = pl.recurring_frequency === "per_km"
+                  ? (pl.recurring_interval_km ? `Every ~${Number(pl.recurring_interval_km).toLocaleString()} km` : "By distance")
+                  : (FREQ_LABELS[pl.recurring_frequency as Freq] || pl.recurring_frequency || "Recurring");
+                const hasPool = pl.prepay_id && (pl.prepay_status === "held" || pl.prepay_status === "partially_released");
+                const remaining = hasPool ? Math.max(0, Number(pl.prepay_total || 0) - Number(pl.prepay_released || 0)) : 0;
+                return (
+                  <div key={pl.request_id} style={{ border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"12px", padding:"1rem", background:"rgba(var(--ff-fg), .03)" }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:".75rem", flexWrap:"wrap" as const }}>
+                      <div>
+                        <div style={{ fontSize:".95rem", fontWeight:600, color:"var(--ff-text)" }}>{pl.service_needed}</div>
+                        <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .55)", marginTop:".15rem" }}>
+                          {cadence}{pl.contractor_company ? ` · ${pl.contractor_company}` : ""}{pl.next_due ? ` · next ${new Date(pl.next_due).toLocaleDateString()}` : ""}
+                        </div>
+                      </div>
+                      <span style={{ fontSize:".7rem", fontWeight:600, padding:".2rem .6rem", borderRadius:"999px", color: paused ? "var(--ff-warn)" : "var(--ff-success)", background: paused ? "rgba(251,191,36,.12)" : "rgba(34,197,94,.12)" }}>
+                        {paused ? "Paused" : "Active"}
+                      </span>
+                    </div>
+                    {hasPool && (
+                      <div style={{ fontSize:".76rem", color:"var(--ff-success)", marginTop:".55rem" }}>
+                        <Ic name="check-circle" size={12} style={{ marginRight:4 }} />
+                        {remaining} of {pl.prepay_total} prepaid visit{Number(pl.prepay_total)===1?"":"s"} remaining.
+                      </div>
+                    )}
+                    <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginTop:".7rem" }}>
+                      {!hasPool && !paused && [2,3].map(n => (
+                        <button key={n} style={{ ...s.primaryBtn, padding:".45rem .8rem", fontSize:".8rem" }} disabled={busyPlan===pl.request_id} onClick={() => prepayPlan(pl, n)}>
+                          {busyPlan===pl.request_id ? "…" : `Prepay ${n} visits`}
+                        </button>
+                      ))}
+                      <button style={{ ...s.btn, padding:".45rem .8rem", fontSize:".8rem" }} disabled={busyPlan===pl.request_id} onClick={() => togglePlan(pl)}>
+                        {paused ? "Resume plan" : "Pause plan"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

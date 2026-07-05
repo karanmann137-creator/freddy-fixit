@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
       meRole = me?.role ?? null;
     }
 
-    const { job_id, milestone_id } = await req.json();
+    const { job_id, milestone_id, prepayment_id } = await req.json();
 
     // ---------- MILESTONE MODE ----------
     if (milestone_id) {
@@ -121,9 +121,9 @@ Deno.serve(async (req) => {
         });
       } catch (_) { /* best-effort */ }
 
-      // If every stage is now released, the job itself is complete.
+      // If every stage is now terminal (released or refunded), the job is complete.
       const { data: remaining } = await admin.from("job_milestones")
-        .select("id").eq("job_id", job.id).neq("status", "released").limit(1);
+        .select("id").eq("job_id", job.id).not("status", "in", "(released,refunded)").limit(1);
       if (!remaining || remaining.length === 0) {
         await admin.from("jobs").update({
           status: "completed", payment_status: "released", released_at: new Date().toISOString(),
@@ -131,6 +131,63 @@ Deno.serve(async (req) => {
       }
 
       return json({ ok: true, transfer_id: transfer.id });
+    }
+
+    // ---------- RECURRING PREPAYMENT MODE ----------
+    // Draw down one prepaid occurrence: transfer 93% of that occurrence to the
+    // contractor once the linked recurring job is completed + client-confirmed.
+    if (prepayment_id && job_id) {
+      const { data: rp } = await admin.from("recurring_prepayments")
+        .select("id, contractor_id, payout_per, occurrences_total, occurrences_released, status")
+        .eq("id", prepayment_id).maybeSingle();
+      if (!rp) return json({ error: "Prepayment not found" }, 404);
+      const { data: job } = await admin.from("jobs")
+        .select("id, client_id, contractor_id, status, client_confirmed_at, disputed_at, payment_status, prepayment_id")
+        .eq("id", job_id).maybeSingle();
+      if (!job) return json({ error: "Job not found" }, 404);
+      if (!internal && job.client_id !== userId && meRole !== "admin")
+        return json({ error: "Not authorized" }, 403);
+      if (job.prepayment_id !== prepayment_id)
+        return json({ error: "Job is not funded by this prepayment" }, 409);
+      if (job.payment_status === "released") return json({ ok: true, already: true });
+      if (job.disputed_at) return json({ error: "Job is under dispute" }, 409);
+      if (job.status !== "completed" || !job.client_confirmed_at)
+        return json({ error: "Job is not confirmed yet" }, 409);
+      if (!(rp.status === "held" || rp.status === "partially_released"))
+        return json({ error: "Prepayment is not in a releasable state" }, 409);
+
+      const acctId = await payoutAccount(admin, stripe, job.contractor_id);
+      if (!acctId) return json({ error: "Contractor has not finished payout setup" }, 409);
+
+      const transfer = await stripe.transfers.create({
+        amount: Math.round(Number(rp.payout_per) * 100),
+        currency: "cad",
+        destination: acctId,
+        transfer_group: job.id,
+        metadata: { job_id: job.id, prepayment_id: rp.id },
+      }, { idempotencyKey: `rprepay_${job.id}` });
+
+      await admin.from("jobs").update({
+        stripe_transfer_id: transfer.id, payment_status: "released",
+        status: "completed", released_at: new Date().toISOString(),
+      }).eq("id", job.id);
+
+      const released = Number(rp.occurrences_released) + 1;
+      await admin.from("recurring_prepayments").update({
+        occurrences_released: released,
+        status: released >= Number(rp.occurrences_total) ? "released" : "partially_released",
+      }).eq("id", rp.id);
+
+      try {
+        await admin.rpc("_notify", {
+          p_user: job.contractor_id, p_type: "prepay_released",
+          p_title: "Prepaid visit released",
+          p_body: "A prepaid recurring visit has been released to your account.",
+          p_job: job.id,
+        });
+      } catch (_) { /* best-effort */ }
+
+      return json({ ok: true, transfer_id: transfer.id, occurrences_released: released });
     }
 
     // ---------- JOB MODE (unchanged) ----------

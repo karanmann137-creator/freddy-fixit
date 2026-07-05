@@ -15,7 +15,9 @@ export default function AdminDashboard() {
   const [requests, setRequests] = useState<any[]>([]);
   const [contractors, setContractors] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
-  const [tab, setTab] = useState<"health"|"requests"|"contractors"|"jobs"|"disputes"|"leads">("requests");
+  const [tab, setTab] = useState<"health"|"requests"|"contractors"|"jobs"|"disputes"|"prepaid"|"leads">("requests");
+  const [prepays, setPrepays] = useState<any[]>([]);
+  const [busyRefund, setBusyRefund] = useState<string|null>(null);
   const [disputes, setDisputes] = useState<any[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
   const [busyLead, setBusyLead] = useState<string|null>(null);
@@ -71,6 +73,13 @@ export default function AdminDashboard() {
     setDisputes(disp ?? []);
     setLeads(leadsData ?? []);
     setHealth(healthData ?? null);
+    // Recurring prepay pools (admin RLS = read all) for the Prepaid tab.
+    try {
+      const { data: pp } = await supabase.from("recurring_prepayments")
+        .select("*, plan:client_requests!recurring_prepayments_plan_request_id_fkey(service_needed), client:profiles!recurring_prepayments_client_id_fkey(first_name,last_name)")
+        .order("created_at", { ascending: false });
+      setPrepays(pp ?? []);
+    } catch { setPrepays([]); }
     // Resolve signed URLs for all dispute photos (problem-photos is private). Both
     // the claim photos and the contractor-response photos are signed in a single
     // parallel pass instead of two sequential per-dispute loops.
@@ -178,6 +187,21 @@ export default function AdminDashboard() {
     setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: "contacted" } : l));
   };
 
+  const refundPrepay = async (pp: any) => {
+    if (!confirm("Refund the client's unreleased prepaid visits? Already-completed visits stay paid to the pro. This can't be undone.")) return;
+    setBusyRefund(pp.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("refund-recurring-prepayment", { body: { prepay_id: pp.id } });
+      if (error) throw error;
+      if (data && (data as any).error) throw new Error((data as any).error);
+      await loadAll();
+    } catch (e: any) {
+      let msg = e?.message || String(e);
+      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
+      alert("Couldn't refund: " + msg);
+    } finally { setBusyRefund(null); }
+  };
+
   const resolveDispute = async (d: any, action: "refund_full"|"refund_partial"|"release") => {
     let refund_amount: number | undefined;
     if (action === "refund_partial") {
@@ -219,7 +243,7 @@ export default function AdminDashboard() {
       <div style={s.content}>
         <ProfileBar role="admin" />
         <div style={s.tabs}>
-          {(["health","requests","contractors","jobs","disputes","leads"] as const).map(t => {
+          {(["health","requests","contractors","jobs","disputes","prepaid","leads"] as const).map(t => {
             const openDisputes = disputes.filter(d => d.status === "open").length;
             const newLeads = leads.filter(l => l.status === "new").length;
             const healthAlerts = health ? ((health.no_bid_count||0) + (health.awaiting_confirm_count||0) + (health.awaiting_approval_count||0) + (health.stale_disputes_count||0)) : 0;
@@ -228,6 +252,7 @@ export default function AdminDashboard() {
               : t === "contractors" ? `Contractors (${counts.contractors})`
               : t === "jobs" ? `Jobs (${counts.jobs})`
               : t === "disputes" ? `Disputes (${openDisputes})`
+              : t === "prepaid" ? `Prepaid (${prepays.length})`
               : `Leads (${newLeads})`;
             return (
               <button key={t} style={{ ...s.tab, ...(tab===t ? s.activeTab : {}), ...(t === "health" && healthAlerts > 0 ? { borderColor:"rgba(251,191,36,.5)", color:"var(--ff-warn)" } : {}), ...(t === "disputes" && openDisputes > 0 ? { borderColor:"rgba(251,191,36,.5)", color:"var(--ff-warn)" } : {}), ...(t === "leads" && newLeads > 0 ? { borderColor:"rgba(234,107,20,.5)", color:"#ea6b14" } : {}) }} onClick={() => setTab(t)}>
@@ -375,6 +400,33 @@ export default function AdminDashboard() {
               </div>
             ))}
             {pager("jobs")}
+          </div>
+        )}
+
+        {tab === "prepaid" && (
+          <div>
+            {prepays.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No prepaid recurring plans yet.</p>}
+            {prepays.map(pp => {
+              const perOcc = Number(pp.amount_per_occurrence || 0) + Number(pp.client_fee_per || 0);
+              const refundable = Math.max(0, Number(pp.total_charged || 0) - Number(pp.occurrences_released || 0) * perOcc);
+              const canRefund = (pp.status === "held" || pp.status === "partially_released") && refundable > 0;
+              const who = pp.client ? `${pp.client.first_name ?? ""} ${pp.client.last_name ?? ""}`.trim() : "";
+              return (
+                <div key={pp.id} style={s.card}>
+                  <div style={s.title}>{pp.plan?.service_needed || "Recurring plan"}{who ? ` · ${who}` : ""}</div>
+                  <div style={s.meta}>Status: {pp.status}</div>
+                  <div style={s.meta}>Visits: {pp.occurrences_released}/{pp.occurrences_total} released</div>
+                  <div style={s.meta}>Charged: ${Number(pp.total_charged || 0).toFixed(2)} · Refundable now: ${refundable.toFixed(2)}</div>
+                  {canRefund ? (
+                    <button style={{ ...s.btn, background:"#ef4444", color:"#fff", border:"none", marginTop:".5rem" }} disabled={busyRefund === pp.id} onClick={() => refundPrepay(pp)}>
+                      {busyRefund === pp.id ? "…" : "Refund unreleased visits"}
+                    </button>
+                  ) : (
+                    <div style={{ ...s.meta, opacity:.6 }}>{pp.status === "refunded" ? "Refunded" : pp.status === "released" ? "Fully released" : "Nothing refundable"}</div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 

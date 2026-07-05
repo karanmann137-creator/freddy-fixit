@@ -45,6 +45,7 @@ Deno.serve(async (req) => {
       .select("id")
       .eq("status", "completed")
       .eq("payment_status", "held")
+      .is("prepayment_id", null)
       .not("client_confirmed_at", "is", null)
       .is("disputed_at", null)
       .limit(200);
@@ -52,6 +53,21 @@ Deno.serve(async (req) => {
     for (const j of jobs ?? []) {
       checked++;
       if (await release({ job_id: j.id })) released++; else failed++;
+    }
+
+    // 1b) Prepaid recurring jobs: funded from a held pool, confirmed, un-disputed.
+    const { data: pjobs, error: pe } = await admin.from("jobs")
+      .select("id, prepayment_id")
+      .eq("status", "completed")
+      .eq("payment_status", "held")
+      .not("prepayment_id", "is", null)
+      .not("client_confirmed_at", "is", null)
+      .is("disputed_at", null)
+      .limit(200);
+    if (pe) throw pe;
+    for (const j of pjobs ?? []) {
+      checked++;
+      if (await release({ prepayment_id: j.prepayment_id, job_id: j.id })) released++; else failed++;
     }
 
     // 2) Milestone stages: completed + client-approved (or auto-approved) + un-disputed.

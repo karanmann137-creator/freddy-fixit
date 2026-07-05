@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { trackEvent } from "@/lib/analytics";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
 import { useServicePricing, fromText } from "@/lib/servicePricing";
+import { recurrenceOptionsFor, isPerKmService, FREQ_LABELS, type Freq } from "@/lib/recurrence";
 import NewRequest from "@/components/NewRequest";
 import OAuthButtons from "@/components/OAuthButtons";
 
@@ -77,7 +78,9 @@ export default function ClientOnboarding() {
   const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", password:"", preferredSchedule:"", location:"", jobDescription:"", businessName:"", businessType:"", locations:"", billingPreference:"" });
   const [clientType, setClientType] = useState<"individual"|"business">("individual");
   const [recurring, setRecurring] = useState(false);
-  const [recurringFrequency, setRecurringFrequency] = useState<"weekly"|"biweekly"|"monthly"|"seasonal"|"">("");
+  const [recurringFrequency, setRecurringFrequency] = useState<Freq | "">("");
+  const [recurringKm, setRecurringKm]               = useState("");
+  const [prepayPref, setPrepayPref]                 = useState(0);
   const [recurringStartDate, setRecurringStartDate] = useState("");
   const [recurringEndDate, setRecurringEndDate]     = useState("");
 
@@ -155,6 +158,8 @@ export default function ClientOnboarding() {
         locations: clientType === "business" ? form.locations : "",
         recurring: recurring || form.preferredSchedule === "Recurring",
         recurring_frequency: recurringFrequency,
+        recurring_interval_km: recurringFrequency === "per_km" && recurringKm ? String(parseInt(recurringKm, 10) || "") : "",
+        recurring_prepay_pref: String(prepayPref || 0),
         recurring_start_date: recurringStartDate,
         recurring_end_date: recurringEndDate,
         billing_preference: clientType === "business" ? form.billingPreference : "",
@@ -359,17 +364,46 @@ export default function ClientOnboarding() {
                   <div>
                     <p style={{ ...s.label, marginBottom:".6rem" }}>How often?</p>
                     <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
-                      {(["weekly","biweekly","monthly","seasonal"] as const).map(f => (
+                      {recurrenceOptionsFor(selectedServices).map(f => (
                         <button key={f} type="button"
                           onClick={() => setRecurringFrequency(f)}
                           style={{ padding:".6rem 1.1rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", border:"1px solid",
                             background: recurringFrequency===f ? "rgba(234,107,20,.2)" : "rgba(var(--ff-fg), .04)",
                             borderColor: recurringFrequency===f ? "#ea6b14" : "rgba(var(--ff-fg), .12)",
                             color: recurringFrequency===f ? "var(--ff-text)" : "rgba(var(--ff-muted), .7)" }}>
-                          {{ weekly:"Every Week", biweekly:"Every 2 Weeks", monthly:"Once a Month", seasonal:"Seasonal" }[f]}
+                          {FREQ_LABELS[f]}
                         </button>
                       ))}
                     </div>
+                  </div>
+                  {recurringFrequency === "per_km" && (
+                    <div>
+                      <label style={{ ...s.label, marginBottom:".35rem" }}>Service every… (km)</label>
+                      <input type="number" min={1000} step={500} inputMode="numeric" placeholder="e.g. 5000"
+                        value={recurringKm} onChange={e => setRecurringKm(e.target.value)}
+                        style={{ ...inp, padding:".6rem .8rem", fontSize:".88rem", maxWidth:"180px" }} />
+                      <p style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .55)", marginTop:".4rem" }}>
+                        We can't read your odometer, so we'll send an estimated reminder based on typical driving.
+                      </p>
+                    </div>
+                  )}
+                  <div>
+                    <p style={{ ...s.label, marginBottom:".6rem" }}>Pay ahead? <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></p>
+                    <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
+                      {[0,2,3].map(n => (
+                        <button key={n} type="button"
+                          onClick={() => setPrepayPref(n)}
+                          style={{ padding:".6rem 1.1rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", border:"1px solid",
+                            background: prepayPref===n ? "rgba(234,107,20,.2)" : "rgba(var(--ff-fg), .04)",
+                            borderColor: prepayPref===n ? "#ea6b14" : "rgba(var(--ff-fg), .12)",
+                            color: prepayPref===n ? "var(--ff-text)" : "rgba(var(--ff-muted), .7)" }}>
+                          {n === 0 ? "Pay each visit" : `Prepay ${n} visits`}
+                        </button>
+                      ))}
+                    </div>
+                    <p style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .55)", marginTop:".4rem" }}>
+                      Prepaid visits are held securely and released to your pro one visit at a time. You can set this up after your first quote is approved — unused visits are refundable.
+                    </p>
                   </div>
                   {recurringFrequency === "seasonal" && (
                     <div>

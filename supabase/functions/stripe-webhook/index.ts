@@ -74,6 +74,33 @@ Deno.serve(async (req) => {
             catch (_) { /* best-effort */ }
           }
         }
+      } else if (pi.metadata?.kind === "recurring_prepay" && pi.metadata?.prepay_id) {
+        // Recurring prepay pool funded: pending -> held. Notify client + reserved pro.
+        const { data: prows } = await admin.from("recurring_prepayments")
+          .update({ status: "held", stripe_payment_intent: pi.id })
+          .eq("id", pi.metadata.prepay_id).eq("status", "pending")
+          .select("id, client_id, contractor_id, occurrences_total, plan_request_id");
+        const rp = prows?.[0];
+        if (rp) {
+          try {
+            await admin.rpc("_notify", {
+              p_user: rp.client_id, p_type: "prepay_funded",
+              p_title: "Prepaid visits confirmed",
+              p_body: `You've prepaid ${rp.occurrences_total} recurring visit(s). Each is held securely and released to your pro as it's completed.`,
+              p_job: null,
+            });
+          } catch (_) { /* best-effort */ }
+          if (rp.contractor_id) {
+            try {
+              await admin.rpc("_notify", {
+                p_user: rp.contractor_id, p_type: "prepay_funded",
+                p_title: "A client prepaid ahead",
+                p_body: `A client prepaid ${rp.occurrences_total} recurring visit(s). You'll be paid for each as it's completed and confirmed.`,
+                p_job: null,
+              });
+            } catch (_) { /* best-effort */ }
+          }
+        }
       } else if (jobId) {
         // Single-charge job (unchanged path).
         await admin.from("jobs")

@@ -67,6 +67,14 @@ Deno.serve(async (req) => {
       .eq("id", m.id);
     if (upErr) return json({ error: `Refund succeeded on Stripe but DB update failed: ${upErr.message}`, stripe_refund_id: refund.id }, 500);
 
+    // If this refund leaves every stage terminal (released or refunded), close the job.
+    const { data: remaining } = await admin.from("job_milestones")
+      .select("id").eq("job_id", m.job_id).not("status", "in", "(released,refunded)").limit(1);
+    if (!remaining || remaining.length === 0) {
+      await admin.from("jobs").update({ status: "completed", released_at: new Date().toISOString() })
+        .eq("id", m.job_id).neq("status", "completed");
+    }
+
     return json({ status: "refunded", milestone_id, refund_dollars: refundDollars, stripe_refund_id: refund.id });
   } catch (e) {
     return json({ error: String(e) }, 500);
