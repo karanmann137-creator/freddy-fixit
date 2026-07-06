@@ -126,7 +126,8 @@ export default function PrivacyPolicy() {
               <tr><td>Vercel, Inc.</td><td>Web hosting and deployment</td><td>United States</td></tr>
               <tr><td>Resend, Inc.</td><td>Transactional email delivery</td><td>United States</td></tr>
               <tr><td>Stripe, Inc.</td><td>Payment processing</td><td>United States</td></tr>
-              <tr><td>Google LLC</td><td>Website analytics (Google Analytics 4)</td><td>United States</td></tr>
+              <tr><td>Google LLC</td><td>Website analytics (Google Analytics 4) and optional "Sign in with Google" authentication</td><td>United States</td></tr>
+              <tr><td>Komoot GmbH (Photon)</td><td>Address auto-complete: as you type a service address, the text you type is sent to the Photon geocoding service to suggest matching Calgary-area addresses. No account information is sent with it.</td><td>Germany</td></tr>
             </tbody>
           </table>
           <p><strong>6.3 Advertising.</strong> We do not currently share your personal information with advertising partners. In the future, we may work with third-party advertising networks to display relevant advertisements on the Platform. If and when we do so, we will update this Policy and, where required by PIPA, obtain your express consent before sharing your information for advertising purposes. You will have the right to opt out.</p>
@@ -136,8 +137,8 @@ export default function PrivacyPolicy() {
 
         <section style={{ marginBottom:"2.5rem" }}>
           <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>7. Transfer of Information Outside Canada</h2>
-          <p>Our service providers operate servers located in the United States. As a result, your personal information may be transferred to, stored, and processed in the United States, where privacy laws may differ from those in Alberta or Canada and may not provide the same level of protection. By using the Platform, you consent to this transfer.</p>
-          <p>We require our U.S.-based service providers to protect your information to a standard substantially equivalent to Canadian requirements and to use it only as directed by us.</p>
+          <p>Our service providers operate servers located in the United States and, for address auto-complete, Germany. As a result, your personal information may be transferred to, stored, and processed outside Canada, where privacy laws may differ from those in Alberta or Canada and may not provide the same level of protection. By using the Platform, you consent to this transfer.</p>
+          <p>We require our foreign service providers to protect your information to a standard substantially equivalent to Canadian requirements and to use it only as directed by us.</p>
         </section>
 
         <section style={{ marginBottom:"2.5rem" }}>
@@ -146,7 +147,7 @@ export default function PrivacyPolicy() {
           <ul>
             <li><strong>Account and profile data:</strong> Retained for up to <strong>3 years</strong> after account deletion, unless a longer period is required by law.</li>
             <li><strong>Payment and transaction records:</strong> Retained for <strong>7 years</strong> in compliance with Canada Revenue Agency requirements under the <em>Income Tax Act</em>.</li>
-            <li><strong>Chat messages and uploaded photos:</strong> Deleted within <strong>90 days</strong> of account deletion.</li>
+            <li><strong>Chat messages and uploaded photos/videos:</strong> Media you upload to your own profile or portfolio is deleted when your account is deleted (on a best-effort basis, within 90 days). Messages and media attached to a <em>job</em> (including chat photos/videos, completion photos, and claim photos) are part of that job&rsquo;s record and are retained with the related transaction records &mdash; up to 7 years where they evidence a payment, dispute, or contract &mdash; even if an account is later deleted, because we may need them to meet legal and audit obligations.</li>
             <li><strong>Contractor compliance declarations:</strong> Retained for the duration of the contractor relationship and for up to <strong>2 years</strong> thereafter.</li>
           </ul>
           <p>When personal information is no longer required, we will destroy, erase, or de-identify it in a secure manner.</p>

@@ -222,7 +222,9 @@ export default function ClientDashboard() {
     const q = new URLSearchParams();
     q.set("pro", pro.contractor_id);
     if (pro.last_service) q.set("service", pro.last_service);
-    setLocation("/new-request?" + q.toString());
+    // ClientOnboarding shows the short NewRequest form for signed-in users and
+    // NewRequest reads ?pro= / ?service= (there is no /new-request route).
+    setLocation("/client-onboarding?" + q.toString());
   };
 
   const copyReferral = async () => {
@@ -395,6 +397,11 @@ export default function ClientDashboard() {
     const amt = Number(j?.amount ?? 0);
     const rate = (j?.id && waivedForJob === j.id) ? 0 : feeRate;
     return r2(amt * (1 + rate));
+  }
+  // Human copy for the fee line — always matches what jobTotal() (and Stripe) charge.
+  function feeText(j: any) {
+    if (j?.id && waivedForJob === j.id) return "Your service fee is waived on this job (referral reward).";
+    return "Total includes a " + (Math.round(feeRate * 1000) / 10) + "% service fee.";
   }
   const payForJob = async () => {
     if (!activeJob) return;
@@ -815,13 +822,13 @@ export default function ClientDashboard() {
                                 {activeJob.payment_status === "failed" && (
                                   <div style={{ fontSize:".82rem", color:"var(--ff-danger)", marginBottom:".6rem", lineHeight:1.5 }}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />Your last payment didn't go through. No charge was made — please try again below.</div>
                                 )}
-                                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".6rem", lineHeight:1.5 }}>Pay now to secure the job. Your money is <strong>held safely</strong> and only released to the contractor after you confirm the work is done. Total includes a 3% service fee.</div>
+                                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".6rem", lineHeight:1.5 }}>Pay now to secure the job. Your money is <strong>held safely</strong> and only released to the contractor after you confirm the work is done. {feeText(activeJob)}</div>
                                 <button style={s.primaryBtn} disabled={busyPay} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " (held until you confirm)"}</button>
                               </>
                             ) : null}
                           </>
                         )}
-                        {activeJob.status === "pending_confirmation" && (
+                        {activeJob.status === "pending_confirmation" && !activeJob.is_milestone && (
                           <>
                             <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}>Your contractor marked this complete</div>
                             {completionPhotoUrl && <img src={completionPhotoUrl} alt="Completed work" style={{ width:"100%", maxWidth:"320px", borderRadius:"10px", margin:".5rem 0", display:"block" }} />}
@@ -836,7 +843,7 @@ export default function ClientDashboard() {
                               </>
                             ) : activeJob.amount ? (
                               <>
-                                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".6rem", lineHeight:1.5 }}>Pay for the job, then confirm. Your payment is held and only released to the contractor once you confirm. Total includes a 3% service fee.</div>
+                                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".6rem", lineHeight:1.5 }}>Pay for the job, then confirm. Your payment is held and only released to the contractor once you confirm. {feeText(activeJob)}</div>
                                 <button style={s.primaryBtn} disabled={busyPay} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " now"}</button>
                               </>
                             ) : (

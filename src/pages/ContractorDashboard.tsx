@@ -93,7 +93,7 @@ export default function ContractorDashboard() {
   const [showCustomAvail, setShowCustomAvail] = useState(false);
   const [proposeForm, setProposeForm] = useState({ when:"", amount:"", notes:"", labour:"", parts:"", callout:"", subject:false, price_low:"", price_high:"", used_base_price:false });
   const [photoFile, setPhotoFile]     = useState<File | null>(null);
-  const [busyJob, setBusyJob]         = useState(false);
+  const [busyJobId, setBusyJobId]     = useState<string | null>(null); // per-job busy flag — only the job being acted on shows a spinner/disables
   const [portfolio, setPortfolio]     = useState<any[]>([]);
   const [pfForm, setPfForm]           = useState<{ title:string; description:string; file:File|null }>({ title:"", description:"", file:null });
   const [googleUrl, setGoogleUrl]     = useState("");
@@ -228,12 +228,21 @@ export default function ContractorDashboard() {
 
   const handleSignOut = async () => { await supabase.auth.signOut(); setLocation("/"); };
 
+  // Format a timestamp as LOCAL "YYYY-MM-DDTHH:mm" for datetime inputs.
+  // (toISOString() is UTC — it used to prefill Calgary times 6–7h late.)
+  const toLocalInput = (iso: string) => {
+    const t = new Date(iso);
+    if (isNaN(t.getTime())) return "";
+    t.setMinutes(t.getMinutes() - t.getTimezoneOffset());
+    return t.toISOString().slice(0, 16);
+  };
+
   const openJob = (job: any) => {
     if (activeJobId === job.id) { setActiveJobId(null); return; }
     setActiveJobId(job.id);
     setPhotoFile(null);
     setProposeForm({
-      when: job.scheduled_at ? new Date(job.scheduled_at).toISOString().slice(0,16) : "",
+      when: job.scheduled_at ? toLocalInput(job.scheduled_at) : "",
       amount: job.amount != null ? String(job.amount) : "",
       notes: job.notes ?? "",
       labour: job.labour_amount != null ? String(job.labour_amount) : "",
@@ -247,7 +256,7 @@ export default function ContractorDashboard() {
   };
   const proposeSchedule = async (job: any) => {
     if (!proposeForm.when) { alert("Pick a date and time first."); return; }
-    setBusyJob(true);
+    setBusyJobId(job.id);
     const whenIso = new Date(proposeForm.when).toISOString();
     const ptotal = quoteTotal(proposeForm);
     const { error } = await supabase.rpc("propose_job_schedule", {
@@ -263,21 +272,21 @@ export default function ContractorDashboard() {
       p_price_high: proposeForm.price_high ? Number(proposeForm.price_high) : null,
       p_used_base_price: !!proposeForm.used_base_price,
     });
-    setBusyJob(false);
+    setBusyJobId(null);
     if (error) { alert("Couldn't send proposal: " + error.message); return; }
     setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, scheduled_at: whenIso, amount: ptotal != null ? ptotal : j.amount, labour_amount: proposeForm.labour ? Number(proposeForm.labour) : null, parts_amount: proposeForm.parts ? Number(proposeForm.parts) : null, callout_fee: proposeForm.callout ? Number(proposeForm.callout) : null, subject_to_inspection: !!proposeForm.subject, schedule_proposed_at: new Date().toISOString(), client_approved_at: null } : j));
   };
   const onMyWay = async (job: any) => {
-    setBusyJob(true);
+    setBusyJobId(job.id);
     const { error } = await supabase.rpc("contractor_on_my_way", { p_job_id: job.id });
-    setBusyJob(false);
+    setBusyJobId(null);
     if (error) { alert("Couldn't update: " + error.message); return; }
     setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, on_my_way_at: new Date().toISOString() } : j));
   };
   const acceptReschedule = async (job: any) => {
-    setBusyJob(true);
+    setBusyJobId(job.id);
     const { error } = await supabase.rpc("contractor_accept_reschedule", { p_job_id: job.id });
-    setBusyJob(false);
+    setBusyJobId(null);
     if (error) { alert("Couldn't accept the new time: " + error.message); return; }
     setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: "scheduled", client_approved_at: new Date().toISOString(), reschedule_accepted_at: new Date().toISOString(), client_rescheduled_at: null } : j));
   };
@@ -288,7 +297,7 @@ export default function ContractorDashboard() {
       confirmLabel: "Yes, mark complete",
       danger: false,
     }))) return;
-    setBusyJob(true);
+    setBusyJobId(job.id);
     let photoPath: string | null = null;
     try {
       if (photoFile) {
@@ -305,7 +314,7 @@ export default function ContractorDashboard() {
     } catch (e: any) {
       alert("Couldn't mark complete: " + (e.message || e));
     } finally {
-      setBusyJob(false);
+      setBusyJobId(null);
     }
   };
   const withdrawJob = async (job: any) => {
@@ -315,9 +324,9 @@ export default function ContractorDashboard() {
       confirmLabel: "Yes, withdraw",
       danger: true,
     }))) return;
-    setBusyJob(true);
+    setBusyJobId(job.id);
     const { error } = await supabase.rpc("withdraw_job", { p_job_id: job.id });
-    setBusyJob(false);
+    setBusyJobId(null);
     if (error) { alert("Couldn't withdraw: " + error.message); return; }
     setMyJobs(prev => prev.filter(j => j.id !== job.id));
     setActiveJobId(null);
@@ -388,7 +397,7 @@ export default function ContractorDashboard() {
     if (!f.reason || !f.reason.trim()) { alert("Add a short reason so the client understands the change."); return; }
     const total = quoteTotal(f);
     if (total == null) { alert("Enter the new price or an itemised breakdown."); return; }
-    setBusyJob(true);
+    setBusyJobId(job.id);
     const { error } = await supabase.rpc("request_quote_revision", {
       p_job_id: job.id,
       p_amount: total,
@@ -401,7 +410,7 @@ export default function ContractorDashboard() {
       p_price_high: f.price_high ? Number(f.price_high) : null,
       p_used_base_price: !!f.used_base_price,
     });
-    setBusyJob(false);
+    setBusyJobId(null);
     if (error) { alert("Couldn't send price change: " + error.message); return; }
     setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: "assigned", amount: total, client_approved_at: null, schedule_proposed_at: new Date().toISOString() } : j));
     setRequoteOpen(o => ({ ...o, [job.id]: false }));
@@ -481,7 +490,7 @@ export default function ContractorDashboard() {
     : Math.round(Number(job?.amount ?? 0) * 0.93 * 100) / 100;
   const awaitingJobs = myJobs.filter(j => j.status === "pending_confirmation" || j.status === "scheduled" || j.status === "in_progress");
   const awaitingTotal = awaitingJobs.reduce((t,j) => t + (j.amount ? netPayout(j) : 0), 0);
-  const STATUS_COLORS: Record<string,string> = { pending:"#f59e0b", matched:"#3b82f6", in_progress:"#ea6b14", completed:"#22c55e", cancelled:"#ef4444", assigned:"#3b82f6" };
+  const STATUS_COLORS: Record<string,string> = { pending:"#f59e0b", matched:"#3b82f6", in_progress:"#ea6b14", completed:"#22c55e", cancelled:"#ef4444", assigned:"#3b82f6", scheduled:"#8b5cf6", pending_confirmation:"#f59e0b" };
 
   const s = {
     wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
@@ -569,7 +578,7 @@ export default function ContractorDashboard() {
                     <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .5)" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{job.request?.location}</div>
                   </div>
                   <div style={{ textAlign:"right" }}>
-                    <div style={{ fontSize:".78rem", fontWeight:500, color: STATUS_COLORS[job.status] }}>● {job.status.replace("_"," ")}</div>
+                    <div style={{ fontSize:".78rem", fontWeight:500, color: STATUS_COLORS[job.status] ?? "#94a3b8" }}>● {job.status.replace("_"," ")}</div>
                     {job.amount && <div style={{ fontSize:"1rem", fontWeight:500, color:"#22c55e", marginTop:".25rem" }}>${job.amount}</div>}
                   </div>
                 </div>
@@ -648,7 +657,7 @@ export default function ContractorDashboard() {
                             <Ic name="calendar" size={14} color="#3b82f6" style={{ marginRight:5 }} />
                             <strong>The client changed the time</strong> to {job.scheduled_at ? new Date(job.scheduled_at).toLocaleString() : "a new time"}. Accept it, or propose a different time below if you're not available.
                           </div>
-                          <button style={{ ...s.btn, background:"#3b82f6", color:"#fff", border:"none" }} disabled={busyJob} onClick={() => acceptReschedule(job)}>{busyJob ? "…" : "Accept new time"}</button>
+                          <button style={{ ...s.btn, background:"#3b82f6", color:"#fff", border:"none" }} disabled={busyJobId === job.id} onClick={() => acceptReschedule(job)}>{busyJobId === job.id ?"…" : "Accept new time"}</button>
                         </div>
                       )}
                       {job.status === "assigned" && (
@@ -664,8 +673,8 @@ export default function ContractorDashboard() {
                           <textarea value={proposeForm.notes} rows={2} placeholder="Notes for the client (optional)" onChange={e => setProposeForm(f => ({ ...f, notes: e.target.value }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const }} />
                           <QuoteBreakdown v={proposeForm} on={pp => setProposeForm(f => ({ ...f, ...pp }))} calloutHint={contractor?.min_callout ?? null} price={priceFor(job.request?.service_needed)} />
                           <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
-                            <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyJob} onClick={() => proposeSchedule(job)}>{busyJob ? "Sending…" : (job.schedule_proposed_at ? "Update proposal" : "Propose time & price")}</button>
-                            <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJob} onClick={() => withdrawJob(job)}>Withdraw</button>
+                            <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyJobId === job.id} onClick={() => proposeSchedule(job)}>{busyJobId === job.id ?"Sending…" : (job.schedule_proposed_at ? "Update proposal" : "Propose time & price")}</button>
+                            <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJobId === job.id} onClick={() => withdrawJob(job)}>Withdraw</button>
                           </div>
                         </>
                       )}
@@ -675,7 +684,7 @@ export default function ContractorDashboard() {
                           {job.on_my_way_at ? (
                             <div style={{ fontSize:".82rem", color:"var(--ff-success)" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />You let the client know you're on the way.</div>
                           ) : (
-                            <button style={{ ...s.btn, color:"var(--ff-text)", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.12)", alignSelf:"flex-start" }} disabled={busyJob} onClick={() => onMyWay(job)}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{busyJob ? "…" : "I'm on my way"}</button>
+                            <button style={{ ...s.btn, color:"var(--ff-text)", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.12)", alignSelf:"flex-start" }} disabled={busyJobId === job.id} onClick={() => onMyWay(job)}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{busyJobId === job.id ?"…" : "I'm on my way"}</button>
                           )}
                           {!job.is_milestone && (
                           <div>
@@ -684,8 +693,8 @@ export default function ContractorDashboard() {
                           </div>
                           )}
                           <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
-                            {!job.is_milestone && <button style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none", fontWeight:600 }} disabled={busyJob} onClick={() => markComplete(job)}>{busyJob ? "Working…" : "✓ Mark complete"}</button>}
-                            <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJob} onClick={() => withdrawJob(job)}>Withdraw</button>
+                            {!job.is_milestone && <button style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none", fontWeight:600 }} disabled={busyJobId === job.id} onClick={() => markComplete(job)}>{busyJobId === job.id ?"Working…" : "✓ Mark complete"}</button>}
+                            <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJobId === job.id} onClick={() => withdrawJob(job)}>Withdraw</button>
                           </div>
                           {(() => {
                             const rf = requoteForm[job.id] || { amount:"", reason:"", labour:"", parts:"", callout:"", subject:false };
@@ -703,7 +712,7 @@ export default function ContractorDashboard() {
                                     <QuoteBreakdown v={rf} on={setRf} calloutHint={contractor?.min_callout ?? null} price={priceFor(job.request?.service_needed)} />
                                     <textarea value={rf.reason} rows={2} placeholder="Reason for the change (e.g. found a cracked pipe behind the wall)" onChange={e => setRf({ reason: e.target.value })} style={{ ...ffInp, resize:"vertical" as const }} />
                                     <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
-                                      <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyJob} onClick={() => requestRequote(job)}>{busyJob ? "Sending…" : "Send revised quote"}</button>
+                                      <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyJobId === job.id} onClick={() => requestRequote(job)}>{busyJobId === job.id ?"Sending…" : "Send revised quote"}</button>
                                       <button style={{ ...s.btn }} onClick={() => setRequoteOpen(o => ({ ...o, [job.id]: false }))}>Cancel</button>
                                     </div>
                                   </div>
@@ -1107,7 +1116,7 @@ export default function ContractorDashboard() {
                         <div style={{ fontSize:".66rem", color:"rgba(var(--ff-muted), .4)" }}>your payout · ${job.amount} quote</div>
                       </>
                     ) : <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)" }}>TBD</div>}
-                    <div style={{ fontSize:".72rem", textTransform:"capitalize", color: STATUS_COLORS[job.status], marginTop:".15rem" }}>{job.status.replace("_"," ")}</div>
+                    <div style={{ fontSize:".72rem", textTransform:"capitalize", color: STATUS_COLORS[job.status] ?? "#94a3b8", marginTop:".15rem" }}>{job.status.replace("_"," ")}</div>
                   </div>
                 </div>
               ))}

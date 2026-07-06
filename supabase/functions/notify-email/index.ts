@@ -76,7 +76,7 @@ serve(async (req) => {
       .from("jobs")
       .select(`
         id, client_id, contractor_id, amount, contractor_payout, scheduled_at,
-        is_milestone, total_charged, client_fee,
+        is_milestone, total_charged, client_fee, contract_copy_sent_at,
         request:client_requests!jobs_request_id_fkey(service_needed, job_description, location),
         contractor:profiles!jobs_contractor_id_fkey(first_name, last_name, company_name)
       `)
@@ -135,6 +135,14 @@ serve(async (req) => {
         ${button("https://freddyfixit.ca/contractor-dashboard", "View My Earnings →")}
       `);
     } else if (event === "contract_copy") {
+      // Write-once: the sent-at stamp is legal evidence (the Alberta 10-day
+      // cancellation clock runs from it) and this function is publicly
+      // callable — never allow a re-send to spam the client or re-stamp it.
+      if (job.contract_copy_sent_at) {
+        return new Response(JSON.stringify({ status: "skipped", reason: "contract copy already sent" }), {
+          headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
       const r = await resolveRecipient(job.client_id);
       to = r.email;
       const company = job.contractor?.company_name
@@ -188,8 +196,10 @@ serve(async (req) => {
         ${button("https://freddyfixit.ca/client-dashboard", "View in my dashboard →")}
       `);
 
-      // Stamp when the copy was sent — this is what the 10-day clock runs from.
-      await admin.from("jobs").update({ contract_copy_sent_at: new Date().toISOString() }).eq("id", job.id);
+      // Stamp when the copy was sent — this is what the 10-day clock runs
+      // from. `.is(null)` makes it write-once even under a race.
+      await admin.from("jobs").update({ contract_copy_sent_at: new Date().toISOString() })
+        .eq("id", job.id).is("contract_copy_sent_at", null);
     } else {
       return new Response(JSON.stringify({ status: "ignored", reason: "unknown event" }), {
         headers: { ...cors, "Content-Type": "application/json" },

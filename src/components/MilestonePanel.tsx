@@ -25,7 +25,6 @@ type Milestone = {
   client_approved_at: string | null; released_at: string | null; disputed_at: string | null;
 };
 
-const FEE_RATE = 0.03;
 const money = (n: number) => "$" + (Math.round(n * 100) / 100).toFixed(2);
 
 const STATUS_META: Record<Milestone["status"], { label: string; color: string }> = {
@@ -65,6 +64,16 @@ export default function MilestonePanel({ job, role, onUpdated }: { job: any; rol
   const [photoFor, setPhotoFor] = useState<Record<string, File | null>>({});
 
   const [schedStatus, setSchedStatus] = useState<string | null>(job?.milestone_schedule_status ?? null);
+
+  // Live platform fee rate (single source of truth in the DB); 3% fallback so
+  // the display never blocks if the RPC is unreachable.
+  const [feeRate, setFeeRate] = useState(0.03);
+  useEffect(() => {
+    supabase.rpc("platform_fee_rate").then(({ data }) => {
+      const r = Number(data);
+      if (Number.isFinite(r) && r >= 0 && r < 0.5) setFeeRate(r);
+    });
+  }, []);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.rpc("get_job_milestones", { p_job_id: job.id });
@@ -295,7 +304,7 @@ export default function MilestonePanel({ job, role, onUpdated }: { job: any; rol
                 <>
                   {m.status === "pending" && isNextToFund && (
                     <div style={{ marginTop: ".5rem" }}>
-                      <div style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .75)", marginBottom: ".4rem" }}>Pay {money(m.amount)} + 3% service fee ({money(m.amount * FEE_RATE)}) = <strong>{money(m.amount * (1 + FEE_RATE))}</strong>. Held safely until you approve this stage.</div>
+                      <div style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .75)", marginBottom: ".4rem" }}>Pay {money(m.amount)} + {Math.round(feeRate * 1000) / 10}% service fee ({money(m.amount * feeRate)}) = <strong>{money(m.amount * (1 + feeRate))}</strong>. Held safely until you approve this stage.</div>
                       <button style={{ ...btnPrimary, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => fund(m)}>{busy ? "Opening checkout…" : "Fund this stage"}</button>
                     </div>
                   )}

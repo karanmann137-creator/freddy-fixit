@@ -593,9 +593,10 @@ export default function ContractorOnboarding() {
                 <label htmlFor="co-photo-upload" style={{ display:"inline-flex", alignItems:"center", gap:".5rem", marginTop:".75rem", padding:".6rem 1.25rem", background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.3)", borderRadius:"8px", cursor:"pointer", fontSize:".85rem", color:"#ea6b14", fontWeight:500 }}>
                   <Ic name="camera" size={16} color="#ea6b14" />
                   {photoFile ? photoFile.name : "Choose a photo"}
-                  <input id="co-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0] ?? null; if (f && f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB."); return; } setPhotoFile(f); }} style={{ display:"none" }} />
+                  <input id="co-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0] ?? null; if (f && f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB. Please choose a smaller one."); e.target.value = ""; setPhotoFile(null); return; } setSubmitError(""); setPhotoFile(f); }} style={{ display:"none" }} />
                 </label>
               </div>
+              {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"var(--ff-danger)", marginBottom:"1rem" }}>{submitError}</div>}
               <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .4)", textAlign:"center" }}>This step is optional — you can add a photo later from your dashboard.</p>
             </div>
           )}

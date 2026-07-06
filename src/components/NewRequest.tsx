@@ -151,6 +151,14 @@ export default function NewRequest() {
     if (!loc) e.location = addrChoice === "new" ? "Address required" : "No address on file — please enter one";
     if (description.trim().length < 10) e.description = "Please add a few more details (min 10 characters)";
     setErrors(e);
+    // Scroll the first problem into view — on a long form the submit button is
+    // at the bottom and an error near the top is otherwise invisible.
+    const first = ["services", "schedule", "location", "description"].find(k => e[k]);
+    if (first) {
+      setTimeout(() => {
+        document.getElementById("nr-err-" + first)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 60);
+    }
     return Object.keys(e).length === 0;
   };
 
@@ -296,7 +304,7 @@ export default function NewRequest() {
               </button>
             ))}
           </div>
-          {errors.services && <p style={s.err}>{errors.services}</p>}
+          {errors.services && <p id="nr-err-services" style={s.err}>{errors.services}</p>}
 
           {/* Schedule */}
           <p style={{ ...s.label, marginTop:"1.75rem" }}>When do you need it?</p>
@@ -306,7 +314,7 @@ export default function NewRequest() {
               <div><div style={{ fontSize:".95rem", fontWeight:500 }}>{sc.label}</div><div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .5)" }}>{sc.sub}</div></div>
             </button>
           ))}
-          {errors.schedule && <p style={s.err}>{errors.schedule}</p>}
+          {errors.schedule && <p id="nr-err-schedule" style={s.err}>{errors.schedule}</p>}
 
           {schedule === "Recurring" && (
             <div style={{ marginTop:".75rem", padding:"1rem", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"10px", display:"flex", flexDirection:"column" as const, gap:"1rem" }}>
@@ -476,7 +484,7 @@ export default function NewRequest() {
               </>
             );
           })()}
-          {errors.location && <p style={s.err}>{errors.location}</p>}
+          {errors.location && <p id="nr-err-location" style={s.err}>{errors.location}</p>}
 
           {/* Vehicle (only for vehicle services) */}
           {isVehicle && (
@@ -523,7 +531,7 @@ export default function NewRequest() {
             <label style={s.label}>Describe the job</label>
             <textarea style={{ ...inp, resize:"vertical", minHeight:"120px", borderColor: errors.description ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="Tell us what's broken or what you need done." value={description} onChange={e => { setDescription(e.target.value); setErrors(er => ({ ...er, description:"" })); }} />
             <VoiceDictate onAppend={(t) => { setDescription(d => (d.trim() ? d.trim() + " " : "") + t); setErrors(er => ({ ...er, description:"" })); }} />
-            {errors.description && <p style={s.err}>{errors.description}</p>}
+            {errors.description && <p id="nr-err-description" style={s.err}>{errors.description}</p>}
           </div>
 
           {/* Photo */}
@@ -540,7 +548,7 @@ export default function NewRequest() {
                   {photoFile ? "Tap to change" : "Tap to choose — max 5 MB"}
                 </p>
               </div>
-              <input id="nr-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0] ?? null; if (f && f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB."); return; } setSubmitError(""); setPhotoFile(f); }} style={{ display:"none" }} />
+              <input id="nr-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0] ?? null; if (f && f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB. Please choose a smaller one."); e.target.value = ""; setPhotoFile(null); return; } setSubmitError(""); setPhotoFile(f); }} style={{ display:"none" }} />
             </label>
           </div>
 
