@@ -198,6 +198,13 @@ export default function ClientOnboarding() {
         recurring_dates: recurringDates,
         billing_preference: clientType === "business" ? form.billingPreference : "",
       };
+      // Block duplicate accounts: an email or phone already in use can't sign up again
+      // (client or contractor). Pre-flight check; DB triggers are the hard backstop.
+      try {
+        const { data: avail } = await supabase.rpc("check_signup_availability", { p_email: form.email, p_phone: form.phone });
+        if ((avail as any)?.email_taken) { setSubmitError("An account with this email already exists. Please sign in instead."); window.scrollTo(0,0); setLoading(false); return; }
+        if ((avail as any)?.phone_taken) { setSubmitError("An account with this phone number already exists. Please sign in, or use a different number."); window.scrollTo(0,0); setLoading(false); return; }
+      } catch {}
       const { data: authData, error: authErr } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
@@ -205,6 +212,9 @@ export default function ClientOnboarding() {
       });
       if (authErr) throw authErr;
       if (!authData.user) throw new Error("Account creation failed.");
+      // Email-confirmation mode returns a fake "success" (no identities) when the
+      // email already exists. Treat that as a duplicate instead of a new signup.
+      if (((authData.user.identities?.length) ?? 0) === 0) { setSubmitError("An account with this email already exists. Please sign in instead."); window.scrollTo(0,0); setLoading(false); return; }
       const userId = authData.user.id;
       // No session => email confirmation required. The trigger saved their
       // request already; show the verify screen.

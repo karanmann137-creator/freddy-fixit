@@ -155,6 +155,12 @@ export default function ContractorOnboarding() {
 
       let userId = authedUserId;
       if (!userId) {
+        // Block duplicate accounts (client or contractor) by email or phone.
+        try {
+          const { data: avail } = await supabase.rpc("check_signup_availability", { p_email: form.email, p_phone: form.phone });
+          if ((avail as any)?.email_taken) { setSubmitError("An account with this email already exists. Please sign in instead."); window.scrollTo(0,0); setLoading(false); return; }
+          if ((avail as any)?.phone_taken) { setSubmitError("An account with this phone number already exists. Please sign in, or use a different number."); window.scrollTo(0,0); setLoading(false); return; }
+        } catch {}
         const { data: authData, error: authErr } = await supabase.auth.signUp({
           email: form.email,
           password: form.password,
@@ -162,6 +168,7 @@ export default function ContractorOnboarding() {
         });
         if (authErr) throw authErr;
         if (!authData.user) throw new Error("Account creation failed.");
+        if (((authData.user.identities?.length) ?? 0) === 0) { setSubmitError("An account with this email already exists. Please sign in instead."); window.scrollTo(0,0); setLoading(false); return; }
         userId = authData.user.id;
         // No session => email confirmation is required. The trigger has already
         // saved their profile + contractor details; show the verify screen.
