@@ -272,7 +272,7 @@ export default function NewRequest() {
         {preferredPro && (
           <div style={{ ...s.card, marginBottom:"1rem", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.07)", display:"flex", alignItems:"center", gap:".6rem" }}>
             <Ic name="star" size={16} color="#ea6b14" />
-            <div style={{ fontSize:".86rem", color:"var(--ff-text)" }}>You're rebooking a pro you've worked with — they'll be notified directly to send you a quote.</div>
+            <div style={{ fontSize:".86rem", color:"var(--ff-text)" }}>You're rebooking a pro you've worked with — they'll be notified directly to send you an estimate.</div>
           </div>
         )}
 
@@ -392,7 +392,7 @@ export default function NewRequest() {
                   ))}
                 </div>
                 <p style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .55)", marginTop:".4rem" }}>
-                  Prepaid visits are held securely and released one visit at a time. Set this up after your first quote is approved — unused visits are refundable.
+                  Prepaid visits are held securely and released one visit at a time. Set this up after your first estimate is approved — unused visits are refundable.
                 </p>
               </div>
               {recurringFrequency === "seasonal" && (
@@ -537,7 +537,7 @@ export default function NewRequest() {
           {/* Photo */}
           <div style={{ marginBottom:"1.2rem" }}>
             <label style={s.label}>Photo of the problem <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
-            <p style={{ margin:"0 0 .5rem", fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.45 }}>A clear photo helps contractors give you a faster, more accurate quote — and means fewer surprises on the day.</p>
+            <p style={{ margin:"0 0 .5rem", fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.45 }}>A clear photo helps contractors give you a faster, more accurate estimate — and means fewer surprises on the day.</p>
             <label htmlFor="nr-photo-upload" style={{ display:"flex", alignItems:"center", gap:".75rem", border:"2px dashed " + (photoFile ? "rgba(234,107,20,.5)" : "rgba(var(--ff-fg), .12)"), borderRadius:"10px", padding:"1rem 1.25rem", cursor:"pointer", background: photoFile ? "rgba(234,107,20,.05)" : "transparent", transition:"border-color .2s,background .2s" }}>
               <Ic name="camera" size={22} color="#ea6b14" style={{ flexShrink:0 }} />
               <div>

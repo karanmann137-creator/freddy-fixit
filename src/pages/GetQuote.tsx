@@ -75,7 +75,7 @@ export default function GetQuote() {
       <div style={s.inner}>
         <div style={{ ...s.card, textAlign:"center" }}>
           <div style={{ fontSize:"2.5rem", marginBottom:".5rem" }}>✅</div>
-          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.2rem", letterSpacing:".05em", marginBottom:".5rem" }}>Quote request sent!</h1>
+          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.2rem", letterSpacing:".05em", marginBottom:".5rem" }}>Estimate request sent!</h1>
           <p style={{ color:"rgba(var(--ff-muted), .7)", lineHeight:1.6, marginBottom:"1.5rem" }}>
             Thanks {name.trim().split(" ")[0]} — we've got your request and will reach out shortly with a ballpark price.
           </p>
@@ -97,8 +97,8 @@ export default function GetQuote() {
         <button onClick={() => setLocation("/")} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".82rem", textTransform:"uppercase", letterSpacing:".08em", padding:0, marginBottom:"1.5rem", display:"block" }}>
           ← Home
         </button>
-        <p style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".15em", color:"#ea6b14", marginBottom:".4rem" }}>Free Quote</p>
-        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.6rem", letterSpacing:".06em", marginBottom:".4rem" }}>Get a free quote</h1>
+        <p style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".15em", color:"#ea6b14", marginBottom:".4rem" }}>Free Estimate</p>
+        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.6rem", letterSpacing:".06em", marginBottom:".4rem" }}>Get a free estimate</h1>
         <p style={{ color:"rgba(var(--ff-muted), .6)", fontSize:".95rem", marginBottom:"2rem", lineHeight:1.6 }}>
           No account needed. Tell us what you need and how to reach you — we'll get back with a ballpark price.
         </p>
@@ -129,19 +129,19 @@ export default function GetQuote() {
           <input style={inp} placeholder="e.g. NW Calgary, Beltline…" value={location} onChange={e => setLoc(e.target.value)} />
 
           <label style={s.label}>Tell us about the job</label>
-          <textarea style={{ ...inp, resize:"vertical", minHeight:"110px", borderColor: errors.details ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="What needs doing? The more detail, the better the quote." value={details} onChange={e => { setDetails(e.target.value); setErrors(x => ({ ...x, details:"" })); }} />
+          <textarea style={{ ...inp, resize:"vertical", minHeight:"110px", borderColor: errors.details ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="What needs doing? The more detail, the better the estimate." value={details} onChange={e => { setDetails(e.target.value); setErrors(x => ({ ...x, details:"" })); }} />
           {errors.details && <p style={s.err}>{errors.details}</p>}
-          <p style={{ margin:".5rem 0 0", fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.45 }}><Ic name="camera" size={13} style={{ marginRight:5, verticalAlign:"-2px" }} />Have a photo of the problem? You'll be able to attach one when you confirm your request — it helps contractors give a faster, more accurate quote.</p>
+          <p style={{ margin:".5rem 0 0", fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.45 }}><Ic name="camera" size={13} style={{ marginRight:5, verticalAlign:"-2px" }} />Have a photo of the problem? You'll be able to attach one when you confirm your request — it helps contractors give a faster, more accurate estimate.</p>
 
           {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"var(--ff-danger)", marginTop:"1.25rem" }}>{submitError}</div>}
 
           <div style={{ marginTop:"1.75rem" }}>
             <button style={{ ...s.btn, opacity: submitting ? .6 : 1 }} onClick={submit} disabled={submitting}>
-              {submitting ? "Sending…" : "Get my free quote →"}
+              {submitting ? "Sending…" : "Get my free estimate →"}
             </button>
           </div>
           <p style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .45)", marginTop:"1rem", textAlign:"center", lineHeight:1.5 }}>
-            We only use your details to prepare and send your quote.
+            We only use your details to prepare and send your estimate.
           </p>
         </div>
       </div>

@@ -5,6 +5,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@16.12.0?target=deno";
 
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
 // Fire-and-forget owner alert so a payment problem never goes unnoticed.
 async function alertAdmin(subject: string, detail: string) {
   const key = Deno.env.get("RESEND_API_KEY");
@@ -101,6 +103,50 @@ Deno.serve(async (req) => {
             } catch (_) { /* best-effort */ }
           }
         }
+      } else if (pi.metadata?.kind === "price_topup" && jobId) {
+        // Contractor proposed a HIGHER price on an already-held job; client approved and
+        // paid the delta via a second charge. Apply the pending new breakdown now.
+        const { data: job } = await admin.from("jobs")
+          .select("id, contractor_id, amount, client_fee, price_change_pending, extra_charge_intent_ids")
+          .eq("id", jobId).maybeSingle();
+        if (job?.price_change_pending) {
+          const pc = job.price_change_pending as Record<string, unknown>;
+          const already = (job.extra_charge_intent_ids as string[] | null) ?? [];
+          if (!already.includes(pi.id)) {
+            const newAmount = Number(pc.amount);
+            // Preserve the original client-fee rate (0 if referral-waived).
+            const origRate = Number(job.amount) > 0 ? Number(job.client_fee) / Number(job.amount) : 0;
+            const newClientFee = r2(newAmount * origRate);
+            const newTotal = r2(newAmount + newClientFee);
+            const newPlatformFee = r2(newAmount * 0.07);
+            const newPayout = r2(newAmount * 0.93);
+            await admin.from("jobs").update({
+              amount: newAmount,
+              labour_amount: pc.labour ?? null,
+              parts_amount: pc.parts ?? null,
+              callout_fee: pc.callout ?? null,
+              subject_to_inspection: pc.subject === true,
+              price_low: pc.price_low ?? null,
+              price_high: pc.price_high ?? null,
+              used_base_price: pc.used_base_price === true,
+              client_fee: newClientFee,
+              platform_fee: newPlatformFee,
+              total_charged: newTotal,
+              contractor_payout: newPayout,
+              price_change_pending: null,
+              price_change_proposed_at: null,
+              extra_charge_intent_ids: [...already, pi.id],
+            }).eq("id", jobId);
+            try {
+              await admin.rpc("_notify", {
+                p_user: job.contractor_id, p_type: "price_change_approved",
+                p_title: "Price change approved",
+                p_body: "The client approved and paid your updated price. The new total is now in effect.",
+                p_job: jobId,
+              });
+            } catch (_) { /* best-effort */ }
+          }
+        }
       } else if (jobId) {
         // Single-charge job (unchanged path).
         await admin.from("jobs")
@@ -117,7 +163,7 @@ Deno.serve(async (req) => {
       const jobId = pi.metadata?.job_id;
       // Only single-charge jobs carry job-level payment_status; a failed milestone
       // charge simply leaves the stage 'pending' so the client can retry.
-      if (jobId && pi.metadata?.kind !== "milestone")
+      if (jobId && pi.metadata?.kind !== "milestone" && pi.metadata?.kind !== "price_topup" && pi.metadata?.kind !== "recurring_prepay")
         await admin.from("jobs").update({ payment_status: "failed" }).eq("id", jobId);
       const reason = pi.last_payment_error?.message ?? "unknown reason";
       await alertAdmin(

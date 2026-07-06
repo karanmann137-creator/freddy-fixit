@@ -45,14 +45,14 @@ export default function RequestPhotoQuote({ requestId, photoPath, estimatedQuote
 
   const saveQuote = async () => {
     const parsed = parseFloat(amount);
-    if (isNaN(parsed) || parsed <= 0) { alert("Enter a valid quote amount."); return; }
+    if (isNaN(parsed) || parsed <= 0) { alert("Enter a valid estimate amount."); return; }
     setBusy(true);
     const { error } = await supabase
       .from("client_requests")
       .update({ estimated_quote: parsed, quote_notes: notes || null })
       .eq("id", requestId);
     setBusy(false);
-    if (error) { alert("Couldn't save quote: " + error.message); return; }
+    if (error) { alert("Couldn't save estimate: " + error.message); return; }
     setCurrentQuote(parsed);
     setCurrentNotes(notes || null);
     setEditing(false);
@@ -90,7 +90,7 @@ export default function RequestPhotoQuote({ requestId, photoPath, estimatedQuote
             <input type="file" accept="image/*" disabled={uploading} style={{ display: "none" }}
               onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); e.target.value = ""; }} />
           </label>
-          {!photoUrl && <div style={{ fontSize: ".75rem", color: "rgba(var(--ff-muted), .45)", marginTop: ".35rem" }}>A photo helps contractors quote accurately.</div>}
+          {!photoUrl && <div style={{ fontSize: ".75rem", color: "rgba(var(--ff-muted), .45)", marginTop: ".35rem" }}>A photo helps contractors estimate accurately.</div>}
         </div>
       )}
 
@@ -98,25 +98,25 @@ export default function RequestPhotoQuote({ requestId, photoPath, estimatedQuote
         <div style={s.quoteBox}>
           {!editing ? (
             <>
-              <div style={s.label}>Estimated quote</div>
+              <div style={s.label}>Estimate</div>
               {currentQuote ? (
                 <div style={s.amount}>${currentQuote.toLocaleString()}</div>
               ) : (
-                <div style={{ fontSize: ".82rem", color: "rgba(var(--ff-muted), .4)" }}>No quote yet</div>
+                <div style={{ fontSize: ".82rem", color: "rgba(var(--ff-muted), .4)" }}>No estimate yet</div>
               )}
               {currentNotes && <div style={s.noteText}>{currentNotes}</div>}
-              {saved && <div style={{ fontSize: ".78rem", color: "#22c55e", marginTop: ".4rem" }}>✓ Quote saved</div>}
+              {saved && <div style={{ fontSize: ".78rem", color: "#22c55e", marginTop: ".4rem" }}>✓ Estimate saved</div>}
               {canQuote && (
                 <button style={{ ...s.btn, marginTop: ".65rem", background: "rgba(var(--ff-fg), .07)", color: "rgba(var(--ff-muted), .8)", border: "1px solid rgba(var(--ff-fg), .1)" }}
                   onClick={() => { setAmount(currentQuote?.toString() ?? ""); setNotes(currentNotes ?? ""); setEditing(true); }}>
-                  {currentQuote ? "Edit quote" : "Add quote"}
+                  {currentQuote ? "Edit estimate" : "Add estimate"}
                 </button>
               )}
             </>
           ) : (
             <div style={{ display: "flex", flexDirection: "column" as const, gap: ".55rem" }}>
               <div>
-                <div style={s.label}>Quote amount ($)</div>
+                <div style={s.label}>Estimate amount ($)</div>
                 <input type="number" min="0" step="0.01" placeholder="e.g. 250" value={amount}
                   onChange={e => setAmount(e.target.value)} style={s.input} />
               </div>
@@ -128,7 +128,7 @@ export default function RequestPhotoQuote({ requestId, photoPath, estimatedQuote
               </div>
               <div style={{ display: "flex", gap: ".5rem" }}>
                 <button style={{ ...s.btn, background: "#ea6b14", color: "#fff" }} disabled={busy} onClick={saveQuote}>
-                  {busy ? "Saving…" : "Save quote"}
+                  {busy ? "Saving…" : "Save estimate"}
                 </button>
                 <button style={{ ...s.btn, background: "rgba(var(--ff-fg), .06)", color: "rgba(var(--ff-muted), .7)", border: "1px solid rgba(var(--ff-fg), .1)" }}
                   disabled={busy} onClick={() => setEditing(false)}>Cancel</button>

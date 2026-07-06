@@ -469,7 +469,7 @@ export default function ClientOnboarding() {
                       ))}
                     </div>
                     <p style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .55)", marginTop:".4rem" }}>
-                      Prepaid visits are held securely and released to your pro one visit at a time. You can set this up after your first quote is approved — unused visits are refundable.
+                      Prepaid visits are held securely and released to your pro one visit at a time. You can set this up after your first estimate is approved — unused visits are refundable.
                     </p>
                   </div>
                   {recurringFrequency === "seasonal" && (
@@ -570,7 +570,7 @@ export default function ClientOnboarding() {
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Photo of the Problem <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
                 <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0] ?? null; if (f && f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB."); return; } setSubmitError(""); setPhotoFile(f); }} style={{ ...inp, padding:".6rem", cursor:"pointer" }} />
-                <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginTop:".4rem" }}>A photo helps us give you a faster, more accurate quote. Max 5MB.</p>
+                <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginTop:".4rem" }}>A photo helps us give you a faster, more accurate estimate. Max 5MB.</p>
                 {photoFile && <p style={{ fontSize:".78rem", color:"var(--ff-success)", marginTop:".3rem" }}>Attached: {photoFile.name}</p>}
               </div>
               {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"var(--ff-danger)", marginTop:"1rem" }}>{submitError}</div>}

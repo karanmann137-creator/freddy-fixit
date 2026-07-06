@@ -51,7 +51,7 @@ function QuoteBreakdown({ v, on, calloutHint, price }: { v: any; on: (patch: any
         </div>
       )}
       {v?.used_base_price && <div style={{ fontSize:".74rem", color:"var(--ff-success)", fontWeight:600 }}><Ic name="check-circle" size={12} style={{ marginRight:4 }} />Using platform base price</div>}
-      <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .5)", lineHeight:1.4 }}>Itemise your price (optional) — clients trust and approve detailed quotes faster.</div>
+      <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .5)", lineHeight:1.4 }}>Itemise your price (optional) — clients trust and approve detailed estimates faster.</div>
       <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
         {keys.map(([key,label,ph]) => (
           <div key={key} style={{ flex:"1 1 80px" }}>
@@ -122,7 +122,7 @@ export default function ContractorDashboard() {
   // (handy at tax time). Built entirely in-browser — no server round-trip.
   const exportPayoutsCsv = () => {
     const esc = (v: any) => '"' + String(v ?? "").replace(/"/g, '""') + '"';
-    const header = ["Service", "Date", "Status", "Quote", "Your payout"].map(esc).join(",");
+    const header = ["Service", "Date", "Status", "Estimate", "Your payout"].map(esc).join(",");
     const lines = myJobs.map((j: any) => [
       j.request?.service_needed ?? "Job",
       new Date(j.created_at).toLocaleDateString(),
@@ -392,13 +392,16 @@ export default function ContractorDashboard() {
 
   const setBid = (id: string, patch: any) => setBidForm(p => ({ ...p, [id]: { ...{ amount:"", message:"" }, ...(p[id] ?? {}), ...patch } }));
 
+  // Contractor proposes a price change at any live stage, up until payout.
+  // On an unpaid job the client just re-approves the schedule; on a held job the
+  // change is queued for the client to approve (and pay any top-up) before release.
   const requestRequote = async (job: any) => {
     const f = requoteForm[job.id] || { amount:"", reason:"", labour:"", parts:"", callout:"", subject:false };
     if (!f.reason || !f.reason.trim()) { alert("Add a short reason so the client understands the change."); return; }
     const total = quoteTotal(f);
     if (total == null) { alert("Enter the new price or an itemised breakdown."); return; }
     setBusyJobId(job.id);
-    const { error } = await supabase.rpc("request_quote_revision", {
+    const { data, error } = await supabase.rpc("propose_price_change", {
       p_job_id: job.id,
       p_amount: total,
       p_reason: f.reason,
@@ -412,8 +415,58 @@ export default function ContractorDashboard() {
     });
     setBusyJobId(null);
     if (error) { alert("Couldn't send price change: " + error.message); return; }
-    setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: "assigned", amount: total, client_approved_at: null, schedule_proposed_at: new Date().toISOString() } : j));
+    if (data === "pending_client_approval") {
+      // Held job — queued for the client. Show the pending banner; price applies once they approve.
+      const pending = {
+        amount: total, reason: f.reason,
+        labour: f.labour ? Number(f.labour) : null,
+        parts: f.parts ? Number(f.parts) : null,
+        callout: f.callout ? Number(f.callout) : null,
+        subject: !!f.subject,
+        price_low: f.price_low ? Number(f.price_low) : null,
+        price_high: f.price_high ? Number(f.price_high) : null,
+        used_base_price: !!f.used_base_price,
+      };
+      setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, price_change_pending: pending, price_change_proposed_at: new Date().toISOString() } : j));
+    } else {
+      // Unpaid job — back to the normal approve-the-schedule flow at the new price.
+      setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: "assigned", amount: total, client_approved_at: null, schedule_proposed_at: new Date().toISOString() } : j));
+    }
     setRequoteOpen(o => ({ ...o, [job.id]: false }));
+  };
+
+  // Reusable "adjust the price" block. Shown at every live stage (scheduled,
+  // in_progress, pending_confirmation) until the money is released to the pro.
+  const renderPriceChange = (job: any) => {
+    if (job.payment_status === "released") return null;
+    const rf = requoteForm[job.id] || { amount:"", reason:"", labour:"", parts:"", callout:"", subject:false };
+    const setRf = (patch: any) => setRequoteForm(o => ({ ...o, [job.id]: { ...rf, ...patch } }));
+    const pending = job.price_change_pending;
+    return (
+      <div style={{ borderTop:"1px solid rgba(var(--ff-fg), .07)", paddingTop:".7rem" }}>
+        {pending ? (
+          <div style={{ fontSize:".82rem", color:"var(--ff-warn)", lineHeight:1.45 }}>
+            <Ic name="clock" size={13} style={{ marginRight:4 }} />
+            {"Waiting for the client to approve your new price of $" + pending.amount + (pending.reason ? " — " + pending.reason : "") + ". It applies (and any extra is charged) once they approve."}
+          </div>
+        ) : !requoteOpen[job.id] ? (
+          <button onClick={() => setRequoteOpen(o => ({ ...o, [job.id]: true }))} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".82rem", fontWeight:600, cursor:"pointer", padding:0 }}>
+            <Ic name="pencil" size={13} style={{ marginRight:4 }} />Need to adjust the price? Request a change
+          </button>
+        ) : (
+          <div style={{ display:"flex", flexDirection:"column", gap:".6rem" }}>
+            <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.45 }}>Send the client a revised estimate. They'll re-approve (and cover any extra) before it takes effect — your chat history stays.</div>
+            <input type="number" min="0" value={rf.amount} placeholder="New total price $" onChange={e => setRf({ amount: e.target.value })} style={ffInp} />
+            <QuoteBreakdown v={rf} on={setRf} calloutHint={contractor?.min_callout ?? null} price={priceFor(job.request?.service_needed)} />
+            <textarea value={rf.reason} rows={2} placeholder="Reason for the change (e.g. found a cracked pipe behind the wall)" onChange={e => setRf({ reason: e.target.value })} style={{ ...ffInp, resize:"vertical" as const }} />
+            <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
+              <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyJobId === job.id} onClick={() => requestRequote(job)}>{busyJobId === job.id ?"Sending…" : "Send revised estimate"}</button>
+              <button style={{ ...s.btn }} onClick={() => setRequoteOpen(o => ({ ...o, [job.id]: false }))}>Cancel</button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const hideJob = async (r: any) => {
@@ -696,34 +749,14 @@ export default function ContractorDashboard() {
                             {!job.is_milestone && <button style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none", fontWeight:600 }} disabled={busyJobId === job.id} onClick={() => markComplete(job)}>{busyJobId === job.id ?"Working…" : "✓ Mark complete"}</button>}
                             <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJobId === job.id} onClick={() => withdrawJob(job)}>Withdraw</button>
                           </div>
-                          {(() => {
-                            const rf = requoteForm[job.id] || { amount:"", reason:"", labour:"", parts:"", callout:"", subject:false };
-                            const setRf = (patch: any) => setRequoteForm(o => ({ ...o, [job.id]: { ...rf, ...patch } }));
-                            return (
-                              <div style={{ borderTop:"1px solid rgba(var(--ff-fg), .07)", paddingTop:".7rem" }}>
-                                {!requoteOpen[job.id] ? (
-                                  <button onClick={() => setRequoteOpen(o => ({ ...o, [job.id]: true }))} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".82rem", fontWeight:600, cursor:"pointer", padding:0 }}>
-                                    <Ic name="pencil" size={13} style={{ marginRight:4 }} />Found extra work? Request a price change
-                                  </button>
-                                ) : (
-                                  <div style={{ display:"flex", flexDirection:"column", gap:".6rem" }}>
-                                    <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.45 }}>Send the client a revised quote. They'll re-approve before you continue — your chat history stays.</div>
-                                    <input type="number" min="0" value={rf.amount} placeholder="New total price $" onChange={e => setRf({ amount: e.target.value })} style={ffInp} />
-                                    <QuoteBreakdown v={rf} on={setRf} calloutHint={contractor?.min_callout ?? null} price={priceFor(job.request?.service_needed)} />
-                                    <textarea value={rf.reason} rows={2} placeholder="Reason for the change (e.g. found a cracked pipe behind the wall)" onChange={e => setRf({ reason: e.target.value })} style={{ ...ffInp, resize:"vertical" as const }} />
-                                    <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
-                                      <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyJobId === job.id} onClick={() => requestRequote(job)}>{busyJobId === job.id ?"Sending…" : "Send revised quote"}</button>
-                                      <button style={{ ...s.btn }} onClick={() => setRequoteOpen(o => ({ ...o, [job.id]: false }))}>Cancel</button>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()}
+                          {renderPriceChange(job)}
                         </>
                       )}
                       {job.status === "pending_confirmation" && (
-                        <div style={{ fontSize:".85rem", color:"var(--ff-warn)" }}><Ic name="clock" size={13} style={{ marginRight:4 }} />You marked this complete — waiting for the client to confirm.</div>
+                        <>
+                          <div style={{ fontSize:".85rem", color:"var(--ff-warn)" }}><Ic name="clock" size={13} style={{ marginRight:4 }} />You marked this complete — waiting for the client to confirm.</div>
+                          {renderPriceChange(job)}
+                        </>
                       )}
                       {job.status === "completed" && (
                         <div style={{ fontSize:".85rem", color:"var(--ff-success)" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Job completed and confirmed.</div>
@@ -856,7 +889,7 @@ export default function ContractorDashboard() {
             <div style={s.card}>
               <div style={s.cardTitle}>Your default pricing</div>
               <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"1rem", lineHeight:1.5 }}>
-                Set these once and they'll pre-fill your call-out fee when you quote, so you bid faster and more consistently. Clients don't see these numbers.
+                Set these once and they'll pre-fill your call-out fee when you send an estimate, so you bid faster and more consistently. Clients don't see these numbers.
               </p>
               <div style={{ display:"flex", gap:".75rem", flexWrap:"wrap" as const }}>
                 <div style={{ flex:"1 1 130px" }}>
@@ -1113,7 +1146,7 @@ export default function ContractorDashboard() {
                     {job.amount ? (
                       <>
                         <div style={{ fontSize:".95rem", fontWeight:600, color:"#22c55e" }}>${netPayout(job).toFixed(2)}</div>
-                        <div style={{ fontSize:".66rem", color:"rgba(var(--ff-muted), .4)" }}>your payout · ${job.amount} quote</div>
+                        <div style={{ fontSize:".66rem", color:"rgba(var(--ff-muted), .4)" }}>your payout · ${job.amount} estimate</div>
                       </>
                     ) : <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)" }}>TBD</div>}
                     <div style={{ fontSize:".72rem", textTransform:"capitalize", color: STATUS_COLORS[job.status] ?? "#94a3b8", marginTop:".15rem" }}>{job.status.replace("_"," ")}</div>

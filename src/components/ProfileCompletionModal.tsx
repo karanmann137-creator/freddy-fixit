@@ -33,7 +33,7 @@ export default function ProfileCompletionModal({
         list.push({ key: "credentials", label: "Add your licence & insurance", detail: "Upload your trade licence (if your trade needs one) and proof of liability insurance so clients can hire you with confidence." });
       }
       if (!contractor?.company_name) {
-        list.push({ key: "company", label: "Add your business name", detail: "Your company name appears on your public profile and quotes." });
+        list.push({ key: "company", label: "Add your business name", detail: "Your company name appears on your public profile and estimates." });
       }
     } else {
       if (!profile?.phone) {

@@ -464,6 +464,43 @@ export default function ClientDashboard() {
     }
   };
 
+  // Client responds to a contractor's proposed price change (any live stage, pre-payout).
+  const approvePriceChange = async () => {
+    if (!activeJob) return;
+    setBusyReq(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("adjust-payment", { body: { job_id: activeJob.id } });
+      const errMsg = error ? error.message : (data && (data as any).error);
+      if (errMsg) { setBusyReq(false); alert("Couldn't apply the price change: " + errMsg); return; }
+      if (data && (data as any).mode === "topup" && (data as any).url) {
+        // Increase — pay the extra via Stripe Checkout; the webhook applies the new price.
+        window.location.href = (data as any).url;
+        return;
+      }
+      // Decrease or no-change — applied immediately (any refund is issued by adjust-payment).
+      const pc = activeJob.price_change_pending;
+      setActiveJob((j: any) => j ? { ...j, amount: pc?.amount ?? j.amount, price_change_pending: null } : j);
+      setBusyReq(false);
+    } catch (e: any) {
+      setBusyReq(false);
+      alert("Couldn't apply the price change: " + String(e?.message ?? e));
+    }
+  };
+
+  const declinePriceChange = async () => {
+    if (!activeJob) return;
+    if (!(await askConfirm({
+      title: "Decline the price change?",
+      message: "Your pro's proposed new price won't be applied — the current agreed price stays in place.",
+      confirmLabel: "Yes, decline", danger: false,
+    }))) return;
+    setBusyReq(true);
+    const { error } = await supabase.rpc("decline_price_change", { p_job_id: activeJob.id });
+    setBusyReq(false);
+    if (error) { alert("Couldn't decline: " + error.message); return; }
+    setActiveJob((j: any) => j ? { ...j, price_change_pending: null } : j);
+  };
+
   useEffect(() => {
     if (activeJob?.completion_photo_path) {
       supabase.storage.from("completion-photos").createSignedUrl(activeJob.completion_photo_path, 3600)
@@ -766,6 +803,22 @@ export default function ClientDashboard() {
 
                     {activeJob && activeJob.payment_status !== "disputed" && (
                       <div style={{ marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)" }}>
+                        {activeJob.price_change_pending && (
+                          <div style={{ marginBottom:"1rem", padding:".9rem", borderRadius:"10px", background:"rgba(251,191,36,.08)", border:"1px solid rgba(251,191,36,.35)" }}>
+                            <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}><Ic name="alert-triangle" size={14} style={{ marginRight:4 }} />Your pro proposed a new price</div>
+                            <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .85)", lineHeight:1.5, marginBottom:".5rem" }}>
+                              {"Current: $" + Number(activeJob.amount ?? 0).toFixed(2) + "  \u2192  New: $" + Number(activeJob.price_change_pending.amount).toFixed(2)}
+                              {(() => { const d = Number(activeJob.price_change_pending.amount) - Number(activeJob.amount ?? 0); return d > 0.005 ? "  (you'll pay $" + d.toFixed(2) + " more)" : d < -0.005 ? "  (you'll be refunded $" + Math.abs(d).toFixed(2) + ")" : ""; })()}
+                            </div>
+                            {activeJob.price_change_pending.reason && (
+                              <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.45, marginBottom:".6rem", fontStyle:"italic" as const }}>{"\u201c" + activeJob.price_change_pending.reason + "\u201d"}</div>
+                            )}
+                            <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
+                              <button style={s.primaryBtn} disabled={busyReq} onClick={approvePriceChange}>{busyReq ? "…" : (Number(activeJob.price_change_pending.amount) > Number(activeJob.amount ?? 0) + 0.005 ? "Approve & pay difference" : "Approve new price")}</button>
+                              <button style={s.btn} disabled={busyReq} onClick={declinePriceChange}>Decline</button>
+                            </div>
+                          </div>
+                        )}
                         {activeJob.status === "assigned" && activeJob.client_rescheduled_at && !activeJob.reschedule_accepted_at && (
                           <div>
                             <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}><Ic name="clock" size={14} style={{ marginRight:4 }} />Waiting for your pro to accept the new time</div>
@@ -836,7 +889,7 @@ export default function ClientDashboard() {
                               <>
                                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".75rem" }}>Confirm the work is done and we'll release your held payment to the contractor. If you don't, it auto-confirms in a few days.</div>
                                 <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
-                                  <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm & release payment"}</button>
+                                  <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq || !!activeJob.price_change_pending} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm & release payment"}</button>
                                   <button style={{ ...s.btn, color:"var(--ff-warn)", borderColor:"rgba(251,191,36,.35)", background:"rgba(251,191,36,.08)" }} disabled={busyReq} onClick={() => setReportOpen(true)}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />File a claim</button>
                                   <button style={s.btn} onClick={() => downloadReceipt(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Download receipt</button>
                                 </div>
@@ -849,7 +902,7 @@ export default function ClientDashboard() {
                             ) : (
                               <>
                                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".75rem" }}>Please confirm the work is done. If you don't, it auto-confirms in a few days.</div>
-                                <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm completion"}</button>
+                                <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq || !!activeJob.price_change_pending} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm completion"}</button>
                               </>
                             )}
                           </>

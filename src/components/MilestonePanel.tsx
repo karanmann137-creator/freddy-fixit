@@ -116,7 +116,7 @@ export default function MilestonePanel({ job, role, onUpdated }: { job: any; rol
   const removeStage = (i: number) => setStages(prev => prev.length <= 2 ? prev : prev.filter((_, j) => j !== i));
 
   const propose = () => run(async () => {
-    if (!sumOk) throw new Error("Stage amounts must add up to the quote " + money(total));
+    if (!sumOk) throw new Error("Stage amounts must add up to the estimate " + money(total));
     const payload = stages.map(s => ({ title: s.title.trim() || "Stage", amount: Number(s.amount) }));
     const { error } = await supabase.rpc("propose_milestones", { p_job_id: job.id, p_stages: payload });
     if (error) throw error;
@@ -212,7 +212,7 @@ export default function MilestonePanel({ job, role, onUpdated }: { job: any; rol
       <div style={wrap}>
         <div style={head}><Ic name="clipboard-list" size={13} />Milestone payment plan</div>
         <div style={{ fontSize: ".82rem", color: "rgba(var(--ff-muted), .8)", lineHeight: 1.5, marginBottom: ".8rem" }}>
-          This job is over $2,000, so the client can pay in stages. Break the {money(total)} quote into 2–5 stages — they fund each stage as it starts and you're paid as each is approved.
+          This job is over $2,000, so the client can pay in stages. Break the {money(total)} estimate into 2–5 stages — they fund each stage as it starts and you're paid as each is approved.
         </div>
         <Banner />
         {(showBuilder || !proposed) ? (

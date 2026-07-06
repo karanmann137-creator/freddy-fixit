@@ -532,9 +532,9 @@ export default function AdminDashboard() {
         {tab === "leads" && (
           <div>
             <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".82rem", marginBottom:"1rem", lineHeight:1.5 }}>
-              Quote requests from visitors who haven't signed up. Reach out, then mark them contacted.
+              Estimate requests from visitors who haven't signed up. Reach out, then mark them contacted.
             </p>
-            {leads.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No quote leads yet.</p>}
+            {leads.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No estimate leads yet.</p>}
             {leads.map(l => (
               <div key={l.id} style={{ ...s.card, ...(l.status === "new" ? { borderColor:"rgba(234,107,20,.4)" } : {}) }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const, gap:".5rem" }}>
@@ -581,7 +581,7 @@ export default function AdminDashboard() {
                   <div style={{ display:"flex", gap:".75rem", flexWrap:"wrap" as const, marginBottom:"1.25rem" }}>
                     <div style={{ ...s.card, flex:"1 1 180px", margin:0, textAlign:"center" as const }}>
                       <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"#ea6b14", lineHeight:1 }}>{health.new_leads_count ?? 0}</div>
-                      <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", marginTop:".35rem" }}>New quote leads</div>
+                      <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", marginTop:".35rem" }}>New estimate leads</div>
                     </div>
                     <div style={{ ...s.card, flex:"1 1 180px", margin:0, textAlign:"center" as const }}>
                       <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"var(--ff-warn)", lineHeight:1 }}>{health.pending_contractors_count ?? 0}</div>

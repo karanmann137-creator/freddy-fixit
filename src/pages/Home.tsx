@@ -336,7 +336,7 @@ export default function Home() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.4 }}
             style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:".7rem", marginBottom:"1.7rem" }}>
             <span style={{ display:"inline-flex", alignItems:"center", gap:".45rem", fontSize:"1rem", fontWeight:500, color:"rgba(var(--ff-fg), .9)" }}>
-              <Ic name="clipboard-list" size={17} color="#ea6b14" />Free quote — no signup
+              <Ic name="clipboard-list" size={17} color="#ea6b14" />Free estimate — no signup
             </span>
             <div style={{ display:"flex", flexWrap:"wrap", justifyContent:"center", gap:".45rem 1.4rem", maxWidth:"560px" }}>
               {[
@@ -354,8 +354,8 @@ export default function Home() {
             <div className="ff-card ff-card-client" onClick={() => setLocation("/client-onboarding")}>
               <div className="ff-card-icon"><Ic name="home" size={32} color="#ea6b14" /></div>
               <div className="ff-card-title">I Need a Fix</div>
-              <div className="ff-card-sub">Home repairs &amp; vehicle maintenance — get a free quote</div>
-              <div className="ff-card-cta">Get my free quote →</div>
+              <div className="ff-card-sub">Home repairs &amp; vehicle maintenance — get a free estimate</div>
+              <div className="ff-card-cta">Get my free estimate →</div>
             </div>
             <div className="ff-card ff-card-contractor" onClick={() => setLocation("/contractor-onboarding")}>
               <div className="ff-card-icon"><Ic name="wrench" size={32} color="#ea6b14" /></div>
@@ -467,7 +467,7 @@ export default function Home() {
             <h2 className="ff-about-headline">Build Strong.<br /><span>Maintain Stronger.</span></h2>
             <p className="ff-about-body">
               We connect <strong>busy Calgarians</strong> with trusted local tradespeople for business, home repairs and vehicle maintenance —{" "}
-              <strong>compare quotes without calling.</strong>
+              <strong>compare estimates without calling.</strong>
             </p>
             <p className="ff-about-tagline">
               Power-packed maintenance & repair solutions and on-site services that dominate deadlines and crush downtime.

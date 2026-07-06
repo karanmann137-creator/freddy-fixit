@@ -190,16 +190,18 @@ Deno.serve(async (req) => {
       return json({ ok: true, transfer_id: transfer.id, occurrences_released: released });
     }
 
-    // ---------- JOB MODE (unchanged) ----------
+    // ---------- JOB MODE (unchanged except price-change guard) ----------
     if (!job_id) return json({ error: "Missing job_id" }, 400);
 
     const { data: job } = await admin.from("jobs")
-      .select("id, client_id, contractor_id, contractor_payout, payment_status, client_confirmed_at, stripe_transfer_id")
+      .select("id, client_id, contractor_id, contractor_payout, payment_status, client_confirmed_at, stripe_transfer_id, price_change_pending")
       .eq("id", job_id).maybeSingle();
     if (!job) return json({ error: "Job not found" }, 404);
     if (!internal && job.client_id !== userId && meRole !== "admin")
       return json({ error: "Not authorized" }, 403);
     if (job.payment_status === "released") return json({ ok: true, already: true });
+    if (job.price_change_pending)
+      return json({ error: "A price change is pending client approval. Resolve it before releasing payment." }, 409);
     if (job.payment_status !== "held") return json({ error: "Payment is not in a releasable (held) state" }, 409);
     if (!job.client_confirmed_at) return json({ error: "Job is not confirmed yet" }, 409);
 

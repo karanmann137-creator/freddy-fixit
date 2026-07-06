@@ -86,7 +86,7 @@ function ArticleComparison() {
       <h2>What to Compare</h2>
       <p><strong>Speed.</strong> If you need someone quickly, active-dispatch platforms generally connect you faster than browsing a directory and waiting for replies.</p>
       <p><strong>Vetting.</strong> This is where platforms differ most. Some, like Freddy Fix It, require contractors to submit a trade licence and proof of insurance before they can accept work. Others leave verification up to you. Whatever platform you use, confirm a contractor is licensed and insured before they start.</p>
-      <p><strong>Pricing transparency.</strong> Look for fixed-price quotes before any work begins, so you aren't surprised by the final invoice.</p>
+      <p><strong>Pricing transparency.</strong> Look for fixed-price estimates before any work begins, so you aren't surprised by the final invoice.</p>
       <p><strong>Protection if something goes wrong.</strong> Check whether the platform offers any recourse, guarantee, or support if a job doesn't go as planned.</p>
 
       <h2>How Freddy Fix It Works</h2>
@@ -105,7 +105,7 @@ function ArticlePricing() {
   return (
     <article>
       <p>One of the most common questions Calgary homeowners ask before hiring a contractor: <em>how much should I actually be paying?</em> Pricing varies by trade, job complexity, and contractor experience — but here are some general ranges to give you a rough sense in 2026.</p>
-      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general estimates for illustration only, not quotes or guarantees. Actual prices depend on your specific job and the contractor you hire. Always get a written quote before any work begins.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general ballpark ranges for illustration only, not firm estimates or guarantees. Actual prices depend on your specific job and the contractor you hire. Always get a written estimate before any work begins.</p>
 
       <h2>Calgary Contractor Hourly Rates by Trade (2026)</h2>
       <BarChart
@@ -167,7 +167,7 @@ function ArticleWinter() {
       <p><strong>12. Stock emergency supplies.</strong> Keep a snow shovel, ice melt, and emergency flashlights accessible. If you're on well water, know where your pump shutoff is.</p>
 
       <h2>When to Call a Pro</h2>
-      <p>Furnace inspections, roof checks, insulation work, and gutter cleaning are all jobs that Calgary homeowners commonly hand off to contractors in September and October — before the rush hits. Booking early means better availability and often better prices. Post your job on Freddy Fix It to get 3 vetted quotes.</p>
+      <p>Furnace inspections, roof checks, insulation work, and gutter cleaning are all jobs that Calgary homeowners commonly hand off to contractors in September and October — before the rush hits. Booking early means better availability and often better prices. Post your job on Freddy Fix It to get 3 vetted estimates.</p>
     </article>
   );
 }
@@ -185,7 +185,7 @@ function ArticleVetting() {
       <p>If an uninsured contractor is injured on your property or damages your home, you may have limited recourse — and depending on the circumstances, you could face liability questions of your own. If you're unsure where you stand, a quick conversation with your insurer or a lawyer is worthwhile. All contractors on Freddy Fix It are required to carry commercial general liability insurance before their first job.</p>
 
       <h2>3. Low Bids Often Come with Hidden Costs</h2>
-      <p>The contractor who quotes $200 for a job that others quoted $600 for isn't saving you money — he's using inferior materials, cutting corners on code compliance, or planning to upcharge mid-job. Vetting helps you compare apples to apples: all licensed, all insured, all at fair market rates.</p>
+      <p>The contractor who estimates $200 for a job that others estimated $600 for isn't saving you money — he's using inferior materials, cutting corners on code compliance, or planning to upcharge mid-job. Vetting helps you compare apples to apples: all licensed, all insured, all at fair market rates.</p>
 
       <h2>4. Not All Reviews Are Verified</h2>
       <p>On some platforms, reviews aren't tied to a confirmed transaction, which means they can be harder to trust. It's worth checking how a platform verifies its reviews. On Freddy Fix It, reviews are only unlocked after a job is marked complete by both parties — and tied to real transaction records.</p>
@@ -204,7 +204,7 @@ function ArticlePlumberCost() {
   return (
     <article>
       <p>Plumbing problems don't wait for a convenient time — and neither should you. Whether it's a leaky faucet, a burst pipe, or a water heater replacement, having a rough sense of what Calgary plumbers charge in 2026 can help you spot a fair deal.</p>
-      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general estimates for illustration only, not quotes or guarantees. Actual costs depend on your specific job and the contractor you hire. Always get a written quote before work begins.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general ballpark ranges for illustration only, not firm estimates or guarantees. Actual costs depend on your specific job and the contractor you hire. Always get a written estimate before work begins.</p>
 
       <h2>Calgary Plumber Rates by Job Type (2026)</h2>
       <BarChart
@@ -222,7 +222,7 @@ function ArticlePlumberCost() {
       />
 
       <h2>Hourly Rate vs Flat-Fee Jobs</h2>
-      <p>Most Calgary plumbers charge <strong>$120–$160/hour</strong> with a 1-hour minimum. Simple jobs like clearing a slow drain or replacing a toilet fill valve are often quoted at a flat fee — usually $150–$250 all-in. Bigger jobs (water heater, main line repair) are typically flat-fee or time-and-materials.</p>
+      <p>Most Calgary plumbers charge <strong>$120–$160/hour</strong> with a 1-hour minimum. Simple jobs like clearing a slow drain or replacing a toilet fill valve are often estimated at a flat fee — usually $150–$250 all-in. Bigger jobs (water heater, main line repair) are typically flat-fee or time-and-materials.</p>
       <p><strong>Emergency / after-hours calls</strong> add a $75–$150 surcharge on top of the standard rate. If you can wait until Monday morning, you'll pay significantly less.</p>
 
       <h2>What Affects the Final Price?</h2>
@@ -230,10 +230,10 @@ function ArticlePlumberCost() {
       <p><strong>Permit requirements</strong>: In Calgary, any work on the main water line or water heater requires a permit through the City. Licensed plumbers handle this automatically; unlicensed ones skip it — putting you at risk when you sell.</p>
 
       <h2>Red Flags to Watch For</h2>
-      <p>Be cautious of any plumber who gives you a rock-bottom quote over the phone without seeing the job, asks for full payment upfront, or can't provide a trade licence number. All plumbers on Freddy Fix It are licensed and insured — you get a fixed-price quote before anyone touches your pipes.</p>
+      <p>Be cautious of any plumber who gives you a rock-bottom estimate over the phone without seeing the job, asks for full payment upfront, or can't provide a trade licence number. All plumbers on Freddy Fix It are licensed and insured — you get a fixed-price estimate before anyone touches your pipes.</p>
 
       <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
-        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Need a plumber in Calgary? Get 3 fixed-price quotes from licensed pros.</p>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Need a plumber in Calgary? Get 3 fixed-price estimates from licensed pros.</p>
         <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
@@ -245,7 +245,7 @@ function ArticleRoofCost() {
   return (
     <article>
       <p>Replacing a roof is one of the largest home maintenance expenses a Calgary homeowner will face. Hail seasons, heavy snow loads, and UV exposure mean Calgary roofs work harder than most. Here's a general sense of what a replacement can cost in 2026 — and what drives the price up or down.</p>
-      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general estimates for illustration only, not quotes or guarantees. Roofing costs vary widely with materials, roof size, and condition. Always get a written quote and an on-site assessment before committing.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general ballpark ranges for illustration only, not firm estimates or guarantees. Roofing costs vary widely with materials, roof size, and condition. Always get a written estimate and an on-site assessment before committing.</p>
 
       <h2>Calgary Roof Replacement Cost by Size</h2>
       <BarChart
@@ -266,13 +266,13 @@ function ArticleRoofCost() {
       <p><strong>Decking replacement</strong>: If the plywood sheathing underneath is rotted or damaged, it needs to be replaced at $3–$5 per sq ft. This is only discoverable once shingles are removed — a reputable contractor will show you the damage before proceeding.</p>
 
       <h2>Insurance Claims After Hail</h2>
-      <p>Calgary is one of Canada's most hail-prone cities. If your roof was damaged in a storm, file an insurance claim before getting quotes — most policies cover replacement minus your deductible. Hire a contractor <em>after</em> the adjuster's visit, not before. Legitimate roofers will work with your insurer; those who pressure you to sign contracts first are a red flag.</p>
+      <p>Calgary is one of Canada's most hail-prone cities. If your roof was damaged in a storm, file an insurance claim before getting estimates — most policies cover replacement minus your deductible. Hire a contractor <em>after</em> the adjuster's visit, not before. Legitimate roofers will work with your insurer; those who pressure you to sign contracts first are a red flag.</p>
 
       <h2>Repair vs. Replace</h2>
       <p>If your roof is under 15 years old and damage is isolated (a few cracked shingles, one flashing failure), repair may be the right call — typically $300–$800. Over 20 years old or more than 30% damaged, replacement is almost always more cost-effective than patching.</p>
 
       <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
-        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Get quotes from vetted Calgary roofers — no obligation.</p>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Get estimates from vetted Calgary roofers — no obligation.</p>
         <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Roofing Job</button>
       </div>
     </article>
@@ -317,8 +317,8 @@ function ArticleElectricianCost() {
   const [, setLocation] = useLocation();
   return (
     <article>
-      <p>Whether you're adding a circuit for a hot tub, upgrading an aging panel, or finally fixing that dead outlet, electrical work is one area where cutting corners isn't worth it. Here's a rough sense of what Calgary electricians charge in 2026 so you can budget and spot a fair quote.</p>
-      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general estimates for illustration only, not quotes or guarantees. Actual costs depend on your specific job and the contractor you hire. Always get a written quote before work begins.</p>
+      <p>Whether you're adding a circuit for a hot tub, upgrading an aging panel, or finally fixing that dead outlet, electrical work is one area where cutting corners isn't worth it. Here's a rough sense of what Calgary electricians charge in 2026 so you can budget and spot a fair estimate.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general ballpark ranges for illustration only, not firm estimates or guarantees. Actual costs depend on your specific job and the contractor you hire. Always get a written estimate before work begins.</p>
 
       <h2>Calgary Electrician Costs by Job Type (2026)</h2>
       <BarChart
@@ -336,7 +336,7 @@ function ArticleElectricianCost() {
       />
 
       <h2>Hourly Rate vs Flat-Fee Jobs</h2>
-      <p>Most Calgary electricians charge <strong>$110–$150/hour</strong> with a one-hour minimum and a service-call fee. Small, well-defined jobs — swapping a light fixture, adding an outlet — are usually quoted flat. Larger jobs like a panel upgrade or a sub-panel are almost always flat-fee after an on-site assessment.</p>
+      <p>Most Calgary electricians charge <strong>$110–$150/hour</strong> with a one-hour minimum and a service-call fee. Small, well-defined jobs — swapping a light fixture, adding an outlet — are usually estimated flat. Larger jobs like a panel upgrade or a sub-panel are almost always flat-fee after an on-site assessment.</p>
       <p><strong>Emergency / after-hours calls</strong> typically add a $90–$175 surcharge. A flickering light can usually wait for a regular weekday appointment; a burning smell or sparking outlet cannot — shut the breaker off and call right away.</p>
 
       <h2>What Affects the Final Price?</h2>
@@ -344,10 +344,10 @@ function ArticleElectricianCost() {
       <p><strong>Permits and inspection</strong>: In Alberta, most electrical work requires a permit and an inspection by a Safety Codes Officer. Licensed electricians pull the permit and book the inspection as part of the job. Skipping it can void your home insurance and create problems when you sell.</p>
 
       <h2>Red Flags to Watch For</h2>
-      <p>Be wary of anyone who offers to do panel or service work "without a permit to save you money," can't provide a Master Electrician or journeyman certification, or quotes a major job sight-unseen. Electrical mistakes cause fires — this is the wrong place to gamble. Every electrician on Freddy Fix It is licensed and insured, and you get a fixed-price quote before any work starts.</p>
+      <p>Be wary of anyone who offers to do panel or service work "without a permit to save you money," can't provide a Master Electrician or journeyman certification, or estimates a major job sight-unseen. Electrical mistakes cause fires — this is the wrong place to gamble. Every electrician on Freddy Fix It is licensed and insured, and you get a fixed-price estimate before any work starts.</p>
 
       <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
-        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Need an electrician in Calgary? Get fixed-price quotes from licensed pros.</p>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Need an electrician in Calgary? Get fixed-price estimates from licensed pros.</p>
         <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
@@ -359,7 +359,7 @@ function ArticleFurnaceCost() {
   return (
     <article>
       <p>In Calgary, your furnace isn't a luxury — it's survival gear for seven months of the year. When it starts making noise, short-cycling, or quits on a -30°C night, you need to know whether you're looking at a cheap repair or a full replacement. Here's what to expect in 2026.</p>
-      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general estimates for illustration only, not quotes or guarantees. Actual costs depend on your specific equipment, home, and the contractor you hire. Always get a written quote before work begins.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general ballpark ranges for illustration only, not firm estimates or guarantees. Actual costs depend on your specific equipment, home, and the contractor you hire. Always get a written estimate before work begins.</p>
 
       <h2>Repair vs Replacement Costs (2026)</h2>
       <BarChart
@@ -387,10 +387,10 @@ function ArticleFurnaceCost() {
       <p>Federal and provincial efficiency rebate programs change year to year. Before you replace, ask your contractor whether your chosen unit qualifies for any current rebate — it can offset hundreds of dollars. Confirm any rebate directly with the program, as eligibility and amounts change often.</p>
 
       <h2>Red Flags to Watch For</h2>
-      <p>Be cautious of a technician who pushes a full replacement on the first visit without showing you the failed part, or who can't provide a gas fitter licence. A cracked heat exchanger is a legitimate reason to replace — but ask to see it. Every HVAC pro on Freddy Fix It is licensed and insured, and you get a fixed-price quote before any work begins.</p>
+      <p>Be cautious of a technician who pushes a full replacement on the first visit without showing you the failed part, or who can't provide a gas fitter licence. A cracked heat exchanger is a legitimate reason to replace — but ask to see it. Every HVAC pro on Freddy Fix It is licensed and insured, and you get a fixed-price estimate before any work begins.</p>
 
       <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
-        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Furnace trouble? Get fixed-price quotes from licensed Calgary HVAC pros.</p>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Furnace trouble? Get fixed-price estimates from licensed Calgary HVAC pros.</p>
         <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
@@ -407,7 +407,7 @@ function ArticleHiringContractor() {
       <p><strong>1. Are you licensed for this trade, and can I see it?</strong> In Alberta, trades like electrical, plumbing, and gas fitting require certification. Ask for the number and don't be shy about it — legitimate contractors expect this.</p>
       <p><strong>2. Do you carry liability insurance and WCB coverage?</strong> Liability insurance protects your property if something goes wrong; WCB (Workers' Compensation) protects you if a worker is injured on your job. Without it, you could be on the hook.</p>
       <p><strong>3. Will you pull the required permits?</strong> A contractor who suggests skipping permits "to save money" is shifting risk onto you. More on permits below.</p>
-      <p><strong>4. Can I get the quote in writing, with a fixed price?</strong> A written, itemized quote prevents the classic "the job grew" surprise on the final invoice.</p>
+      <p><strong>4. Can I get the estimate in writing, with a fixed price?</strong> A written, itemized estimate prevents the classic "the job grew" surprise on the final invoice.</p>
       <p><strong>5. What's the payment schedule?</strong> Be wary of anyone demanding full payment upfront. A deposit plus payment on completion (or staged for big jobs) is normal.</p>
       <p><strong>6. Do you offer a warranty on the work?</strong> Good contractors stand behind their labour. Ask what's covered and for how long.</p>
       <p><strong>7. Can you share references or recent reviews?</strong> Recent, verifiable feedback from other Calgary homeowners tells you more than a polished sales pitch.</p>
@@ -418,13 +418,13 @@ function ArticleHiringContractor() {
       <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Tip:</strong> Permit rules and fees change. Confirm current requirements for your specific project directly with the City of Calgary before work begins.</p>
 
       <h2>Red Flags That Should End the Conversation</h2>
-      <p>Walk away from anyone who pressures you to decide on the spot, only takes cash, won't put anything in writing, can't show a licence or insurance, or quotes a complex job without seeing it. These aren't quirks — they're how the costliest contractor horror stories start.</p>
+      <p>Walk away from anyone who pressures you to decide on the spot, only takes cash, won't put anything in writing, can't show a licence or insurance, or estimates a complex job without seeing it. These aren't quirks — they're how the costliest contractor horror stories start.</p>
 
       <h2>How Freddy Fix It Helps</h2>
-      <p>Every contractor on Freddy Fix It submits a trade licence and proof of insurance before they can accept work, you get fixed-price quotes before anyone starts, and there's a built-in process if a job doesn't go as planned. It takes the screening work off your plate.</p>
+      <p>Every contractor on Freddy Fix It submits a trade licence and proof of insurance before they can accept work, you get fixed-price estimates before anyone starts, and there's a built-in process if a job doesn't go as planned. It takes the screening work off your plate.</p>
 
       <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
-        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Skip the screening — get quotes from licensed, insured Calgary contractors.</p>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Skip the screening — get estimates from licensed, insured Calgary contractors.</p>
         <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
@@ -436,7 +436,7 @@ function ArticleBasementCost() {
   return (
     <article>
       <p>A finished basement is one of the best returns on a Calgary home — extra living space, a rental suite, or a place for the kids to disappear during a long winter. But "how much does it cost?" is the first question, and the honest answer is: it depends on what you build. Here's a plain-language 2026 breakdown.</p>
-      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general 2026 estimates for illustration only, not quotes. Actual costs depend on your layout, finishes, and the contractor you hire. Always get a written quote before work begins.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general 2026 ballpark ranges for illustration only, not firm estimates. Actual costs depend on your layout, finishes, and the contractor you hire. Always get a written estimate before work begins.</p>
 
       <h2>Cost Per Square Foot (2026)</h2>
       <BarChart
@@ -463,10 +463,10 @@ function ArticleBasementCost() {
       <p>The gap between the two comes down to code. A <strong>legal suite</strong> needs a separate entrance, egress (escape) windows sized to code, a compliant kitchen, sound and fire separation, and its own heating and ventilation considerations. Those requirements are what push a suite $20,000–$30,000 above a comparable lifestyle finish — but they're also what let you legally rent it out and recover the cost.</p>
 
       <h2>Red Flags to Watch For</h2>
-      <p>Be cautious of any quote that skips permits to "save you money," lumps everything into one vague number with no breakdown, or asks for a large deposit before drawings exist. Unpermitted basement work is the classic problem that surfaces at resale — a home inspector flags it, and you pay to fix it twice. Every contractor on Freddy Fix It is licensed and insured, and pulls the permits the job needs.</p>
+      <p>Be cautious of any estimate that skips permits to "save you money," lumps everything into one vague number with no breakdown, or asks for a large deposit before drawings exist. Unpermitted basement work is the classic problem that surfaces at resale — a home inspector flags it, and you pay to fix it twice. Every contractor on Freddy Fix It is licensed and insured, and pulls the permits the job needs.</p>
 
       <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
-        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Planning a basement? Get fixed-price quotes from licensed Calgary contractors.</p>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Planning a basement? Get fixed-price estimates from licensed Calgary contractors.</p>
         <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
@@ -478,7 +478,7 @@ function ArticleWindshieldChip() {
   return (
     <article>
       <p>If you drive in Calgary, a rock chip is a matter of when, not if. Gravel on winter roads, construction on Deerfoot, and highway trips to the mountains all take a toll on your windshield. The good news: a small chip caught early is one of the cheapest fixes your vehicle will ever need. Ignore it, and it can spread into a crack that costs ten times as much.</p>
-      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> Figures below are general 2026 Calgary estimates, not quotes, and are not insurance advice. Coverage varies by policy — confirm the details with your own insurer.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> Figures below are general 2026 Calgary ballpark ranges, not firm estimates, and are not insurance advice. Coverage varies by policy — confirm the details with your own insurer.</p>
 
       <h2>Repair vs Replace: The 2026 Cost Gap</h2>
       <BarChart
@@ -505,7 +505,7 @@ function ArticleWindshieldChip() {
       <p>Beyond cost, a cracked windshield in the driver's sightline can fail a commercial or out-of-province inspection and is a safety issue in low winter light. Catching chips early is the cheapest vehicle maintenance habit you can build living here.</p>
 
       <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
-        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Need mobile auto glass or vehicle maintenance in Calgary? Get a quote.</p>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Need mobile auto glass or vehicle maintenance in Calgary? Get an estimate.</p>
         <button onClick={() => setLocation("/client-onboarding?service=Vehicle Maintenance")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
@@ -547,7 +547,7 @@ function ArticleWinterTires() {
       <p>Run all four (never just two — a mismatched set can make handling worse), keep them properly inflated since cold air drops pressure, and pair them with the rest of your cold-weather prep. For the full battery, block-heater, and fluids rundown, see our guide to <strong>winterizing your vehicle in Calgary</strong>.</p>
 
       <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
-        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Need tires swapped or vehicle maintenance in Calgary? Get a quote.</p>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Need tires swapped or vehicle maintenance in Calgary? Get an estimate.</p>
         <button onClick={() => setLocation("/client-onboarding?service=Vehicle Maintenance")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
@@ -580,7 +580,7 @@ function ArticleWinterizeVehicle() {
       <p>All the prep above matters less if you're still on all-seasons in January. Winter tires are the single biggest safety upgrade for Calgary driving — we cover timing, cost, and the insurance discount in our dedicated <strong>Calgary winter tires guide</strong>.</p>
 
       <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
-        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Want your vehicle winter-ready? Get a maintenance quote from a Calgary pro.</p>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Want your vehicle winter-ready? Get a maintenance estimate from a Calgary pro.</p>
         <button onClick={() => setLocation("/client-onboarding?service=Vehicle Maintenance")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
