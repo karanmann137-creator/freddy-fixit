@@ -21,6 +21,12 @@ export default function ChatWidget() {
   const inputRef  = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    const openChat = () => setOpen(true);
+    window.addEventListener("ff:open-chat", openChat);
+    return () => window.removeEventListener("ff:open-chat", openChat);
+  }, []);
+
+  useEffect(() => {
     if (open) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
       setTimeout(() => inputRef.current?.focus(), 100);

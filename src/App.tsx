@@ -11,6 +11,7 @@ import UpdatePassword from "@/pages/UpdatePassword";
 import AuthCallback from "@/pages/AuthCallback";
 import TopNav from "@/components/TopNav";
 import ChatWidget from "@/components/ChatWidget";
+import IntroTips from "@/components/IntroTips";
 import GoogleReviewModal from "@/components/GoogleReviewModal";
 import Footer from "@/components/Footer";
 
@@ -159,6 +160,7 @@ export default function App() {
       <ScrollToTop />
       <TopNav />
       <ChatWidget />
+      <IntroTips />
       <GoogleReviewModal />
       <Suspense fallback={<PageLoader />}>
       <Switch>

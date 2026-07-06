@@ -18,6 +18,11 @@ export default function TopNav() {
   const [uid, setUid] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  useEffect(() => {
+    const open = () => setSettingsOpen(true);
+    window.addEventListener("ff:open-settings", open);
+    return () => window.removeEventListener("ff:open-settings", open);
+  }, []);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
