@@ -170,7 +170,7 @@ export default function ContractorProfileCompletion({
                 {existingDocs[key] && !docFiles[key] && <span style={{ color: "#22c55e", marginLeft: ".4rem", fontSize: ".76rem" }}>✓ on file</span>}
                 {docFiles[key] && <span style={{ color: "#ea6b14", marginLeft: ".4rem", fontSize: ".76rem" }}>{docFiles[key]!.name}</span>}
               </div>
-              <input type="file" accept="image/*,application/pdf" onChange={e => pickDoc(key, e.target.files?.[0] ?? null)} style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .7)" }} />
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={e => pickDoc(key, e.target.files?.[0] ?? null)} style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .7)" }} />
             </div>
           ))}
         </div>

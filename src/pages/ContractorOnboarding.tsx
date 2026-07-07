@@ -475,10 +475,41 @@ export default function ContractorOnboarding() {
                 <span>I carry liability insurance</span>
               </label>
               {form.hasInsurance && (
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".75rem", marginTop:".5rem" }}>
-                  <input style={inp} placeholder="Insurance provider" value={form.insuranceProvider} onChange={e=>setF("insuranceProvider",e.target.value)} />
-                  <input style={inp} placeholder="Expiry (e.g. 2026-12)" value={form.insuranceExpiry} onChange={e=>setF("insuranceExpiry",e.target.value)} />
-                </div>
+                <>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".75rem", marginTop:".5rem" }}>
+                    <input style={inp} placeholder="Insurance provider" value={form.insuranceProvider} onChange={e=>setF("insuranceProvider",e.target.value)} />
+                    <input style={inp} placeholder="Expiry (e.g. 2026-12)" value={form.insuranceExpiry} onChange={e=>setF("insuranceExpiry",e.target.value)} />
+                  </div>
+                  <div style={{ marginTop:".6rem" }}>
+                    <label style={{
+                      display:"flex", alignItems:"center", gap:".75rem",
+                      padding:".75rem 1rem",
+                      background: docFiles.insurance ? "rgba(234,107,20,.08)" : "rgba(var(--ff-fg), .04)",
+                      border: `1px solid ${docFiles.insurance ? "rgba(234,107,20,.4)" : "rgba(var(--ff-fg), .1)"}`,
+                      borderRadius:"8px", cursor:"pointer", transition:"all .2s",
+                    }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={docFiles.insurance ? "#ea6b14" : "rgba(var(--ff-muted), .5)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                      </svg>
+                      <span style={{ fontSize:".88rem", color: docFiles.insurance ? "#ea6b14" : "rgba(var(--ff-muted), .6)", flex:1 }}>
+                        {docFiles.insurance ? docFiles.insurance.name : "Upload insurance certificate (PDF, JPG, PNG — max 10MB)"}
+                      </span>
+                      {docFiles.insurance && <span style={{ color:"#22c55e", fontSize:"1rem" }}>✓</span>}
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png,.webp"
+                        onChange={e => {
+                          const f = e.target.files?.[0] ?? null;
+                          if (f && f.size > 10*1024*1024) { setSubmitError("File must be under 10MB."); e.target.value=""; return; }
+                          setDocFiles(prev => ({ ...prev, insurance: f }));
+                          setSubmitError("");
+                        }}
+                        style={{ display:"none" }}
+                      />
+                    </label>
+                    <p style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .4)", marginTop:".4rem" }}>Optional here — you can also add it later on the Documents step. Certificate showing min. $1M coverage in Alberta.</p>
+                  </div>
+                </>
               )}
               <label style={{ display:"flex", alignItems:"center", gap:".6rem", cursor:"pointer", fontSize:".9rem", color:"rgba(var(--ff-muted), .85)", marginTop:".9rem" }}>
                 <input type="checkbox" checked={form.hasWcb} onChange={e=>setFB("hasWcb",e.target.checked)} style={{ width:"18px", height:"18px", accentColor:"#ea6b14", cursor:"pointer", flexShrink:0 }} />
