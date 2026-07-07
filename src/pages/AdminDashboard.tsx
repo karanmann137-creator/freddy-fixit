@@ -32,6 +32,7 @@ export default function AdminDashboard() {
   const [busyStatus, setBusyStatus] = useState<string|null>(null); // contractor id whose status is toggling
   const [busyDelete, setBusyDelete] = useState(false);
   const [busyDeleteAccount, setBusyDeleteAccount] = useState<string|null>(null);
+  const [busyNudge, setBusyNudge] = useState(false);
   const [busyJob, setBusyJob] = useState<string|null>(null);
   const [bidsBy, setBidsBy] = useState<Record<string, any[]>>({});
   const [flagMatches, setFlagMatches] = useState<Record<string, { fields: string[]; avg: number; count: number; date: string }>>({});
@@ -171,6 +172,26 @@ export default function AdminDashboard() {
     setBusyStatus(null);
     if (error) { alert("Couldn't update contractor: " + error.message); return; }
     setAccounts(prev => prev.map(a => a.id === contractorId ? { ...a, contractor_status: status } : a));
+  };
+
+  // Email every orphaned/incomplete account (authenticated but never finished
+  // onboarding) a "finish your signup" nudge. Reusable for future OAuth orphans.
+  const nudgeIncomplete = async () => {
+    const n = accounts.filter(a => a.orphaned).length;
+    if (n === 0) { alert("No incomplete/orphaned accounts to email right now."); return; }
+    if (!window.confirm(`Email ${n} incomplete signup${n>1?"s":""} a friendly "finish your account" nudge?`)) return;
+    setBusyNudge(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("finish-signup-nudge", { body: { confirm: "SEND" } });
+      if (error) throw error;
+      if (data && (data as any).error) throw new Error((data as any).error);
+      const sent = (data as any)?.sent ?? 0, failed = (data as any)?.failed ?? 0;
+      alert(`Sent ${sent} reminder${sent!==1?"s":""}${failed?`, ${failed} failed`:""}.`);
+    } catch (e: any) {
+      let msg = e?.message || String(e);
+      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
+      alert("Couldn't send reminders: " + msg);
+    } finally { setBusyNudge(false); }
   };
 
   const markLeadContacted = async (leadId: string) => {
@@ -325,6 +346,17 @@ export default function AdminDashboard() {
                 </button>
               ))}
             </div>
+            {accounts.some(a => a.orphaned) && (
+              <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const, marginBottom:"1rem", padding:".7rem .85rem", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"8px" }}>
+                <span style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)", flex:1 }}>
+                  {accounts.filter(a => a.orphaned).length} account{accounts.filter(a => a.orphaned).length>1?"s":""} signed in but never finished onboarding.
+                </span>
+                <button style={{ ...s.btn, color:"#ea6b14", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.1)" }}
+                  disabled={busyNudge} onClick={nudgeIncomplete}>
+                  <Ic name="mail" size={13} style={{ marginRight:4 }} />{busyNudge ? "Sending…" : "Email a finish-signup reminder"}
+                </button>
+              </div>
+            )}
             {filteredAccounts.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No matching accounts.</p>}
             {filteredAccounts.map(a => {
               const nm = [a.first_name, a.last_name].filter(Boolean).join(" ") || a.company_name || "(no name)";

@@ -124,6 +124,11 @@ export default function ContractorOnboarding() {
       else if (availEnd <= availStart) errs.avail = "End time must be after the start time";
     }
     if (step === 5 && !form.workType)             errs.workType = "Select what best describes your work";
+    if (step === 8) {
+      if (!docFiles.gov_id) errs.docs = "Upload your government-issued photo ID";
+      else if (insuranceRequired && (!docFiles.insurance || !docFiles.wcb)) errs.docs = "Upload your insurance and WCB certificates";
+      else if (wt?.licence === "required" && !docFiles.certification) errs.docs = "Upload your trade certification";
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -345,39 +350,6 @@ export default function ContractorOnboarding() {
               {errors.spec && <p style={s.err}>{errors.spec}</p>}
               {selectedSpec.length > 0 && <p style={{ fontSize:".78rem", color:"#ea6b14", marginTop:".75rem" }}>✓ {selectedSpec.length} specialt{selectedSpec.length > 1 ? "ies" : "y"} selected</p>}
 
-              {/* Fast-track: create the account now with just name + specialties,
-                  and finish the rest (service area, availability, credentials,
-                  documents) later from the dashboard checklist. */}
-              {selectedSpec.length > 0 && (
-                <div style={{ marginTop:"1.75rem", padding:"1.1rem", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.22)", borderRadius:"12px" }}>
-                  <p style={{ fontSize:".9rem", fontWeight:600, color:"var(--ff-text)", marginBottom:".3rem" }}>In a hurry? Sign up now, finish later</p>
-                  <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.55, marginBottom:".9rem", fontWeight:300 }}>
-                    Create your account with just your name and specialties. You can add your service area, availability, licensing and documents anytime from your dashboard — you’ll need them approved before taking jobs.
-                  </p>
-                  <div style={{ display:"flex", alignItems:"flex-start", gap:".7rem", marginBottom:".9rem" }}>
-                    <input
-                      type="checkbox"
-                      id="agreeTermsQuick"
-                      checked={agreedToTerms}
-                      onChange={e => { setAgreedToTerms(e.target.checked); if (e.target.checked) setSubmitError(""); }}
-                      style={{ marginTop:"2px", accentColor:"#ea6b14", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }}
-                    />
-                    <label htmlFor="agreeTermsQuick" style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.55, cursor:"pointer", fontWeight:300 }}>
-                      I agree to Freddy Fix It&rsquo;s{" "}
-                      <a href="/user-agreement" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>User Agreement</a>
-                      {" "}and{" "}
-                      <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>Privacy Policy</a>.
-                    </label>
-                  </div>
-                  {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".6rem .85rem", fontSize:".8rem", color:"var(--ff-danger)", marginBottom:".75rem" }}>{submitError}</div>}
-                  <button
-                    onClick={handleSubmit}
-                    disabled={loading}
-                    style={{ ...s.navBtn, width:"100%", background:"linear-gradient(135deg,#ea6b14,#f09020)", color:"#fff", opacity: loading ? .6 : 1 }}>
-                    {loading ? "Creating your account…" : "Create my account — finish later"}
-                  </button>
-                </div>
-              )}
             </div>
           )}
 
@@ -523,7 +495,7 @@ export default function ContractorOnboarding() {
           {step === 8 && (
             <div>
               <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"1rem", fontWeight:300, lineHeight:1.6 }}>
-                Upload your credentials and our AI reviews them instantly. You don't need them to finish signing up — you can submit now and add documents anytime from your dashboard. You'll be approved to take jobs once they're verified.
+                Upload your credentials and our AI reviews them instantly. These are required to complete your registration. You'll be approved to take jobs once they're verified.
               </p>
               {([
                 { key:"insurance",    label:"Liability Insurance Certificate", required:insuranceRequired,  hint:"Certificate of Insurance showing min. $1M coverage in Alberta" },
@@ -535,7 +507,7 @@ export default function ContractorOnboarding() {
                   <label style={{ ...s.label, display:"flex", alignItems:"center", gap:".4rem" }}>
                     {doc.label}
                     {doc.required
-                      ? <span style={{ color:"#ea6b14", fontSize:".7rem" }}>Needed before taking jobs</span>
+                      ? <span style={{ color:"#ea6b14", fontSize:".7rem" }}>Required</span>
                       : <span style={{ color:"rgba(var(--ff-muted), .35)", fontSize:".7rem" }}>Optional</span>
                     }
                   </label>
@@ -568,6 +540,7 @@ export default function ContractorOnboarding() {
                   </label>
                 </div>
               ))}
+              {errors.docs && <p style={s.err}>{errors.docs}</p>}
               <div style={{ background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.15)", borderRadius:"8px", padding:".9rem 1rem", fontSize:".8rem", color:"rgba(var(--ff-muted), .65)", lineHeight:1.6 }}>
                 🔒 Documents are stored securely and only used for verification. They are never shared with clients.
               </div>
