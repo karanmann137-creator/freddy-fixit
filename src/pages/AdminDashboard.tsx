@@ -6,16 +6,17 @@ import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import ProfileBar from "@/components/ProfileBar";
 import MilestonePanel from "@/components/MilestonePanel";
 
-// Re-signup flagging is now computed server-side by the admin_resignup_matches()
-// RPC (hashes built in SQL via pgcrypto, joined against deleted_account_flags),
-// replacing the old O(contractors * flags) client-side SHA-256 loop.
+// Re-signup flagging is computed server-side by admin_resignup_matches().
+// The Accounts tab lists every auth user (via admin_list_accounts) so the admin
+// can see full details and fully delete any account (admin-delete-account edge
+// fn wipes jobs, requests, messages, reviews, storage + the login).
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const [requests, setRequests] = useState<any[]>([]);
-  const [contractors, setContractors] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
-  const [tab, setTab] = useState<"health"|"requests"|"contractors"|"jobs"|"disputes"|"prepaid"|"leads">("requests");
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [tab, setTab] = useState<"health"|"requests"|"jobs"|"accounts"|"disputes"|"prepaid"|"leads">("requests");
   const [prepays, setPrepays] = useState<any[]>([]);
   const [busyRefund, setBusyRefund] = useState<string|null>(null);
   const [disputes, setDisputes] = useState<any[]>([]);
@@ -28,18 +29,17 @@ export default function AdminDashboard() {
   const [partialAmt, setPartialAmt] = useState<Record<string, string>>({});
   const [resolveNote, setResolveNote] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-  const [activeContractors, setActiveContractors] = useState<any[]>([]);
-  const [assignSel, setAssignSel] = useState<Record<string,string>>({});
-  const [busyAssign, setBusyAssign] = useState<string|null>(null); // request id being assigned
   const [busyStatus, setBusyStatus] = useState<string|null>(null); // contractor id whose status is toggling
-  const [rankedBy, setRankedBy] = useState<Record<string, any[]>>({}); // best-fit contractors per pending request
   const [busyDelete, setBusyDelete] = useState(false);
+  const [busyDeleteAccount, setBusyDeleteAccount] = useState<string|null>(null);
+  const [busyJob, setBusyJob] = useState<string|null>(null);
   const [bidsBy, setBidsBy] = useState<Record<string, any[]>>({});
-  const [busyAcceptBid, setBusyAcceptBid] = useState<string|null>(null);
   const [flagMatches, setFlagMatches] = useState<Record<string, { fields: string[]; avg: number; count: number; date: string }>>({});
+  const [accountQ, setAccountQ] = useState("");
+  const [accountRole, setAccountRole] = useState<"all"|"client"|"contractor"|"admin"|"orphaned">("all");
   const PAGE_SIZE = 20;
-  const [page, setPage] = useState<{ requests: number; contractors: number; jobs: number }>({ requests: 0, contractors: 0, jobs: 0 });
-  const [counts, setCounts] = useState<{ requests: number; contractors: number; jobs: number }>({ requests: 0, contractors: 0, jobs: 0 });
+  const [page, setPage] = useState<{ requests: number; jobs: number }>({ requests: 0, jobs: 0 });
+  const [counts, setCounts] = useState<{ requests: number; jobs: number }>({ requests: 0, jobs: 0 });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -54,13 +54,11 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
     const rRange: [number, number] = [page.requests * PAGE_SIZE, page.requests * PAGE_SIZE + PAGE_SIZE - 1];
-    const cRange: [number, number] = [page.contractors * PAGE_SIZE, page.contractors * PAGE_SIZE + PAGE_SIZE - 1];
     const jRange: [number, number] = [page.jobs * PAGE_SIZE, page.jobs * PAGE_SIZE + PAGE_SIZE - 1];
-    const [{ data: reqs, count: reqCount }, { data: cons, count: conCount }, { data: js, count: jobCount }, { data: dir }, { data: bids }, { data: resignup }, { data: disp }, { data: leadsData }, { data: healthData }] = await Promise.all([
+    const [{ data: reqs, count: reqCount }, { data: js, count: jobCount }, { data: accts }, { data: bids }, { data: resignup }, { data: disp }, { data: leadsData }, { data: healthData }] = await Promise.all([
       supabase.from("client_requests").select("*", { count: "exact" }).order("created_at", { ascending: false }).range(rRange[0], rRange[1]),
-      supabase.from("contractors").select("*, profile:profiles!contractors_id_fkey(first_name,last_name,email,phone)", { count: "exact" }).order("created_at", { ascending: false }).range(cRange[0], cRange[1]),
       supabase.from("jobs").select("*", { count: "exact" }).order("created_at", { ascending: false }).range(jRange[0], jRange[1]),
-      supabase.rpc("get_contractor_directory").select("id, first_name, last_name, specialties"),
+      supabase.rpc("admin_list_accounts"),
       supabase.from("bids").select("*").eq("status", "pending").order("amount", { ascending: true }),
       supabase.rpc("admin_resignup_matches"),
       supabase.from("disputes").select("*, job:jobs(id, amount, total_charged, contractor_payout, status, payment_status, stripe_payment_intent_id)").order("created_at", { ascending: false }),
@@ -68,8 +66,8 @@ export default function AdminDashboard() {
       supabase.rpc("admin_health"),
     ]);
     setRequests(reqs ?? []);
-    setContractors(cons ?? []);
     setJobs(js ?? []);
+    setAccounts((accts as any[]) ?? []);
     setDisputes(disp ?? []);
     setLeads(leadsData ?? []);
     setHealth(healthData ?? null);
@@ -94,18 +92,7 @@ export default function AdminDashboard() {
     ]));
     setDisputePhotos(dp);
     setDisputeRespPhotos(rp);
-    setCounts({ requests: reqCount ?? 0, contractors: conCount ?? 0, jobs: jobCount ?? 0 });
-    setActiveContractors((dir ?? []) as any[]);
-    // Best-fit ranking for each pending request (specialty + zone, same map as the
-    // contractor feed). Fetched in parallel so the assign dropdown leads with the
-    // right pros instead of a flat alphabetical list.
-    const pendingReqs = (reqs ?? []).filter((r: any) => r.status === "pending");
-    Promise.all(pendingReqs.map((r: any) =>
-      Promise.resolve(
-        supabase.rpc("admin_rank_contractors", { p_request_id: r.id })
-          .then(({ data }) => [r.id, data ?? []] as [string, any[]]),
-      ).catch(() => [r.id, []] as [string, any[]])
-    )).then(pairs => setRankedBy(Object.fromEntries(pairs)));
+    setCounts({ requests: reqCount ?? 0, jobs: jobCount ?? 0 });
     const bb: Record<string, any[]> = {};
     (bids ?? []).forEach((b: any) => { if (!bb[b.request_id]) bb[b.request_id] = []; bb[b.request_id].push(b); });
     setBidsBy(bb);
@@ -124,8 +111,8 @@ export default function AdminDashboard() {
     }
   };
 
-  const pageCount = (which: "requests"|"contractors"|"jobs") => Math.max(1, Math.ceil((counts[which] || 0) / PAGE_SIZE));
-  const pager = (which: "requests"|"contractors"|"jobs") => (
+  const pageCount = (which: "requests"|"jobs") => Math.max(1, Math.ceil((counts[which] || 0) / PAGE_SIZE));
+  const pager = (which: "requests"|"jobs") => (
     counts[which] > PAGE_SIZE ? (
       <div style={{ display:"flex", gap:".75rem", alignItems:"center", justifyContent:"center", marginTop:"1.25rem" }}>
         <button style={{ ...s.btn, opacity: page[which] <= 0 ? .4 : 1 }} disabled={page[which] <= 0}
@@ -137,9 +124,10 @@ export default function AdminDashboard() {
     ) : null
   );
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    setLocation("/");
+  const nameFor = (id: string) => {
+    const a = accounts.find(x => x.id === id);
+    if (!a) return "Contractor";
+    return ((a.first_name ?? "") + " " + (a.last_name ? a.last_name[0] + "." : "")).trim() || a.company_name || "Contractor";
   };
 
   const deleteRequest = async (r: any) => {
@@ -150,25 +138,31 @@ export default function AdminDashboard() {
     if (error) { alert("Couldn't delete: " + error.message); return; }
     setRequests(prev => prev.filter(x => x.id !== r.id));
   };
-  const assignContractor = async (requestId: string) => {
-    const cid = assignSel[requestId];
-    if (!cid) { alert("Pick a contractor first."); return; }
-    setBusyAssign(requestId);
-    const { error } = await supabase.rpc("assign_job", { p_request_id: requestId, p_contractor_id: cid });
-    setBusyAssign(null);
-    if (error) { alert("Couldn't assign: " + error.message); return; }
-    // Patch just this row rather than reloading the whole dashboard.
-    setRequests(prev => prev.map(x => x.id === requestId ? { ...x, status: "matched", assigned_contractor_id: cid } : x));
-    setAssignSel(p => { const n = { ...p }; delete n[requestId]; return n; });
-    setRankedBy(p => { const n = { ...p }; delete n[requestId]; return n; });
+
+  const deleteJob = async (j: any) => {
+    if (!window.confirm("Delete this job permanently? This also removes its milestones, messages, reviews and disputes. This can't be undone.")) return;
+    setBusyJob(j.id);
+    const { error } = await supabase.rpc("admin_delete_job", { p_job_id: j.id });
+    setBusyJob(null);
+    if (error) { alert("Couldn't delete job: " + error.message); return; }
+    setJobs(prev => prev.filter(x => x.id !== j.id));
   };
-  const acceptBid = async (bidId: string) => {
-    if (!window.confirm("Accept this bid and assign this contractor?")) return;
-    setBusyAcceptBid(bidId);
-    const { error } = await supabase.rpc("accept_bid", { p_bid_id: bidId });
-    setBusyAcceptBid(null);
-    if (error) { alert("Couldn't accept bid: " + error.message); return; }
-    await loadAll();
+
+  const deleteAccount = async (a: any) => {
+    const who = [a.first_name, a.last_name].filter(Boolean).join(" ") || a.email || a.id.slice(0, 8);
+    if (!window.confirm(`Permanently delete ${who} and ALL of their data — jobs, requests, messages, reviews, photos and their login. This cannot be undone.`)) return;
+    setBusyDeleteAccount(a.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-delete-account", { body: { user_id: a.id } });
+      if (error) throw error;
+      if (data && (data as any).error) throw new Error((data as any).error);
+      setAccounts(prev => prev.filter(x => x.id !== a.id));
+      if (data && (data as any).warning) alert((data as any).warning);
+    } catch (e: any) {
+      let msg = e?.message || String(e);
+      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
+      alert("Couldn't delete account: " + msg);
+    } finally { setBusyDeleteAccount(null); }
   };
 
   const setContractorStatus = async (contractorId: string, status: "active"|"inactive") => {
@@ -176,7 +170,7 @@ export default function AdminDashboard() {
     const { error } = await supabase.rpc("admin_set_contractor_status", { p_id: contractorId, p_status: status });
     setBusyStatus(null);
     if (error) { alert("Couldn't update contractor: " + error.message); return; }
-    setContractors(prev => prev.map(c => c.id === contractorId ? { ...c, status } : c));
+    setAccounts(prev => prev.map(a => a.id === contractorId ? { ...a, contractor_status: status } : a));
   };
 
   const markLeadContacted = async (leadId: string) => {
@@ -232,6 +226,25 @@ export default function AdminDashboard() {
 
   if (loading) return <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>Loading…</div>;
 
+  const roleChip = (role?: string) => {
+    const r = role || "—";
+    const col = r === "admin" ? "#ea6b14" : r === "contractor" ? "var(--ff-info)" : r === "client" ? "var(--ff-success)" : "rgba(var(--ff-muted), .5)";
+    return <span style={{ fontSize:".72rem", fontWeight:600, color: col, textTransform:"capitalize" as const }}>● {r}</span>;
+  };
+
+  const filteredAccounts = accounts.filter(a => {
+    if (accountRole !== "all") {
+      if (accountRole === "orphaned") { if (!a.orphaned) return false; }
+      else if ((a.role || "") !== accountRole) return false;
+    }
+    const q = accountQ.trim().toLowerCase();
+    if (q) {
+      const hay = [a.first_name, a.last_name, a.email, a.phone, a.meta_phone, a.company_name].filter(Boolean).join(" ").toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
   return (
     <div style={s.wrap}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
@@ -243,14 +256,14 @@ export default function AdminDashboard() {
       <div style={s.content}>
         <ProfileBar role="admin" />
         <div style={s.tabs}>
-          {(["health","requests","contractors","jobs","disputes","prepaid","leads"] as const).map(t => {
+          {(["health","requests","jobs","accounts","disputes","prepaid","leads"] as const).map(t => {
             const openDisputes = disputes.filter(d => d.status === "open").length;
             const newLeads = leads.filter(l => l.status === "new").length;
             const healthAlerts = health ? ((health.no_bid_count||0) + (health.awaiting_confirm_count||0) + (health.awaiting_approval_count||0) + (health.stale_disputes_count||0)) : 0;
             const label = t === "health" ? `Health${healthAlerts > 0 ? ` (${healthAlerts})` : ""}`
               : t === "requests" ? `Requests (${counts.requests})`
-              : t === "contractors" ? `Contractors (${counts.contractors})`
               : t === "jobs" ? `Jobs (${counts.jobs})`
+              : t === "accounts" ? `Accounts (${accounts.length})`
               : t === "disputes" ? `Disputes (${openDisputes})`
               : t === "prepaid" ? `Prepaid (${prepays.length})`
               : `Leads (${newLeads})`;
@@ -275,56 +288,13 @@ export default function AdminDashboard() {
                 {r.status === "pending" && (bidsBy[r.id]?.length ?? 0) > 0 && (
                   <div style={{ marginTop:".75rem" }}>
                     <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)", marginBottom:".4rem" }}>Bids ({bidsBy[r.id].length}/3)</div>
-                    {bidsBy[r.id].map((b: any) => {
-                      const con = activeContractors.find(c => c.id === b.contractor_id);
-                      const nm = con ? ((con.first_name ?? "") + " " + (con.last_name ? con.last_name[0] + "." : "")).trim() : "Contractor";
-                      return (
-                        <div key={b.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", padding:".5rem .6rem", marginBottom:".4rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px", flexWrap:"wrap" as const }}>
-                          <div style={{ flex:"1 1 160px" }}>
-                            <div style={{ fontSize:".85rem", color:"var(--ff-text)" }}>{nm}{b.amount != null ? " — $" + b.amount : ""}</div>
-                            {b.message && <div style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .6)" }}>{b.message}</div>}
-                          </div>
-                          <button style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none" }} disabled={busyAcceptBid === b.id} onClick={() => acceptBid(b.id)}>{busyAcceptBid === b.id ? "…" : "Accept"}</button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                {r.status === "pending" && (
-                  <div style={{ display:"flex", gap:".5rem", marginTop:".75rem", flexWrap:"wrap" as const, alignItems:"center" }}>
-                    {(() => {
-                      const ranked = rankedBy[r.id];
-                      const label = (c: any) => `${c.first_name} ${c.last_name ? c.last_name[0] + "." : ""}${(c.specialties && c.specialties.length) ? " — " + c.specialties[0] : ""}`;
-                      // Lead with the pros the matcher ranked best (right trade + in the
-                      // client's zone); fall back to the flat directory until ranking loads.
-                      const best = (ranked ?? []).filter((c: any) => c.is_match);
-                      const others = (ranked ?? []).filter((c: any) => !c.is_match);
-                      return (
-                        <select value={assignSel[r.id] ?? ""} onChange={e => setAssignSel(p => ({ ...p, [r.id]: e.target.value }))}
-                          style={{ padding:".5rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"6px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".82rem" }}>
-                          <option value="">Select contractor…</option>
-                          {ranked ? (
-                            <>
-                              {best.length > 0 && (
-                                <optgroup label="Best matches">
-                                  {best.map((c: any) => (
-                                    <option key={c.id} value={c.id}>{c.in_zone ? "★ " : ""}{label(c)}</option>
-                                  ))}
-                                </optgroup>
-                              )}
-                              {others.length > 0 && (
-                                <optgroup label="Other contractors">
-                                  {others.map((c: any) => (<option key={c.id} value={c.id}>{label(c)}</option>))}
-                                </optgroup>
-                              )}
-                            </>
-                          ) : (
-                            activeContractors.map(c => (<option key={c.id} value={c.id}>{label(c)}</option>))
-                          )}
-                        </select>
-                      );
-                    })()}
-                    <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyAssign === r.id} onClick={() => assignContractor(r.id)}>{busyAssign === r.id ? "Assigning…" : "Assign"}</button>
+                    {bidsBy[r.id].map((b: any) => (
+                      <div key={b.id} style={{ padding:".5rem .6rem", marginBottom:".4rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
+                        <div style={{ fontSize:".85rem", color:"var(--ff-text)" }}>{nameFor(b.contractor_id)}{b.amount != null ? " — $" + b.amount : ""}</div>
+                        {b.message && <div style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .6)" }}>{b.message}</div>}
+                      </div>
+                    ))}
+                    <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .4)" }}>The client picks a bid from their dashboard.</div>
                   </div>
                 )}
                 {r.status !== "pending" && r.assigned_contractor_id && (
@@ -340,50 +310,82 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {tab === "contractors" && (
+        {tab === "accounts" && (
           <div>
-            {contractors.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No contractors yet.</p>}
-            {contractors.map(c => (
-              <div key={c.id} style={s.card}>
-                <div style={s.title}>{c.company_name || [c.profile?.first_name, c.profile?.last_name].filter(Boolean).join(" ") || "Unnamed contractor"}</div>
-                {flagMatches[c.id] && (
-                  <div style={{ marginTop:".5rem", padding:".6rem .8rem", background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.4)", borderRadius:"8px", color:"var(--ff-danger)", fontSize:".8rem", lineHeight:1.45 }}>
-                    {"Possible re-signup — matches a previously deleted account that had poor reviews (avg "}
-                    {flagMatches[c.id].avg}{"/10 over "}{flagMatches[c.id].count}{" review"}{flagMatches[c.id].count === 1 ? "" : "s"}{", deleted "}
-                    {new Date(flagMatches[c.id].date).toLocaleDateString()}{"). Matched on "}{flagMatches[c.id].fields.join(", ")}{"."}
+            <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".82rem", marginBottom:"1rem", lineHeight:1.5 }}>
+              Every account on the platform. Search, view full details, approve or deactivate contractors, and permanently delete any account (this wipes all of their jobs, requests, messages, reviews, photos and login).
+            </p>
+            <input value={accountQ} onChange={e => setAccountQ(e.target.value)} placeholder="Search name, email or phone…"
+              style={{ width:"100%", padding:".6rem .8rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, marginBottom:".75rem" }} />
+            <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginBottom:"1rem" }}>
+              {(["all","client","contractor","admin","orphaned"] as const).map(rf => (
+                <button key={rf} onClick={() => setAccountRole(rf)}
+                  style={{ ...s.tab, padding:".4rem .9rem", textTransform:"capitalize" as const, ...(accountRole === rf ? s.activeTab : {}) }}>
+                  {rf}{rf === "all" ? ` (${accounts.length})` : ` (${accounts.filter(a => rf === "orphaned" ? a.orphaned : (a.role || "") === rf).length})`}
+                </button>
+              ))}
+            </div>
+            {filteredAccounts.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No matching accounts.</p>}
+            {filteredAccounts.map(a => {
+              const nm = [a.first_name, a.last_name].filter(Boolean).join(" ") || a.company_name || "(no name)";
+              const isContractor = (a.role === "contractor") || !!a.company_name || (a.specialties && a.specialties.length);
+              return (
+                <div key={a.id} style={s.card}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const, gap:".5rem" }}>
+                    <div style={s.title}>{nm}{a.company_name && a.company_name !== nm ? ` · ${a.company_name}` : ""}</div>
+                    {roleChip(a.role)}
                   </div>
-                )}
-                {c.company_name && [c.profile?.first_name, c.profile?.last_name].filter(Boolean).join(" ") ? <div style={s.meta}>{[c.profile?.first_name, c.profile?.last_name].filter(Boolean).join(" ")}</div> : null}
-                {(c.profile?.email || c.profile?.phone) && <div style={s.meta}>{[c.profile?.email, c.profile?.phone].filter(Boolean).join(" · ")}</div>}
-                <div style={s.meta}>Specialties: {(c.specialties ?? []).join(", ") || "—"}</div>
-                <div style={s.meta}>Area: {(c.service_area ?? []).join(", ") || "—"}</div>
-                <div style={{ ...s.meta, marginTop:".4rem", color:"rgba(var(--ff-muted), .55)" }}>
-                  {"Licensed: "}{c.licensed === true ? ("Yes" + (c.license_number ? " (#" + c.license_number + ")" : "")) : c.licensed === false ? "No" : "—"}
-                  {"  ·  Insurance: "}{c.has_liability_insurance === true ? ("Yes" + (c.insurance_provider ? " (" + c.insurance_provider + (c.insurance_expiry ? ", exp " + c.insurance_expiry : "") + ")" : "")) : c.has_liability_insurance === false ? "No" : "—"}
-                  {"  ·  WCB: "}{c.has_wcb === true ? "Yes" : c.has_wcb === false ? "No" : "—"}
-                </div>
-                {c.work_references ? <div style={s.meta}>References: {c.work_references}</div> : null}
-                <div style={{ ...s.badge, marginTop:".5rem" }}>● {c.status}</div>
-                <div style={{ display:"flex", gap:".5rem", marginTop:".75rem", flexWrap:"wrap" as const }}>
-                  <button style={s.btn} onClick={() => window.open("/contractors/" + c.id, "_blank")}>
-                    View Profile ↗
-                  </button>
-                  {c.status !== "active" && (
-                    <button style={{ ...s.btn, color:"var(--ff-success)", borderColor:"rgba(34,197,94,.35)" }}
-                      disabled={busyStatus === c.id} onClick={() => setContractorStatus(c.id, "active")}>
-                      {busyStatus === c.id ? "…" : "Approve"}
-                    </button>
+                  {a.orphaned && <div style={{ fontSize:".74rem", color:"var(--ff-warn)", marginBottom:".3rem" }}>⚠ No profile row (orphaned auth account)</div>}
+                  {flagMatches[a.id] && (
+                    <div style={{ marginTop:".3rem", marginBottom:".4rem", padding:".6rem .8rem", background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.4)", borderRadius:"8px", color:"var(--ff-danger)", fontSize:".8rem", lineHeight:1.45 }}>
+                      {"Possible re-signup — matches a previously deleted account that had poor reviews (avg "}
+                      {flagMatches[a.id].avg}{"/10 over "}{flagMatches[a.id].count}{" review"}{flagMatches[a.id].count === 1 ? "" : "s"}{", deleted "}
+                      {new Date(flagMatches[a.id].date).toLocaleDateString()}{"). Matched on "}{flagMatches[a.id].fields.join(", ")}{"."}
+                    </div>
                   )}
-                  {c.status === "active" && (
-                    <button style={{ ...s.btn, color:"var(--ff-danger)", borderColor:"rgba(239,68,68,.3)" }}
-                      disabled={busyStatus === c.id} onClick={() => setContractorStatus(c.id, "inactive")}>
-                      {busyStatus === c.id ? "…" : "Deactivate"}
-                    </button>
+                  <div style={s.meta}>{[a.email, a.phone || a.meta_phone].filter(Boolean).join(" · ") || "—"}</div>
+                  <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .4)" }}>
+                    ID {a.id.slice(0,8)} · joined {a.created_at ? new Date(a.created_at).toLocaleDateString() : "—"}
+                    {a.last_sign_in_at ? ` · last seen ${new Date(a.last_sign_in_at).toLocaleDateString()}` : " · never signed in"}
+                  </div>
+                  <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .45)" }}>{a.request_count ?? 0} request{(a.request_count ?? 0) === 1 ? "" : "s"} · {a.job_count ?? 0} job{(a.job_count ?? 0) === 1 ? "" : "s"}</div>
+                  {isContractor && (
+                    <div style={{ marginTop:".5rem", padding:".6rem .8rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .07)", borderRadius:"8px" }}>
+                      <div style={s.meta}>Specialties: {(a.specialties ?? []).join(", ") || "—"}</div>
+                      <div style={s.meta}>Area: {(a.service_area ?? []).join(", ") || "—"}</div>
+                      <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .55)" }}>
+                        {"Licensed: "}{a.licensed === true ? ("Yes" + (a.license_number ? " (#" + a.license_number + ")" : "")) : a.licensed === false ? "No" : "—"}
+                        {"  ·  Insurance: "}{a.has_liability_insurance === true ? ("Yes" + (a.insurance_provider ? " (" + a.insurance_provider + (a.insurance_expiry ? ", exp " + a.insurance_expiry : "") + ")" : "")) : a.has_liability_insurance === false ? "No" : "—"}
+                        {"  ·  WCB: "}{a.has_wcb === true ? "Yes" : a.has_wcb === false ? "No" : "—"}
+                      </div>
+                      {a.work_references ? <div style={s.meta}>References: {a.work_references}</div> : null}
+                      <div style={{ ...s.badge, marginTop:".35rem" }}>● {a.contractor_status || "—"}</div>
+                    </div>
                   )}
+                  <div style={{ display:"flex", gap:".5rem", marginTop:".75rem", flexWrap:"wrap" as const }}>
+                    {isContractor && (
+                      <button style={s.btn} onClick={() => window.open("/contractors/" + a.id, "_blank")}>View Profile ↗</button>
+                    )}
+                    {isContractor && a.contractor_status !== "active" && (
+                      <button style={{ ...s.btn, color:"var(--ff-success)", borderColor:"rgba(34,197,94,.35)" }}
+                        disabled={busyStatus === a.id} onClick={() => setContractorStatus(a.id, "active")}>
+                        {busyStatus === a.id ? "…" : "Approve"}
+                      </button>
+                    )}
+                    {isContractor && a.contractor_status === "active" && (
+                      <button style={{ ...s.btn, color:"var(--ff-danger)", borderColor:"rgba(239,68,68,.3)" }}
+                        disabled={busyStatus === a.id} onClick={() => setContractorStatus(a.id, "inactive")}>
+                        {busyStatus === a.id ? "…" : "Deactivate"}
+                      </button>
+                    )}
+                    <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)", marginLeft:"auto" }}
+                      disabled={busyDeleteAccount === a.id} onClick={() => deleteAccount(a)}>
+                      <Ic name="trash" size={13} style={{ marginRight:4 }} />{busyDeleteAccount === a.id ? "Deleting…" : "Delete account"}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-            {pager("contractors")}
+              );
+            })}
           </div>
         )}
 
@@ -397,6 +399,9 @@ export default function AdminDashboard() {
                 {j.amount && <div style={s.meta}>Amount: ${j.amount}</div>}
                 {j.scheduled_at && <div style={s.meta}>Date: {new Date(j.scheduled_at).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" })}</div>}
                 {j.is_milestone && <MilestonePanel role="admin" job={j} />}
+                <div style={{ marginTop:".75rem" }}>
+                  <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJob === j.id} onClick={() => deleteJob(j)}><Ic name="trash" size={13} style={{ marginRight:4 }} />{busyJob === j.id ? "Deleting…" : "Delete job"}</button>
+                </div>
               </div>
             ))}
             {pager("jobs")}
@@ -437,7 +442,6 @@ export default function AdminDashboard() {
               const job = d.job ?? {};
               const charged = Number(job.total_charged ?? job.amount ?? 0);
               const payout = Number(job.contractor_payout ?? 0);
-              const resolved = d.status !== "open";
               const statusLabel: Record<string, string> = {
                 open: "Open — needs review",
                 resolved_refund: "Resolved — full refund",
