@@ -174,6 +174,22 @@ export default function AdminDashboard() {
     setAccounts(prev => prev.map(a => a.id === contractorId ? { ...a, contractor_status: status } : a));
   };
 
+  // Open a private contractor document (ID / insurance / WCB / trade cert) via a
+  // short-lived signed URL. Admins can read the private contractor-docs bucket (RLS).
+  const openDoc = async (path: string) => {
+    if (!path) return;
+    const { data, error } = await supabase.storage.from("contractor-docs").createSignedUrl(path, 3600);
+    if (error || !data?.signedUrl) { alert("Couldn't open that document — it may not have been uploaded."); return; }
+    window.open(data.signedUrl, "_blank");
+  };
+  // Public buckets (contractor-photos / portfolio-photos) — direct public URL.
+  const pubUrl = (bucket: string, path: string) =>
+    supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+  const DOC_LABELS: Record<string, string> = {
+    gov_id: "Government photo ID", insurance: "Insurance certificate",
+    wcb: "WCB coverage", certification: "Trade certification",
+  };
+
   // Email every orphaned/incomplete account (authenticated but never finished
   // onboarding) a "finish your signup" nudge. Reusable for future OAuth orphans.
   const nudgeIncomplete = async () => {
@@ -391,6 +407,48 @@ export default function AdminDashboard() {
                         {"  ·  WCB: "}{a.has_wcb === true ? "Yes" : a.has_wcb === false ? "No" : "—"}
                       </div>
                       {a.work_references ? <div style={s.meta}>References: {a.work_references}</div> : null}
+                      {(() => {
+                        const docs = (a.doc_urls && typeof a.doc_urls === "object") ? a.doc_urls as Record<string,string> : {};
+                        const docKeys = Object.keys(docs).filter(k => docs[k]);
+                        const portfolio = Array.isArray(a.portfolio) ? a.portfolio.filter((x:any)=>x?.path) : [];
+                        if (!docKeys.length && !a.photo_url && !portfolio.length) return (
+                          <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .4)", marginTop:".4rem" }}>No documents or photos uploaded yet.</div>
+                        );
+                        return (
+                          <div style={{ marginTop:".55rem" }}>
+                            {docKeys.length > 0 && (
+                              <>
+                                <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .6)", fontWeight:500 }}>Documents</div>
+                                <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginTop:".25rem" }}>
+                                  {docKeys.map(k => (
+                                    <button key={k} style={{ ...s.btn, fontSize:".76rem", padding:".35rem .7rem" }} onClick={() => openDoc(docs[k])}>
+                                      <Ic name="download" size={12} style={{ marginRight:4 }} />{DOC_LABELS[k] || k} ↗
+                                    </button>
+                                  ))}
+                                </div>
+                              </>
+                            )}
+                            {(a.photo_url || portfolio.length > 0) && (
+                              <>
+                                <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .6)", fontWeight:500, marginTop:".5rem" }}>Photos</div>
+                                <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginTop:".25rem" }}>
+                                  {a.photo_url && (
+                                    <img src={a.photo_url} alt="Profile" onClick={() => window.open(a.photo_url, "_blank")}
+                                      style={{ width:60, height:60, objectFit:"cover", borderRadius:8, cursor:"pointer", border:"1px solid rgba(var(--ff-fg), .12)" }} />
+                                  )}
+                                  {portfolio.map((p:any, i:number) => {
+                                    const url = pubUrl("portfolio-photos", p.path);
+                                    return (
+                                      <img key={i} src={url} alt={p.title || "Portfolio"} title={p.title || ""} onClick={() => window.open(url, "_blank")}
+                                        style={{ width:60, height:60, objectFit:"cover", borderRadius:8, cursor:"pointer", border:"1px solid rgba(var(--ff-fg), .12)" }} />
+                                    );
+                                  })}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })()}
                       <div style={{ ...s.badge, marginTop:".35rem" }}>● {a.contractor_status || "—"}</div>
                     </div>
                   )}
