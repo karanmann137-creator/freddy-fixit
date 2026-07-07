@@ -13,6 +13,18 @@ import RespondToClaim from "@/components/RespondToClaim";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 import ContractorProfileCompletion from "@/components/ContractorProfileCompletion";
+import ProfileCompleteCelebration from "@/components/ProfileCompleteCelebration";
+
+// Which required pieces of a contractor profile are still missing. Shared by the
+// "finish setting up" nudge and the profile-complete celebration trigger.
+const contractorMissing = (c: any): string[] => {
+  const m: string[] = [];
+  if (!(c?.service_area?.length)) m.push("service area");
+  if (!c?.work_type) m.push("your trade");
+  if (!c?.has_liability_insurance && !c?.licensed) m.push("licence or insurance");
+  if (!(c?.doc_urls && Object.keys(c.doc_urls).length)) m.push("verification documents");
+  return m;
+};
 import FreddyRewind from "@/components/FreddyRewind";
 import MilestonePanel from "@/components/MilestonePanel";
 import { useServicePricing, rangeText, money, type ServicePrice } from "@/lib/servicePricing";
@@ -90,6 +102,7 @@ export default function ContractorDashboard() {
   const [confirmState, setConfirmState] = useState<ConfirmState|null>(null);
   const [loading, setLoading]         = useState(true);
   const [activeTab, setActiveTab]     = useState<"jobs"|"available"|"profile"|"earnings"|"reviews">("jobs");
+  const [showProfileCongrats, setShowProfileCongrats] = useState(false);
   const [showCustomAvail, setShowCustomAvail] = useState(false);
   const [proposeForm, setProposeForm] = useState({ when:"", amount:"", notes:"", labour:"", parts:"", callout:"", subject:false, price_low:"", price_high:"", used_base_price:false });
   const [photoFile, setPhotoFile]     = useState<File | null>(null);
@@ -592,6 +605,13 @@ export default function ContractorDashboard() {
         </div>
       </div>
 
+      {showProfileCongrats && (
+        <ProfileCompleteCelebration
+          onClose={() => setShowProfileCongrats(false)}
+          onBrowse={() => { setShowProfileCongrats(false); setActiveTab("available"); }}
+        />
+      )}
+
       <div style={s.content}>
         <ProfileCompletionModal role="contractor" profile={profile} contractor={contractor} onSetupPayouts={setupPayouts} />
         <ProfileBar role="contractor" />
@@ -841,11 +861,7 @@ export default function ContractorDashboard() {
         {activeTab === "profile" && (
           <div>
             {(() => {
-              const missing: string[] = [];
-              if (!(contractor?.service_area?.length)) missing.push("service area");
-              if (!contractor?.work_type) missing.push("your trade");
-              if (!contractor?.has_liability_insurance && !contractor?.licensed) missing.push("licence or insurance");
-              if (!(contractor?.doc_urls && Object.keys(contractor.doc_urls).length)) missing.push("verification documents");
+              const missing = contractorMissing(contractor);
               if (missing.length === 0) return null;
               return (
                 <div style={{ ...s.card, border:"1px solid rgba(234,107,20,.35)", background:"rgba(234,107,20,.06)" }}>
@@ -858,7 +874,11 @@ export default function ContractorDashboard() {
                   <ContractorProfileCompletion
                     profile={profile}
                     contractor={contractor}
-                    onSaved={(patch: any) => setContractor((c: any) => ({ ...c, ...patch }))}
+                    onSaved={(patch: any) => {
+                      const merged = { ...contractor, ...patch };
+                      if (contractorMissing(contractor).length > 0 && contractorMissing(merged).length === 0) setShowProfileCongrats(true);
+                      setContractor((c: any) => ({ ...c, ...patch }));
+                    }}
                   />
                 </div>
               );
