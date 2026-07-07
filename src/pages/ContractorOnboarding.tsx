@@ -86,6 +86,8 @@ export default function ContractorOnboarding() {
   const [success, setSuccess] = useState(false);
   const [verifyEmail, setVerifyEmail] = useState(false);
   const [docFiles, setDocFiles] = useState<DocFiles>({ insurance: null, wcb: null, certification: null, gov_id: null });
+  const [restored, setRestored] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   // If the visitor is already signed in (e.g. they just used Google/Apple), we
   // skip account creation and simply complete their contractor profile.
   const [authedUserId, setAuthedUserId] = useState<string | null>(null);
@@ -98,8 +100,49 @@ export default function ContractorOnboarding() {
     });
   }, []);
 
+  // Restore a saved draft so a contractor who dropped off mid-signup (e.g. an
+  // upload failed) can pick up where they left off. Files can't be persisted,
+  // and the password is never stored.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("ff_contractor_draft");
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d.form) setForm(f => ({ ...f, ...d.form, password: "", email: d.form.email || f.email }));
+        if (Array.isArray(d.selectedSpec)) setSelectedSpec(d.selectedSpec);
+        if (Array.isArray(d.selectedArea)) setSelectedArea(d.selectedArea);
+        if (Array.isArray(d.availDays)) setAvailDays(d.availDays);
+        if (d.availStart) setAvailStart(d.availStart);
+        if (d.availEnd) setAvailEnd(d.availEnd);
+        if (typeof d.step === "number" && d.step >= 1 && d.step <= TOTAL) setStep(d.step);
+        setRestored(true);
+      }
+    } catch {}
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated || success || verifyEmail) return;
+    try {
+      localStorage.setItem("ff_contractor_draft", JSON.stringify({
+        form: { ...form, password: "" }, selectedSpec, selectedArea,
+        availDays, availStart, availEnd, step,
+      }));
+    } catch {}
+  }, [hydrated, success, verifyEmail, form, selectedSpec, selectedArea, availDays, availStart, availEnd, step]);
+
   const wt = WORK_TYPES.find(w => w.id === form.workType);
   const insuranceRequired = wt?.insurance === "required";
+  // Shared validation for credential/document uploads: PDF or any image
+  // (incl. iPhone HEIC/HEIF), max 10MB. Returns an error string or null.
+  const docFileError = (f: File): string | null => {
+    const t = (f.type || "").toLowerCase();
+    const n = f.name.toLowerCase();
+    const okType = t.startsWith("image/") || t === "application/pdf" || /\.(pdf|jpe?g|png|webp|gif|heic|heif)$/.test(n);
+    if (!okType) return "Please upload a PDF or a photo (JPG, PNG, HEIC). Other file types aren't accepted.";
+    if (f.size > 10 * 1024 * 1024) return "File must be under 10MB. Try a smaller photo or PDF.";
+    return null;
+  };
 
   const setF = (key: string, val: string | number) => { setForm(f => ({ ...f, [key]: val })); setErrors(e => ({ ...e, [key]: "" })); };
   const setFB = (key: string, val: boolean) => { setForm(f => ({ ...f, [key]: val })); };
@@ -177,7 +220,7 @@ export default function ContractorOnboarding() {
         userId = authData.user.id;
         // No session => email confirmation is required. The trigger has already
         // saved their profile + contractor details; show the verify screen.
-        if (!authData.session) { trackEvent("sign_up", { method: "contractor" }); setVerifyEmail(true); window.scrollTo(0,0); setLoading(false); return; }
+        if (!authData.session) { try { localStorage.removeItem("ff_contractor_draft"); } catch {} trackEvent("sign_up", { method: "contractor" }); setVerifyEmail(true); window.scrollTo(0,0); setLoading(false); return; }
       } else {
         // Already signed in (OAuth): set their role so the trigger's default doesn't stick.
         await supabase.from("profiles").update({ role: "contractor", first_name: form.firstName, last_name: form.lastName, phone: form.phone }).eq("id", userId);
@@ -211,6 +254,7 @@ export default function ContractorOnboarding() {
         supabase.functions.invoke("review-contractor", { body: { contractor_id: userId } }).catch(() => {});
       }
 
+      try { localStorage.removeItem("ff_contractor_draft"); } catch {}
       trackEvent("sign_up", { method: "contractor" });
       setSuccess(true); window.scrollTo(0,0);
     } catch (err: any) {
@@ -280,6 +324,13 @@ export default function ContractorOnboarding() {
             <div key={i} style={{ height:"3px", flex:1, borderRadius:"99px", background: i+1===step ? "#ea6b14" : i+1<step ? "rgba(234,107,20,.45)" : "rgba(var(--ff-fg), .1)" }} />
           ))}
         </div>
+
+        {restored && (
+          <div style={{ display:"flex", alignItems:"center", gap:".75rem", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.25)", borderRadius:"8px", padding:".7rem 1rem", marginBottom:"1.5rem", fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
+            <span style={{ flex:1 }}>We saved your progress — pick up where you left off. You'll just need to re-attach any files.</span>
+            <button onClick={() => { try { localStorage.removeItem("ff_contractor_draft"); } catch {} window.location.reload(); }} style={{ background:"none", border:"none", color:"#ea6b14", cursor:"pointer", fontFamily:"inherit", fontSize:".78rem", textDecoration:"underline", flexShrink:0 }}>Start over</button>
+          </div>
+        )}
 
         <div style={s.card}>
           {/* Step 1 — Contact */}
@@ -492,15 +543,15 @@ export default function ContractorOnboarding() {
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
                       </svg>
                       <span style={{ fontSize:".88rem", color: docFiles.insurance ? "#ea6b14" : "rgba(var(--ff-muted), .6)", flex:1 }}>
-                        {docFiles.insurance ? docFiles.insurance.name : "Upload insurance certificate (PDF, JPG, PNG — max 10MB)"}
+                        {docFiles.insurance ? docFiles.insurance.name : "Upload insurance certificate — or snap a photo (PDF/JPG/PNG, max 10MB)"}
                       </span>
                       {docFiles.insurance && <span style={{ color:"#22c55e", fontSize:"1rem" }}>✓</span>}
                       <input
                         type="file"
-                        accept=".pdf,.jpg,.jpeg,.png,.webp"
+                        accept="image/*,application/pdf"
                         onChange={e => {
                           const f = e.target.files?.[0] ?? null;
-                          if (f && f.size > 10*1024*1024) { setSubmitError("File must be under 10MB."); e.target.value=""; return; }
+                          if (f) { const err = docFileError(f); if (err) { setSubmitError(err); e.target.value=""; return; } }
                           setDocFiles(prev => ({ ...prev, insurance: f }));
                           setSubmitError("");
                         }}
@@ -554,15 +605,15 @@ export default function ContractorOnboarding() {
                       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
                     </svg>
                     <span style={{ fontSize:".88rem", color: docFiles[doc.key] ? "#ea6b14" : "rgba(var(--ff-muted), .6)", flex:1 }}>
-                      {docFiles[doc.key] ? docFiles[doc.key]!.name : "Choose file (PDF, JPG, PNG — max 10MB)"}
+                      {docFiles[doc.key] ? docFiles[doc.key]!.name : "Choose file or take a photo (PDF or image, max 10MB)"}
                     </span>
                     {docFiles[doc.key] && <span style={{ color:"#22c55e", fontSize:"1rem" }}>✓</span>}
                     <input
                       type="file"
-                      accept=".pdf,.jpg,.jpeg,.png,.webp"
+                      accept="image/*,application/pdf"
                       onChange={e => {
                         const f = e.target.files?.[0] ?? null;
-                        if (f && f.size > 10*1024*1024) { setSubmitError("File must be under 10MB."); return; }
+                        if (f) { const err = docFileError(f); if (err) { setSubmitError(err); e.target.value=""; return; } }
                         setDocFiles(prev => ({ ...prev, [doc.key]: f }));
                         setSubmitError("");
                       }}
@@ -620,7 +671,7 @@ export default function ContractorOnboarding() {
           {step < TOTAL
             ? <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff" }} onClick={next}>Next →</button>
             : <button style={{ ...s.navBtn, background:"linear-gradient(135deg,#ea6b14,#f09020)", color:"#fff", opacity: loading ? .6 : 1 }} onClick={handleSubmit} disabled={loading}>
-                {loading ? "Submitting…" : "Complete Registration →"}
+                {loading ? "Uploading your details…" : "Complete Registration →"}
               </button>
           }
 

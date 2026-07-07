@@ -48,7 +48,13 @@ export default function ContractorProfileCompletion({
 
   const pickDoc = (key: DocKey, f: File | null) => {
     setMsg(null);
-    if (f && f.size > 10 * 1024 * 1024) { setMsg({ kind: "err", text: DOC_LABELS[key] + " must be under 10MB." }); return; }
+    if (f) {
+      const t = (f.type || "").toLowerCase();
+      const n = f.name.toLowerCase();
+      const okType = t.startsWith("image/") || t === "application/pdf" || /\.(pdf|jpe?g|png|webp|gif|heic|heif)$/.test(n);
+      if (!okType) { setMsg({ kind: "err", text: "Please upload a PDF or a photo (JPG, PNG, HEIC)." }); return; }
+      if (f.size > 10 * 1024 * 1024) { setMsg({ kind: "err", text: DOC_LABELS[key] + " must be under 10MB." }); return; }
+    }
     setDocFiles(prev => ({ ...prev, [key]: f }));
   };
 
@@ -170,7 +176,7 @@ export default function ContractorProfileCompletion({
                 {existingDocs[key] && !docFiles[key] && <span style={{ color: "#22c55e", marginLeft: ".4rem", fontSize: ".76rem" }}>✓ on file</span>}
                 {docFiles[key] && <span style={{ color: "#ea6b14", marginLeft: ".4rem", fontSize: ".76rem" }}>{docFiles[key]!.name}</span>}
               </div>
-              <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={e => pickDoc(key, e.target.files?.[0] ?? null)} style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .7)" }} />
+              <input type="file" accept="image/*,application/pdf" onChange={e => pickDoc(key, e.target.files?.[0] ?? null)} style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .7)" }} />
             </div>
           ))}
         </div>
