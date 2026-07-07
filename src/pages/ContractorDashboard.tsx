@@ -1,5 +1,5 @@
 import { Ic } from "@/components/Ic";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
@@ -127,6 +127,14 @@ export default function ContractorDashboard() {
   const [goalInput, setGoalInput]     = useState("");
   const [savingGoal, setSavingGoal]   = useState(false);
   const [rewindOpen, setRewindOpen]   = useState(false);
+  const [loadError, setLoadError]     = useState(false);
+  const [toast, setToast]             = useState<{ kind:"err"|"ok"; text:string }|null>(null);
+  const toastTimer = useRef<number | null>(null);
+  const notify = (text: string, kind: "err" | "ok" = "err") => {
+    setToast({ kind, text });
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), kind === "ok" ? 3000 : 6000);
+  };
 
   const askConfirm = (o: Omit<ConfirmState, "resolve">) =>
     new Promise<boolean>(resolve => setConfirmState({ ...o, resolve }));
@@ -161,8 +169,10 @@ export default function ContractorDashboard() {
 
   useEffect(() => {
     const load = async () => {
+      setLoadError(false);
+      try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) { setLoading(false); return; }
       // All six reads key only off user.id, so fire them in parallel instead of
       // waiting on each round-trip in sequence.
       const [
@@ -227,7 +237,11 @@ export default function ContractorDashboard() {
         }
         setClaimPhotos(signed);
       }
-      setLoading(false);
+      } catch {
+        setLoadError(true);
+      } finally {
+        setLoading(false);
+      }
     };
     load();
   }, []);
@@ -268,7 +282,7 @@ export default function ContractorDashboard() {
     });
   };
   const proposeSchedule = async (job: any) => {
-    if (!proposeForm.when) { alert("Pick a date and time first."); return; }
+    if (!proposeForm.when) { notify("Pick a date and time first."); return; }
     setBusyJobId(job.id);
     const whenIso = new Date(proposeForm.when).toISOString();
     const ptotal = quoteTotal(proposeForm);
@@ -286,22 +300,24 @@ export default function ContractorDashboard() {
       p_used_base_price: !!proposeForm.used_base_price,
     });
     setBusyJobId(null);
-    if (error) { alert("Couldn't send proposal: " + error.message); return; }
+    if (error) { notify("Couldn't send proposal: " + error.message); return; }
     setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, scheduled_at: whenIso, amount: ptotal != null ? ptotal : j.amount, labour_amount: proposeForm.labour ? Number(proposeForm.labour) : null, parts_amount: proposeForm.parts ? Number(proposeForm.parts) : null, callout_fee: proposeForm.callout ? Number(proposeForm.callout) : null, subject_to_inspection: !!proposeForm.subject, schedule_proposed_at: new Date().toISOString(), client_approved_at: null } : j));
   };
   const onMyWay = async (job: any) => {
     setBusyJobId(job.id);
     const { error } = await supabase.rpc("contractor_on_my_way", { p_job_id: job.id });
     setBusyJobId(null);
-    if (error) { alert("Couldn't update: " + error.message); return; }
+    if (error) { notify("Couldn't update: " + error.message); return; }
     setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, on_my_way_at: new Date().toISOString() } : j));
+    notify("We let the client know you're on your way.", "ok");
   };
   const acceptReschedule = async (job: any) => {
     setBusyJobId(job.id);
     const { error } = await supabase.rpc("contractor_accept_reschedule", { p_job_id: job.id });
     setBusyJobId(null);
-    if (error) { alert("Couldn't accept the new time: " + error.message); return; }
+    if (error) { notify("Couldn't accept the new time: " + error.message); return; }
     setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: "scheduled", client_approved_at: new Date().toISOString(), reschedule_accepted_at: new Date().toISOString(), client_rescheduled_at: null } : j));
+    notify("New time accepted — the client's been notified.", "ok");
   };
   const markComplete = async (job: any) => {
     if (!(await askConfirm({
@@ -325,7 +341,7 @@ export default function ContractorDashboard() {
       setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: "pending_confirmation", contractor_completed_at: new Date().toISOString(), completion_photo_path: photoPath ?? j.completion_photo_path } : j));
       setPhotoFile(null);
     } catch (e: any) {
-      alert("Couldn't mark complete: " + (e.message || e));
+      notify("Couldn't mark complete: " + (e.message || e));
     } finally {
       setBusyJobId(null);
     }
@@ -340,7 +356,7 @@ export default function ContractorDashboard() {
     setBusyJobId(job.id);
     const { error } = await supabase.rpc("withdraw_job", { p_job_id: job.id });
     setBusyJobId(null);
-    if (error) { alert("Couldn't withdraw: " + error.message); return; }
+    if (error) { notify("Couldn't withdraw: " + error.message); return; }
     setMyJobs(prev => prev.filter(j => j.id !== job.id));
     setActiveJobId(null);
   };
@@ -348,12 +364,12 @@ export default function ContractorDashboard() {
     setBusyPf(true);
     const { error } = await supabase.from("contractors").update({ google_reviews_url: googleUrl || null }).eq("id", profile.id);
     setBusyPf(false);
-    if (error) { alert("Couldn't save link: " + error.message); return; }
+    if (error) { notify("Couldn't save link: " + error.message); return; }
     setContractor((c: any) => ({ ...c, google_reviews_url: googleUrl || null }));
   };
   const pfUrl = (path: string) => supabase.storage.from("portfolio-photos").getPublicUrl(path).data.publicUrl;
   const addPortfolioItem = async () => {
-    if (!pfForm.file) { alert("Choose a photo first."); return; }
+    if (!pfForm.file) { notify("Choose a photo first."); return; }
     setBusyPf(true);
     try {
       const ext = (pfForm.file.name.split(".").pop() || "jpg").toLowerCase();
@@ -366,13 +382,13 @@ export default function ContractorDashboard() {
       if (error) throw error;
       setPortfolio(prev => [row, ...prev]);
       setPfForm({ title:"", description:"", file:null });
-    } catch (e: any) { alert("Couldn't add: " + (e.message || e)); }
+    } catch (e: any) { notify("Couldn't add: " + (e.message || e)); }
     finally { setBusyPf(false); }
   };
   const deletePortfolioItem = async (item: any) => {
     if (!window.confirm("Remove this portfolio item?")) return;
     const { error } = await supabase.from("portfolio_items").delete().eq("id", item.id);
-    if (error) { alert("Couldn't remove: " + error.message); return; }
+    if (error) { notify("Couldn't remove: " + error.message); return; }
     if (item.photo_path) supabase.storage.from("portfolio-photos").remove([item.photo_path]);
     setPortfolio(prev => prev.filter(p => p.id !== item.id));
   };
@@ -380,7 +396,7 @@ export default function ContractorDashboard() {
     const f = bidForm[r.id] || { amount:"", message:"" };
     let total = quoteTotal(f);
     if (total == null && r.my_amount != null) total = Number(r.my_amount);
-    if (total == null) { alert("Enter your bid amount or an itemised breakdown."); return; }
+    if (total == null) { notify("Enter your bid amount or an itemised breakdown."); return; }
     setBusyBid(r.id);
     const msg = f.message !== undefined ? f.message : (r.my_message ?? "");
     const { error } = await supabase.rpc("place_bid", {
@@ -397,7 +413,7 @@ export default function ContractorDashboard() {
       p_used_base_price: !!f.used_base_price,
     });
     setBusyBid(null);
-    if (error) { alert("Couldn't place bid: " + error.message); return; }
+    if (error) { notify("Couldn't place bid: " + error.message); return; }
     setAvailableJobs(prev => prev.map(x => x.id === r.id
       ? { ...x, my_amount: total, my_message: msg || null, bid_count: x.my_amount != null ? x.bid_count : (x.bid_count ?? 0) + 1 }
       : x));
@@ -410,9 +426,9 @@ export default function ContractorDashboard() {
   // change is queued for the client to approve (and pay any top-up) before release.
   const requestRequote = async (job: any) => {
     const f = requoteForm[job.id] || { amount:"", reason:"", labour:"", parts:"", callout:"", subject:false };
-    if (!f.reason || !f.reason.trim()) { alert("Add a short reason so the client understands the change."); return; }
+    if (!f.reason || !f.reason.trim()) { notify("Add a short reason so the client understands the change."); return; }
     const total = quoteTotal(f);
-    if (total == null) { alert("Enter the new price or an itemised breakdown."); return; }
+    if (total == null) { notify("Enter the new price or an itemised breakdown."); return; }
     setBusyJobId(job.id);
     const { data, error } = await supabase.rpc("propose_price_change", {
       p_job_id: job.id,
@@ -427,7 +443,7 @@ export default function ContractorDashboard() {
       p_used_base_price: !!f.used_base_price,
     });
     setBusyJobId(null);
-    if (error) { alert("Couldn't send price change: " + error.message); return; }
+    if (error) { notify("Couldn't send price change: " + error.message); return; }
     if (data === "pending_client_approval") {
       // Held job — queued for the client. Show the pending banner; price applies once they approve.
       const pending = {
@@ -483,10 +499,16 @@ export default function ContractorDashboard() {
   };
 
   const hideJob = async (r: any) => {
+    if (!(await askConfirm({
+      title: "Hide this job?",
+      message: "It'll be removed from your Available Jobs list and you won't see this request again.",
+      confirmLabel: "Hide it",
+      danger: false,
+    }))) return;
     setHiding(r.id);
     const { error } = await supabase.from("hidden_jobs").insert({ contractor_id: profile.id, request_id: r.id });
     setHiding(null);
-    if (error) { alert("Couldn't hide this job: " + error.message); return; }
+    if (error) { notify("Couldn't hide this job: " + error.message); return; }
     setAvailableJobs(prev => prev.filter(x => x.id !== r.id));
   };
 
@@ -497,7 +519,7 @@ export default function ContractorDashboard() {
       min_callout: pricingForm.callout ? Number(pricingForm.callout) : null,
     }).eq("id", profile.id);
     setBusyPricing(false);
-    if (error) { alert("Couldn't save pricing: " + error.message); return; }
+    if (error) { notify("Couldn't save pricing: " + error.message); return; }
     setContractor((c: any) => ({ ...c, hourly_rate: pricingForm.hourly ? Number(pricingForm.hourly) : null, min_callout: pricingForm.callout ? Number(pricingForm.callout) : null }));
   };
 
@@ -507,7 +529,7 @@ export default function ContractorDashboard() {
     if (!profile) return;
     // Reject an invalid window (end at/before start) before writing anything.
     if (next.start && next.end && next.end <= next.start) {
-      alert("Your end time needs to be after your start time.");
+      notify("Your end time needs to be after your start time.");
       return;
     }
     const prev = contractor?.availability;
@@ -515,7 +537,7 @@ export default function ContractorDashboard() {
     const { error } = await supabase.from("contractors").update({ availability: next }).eq("id", profile.id);
     if (error) {
       setContractor((c: any) => ({ ...c, availability: prev })); // roll back on failure
-      alert("Couldn't save your availability — please try again.");
+      notify("Couldn't save your availability — please try again.");
     }
   };
   const setAvailDays  = (days: string[]) => saveAvail({ ...avail, days });
@@ -534,7 +556,7 @@ export default function ContractorDashboard() {
     } catch (e: any) {
       let msg = e?.message || String(e);
       try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
-      alert("Payout setup failed: " + msg);
+      notify("Payout setup failed: " + msg);
       setBusyStripe(false);
     }
   }
@@ -546,7 +568,7 @@ export default function ContractorDashboard() {
     const g = Number(goalInput) || 0;
     const { error } = await supabase.rpc("set_weekly_goal", { p_goal: g });
     setSavingGoal(false);
-    if (error) { alert("Could not save your goal: " + error.message); return; }
+    if (error) { notify("Could not save your goal: " + error.message); return; }
     setEarn((e: any) => e ? { ...e, weekly_goal: g || null } : e);
   };
 
@@ -585,8 +607,21 @@ export default function ContractorDashboard() {
     </div>
   );
 
+  if (loadError) return (
+    <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ textAlign:"center", color:"rgba(var(--ff-muted), .7)", maxWidth:"320px", padding:"1.5rem" }}>
+        <div style={{ marginBottom:".75rem", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".04em" }}>Couldn't load your dashboard</div>
+        <div style={{ fontSize:".9rem", marginBottom:"1.25rem" }}>Check your connection and try again.</div>
+        <button style={{ padding:".75rem 1.5rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer" }} onClick={() => window.location.reload()}>Retry</button>
+      </div>
+    </div>
+  );
+
   return (
     <div style={s.wrap}>
+      {toast && (
+        <div onClick={() => setToast(null)} style={{ position:"fixed", left:"50%", bottom:"1.5rem", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
+      )}
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       <div style={{ height: "3.75rem" }} />
       <div style={s.header}>
@@ -806,7 +841,7 @@ export default function ContractorDashboard() {
                 <div style={{ marginBottom:"1rem" }}><Ic name="clipboard-list" size={48} color="#ea6b14" /></div>
                 <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", marginBottom:".5rem" }}>No Open Jobs Right Now</h2>
                 <p style={{ color:"rgba(var(--ff-muted), .5)" }}>New jobs matching your specialties will show up here. Add more specialties in your profile to see more work.</p>
-                <button onClick={() => setActiveTab("profile")} style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", marginTop:"1.25rem" }}>Check your availability &amp; service area</button>
+                <button onClick={() => setActiveTab("profile")} style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", marginTop:"1.25rem" }}>Update your specialties</button>
               </div>
             ) : availableJobs.map(r => (
               <div key={r.id} style={s.jobCard}>

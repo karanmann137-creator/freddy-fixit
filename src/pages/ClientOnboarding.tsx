@@ -164,6 +164,10 @@ export default function ClientOnboarding() {
       if (form.password.length < 8) errs.password = "Minimum 8 characters";
     }
     setErrors(errs);
+    // On a long step the errored field can sit below the fold — scroll it into view.
+    const order = ["serviceNeeded","preferredSchedule","location","jobDescription","firstName","email","phone","password"];
+    const first = order.find(k => errs[k]);
+    if (first) setTimeout(() => { document.getElementById("co-err-" + first)?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 60);
     return Object.keys(errs).length === 0;
   };
 
@@ -320,7 +324,7 @@ export default function ClientOnboarding() {
                 <div style={{ marginBottom:"1.2rem" }}>
                   <label style={s.label}>First Name</label>
                   <input autoComplete="given-name" style={{ ...inp, borderColor: errors.firstName ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="Alex" value={form.firstName} onChange={e => set("firstName",e.target.value)} />
-                  {errors.firstName && <p style={s.err}>{errors.firstName}</p>}
+                  {errors.firstName && <p id="co-err-firstName" style={s.err}>{errors.firstName}</p>}
                 </div>
                 <div style={{ marginBottom:"1.2rem" }}>
                   <label style={s.label}>Last Name <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
@@ -330,17 +334,17 @@ export default function ClientOnboarding() {
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Email</label>
                 <input autoComplete="email" style={{ ...inp, borderColor: errors.email ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="email" placeholder="alex@email.com" value={form.email} onChange={e => set("email",e.target.value)} />
-                {errors.email && <p style={s.err}>{errors.email}</p>}
+                {errors.email && <p id="co-err-email" style={s.err}>{errors.email}</p>}
               </div>
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Phone <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
                 <input autoComplete="tel" style={{ ...inp, borderColor: errors.phone ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="tel" placeholder="403-555-0100" value={form.phone} onChange={e => set("phone",fmtPhone(e.target.value))} />
-                {errors.phone && <p style={s.err}>{errors.phone}</p>}
+                {errors.phone && <p id="co-err-phone" style={s.err}>{errors.phone}</p>}
               </div>
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Password (for your account)</label>
                 <input autoComplete="new-password" style={{ ...inp, borderColor: errors.password ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="password" placeholder="Min 8 characters" value={form.password} onChange={e => set("password",e.target.value)} />
-                {errors.password && <p style={s.err}>{errors.password}</p>}
+                {errors.password && <p id="co-err-password" style={s.err}>{errors.password}</p>}
               </div>
               <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", margin:"1.5rem 0 .5rem", padding:"1rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
                 <input
@@ -390,7 +394,7 @@ export default function ClientOnboarding() {
                   </button>
                 ))}
               </div>
-              {errors.serviceNeeded && <p style={s.err}>{errors.serviceNeeded}</p>}
+              {errors.serviceNeeded && <p id="co-err-serviceNeeded" style={s.err}>{errors.serviceNeeded}</p>}
               {selectedServices.length > 0 && (
                 <p style={{ fontSize:".78rem", color:"#ea6b14", marginBottom:"1.5rem" }}>✓ {selectedServices.length} service{selectedServices.length > 1 ? "s" : ""} selected</p>
               )}
@@ -401,7 +405,7 @@ export default function ClientOnboarding() {
                   <div><div style={{ fontSize:".95rem", fontWeight:500 }}>{sc.label}</div><div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .5)" }}>{sc.sub}</div></div>
                 </button>
               ))}
-              {errors.preferredSchedule && <p style={s.err}>{errors.preferredSchedule}</p>}
+              {errors.preferredSchedule && <p id="co-err-preferredSchedule" style={s.err}>{errors.preferredSchedule}</p>}
 
               {form.preferredSchedule === "Recurring" && (
                 <div style={{ marginTop:"1rem", padding:"1rem", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"10px", display:"flex", flexDirection:"column" as const, gap:"1rem" }}>
@@ -569,13 +573,13 @@ export default function ClientOnboarding() {
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Your Address / Location</label>
                 <AddressAutocomplete autoComplete="street-address" style={{ ...inp, borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="e.g. 123 Main St NW" value={form.location} onChange={v => set("location", v)} />
-                {errors.location && <p style={s.err}>{errors.location}</p>}
+                {errors.location && <p id="co-err-location" style={s.err}>{errors.location}</p>}
               </div>
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Describe the Job</label>
                 <textarea style={{ ...inp, resize:"vertical", minHeight:"120px", borderColor: errors.jobDescription ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="Tell us what's broken or what you need done." value={form.jobDescription} onChange={e => set("jobDescription",e.target.value)} />
                 <VoiceDictate onAppend={(t) => set("jobDescription", (form.jobDescription.trim() ? form.jobDescription.trim() + " " : "") + t)} />
-                {errors.jobDescription && <p style={s.err}>{errors.jobDescription}</p>}
+                {errors.jobDescription && <p id="co-err-jobDescription" style={s.err}>{errors.jobDescription}</p>}
               </div>
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Photo of the Problem <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>

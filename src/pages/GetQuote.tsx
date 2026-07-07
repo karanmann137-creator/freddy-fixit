@@ -105,14 +105,14 @@ export default function GetQuote() {
 
         <div style={s.card}>
           <label style={{ ...s.label, marginTop:0 }}>Your name</label>
-          <input style={{ ...inp, borderColor: errors.name ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="First and last name" value={name} onChange={e => { setName(e.target.value); setErrors(x => ({ ...x, name:"" })); }} />
+          <input autoComplete="name" style={{ ...inp, borderColor: errors.name ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="First and last name" value={name} onChange={e => { setName(e.target.value); setErrors(x => ({ ...x, name:"" })); }} />
           {errors.name && <p style={s.err}>{errors.name}</p>}
 
           <label style={s.label}>Email</label>
-          <input style={{ ...inp, borderColor: errors.contact ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="you@email.com" value={email} onChange={e => { setEmail(e.target.value); setErrors(x => ({ ...x, contact:"" })); }} />
+          <input autoComplete="email" type="email" style={{ ...inp, borderColor: errors.contact ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="you@email.com" value={email} onChange={e => { setEmail(e.target.value); setErrors(x => ({ ...x, contact:"" })); }} />
 
           <label style={s.label}>Phone <span style={{ opacity:.5, textTransform:"none", letterSpacing:0 }}>(optional if email given)</span></label>
-          <input style={{ ...inp, borderColor: errors.contact ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="(403) 555-0123" value={phone} onChange={e => { setPhone(e.target.value); setErrors(x => ({ ...x, contact:"" })); }} />
+          <input autoComplete="tel" type="tel" style={{ ...inp, borderColor: errors.contact ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="(403) 555-0123" value={phone} onChange={e => { setPhone(e.target.value); setErrors(x => ({ ...x, contact:"" })); }} />
           {errors.contact && <p style={s.err}>{errors.contact}</p>}
 
           <label style={s.label}>What do you need?</label>

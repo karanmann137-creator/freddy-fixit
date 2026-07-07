@@ -1,5 +1,5 @@
 import { Ic } from "@/components/Ic";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
@@ -113,6 +113,15 @@ export default function ClientDashboard() {
   const [busyPlan, setBusyPlan]     = useState<string|null>(null);
   const [newVisitTime, setNewVisitTime] = useState<string>("");
   const [showChangeTime, setShowChangeTime] = useState(false);
+  const [toast, setToast]           = useState<{ kind:"err"|"ok"; text:string }|null>(null);
+  const toastTimer = useRef<number | null>(null);
+  const notify = (text: string, kind: "err" | "ok" = "err") => {
+    setToast({ kind, text });
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), kind === "ok" ? 3000 : 6000);
+  };
+  const [showResched, setShowResched] = useState(false);
+  const [reschedNote, setReschedNote] = useState("");
 
   const askConfirm = (o: Omit<ConfirmState, "resolve">) =>
     new Promise<boolean>(resolve => setConfirmState({ ...o, resolve }));
@@ -214,7 +223,7 @@ export default function ClientDashboard() {
     // optimistic flip
     setPros(prev => prev.map(x => x.contractor_id === contractorId ? { ...x, is_favorite: !x.is_favorite } : x));
     const { data, error } = await supabase.rpc("toggle_favorite", { p_contractor_id: contractorId });
-    if (error) { setPros(prev => prev.map(x => x.contractor_id === contractorId ? { ...x, is_favorite: !x.is_favorite } : x)); return; }
+    if (error) { setPros(prev => prev.map(x => x.contractor_id === contractorId ? { ...x, is_favorite: !x.is_favorite } : x)); notify("Couldn't update your favourites — please try again."); return; }
     setPros(prev => prev.map(x => x.contractor_id === contractorId ? { ...x, is_favorite: data === true } : x));
   };
 
@@ -233,7 +242,7 @@ export default function ClientDashboard() {
     try {
       await navigator.clipboard.writeText(`Get your first Freddy Fix It service fee waived with my code ${code}: https://freddyfixit.ca/?ref=${code}`);
       setRefCopied(true); setTimeout(() => setRefCopied(false), 2000);
-    } catch { /* ignore */ }
+    } catch { notify("Couldn't copy automatically — your code is " + code + " (shown on the card)."); }
   };
 
   const startEdit = (r: any) => {
@@ -247,7 +256,7 @@ export default function ClientDashboard() {
       p_location: editForm.location, p_description: editForm.description,
     });
     setBusyReq(false);
-    if (error) { alert("Couldn't save changes: " + error.message); return; }
+    if (error) { notify("Couldn't save changes: " + error.message); return; }
     setRequests(prev => prev.map(r => r.id === id ? { ...r, service_needed: editForm.service, preferred_schedule: editForm.schedule, location: editForm.location, job_description: editForm.description } : r));
     setEditingId(null);
   };
@@ -260,7 +269,7 @@ export default function ClientDashboard() {
     setBusyReq(true);
     const { data, error } = await supabase.rpc("remove_client_request", { p_request_id: r.id });
     setBusyReq(false);
-    if (error) { alert("Couldn't remove request: " + error.message); return; }
+    if (error) { notify("Couldn't remove request: " + error.message); return; }
     if (data === "deleted") setRequests(prev => prev.filter(x => x.id !== r.id));
     else setRequests(prev => prev.map(x => x.id === r.id ? { ...x, status: "cancelled" } : x));
   };
@@ -270,7 +279,7 @@ export default function ClientDashboard() {
     setBusyReq(true);
     const { error } = await supabase.rpc("approve_job_schedule", { p_job_id: activeJob.id });
     setBusyReq(false);
-    if (error) { alert("Couldn't approve: " + error.message); return; }
+    if (error) { notify("Couldn't approve: " + error.message); return; }
     // Email the client a written contract copy (Alberta: starts the 10-day cancellation clock).
     supabase.functions.invoke("notify-email", { body: { event: "contract_copy", job_id: activeJob.id } }).catch(() => {});
     // If this job is covered by a prepaid recurring pool, draw down one occurrence
@@ -283,21 +292,25 @@ export default function ClientDashboard() {
     setActiveJob({ ...activeJob, status: "scheduled", client_approved_at: new Date().toISOString(),
       ...(covered ? { payment_status: "held", paid_at: new Date().toISOString() } : {}) });
   };
-  const requestReschedule = async () => {
+  const requestReschedule = () => {
     if (!activeJob || !profile) return;
-    const note = window.prompt("Suggest a different day/time for your contractor (they'll get it as a message):", "");
-    if (note == null) return;
-    const trimmed = note.trim();
+    setReschedNote("");
+    setShowResched(true);
+  };
+  const submitReschedule = async () => {
+    if (!activeJob || !profile) return;
+    const trimmed = reschedNote.trim();
     if (!trimmed) return;
     setBusyReq(true);
     const { error } = await supabase.from("messages").insert({
       job_id: activeJob.id,
       sender_id: profile.id,
-      content: "📅 Reschedule request: " + trimmed,
+      content: "Reschedule request: " + trimmed,
     });
     setBusyReq(false);
-    if (error) { alert("Couldn't send your request: " + error.message); return; }
-    alert("Sent! Your contractor will see your suggested time and propose a new one.");
+    if (error) { notify("Couldn't send your request: " + error.message); return; }
+    setShowResched(false);
+    notify("Sent! Your contractor will see your suggested time and propose a new one.", "ok");
   };
 
   const confirmVisit = async () => {
@@ -305,12 +318,12 @@ export default function ClientDashboard() {
     setBusyReq(true);
     const { error } = await supabase.rpc("confirm_visit", { p_job_id: activeJob.id });
     setBusyReq(false);
-    if (error) { alert("Couldn't confirm: " + error.message); return; }
+    if (error) { notify("Couldn't confirm: " + error.message); return; }
     setActiveJob({ ...activeJob, client_confirmed_visit_at: new Date().toISOString() });
   };
 
   const changeVisitTime = async () => {
-    if (!activeJob || !newVisitTime) { alert("Pick a new date and time first."); return; }
+    if (!activeJob || !newVisitTime) { notify("Pick a new date and time first."); return; }
     if (!(await askConfirm({
       title: "Change the time?",
       message: "Heads up: your pro already blocked off the current time. Changing it means they have to accept the new time — they may not be available and could decline. If they can't make it, they'll suggest another time for you to approve.",
@@ -321,7 +334,7 @@ export default function ClientDashboard() {
     setBusyReq(true);
     const { error } = await supabase.rpc("client_reschedule_visit", { p_job_id: activeJob.id, p_scheduled_at: iso });
     setBusyReq(false);
-    if (error) { alert("Couldn't change the time: " + error.message); return; }
+    if (error) { notify("Couldn't change the time: " + error.message); return; }
     setShowChangeTime(false);
     setNewVisitTime("");
     setActiveJob({ ...activeJob, status: "assigned", scheduled_at: iso, schedule_proposed_at: new Date().toISOString(), client_approved_at: null, client_confirmed_visit_at: null, client_rescheduled_at: new Date().toISOString(), reschedule_accepted_at: null });
@@ -332,7 +345,7 @@ export default function ClientDashboard() {
     setBusyPlan(plan.request_id);
     const { error } = await supabase.rpc("set_recurring_plan_status", { p_request: plan.request_id, p_status: next });
     setBusyPlan(null);
-    if (error) { alert("Couldn't update plan: " + error.message); return; }
+    if (error) { notify("Couldn't update plan: " + error.message); return; }
     setPlans(prev => prev.map(p => p.request_id === plan.request_id ? { ...p, recurring_plan_status: next } : p));
   };
   const prepayPlan = async (plan: any, n: number) => {
@@ -353,7 +366,7 @@ export default function ClientDashboard() {
     } catch (e: any) {
       let msg = e?.message || String(e);
       try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
-      alert("Prepay couldn't start: " + msg);
+      notify("Prepay couldn't start: " + msg);
       setBusyPlan(null);
     }
   };
@@ -386,7 +399,7 @@ export default function ClientDashboard() {
       "<button onclick='window.print()'>Print / Save as PDF</button>" +
       "</body></html>";
     const w = window.open("", "_blank");
-    if (!w) { alert("Please allow pop-ups to view your receipt."); return; }
+    if (!w) { notify("Please allow pop-ups to view your receipt."); return; }
     w.document.write(html);
     w.document.close();
   };
@@ -420,7 +433,7 @@ export default function ClientDashboard() {
     } catch (e: any) {
       let msg = e?.message || String(e);
       try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
-      alert("Payment couldn't start: " + msg);
+      notify("Payment couldn't start: " + msg);
       setBusyPay(false);
     }
   };
@@ -439,7 +452,7 @@ export default function ClientDashboard() {
     setBusyReq(true);
     const { error } = await supabase.rpc("confirm_job_completion", { p_job_id: activeJob.id });
     setBusyReq(false);
-    if (error) { alert("Couldn't confirm: " + error.message); return; }
+    if (error) { notify("Couldn't confirm: " + error.message); return; }
     requestGoogleReview("job_done", { jobId: activeJob.id });
     setActiveJob({ ...activeJob, status: "completed", client_confirmed_at: new Date().toISOString() });
     setRequests(prev => prev.map(r => r.id === activeJob.request_id ? { ...r, status: "completed" } : r));
@@ -454,12 +467,12 @@ export default function ClientDashboard() {
         const { data, error } = await supabase.functions.invoke("release-payment", { body: releaseBody });
         const failed = !!error || (data && (data as any).error);
         if (failed) {
-          alert("Job confirmed. The payment to your contractor is being processed and will complete automatically within a few minutes — nothing more for you to do.");
+          notify("Job confirmed. The payment to your contractor is being processed and will complete automatically within a few minutes — nothing more for you to do.", "ok");
         } else {
           setActiveJob((j: any) => j ? { ...j, payment_status: "released" } : j);
         }
       } catch {
-        alert("Job confirmed. The payment to your contractor is being processed and will complete automatically within a few minutes — nothing more for you to do.");
+        notify("Job confirmed. The payment to your contractor is being processed and will complete automatically within a few minutes — nothing more for you to do.", "ok");
       }
     }
   };
@@ -471,7 +484,7 @@ export default function ClientDashboard() {
     try {
       const { data, error } = await supabase.functions.invoke("adjust-payment", { body: { job_id: activeJob.id } });
       const errMsg = error ? error.message : (data && (data as any).error);
-      if (errMsg) { setBusyReq(false); alert("Couldn't apply the price change: " + errMsg); return; }
+      if (errMsg) { setBusyReq(false); notify("Couldn't apply the price change: " + errMsg); return; }
       if (data && (data as any).mode === "topup" && (data as any).url) {
         // Increase — pay the extra via Stripe Checkout; the webhook applies the new price.
         window.location.href = (data as any).url;
@@ -483,7 +496,7 @@ export default function ClientDashboard() {
       setBusyReq(false);
     } catch (e: any) {
       setBusyReq(false);
-      alert("Couldn't apply the price change: " + String(e?.message ?? e));
+      notify("Couldn't apply the price change: " + String(e?.message ?? e));
     }
   };
 
@@ -497,7 +510,7 @@ export default function ClientDashboard() {
     setBusyReq(true);
     const { error } = await supabase.rpc("decline_price_change", { p_job_id: activeJob.id });
     setBusyReq(false);
-    if (error) { alert("Couldn't decline: " + error.message); return; }
+    if (error) { notify("Couldn't decline: " + error.message); return; }
     setActiveJob((j: any) => j ? { ...j, price_change_pending: null } : j);
   };
 
@@ -543,7 +556,7 @@ export default function ClientDashboard() {
     setBusyPick(bidId);
     const { error } = await supabase.rpc("accept_bid", { p_bid_id: bidId });
     setBusyPick(null);
-    if (error) { alert("Couldn't select: " + error.message); return; }
+    if (error) { notify("Couldn't select: " + error.message); return; }
     const ar = activeReq;
     if (ar) {
       const { data: job } = await supabase.from("jobs").select("*").eq("request_id", ar.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
@@ -564,7 +577,7 @@ export default function ClientDashboard() {
       p_comment: ratingForm.comment || null,
     });
     setBusyReq(false);
-    if (error) { alert("Couldn't submit rating: " + error.message); return; }
+    if (error) { notify("Couldn't submit rating: " + error.message); return; }
     setHasReviewed(true);
   };
 
@@ -604,6 +617,9 @@ export default function ClientDashboard() {
 
   return (
     <div style={s.wrap}>
+      {toast && (
+        <div onClick={() => setToast(null)} style={{ position:"fixed", left:"50%", bottom:"1.5rem", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
+      )}
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 
       <div style={{ height: "3.75rem" }} />
@@ -837,6 +853,16 @@ export default function ClientDashboard() {
                               <button style={s.primaryBtn} disabled={busyReq} onClick={approveSchedule}>{busyReq ? "…" : "Approve & schedule"}</button>
                               <button style={s.btn} disabled={busyReq} onClick={requestReschedule}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Request a different time</button>
                             </div>
+                            {showResched && (
+                              <div style={{ marginTop:".7rem", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .1)" }}>
+                                <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5, marginBottom:".5rem" }}>Suggest a different day/time. Your contractor gets it as a message and proposes a new time.</div>
+                                <textarea value={reschedNote} onChange={e => setReschedNote(e.target.value)} rows={3} placeholder="e.g. Any weekday after 4pm, or this Saturday morning" style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const, marginBottom:".55rem" }} />
+                                <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
+                                  <button style={s.primaryBtn} disabled={busyReq || !reschedNote.trim()} onClick={submitReschedule}>{busyReq ? "…" : "Send suggestion"}</button>
+                                  <button style={s.btn} disabled={busyReq} onClick={() => setShowResched(false)}>Cancel</button>
+                                </div>
+                              </div>
+                            )}
                           </>
                         )}
                         {activeJob.status === "assigned" && !activeJob.schedule_proposed_at && (
