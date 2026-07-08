@@ -16,7 +16,7 @@ export default function TopNav() {
   // On the client/contractor dashboards the account actions live in the left
   // sidebar, so hide the top-right Menu there (SettingsModal stays mounted so
   // the sidebar's Settings action can still open it via ff:open-settings).
-  const onSidebarDash = loc === "/client-dashboard" || loc === "/contractor-dashboard";
+  const onSidebarDash = loc === "/client-dashboard" || loc === "/contractor-dashboard" || loc === "/admin-dashboard";
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [uid, setUid] = useState<string | null>(null);

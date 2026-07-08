@@ -28,6 +28,15 @@ export default function DashboardSidebar({
   const [collapsed, setCollapsed] = useState<boolean>(
     typeof window !== "undefined" && localStorage.getItem(COLLAPSE_KEY) === "1"
   );
+  // Fixed-position label shown when hovering an icon in a collapsed/narrow rail
+  // (rendered fixed so the rail's overflow can't clip it).
+  const [tip, setTip] = useState<{ label: string; top: number; left: number } | null>(null);
+  const showTip = (e: React.MouseEvent, label: string, labels: boolean) => {
+    if (labels) return; // labels visible → no tooltip needed
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setTip({ label, top: r.top + r.height / 2, left: r.right + 8 });
+  };
+  const hideTip = () => setTip(null);
 
   useEffect(() => {
     const onResize = () => setNarrow(window.innerWidth < 780);
@@ -65,8 +74,8 @@ export default function DashboardSidebar({
           fontWeight: on ? 600 : 500,
           boxShadow: on ? "inset 3px 0 0 #ea6b14" : "none",
         }}
-        onMouseEnter={e => { if (!on) e.currentTarget.style.background = "rgba(var(--ff-fg), .05)"; }}
-        onMouseLeave={e => { if (!on) e.currentTarget.style.background = "transparent"; }}
+        onMouseEnter={e => { if (!on) e.currentTarget.style.background = "rgba(var(--ff-fg), .05)"; showTip(e, it.label, labels); }}
+        onMouseLeave={e => { if (!on) e.currentTarget.style.background = "transparent"; hideTip(); }}
       >
         <Ic name={it.icon} size={18} color={on ? "#ea6b14" : "currentColor"} />
         {labels && <span style={{ whiteSpace:"nowrap" as const, flex:1 }}>{it.label}</span>}
@@ -88,8 +97,8 @@ export default function DashboardSidebar({
         color: a.danger ? "#ea6b14" : "rgba(var(--ff-muted), .8)",
         fontWeight: 500,
       }}
-      onMouseEnter={e => { e.currentTarget.style.background = a.danger ? "rgba(234,107,20,.1)" : "rgba(var(--ff-fg), .05)"; }}
-      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+      onMouseEnter={e => { e.currentTarget.style.background = a.danger ? "rgba(234,107,20,.1)" : "rgba(var(--ff-fg), .05)"; showTip(e, a.label, labels); }}
+      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; hideTip(); }}
     >
       <Ic name={a.icon} size={18} color={a.danger ? "#ea6b14" : "currentColor"} />
       {labels && <span style={{ whiteSpace:"nowrap" as const, flex:1 }}>{a.label}</span>}
@@ -118,8 +127,8 @@ export default function DashboardSidebar({
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             style={{ ...rowBase(labels), background:"transparent", color:"rgba(var(--ff-muted), .55)", fontWeight:500 }}
-            onMouseEnter={e => { e.currentTarget.style.background = "rgba(var(--ff-fg), .05)"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(var(--ff-fg), .05)"; showTip(e, collapsed ? "Expand sidebar" : "Collapse sidebar", labels); }}
+            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; hideTip(); }}
           >
             <span style={{ fontSize:"1.15rem", lineHeight:1, display:"inline-flex", width:18, justifyContent:"center" }}>{collapsed ? "»" : "«"}</span>
             {labels && <span style={{ whiteSpace:"nowrap" as const, flex:1 }}>Collapse</span>}
@@ -158,13 +167,20 @@ export default function DashboardSidebar({
     transition:"width .18s ease",
   };
 
+  const tipEl = tip ? (
+    <div style={{ position:"fixed", top:tip.top, left:tip.left, transform:"translateY(-50%)", zIndex:1000, background:"var(--ff-surface)", color:"var(--ff-text)", border:"1px solid rgba(var(--ff-fg), .14)", borderRadius:"8px", padding:".3rem .6rem", fontSize:".78rem", fontWeight:500, fontFamily:"'DM Sans',sans-serif", whiteSpace:"nowrap" as const, boxShadow:"0 8px 24px rgba(0,0,0,.35)", pointerEvents:"none" as const }}>
+      {tip.label}
+    </div>
+  ) : null;
+
   if (!narrow) {
     const w = collapsed ? "64px" : "232px";
-    return <aside style={{ ...asideBase, width:w, flex:`0 0 ${w}`, padding: collapsed ? "1.1rem .4rem" : "1.1rem .7rem" }}>{renderNav(!collapsed)}</aside>;
+    return <>{tipEl}<aside style={{ ...asideBase, width:w, flex:`0 0 ${w}`, padding: collapsed ? "1.1rem .4rem" : "1.1rem .7rem" }}>{renderNav(!collapsed)}</aside></>;
   }
 
   return (
     <>
+      {tipEl}
       <aside style={{ ...asideBase, width:"56px", flex:"0 0 56px", padding:"1.1rem .4rem" }}>{renderNav(false)}</aside>
       {expanded && (
         <>

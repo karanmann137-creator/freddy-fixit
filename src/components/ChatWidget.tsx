@@ -33,7 +33,10 @@ export default function ChatWidget() {
     }
   }, [open, messages]);
 
-  if (hideOn.some(p => location === p || location.startsWith(p + "/"))) return null;
+  // On the dashboards we hide the floating bubble to keep things uncluttered,
+  // but still allow the panel to open via the ff:open-chat event (e.g. a
+  // contractor's "Request help → Chat with Freddy" button).
+  const hideBubble = hideOn.some(p => location === p || location.startsWith(p + "/"));
 
   const send = async () => {
     const text = input.trim();
@@ -212,7 +215,9 @@ export default function ChatWidget() {
         </div>
       )}
 
-      {/* Floating bubble */}
+      {/* Floating bubble — hidden on dashboards, but the panel above can still
+          be opened programmatically via the ff:open-chat event. */}
+      {!hideBubble && (
       <button
         onClick={() => setOpen(o => !o)}
         aria-label={open ? "Close chat" : "Open chat"}
@@ -229,6 +234,7 @@ export default function ChatWidget() {
       >
         {open ? "✕" : "💬"}
       </button>
+      )}
     </>
   );
 }

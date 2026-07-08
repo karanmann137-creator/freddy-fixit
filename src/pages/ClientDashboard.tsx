@@ -9,6 +9,8 @@ import JobChat from "@/components/JobChat";
 import JobTimeline from "@/components/JobTimeline";
 import MilestonePanel from "@/components/MilestonePanel";
 import ReportProblem from "@/components/ReportProblem";
+import FileClaimModal, { type ClaimJob } from "@/components/FileClaimModal";
+import { jobCode } from "@/lib/jobCode";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 import FreddyRewind from "@/components/FreddyRewind";
@@ -136,6 +138,24 @@ export default function ClientDashboard() {
   };
   const [showResched, setShowResched] = useState(false);
   const [reschedNote, setReschedNote] = useState("");
+  const [claimOpen, setClaimOpen]   = useState(false);
+  const [claimJobs, setClaimJobs]   = useState<ClaimJob[]>([]);
+
+  // "File a claim" (sidebar footer): load every job tied to this client's
+  // requests so they can pick which one the claim is about, then hand off to
+  // the existing ReportProblem flow inside FileClaimModal.
+  const openClaim = async () => {
+    setClaimOpen(true);
+    try {
+      const ids = requests.map(r => r.id);
+      if (ids.length === 0) { setClaimJobs([]); return; }
+      const { data } = await supabase.from("jobs").select("id, status, request_id").in("request_id", ids);
+      const svc = new Map(requests.map(r => [r.id, r.service_needed as string | null]));
+      setClaimJobs((data ?? []).map((j: any) => ({ id: j.id, status: j.status, service: svc.get(j.request_id) ?? null })));
+    } catch {
+      setClaimJobs([]);
+    }
+  };
 
   const askConfirm = (o: Omit<ConfirmState, "resolve">) =>
     new Promise<boolean>(resolve => setConfirmState({ ...o, resolve }));
@@ -646,7 +666,7 @@ export default function ClientDashboard() {
           title="Dashboard"
           bell={profile?.id ? <NotificationBell userId={profile.id} dashboardPath="/client-dashboard" /> : undefined}
           actions={[
-            { key: "contact", label: "Contact us", icon: "mail", onClick: () => { window.location.href = "mailto:hello@freddyfixit.ca"; } },
+            { key: "claim",   label: "File a claim", icon: "alert-triangle", onClick: openClaim },
             { key: "logout",  label: "Log out",    icon: "door", onClick: handleSignOut, danger: true },
           ] as SidebarAction[]}
         />
@@ -856,7 +876,10 @@ export default function ClientDashboard() {
                 )}
                 {activeReq && (
                   <div style={s.card}>
-                    <div style={s.cardTitle}>Current Request</div>
+                    <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:".75rem", flexWrap:"wrap" as const }}>
+                      <div style={s.cardTitle}>Current Request</div>
+                      {activeJob?.id && <div style={{ fontSize:".72rem", fontFamily:"monospace", color:"#ea6b14" }} title="Quote this Job ID when filing a claim">{jobCode(activeJob.id)}</div>}
+                    </div>
                     <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:".75rem 1.5rem", marginBottom:"1.25rem" }}>
                       {[["Service", activeReq.service_needed], ["Location", activeReq.location], ["Schedule", activeReq.preferred_schedule], ["Submitted", new Date(activeReq.created_at).toLocaleDateString()]].map(([l,v]) => (
                         <div key={l}>
@@ -1182,6 +1205,14 @@ export default function ClientDashboard() {
             setReportOpen(false);
             setActiveJob((j: any) => j ? { ...j, payment_status: "disputed", disputed_at: new Date().toISOString() } : j);
           }}
+        />
+      )}
+      {claimOpen && profile && (
+        <FileClaimModal
+          jobs={claimJobs}
+          userId={profile.id}
+          onClose={() => setClaimOpen(false)}
+          onSubmitted={() => notify("Claim submitted — we'll review it.", "ok")}
         />
       )}
       <ConfirmDialog state={confirmState} onClose={(ok) => { confirmState?.resolve(ok); setConfirmState(null); }} />

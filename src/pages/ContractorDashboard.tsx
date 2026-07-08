@@ -16,6 +16,8 @@ import ContractorProfileCompletion from "@/components/ContractorProfileCompletio
 import ProfileCompleteCelebration from "@/components/ProfileCompleteCelebration";
 import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/components/DashboardSidebar";
 import NotificationBell from "@/components/NotificationBell";
+import RequestHelpModal from "@/components/RequestHelpModal";
+import { jobCode } from "@/lib/jobCode";
 
 const CONTRACTOR_NAV: SidebarItem[] = [
   { key: "jobs",      label: "My Jobs",        icon: "briefcase" },
@@ -264,6 +266,7 @@ export default function ContractorDashboard() {
   }, [contractor?.id]);
 
   const handleSignOut = async () => { await supabase.auth.signOut(); setLocation("/"); };
+  const [helpOpen, setHelpOpen] = useState(false);
 
   // Format a timestamp as LOCAL "YYYY-MM-DDTHH:mm" for datetime inputs.
   // (toISOString() is UTC — it used to prefill Calgary times 6–7h late.)
@@ -652,7 +655,7 @@ export default function ContractorDashboard() {
           title="Dashboard"
           bell={profile?.id ? <NotificationBell userId={profile.id} dashboardPath="/contractor-dashboard" /> : undefined}
           actions={[
-            { key: "contact",  label: "Contact us", icon: "mail",     onClick: () => { window.location.href = "mailto:hello@freddyfixit.ca"; } },
+            { key: "help",     label: "Request help", icon: "message-square", onClick: () => setHelpOpen(true) },
             { key: "settings", label: "Settings",   icon: "settings", onClick: () => window.dispatchEvent(new Event("ff:open-settings")) },
             { key: "logout",   label: "Log out",    icon: "door",     onClick: handleSignOut, danger: true },
           ] as SidebarAction[]}
@@ -779,7 +782,8 @@ export default function ContractorDashboard() {
               <div key={job.id} style={s.jobCard} onClick={() => openJob(job)}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:".75rem" }}>
                   <div>
-                    <div style={{ fontSize:"1rem", fontWeight:500, marginBottom:".3rem" }}>{job.request?.service_needed ?? "Job"}</div>
+                    <div style={{ fontSize:"1rem", fontWeight:500, marginBottom:".2rem" }}>{job.request?.service_needed ?? "Job"}</div>
+                    <div style={{ fontSize:".72rem", fontFamily:"monospace", color:"#ea6b14", marginBottom:".3rem" }}>{jobCode(job.id)}</div>
                     <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", marginBottom:".2rem" }}><Ic name="user" size={13} style={{ marginRight:4 }} />{job.client?.first_name || "Your client"}</div>
                     <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .5)" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{job.request?.location}</div>
                   </div>
@@ -1397,6 +1401,9 @@ export default function ContractorDashboard() {
         />
       )}
       {rewindOpen && <FreddyRewind mode="contractor" onClose={() => setRewindOpen(false)} />}
+        {helpOpen && profile && (
+          <RequestHelpModal userId={profile.id} onClose={() => setHelpOpen(false)} />
+        )}
         <ConfirmDialog state={confirmState} onClose={(ok) => { confirmState?.resolve(ok); setConfirmState(null); }} />
     </div>
   );

@@ -5,11 +5,24 @@ import { supabase } from "@/lib/supabase";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import ProfileBar from "@/components/ProfileBar";
 import MilestonePanel from "@/components/MilestonePanel";
+import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/components/DashboardSidebar";
+import NotificationBell from "@/components/NotificationBell";
+import { jobCode } from "@/lib/jobCode";
 
 // Re-signup flagging is computed server-side by admin_resignup_matches().
 // The Accounts tab lists every auth user (via admin_list_accounts) so the admin
 // can see full details and fully delete any account (admin-delete-account edge
 // fn wipes jobs, requests, messages, reviews, storage + the login).
+
+const ADMIN_NAV: SidebarItem[] = [
+  { key: "health",   label: "Health",   icon: "check" },
+  { key: "requests", label: "Requests", icon: "clipboard-list" },
+  { key: "jobs",     label: "Jobs",     icon: "briefcase" },
+  { key: "accounts", label: "Accounts", icon: "user" },
+  { key: "disputes", label: "Disputes", icon: "alert-triangle" },
+  { key: "prepaid",  label: "Prepaid",  icon: "dollar" },
+  { key: "leads",    label: "Leads",    icon: "user-check" },
+];
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
@@ -41,10 +54,16 @@ export default function AdminDashboard() {
   const PAGE_SIZE = 20;
   const [page, setPage] = useState<{ requests: number; jobs: number }>({ requests: 0, jobs: 0 });
   const [counts, setCounts] = useState<{ requests: number; jobs: number }>({ requests: 0, jobs: 0 });
+  const [me, setMe] = useState<{ id: string; first_name?: string } | null>(null);
+
+  const handleSignOut = async () => { await supabase.auth.signOut(); setLocation("/"); };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) setLocation("/login");
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!data.session) { setLocation("/login"); return; }
+      const uid = data.session.user.id;
+      const { data: prof } = await supabase.from("profiles").select("id, first_name").eq("id", uid).maybeSingle();
+      setMe(prof ?? { id: uid });
     });
   }, []);
 
@@ -269,6 +288,21 @@ export default function AdminDashboard() {
     return <span style={{ fontSize:".72rem", fontWeight:600, color: col, textTransform:"capitalize" as const }}>● {r}</span>;
   };
 
+  const openDisputes = disputes.filter(d => d.status === "open").length;
+  const newLeads = leads.filter(l => l.status === "new").length;
+  const healthAlerts = health ? ((health.no_bid_count||0) + (health.awaiting_confirm_count||0) + (health.awaiting_approval_count||0) + (health.stale_disputes_count||0)) : 0;
+  const navItems: SidebarItem[] = ADMIN_NAV.map(it => ({
+    ...it,
+    badge: it.key === "health"   ? (healthAlerts || undefined)
+         : it.key === "requests" ? (counts.requests || undefined)
+         : it.key === "jobs"     ? (counts.jobs || undefined)
+         : it.key === "accounts" ? (accounts.length || undefined)
+         : it.key === "disputes" ? (openDisputes || undefined)
+         : it.key === "prepaid"  ? (prepays.length || undefined)
+         : it.key === "leads"    ? (newLeads || undefined)
+         : undefined,
+  }));
+
   const filteredAccounts = accounts.filter(a => {
     if (accountRole !== "all") {
       if (accountRole === "orphaned") { if (!a.orphaned) return false; }
@@ -283,34 +317,34 @@ export default function AdminDashboard() {
   });
 
   return (
-    <div style={s.wrap}>
+    <div style={s.wrap} className="ffdash">
+      <style>{".ffdash button{transition:filter .12s ease, transform .08s ease, opacity .12s ease} .ffdash button:hover:not(:disabled){filter:brightness(1.09)} .ffdash button:active:not(:disabled){transform:translateY(1px)} .ffdash button:disabled{opacity:.55; cursor:not-allowed}"}</style>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       <div style={{ height: "3.75rem" }} />
+      <div style={{ display:"flex", alignItems:"flex-start" as const }}>
+        <DashboardSidebar
+          items={navItems}
+          active={tab}
+          onSelect={(k) => setTab(k as any)}
+          title="Admin"
+          bell={me?.id ? <NotificationBell userId={me.id} dashboardPath="/admin-dashboard" /> : undefined}
+          actions={[
+            { key: "logout", label: "Log out", icon: "door", onClick: handleSignOut, danger: true },
+          ] as SidebarAction[]}
+        />
+        <div style={{ flex:1, minWidth:0 }}>
+
       <div style={s.header}>
-        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.3rem", letterSpacing:".08em", color:"var(--ff-text)" }}>ADMIN <span style={{ fontSize:".6rem", background:"#ea6b14", color:"#fff", borderRadius:"4px", padding:".15rem .45rem", verticalAlign:"middle", letterSpacing:".05em" }}>DASHBOARD</span></div>
+        <div>
+          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.7rem", letterSpacing:".02em", margin:0, lineHeight:1.1 }}>
+            Welcome{me?.first_name ? ", " + me.first_name : ""} <span style={{ fontSize:".6rem", background:"#ea6b14", color:"#fff", borderRadius:"4px", padding:".15rem .45rem", verticalAlign:"middle", letterSpacing:".05em" }}>ADMIN</span>
+          </h1>
+          <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .6)", marginTop:".2rem" }}>Manage requests, jobs, accounts and disputes.</div>
+        </div>
       </div>
 
       <div style={s.content}>
         <ProfileBar role="admin" />
-        <div style={s.tabs}>
-          {(["health","requests","jobs","accounts","disputes","prepaid","leads"] as const).map(t => {
-            const openDisputes = disputes.filter(d => d.status === "open").length;
-            const newLeads = leads.filter(l => l.status === "new").length;
-            const healthAlerts = health ? ((health.no_bid_count||0) + (health.awaiting_confirm_count||0) + (health.awaiting_approval_count||0) + (health.stale_disputes_count||0)) : 0;
-            const label = t === "health" ? `Health${healthAlerts > 0 ? ` (${healthAlerts})` : ""}`
-              : t === "requests" ? `Requests (${counts.requests})`
-              : t === "jobs" ? `Jobs (${counts.jobs})`
-              : t === "accounts" ? `Accounts (${accounts.length})`
-              : t === "disputes" ? `Disputes (${openDisputes})`
-              : t === "prepaid" ? `Prepaid (${prepays.length})`
-              : `Leads (${newLeads})`;
-            return (
-              <button key={t} style={{ ...s.tab, ...(tab===t ? s.activeTab : {}), ...(t === "health" && healthAlerts > 0 ? { borderColor:"rgba(251,191,36,.5)", color:"var(--ff-warn)" } : {}), ...(t === "disputes" && openDisputes > 0 ? { borderColor:"rgba(251,191,36,.5)", color:"var(--ff-warn)" } : {}), ...(t === "leads" && newLeads > 0 ? { borderColor:"rgba(234,107,20,.5)", color:"#ea6b14" } : {}) }} onClick={() => setTab(t)}>
-                {label}
-              </button>
-            );
-          })}
-        </div>
 
         {tab === "requests" && (
           <div>
@@ -484,7 +518,7 @@ export default function AdminDashboard() {
             {jobs.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No jobs yet.</p>}
             {jobs.map(j => (
               <div key={j.id} style={s.card}>
-                <div style={s.title}>Job {j.id.slice(0,8)}</div>
+                <div style={s.title}>Job <span style={{ fontFamily:"monospace", color:"#ea6b14" }}>{jobCode(j.id)}</span></div>
                 <div style={s.meta}>Status: {j.status}</div>
                 {j.amount && <div style={s.meta}>Amount: ${j.amount}</div>}
                 {j.scheduled_at && <div style={s.meta}>Date: {new Date(j.scheduled_at).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" })}</div>}
@@ -704,6 +738,8 @@ export default function AdminDashboard() {
             })()}
           </div>
         )}
+      </div>
+        </div>
       </div>
     </div>
   );

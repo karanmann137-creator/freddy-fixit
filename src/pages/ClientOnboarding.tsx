@@ -355,7 +355,6 @@ export default function ClientOnboarding() {
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Phone <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
                 <input autoComplete="tel" style={{ ...inp, borderColor: errors.phone ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="tel" placeholder="403-555-0100" value={form.phone} onChange={e => set("phone",fmtPhone(e.target.value))} />
-                <p style={{ margin:".35rem 0 0", fontSize:".74rem", color:"rgba(var(--ff-muted), .5)", lineHeight:1.45 }}>Only used for job updates — we never share your number with anyone but your assigned pro.</p>
                 {errors.phone && <p id="co-err-phone" style={s.err}>{errors.phone}</p>}
               </div>
               <div style={{ marginBottom:"1.2rem" }}>
@@ -590,7 +589,6 @@ export default function ClientOnboarding() {
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Your Address / Location</label>
                 <AddressAutocomplete autoComplete="street-address" style={{ ...inp, borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="e.g. 123 Main St NW" value={form.location} onChange={v => set("location", v)} />
-                <p style={{ margin:".35rem 0 0", fontSize:".74rem", color:"rgba(var(--ff-muted), .5)", lineHeight:1.45 }}>Used to match you with pros in your area — never shown publicly.</p>
                 {errors.location && <p id="co-err-location" style={s.err}>{errors.location}</p>}
               </div>
               <div style={{ marginBottom:"1.2rem" }}>
