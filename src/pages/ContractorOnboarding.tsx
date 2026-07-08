@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { AVAIL_DAYS, WEEKDAYS, TIME_OPTIONS, DEFAULT_START, DEFAULT_END } from "@/lib/availability";
 import { trackEvent } from "@/lib/analytics";
 import OAuthButtons from "@/components/OAuthButtons";
+import GuideBubble from "@/components/GuideBubble";
 
 const SPECIALTIES = [
   { iconName: "wrench", label: "General Repairs" },
@@ -56,6 +57,27 @@ const STEP_SUBS   = [
   "Tell us about your qualifications",
   "Add a profile photo (optional)",
   "Upload now, or skip and add them later from your dashboard",
+];
+
+// Plain-language "Freddy walks you through it" copy, one per step (see GuideBubble).
+const CONTRACTOR_GUIDE: { message: string; why?: string; tip?: string }[] = [
+  { message: "Hi, I'm Freddy. I'll walk you through this step by step — it takes about two minutes, and you can stop and pick up later. Let's start with the basics.",
+    why: "Your email is your login and how we send you new job leads.",
+    tip: "Phone is optional — add it if you'd like clients to reach you faster." },
+  { message: "Now tell me what kind of work you do. Tap everything you're comfortable taking on — you can change this anytime.",
+    why: "We only show you jobs that match your specialties, so your leads stay relevant." },
+  { message: "Which parts of Calgary do you want to work in? Choose every area you'll travel to.",
+    why: "Jobs inside your areas float to the top of your list." },
+  { message: "When are you usually free to work? A rough guide is perfectly fine.",
+    why: "Clients see this so they know when to expect you." },
+  { message: "What best describes your work? This one matters — it decides what paperwork we'll need from you next.",
+    why: "Regulated trades (like electrical or gas) need a certificate; general work needs less." },
+  { message: "Tell me about your qualifications — licence, insurance, WCB. Just fill in what applies to you.",
+    why: "This builds trust with clients and is required for some trades." },
+  { message: "Add a friendly photo of yourself or your logo. It's optional, but pros with a photo get picked more often.",
+    why: "Clients feel more comfortable hiring someone they can see." },
+  { message: "Last step — upload your documents. You can snap a photo with your phone, or add them later from your dashboard.",
+    why: "We verify these so clients know you're the real deal." },
 ];
 
 type DocFiles = { insurance: File|null; wcb: File|null; certification: File|null; gov_id: File|null };
@@ -324,6 +346,11 @@ export default function ContractorOnboarding() {
             <div key={i} style={{ height:"3px", flex:1, borderRadius:"99px", background: i+1===step ? "#ea6b14" : i+1<step ? "rgba(234,107,20,.45)" : "rgba(var(--ff-fg), .1)" }} />
           ))}
         </div>
+
+        <GuideBubble step={step} total={TOTAL}
+          message={CONTRACTOR_GUIDE[step-1]?.message || ""}
+          why={CONTRACTOR_GUIDE[step-1]?.why}
+          tip={CONTRACTOR_GUIDE[step-1]?.tip} />
 
         {restored && (
           <div style={{ display:"flex", alignItems:"center", gap:".75rem", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.25)", borderRadius:"8px", padding:".7rem 1rem", marginBottom:"1.5rem", fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>

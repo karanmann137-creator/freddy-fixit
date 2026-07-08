@@ -3,6 +3,7 @@ import VoiceDictate from "@/components/VoiceDictate";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import GuideBubble from "@/components/GuideBubble";
 import { trackEvent } from "@/lib/analytics";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
 import { useServicePricing, fromText } from "@/lib/servicePricing";
@@ -46,6 +47,16 @@ export const SCHEDULES = [
 
 const STEP_TITLES = ["What Do You Need?", "Job Details", "Almost Done"];
 const STEP_SUBS   = ["Choose your service and preferred timing", "Where and what needs fixing?", "Create a free account to track your request"];
+// Plain-language "Freddy walks you through it" copy, one per step (see GuideBubble).
+const CLIENT_GUIDE: { message: string; why?: string; tip?: string }[] = [
+  { message: "Hi, I'm Freddy. Tell me what needs fixing and I'll help you get free estimates from vetted Calgary pros. First, pick your service and when you'd like it done.",
+    why: "This lets us match you with the right pro fast.",
+    tip: "Not sure of the exact service? Pick the closest one — you can add details next." },
+  { message: "Now, where's the job and what needs doing? A few details help pros give you an accurate estimate — photos help a lot too.",
+    why: "The more you share, the more accurate your estimate." },
+  { message: "Last step — create a quick free account so you can track your request and message your pro.",
+    why: "There's no charge now; you only pay once you approve an estimate and the work is done." },
+];
 
 const HOME_TO_SERVICE: Record<string,string> = {
   "General Repairs": "General Handyman",
@@ -316,6 +327,11 @@ export default function ClientOnboarding() {
         <div style={{ display:"flex", gap:"6px", marginBottom:"2.5rem" }}>
           {Array.from({length:TOTAL},(_,i) => <div key={i} style={{ height:"3px", flex:1, borderRadius:"99px", background: i+1===step ? "#ea6b14" : i+1<step ? "rgba(234,107,20,.45)" : "rgba(var(--ff-fg), .1)" }} />)}
         </div>
+
+        <GuideBubble step={step} total={TOTAL}
+          message={CLIENT_GUIDE[step-1]?.message || ""}
+          why={CLIENT_GUIDE[step-1]?.why}
+          tip={CLIENT_GUIDE[step-1]?.tip} />
 
         <div style={s.card}>
           {step === 3 && (

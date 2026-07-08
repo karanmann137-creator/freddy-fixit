@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
+import GuideBubble from "@/components/GuideBubble";
 import { SERVICES, SCHEDULES } from "@/pages/ClientOnboarding";
 import { useServicePricing, fromText } from "@/lib/servicePricing";
 import { isPerKmService, freqLabel, SLIDER_STOPS, SLIDER_SHORT } from "@/lib/recurrence";
@@ -268,6 +269,10 @@ export default function NewRequest() {
         <p style={{ color:"rgba(var(--ff-muted), .6)", fontSize:".9rem", marginBottom:"2rem" }}>
           We've got your details on file — just tell us about this job.
         </p>
+
+        <GuideBubble step={1} total={1}
+          message="Good to see you again. Just tell me about this job — the service, when you need it, and where. A few details and photos help your pro give an accurate estimate."
+          why="You only pay once you approve an estimate and the work is done." />
 
         {preferredPro && (
           <div style={{ ...s.card, marginBottom:"1rem", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.07)", display:"flex", alignItems:"center", gap:".6rem" }}>
