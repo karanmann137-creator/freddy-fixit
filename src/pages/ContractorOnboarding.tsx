@@ -389,6 +389,7 @@ export default function ContractorOnboarding() {
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Phone <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
                 <input autoComplete="tel" style={{ ...inp, borderColor: errors.phone ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="tel" placeholder="403-555-0100" value={form.phone} onChange={e => setF("phone",fmtPhone(e.target.value))} />
+                <p style={{ margin:".35rem 0 0", fontSize:".74rem", color:"rgba(var(--ff-muted), .5)", lineHeight:1.45 }}>Only used for job coordination — clients never see it until you're matched on a job.</p>
                 {errors.phone && <p style={s.err}>{errors.phone}</p>}
               </div>
               {!authedUserId && (

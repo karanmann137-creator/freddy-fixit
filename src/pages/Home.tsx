@@ -133,21 +133,35 @@ const FAQS = [
 export default function Home() {
   const [, setLocation] = useLocation();
   const [reviews, setReviews] = useState<HomeReview[]>([]);
+  const [topPros, setTopPros] = useState<any[]>([]);
 
   // Pull real, completed-job reviews (with a written comment) to display as
   // social proof. Empty result = graceful fallback to the trust cards below.
+  // Also pull a few approved pros (company/name, rating, job count — no photos)
+  // for the "meet our pros" strip; section hides itself when empty.
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const { data } = await supabase.rpc("get_homepage_reviews", { p_limit: 6 });
+        const [{ data }, { data: pros }] = await Promise.all([
+          supabase.rpc("get_homepage_reviews", { p_limit: 6 }),
+          supabase.rpc("get_top_pros", { p_limit: 6 }),
+        ]);
         if (alive && Array.isArray(data)) setReviews(data as HomeReview[]);
+        if (alive && Array.isArray(pros)) setTopPros(pros);
       } catch {
         /* non-blocking: homepage renders fine without reviews */
       }
     })();
     return () => { alive = false; };
   }, []);
+
+  // Initials avatar seed — company name first, else first name.
+  const proInitials = (p: any) => {
+    const src = String(p.company_name || p.first_name || "Pro").trim();
+    const parts = src.split(/\s+/).filter(Boolean);
+    return (parts.length >= 2 ? parts[0][0] + parts[1][0] : src.slice(0, 2)).toUpperCase();
+  };
 
   const reviewAvg = (r: HomeReview) => {
     const vals = [r.price_score, r.experience_score, r.result_score].filter(
@@ -365,6 +379,15 @@ export default function Home() {
             </div>
           </motion.div>
 
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.55 }}
+            style={{ marginTop:".95rem", fontSize:".85rem", color:"rgba(var(--ff-muted), .6)" }}>
+            Used Freddy before?{" "}
+            <a href="/login" onClick={(e) => { e.preventDefault(); setLocation("/login"); }}
+              style={{ color:"#ea6b14", fontWeight:500, textDecoration:"underline", textUnderlineOffset:"3px", cursor:"pointer" }}>
+              Log in to rebook your pro →
+            </a>
+          </motion.div>
+
           <motion.a href="https://wa.me/18255618331" target="_blank" rel="noopener noreferrer" className="ff-whatsapp"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -522,6 +545,31 @@ export default function Home() {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {topPros.length > 0 && (
+            <div style={{ marginBottom:"3rem" }}>
+              <p style={{ textAlign:"center", color:"rgba(var(--ff-muted), .6)", fontSize:".95rem", marginBottom:"1.75rem" }}>A few of the vetted pros ready to take your job:</p>
+              <div className="ff-reviews-grid">
+                {topPros.map((p: any) => (
+                  <div key={p.contractor_id} style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"14px", padding:"1.5rem", display:"flex", gap:".9rem", alignItems:"center" }}>
+                    <div style={{ width:"52px", height:"52px", borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(234,107,20,.14)", border:"1px solid rgba(234,107,20,.4)", color:"#ea6b14", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.25rem", letterSpacing:".05em" }}>
+                      {proInitials(p)}
+                    </div>
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ fontSize:".98rem", fontWeight:600, color:"var(--ff-text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{p.company_name || p.first_name || "Vetted pro"}</div>
+                      <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", marginTop:".15rem" }}>
+                        {p.rating ? "⭐ " + Number(p.rating).toFixed(1) : "Vetted & approved"}
+                        {Number(p.total_jobs) > 0 ? " · " + p.total_jobs + " job" + (Number(p.total_jobs) === 1 ? "" : "s") + " done" : ""}
+                      </div>
+                      {Array.isArray(p.specialties) && p.specialties.length > 0 && (
+                        <div style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .45)", marginTop:".2rem", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{p.specialties.slice(0, 3).join(" · ")}</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}

@@ -589,6 +589,15 @@ export default function ContractorDashboard() {
   const awaitingJobs = myJobs.filter(j => j.status === "pending_confirmation" || j.status === "scheduled" || j.status === "in_progress");
   const awaitingTotal = awaitingJobs.reduce((t,j) => t + (j.amount ? netPayout(j) : 0), 0);
   const STATUS_COLORS: Record<string,string> = { pending:"#f59e0b", matched:"#3b82f6", in_progress:"#ea6b14", completed:"#22c55e", cancelled:"#ef4444", assigned:"#3b82f6", scheduled:"#8b5cf6", pending_confirmation:"#f59e0b" };
+  // "Reliability streak" — consecutive most-recent finished jobs that were completed & confirmed with no claim.
+  const streak = (() => {
+    const finished = [...myJobs]
+      .filter(j => j.status === "completed" || j.status === "cancelled")
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    let n = 0;
+    for (const j of finished) { if (j.status === "completed" && !disputes[j.id]) n++; else break; }
+    return n;
+  })();
 
   const s = {
     wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
@@ -599,12 +608,12 @@ export default function ContractorDashboard() {
     tab: { padding:".85rem 1.25rem", background:"none", border:"none", borderBottom:"2px solid transparent", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", whiteSpace:"nowrap" as const },
     activeTab: { color:"#ea6b14", borderBottomColor:"#ea6b14" },
     content: { maxWidth:"900px", margin:"0 auto", padding:"2rem 1.5rem" },
-    card: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"1.75rem", marginBottom:"1.5rem" },
-    cardTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", color:"#ea6b14", marginBottom:"1.25rem" },
-    jobCard: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.5rem", marginBottom:"1rem", cursor:"pointer" },
+    card: { background:"rgba(var(--ff-fg), .055)", border:"1px solid rgba(var(--ff-fg), .05)", borderRadius:"14px", padding:"1.75rem", marginBottom:"1.5rem" },
+    cardTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", lineHeight:1.1, color:"#ea6b14", marginBottom:"1.25rem" },
+    jobCard: { background:"rgba(var(--ff-fg), .055)", border:"1px solid rgba(var(--ff-fg), .05)", borderRadius:"12px", padding:"1.5rem", marginBottom:"1rem", cursor:"pointer" },
     btn: { padding:".5rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"6px", color:"rgba(var(--ff-muted), .7)", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer" },
-    earnCard: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.25rem", textAlign:"center" as const },
-    chip: { padding:".3rem .75rem", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.25)", borderRadius:"99px", fontSize:".78rem", color:"rgba(var(--ff-muted), .8)", display:"inline-block", margin:".2rem" },
+    earnCard: { background:"rgba(var(--ff-fg), .055)", border:"1px solid rgba(var(--ff-fg), .05)", borderRadius:"12px", padding:"1.25rem", textAlign:"center" as const },
+    chip: { padding:".3rem .75rem", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.18)", borderRadius:"99px", fontSize:".78rem", color:"rgba(var(--ff-muted), .8)", display:"inline-block", margin:".2rem" },
     slot: { padding:".38rem .85rem", borderRadius:"99px", fontSize:".78rem", cursor:"pointer", border:"1px solid rgba(var(--ff-fg), .1)", background:"rgba(var(--ff-fg), .04)", color:"rgba(var(--ff-muted), .7)", fontFamily:"inherit", margin:".2rem" },
     slotSel: { background:"rgba(234,107,20,.15)", borderColor:"rgba(234,107,20,.5)", color:"var(--ff-text)" },
   };
@@ -628,7 +637,8 @@ export default function ContractorDashboard() {
   );
 
   return (
-    <div style={s.wrap}>
+    <div style={s.wrap} className="ffdash">
+      <style>{".ffdash button{transition:filter .12s ease, transform .08s ease, opacity .12s ease} .ffdash button:hover:not(:disabled){filter:brightness(1.09)} .ffdash button:active:not(:disabled){transform:translateY(1px)} .ffdash button:disabled{opacity:.55; cursor:not-allowed}"}</style>
       {toast && (
         <div onClick={() => setToast(null)} style={{ position:"fixed", left:"50%", bottom:"1.5rem", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
       )}
@@ -651,7 +661,7 @@ export default function ContractorDashboard() {
 
       <div style={s.header}>
         <div>
-          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", letterSpacing:".02em", margin:0, lineHeight:1.1 }}>
+          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.7rem", letterSpacing:".02em", margin:0, lineHeight:1.1 }}>
             Welcome{profile?.first_name ? ", " + profile.first_name : ""}
           </h1>
           <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .6)", marginTop:".2rem" }}>
@@ -704,13 +714,66 @@ export default function ContractorDashboard() {
           </div>
         )}
 
+        {(() => {
+          // "Needs your attention" — the one place that answers "what should I do next?"
+          const attn: { key: string; text: string; cta: string; onClick: () => void; danger?: boolean }[] = [];
+          const goJob = (job: any) => { setActiveTab("jobs"); if (activeJobId !== job.id) openJob(job); window.scrollTo({ top: 0, behavior: "smooth" }); };
+          for (const job of myJobs) {
+            const d = disputes[job.id];
+            const svc = job.request?.service_needed ?? "a job";
+            if (d && d.status === "open" && !d.contractor_responded_at) {
+              attn.push({ key: "claim-" + job.id, text: "A client filed a claim on “" + svc + "” — your payout is paused until you respond.", cta: "Respond now", onClick: () => goJob(job), danger: true });
+            } else if (job.client_rescheduled_at && !job.reschedule_accepted_at) {
+              attn.push({ key: "resched-" + job.id, text: (job.client?.first_name || "Your client") + " changed the time on “" + svc + "”.", cta: "Review new time", onClick: () => goJob(job) });
+            } else if (job.status === "assigned" && !job.schedule_proposed_at) {
+              attn.push({ key: "propose-" + job.id, text: "“" + svc + "” is waiting for your time and price.", cta: "Propose now", onClick: () => goJob(job) });
+            } else if (job.status === "scheduled" && job.scheduled_at) {
+              const dt = new Date(job.scheduled_at).getTime() - Date.now();
+              if (dt > 0 && dt < 24 * 3600 * 1000) attn.push({ key: "soon-" + job.id, text: "“" + svc + "” is booked for " + new Date(job.scheduled_at).toLocaleString() + ".", cta: "View job", onClick: () => goJob(job) });
+            }
+          }
+          const reserved = availableJobs.filter((r: any) => r.is_preferred);
+          if (reserved.length > 0) {
+            attn.push({ key: "reserved", text: reserved.length === 1 ? "A client requested you — “" + reserved[0].service_needed + "” is reserved for you for 48h." : reserved.length + " clients requested you — jobs are reserved for you for 48h.", cta: "See jobs", onClick: () => { setActiveTab("available"); window.scrollTo({ top: 0, behavior: "smooth" }); } });
+          }
+          if (attn.length === 0) return null;
+          return (
+            <div style={{ ...s.card, padding:"1.1rem 1.25rem", marginBottom:"1.25rem", border:"1px solid rgba(234,107,20,.3)" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:".45rem", fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"#ea6b14", fontWeight:700 }}>
+                <Ic name="alert-triangle" size={13} />Needs your attention
+              </div>
+              {attn.slice(0, 4).map((a, i) => (
+                <div key={a.key} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".75rem", padding:".6rem 0", borderTop: i === 0 ? "none" : "1px solid rgba(var(--ff-fg), .06)", marginTop: i === 0 ? ".5rem" : 0 }}>
+                  <div style={{ fontSize:".85rem", color:"var(--ff-text)", lineHeight:1.45 }}>{a.text}</div>
+                  <button style={{ ...s.btn, background: a.danger ? "rgba(239,68,68,.12)" : "#ea6b14", color: a.danger ? "#ef4444" : "#fff", border: a.danger ? "1px solid rgba(239,68,68,.35)" : "none", whiteSpace:"nowrap" as const, flexShrink:0 }} onClick={a.onClick}>{a.cta}</button>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+
         {activeTab === "jobs" && (
           <div>
             {myJobs.length === 0 ? (
-              <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
-                <div style={{ marginBottom:"1rem" }}><Ic name="clipboard-list" size={48} color="#ea6b14" /></div>
-                <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", marginBottom:".5rem" }}>No Jobs Yet</h2>
-                <p style={{ color:"rgba(var(--ff-muted), .5)" }}>Once matched with a client, your jobs appear here.</p>
+              <div style={{ ...s.card, maxWidth:"460px", margin:"2rem auto" }}>
+                <div style={{ textAlign:"center" as const, marginBottom:"1.25rem" }}>
+                  <div style={{ marginBottom:".75rem" }}><Ic name="clipboard-list" size={40} color="#ea6b14" /></div>
+                  <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".03em", lineHeight:1.1, margin:"0 0 .35rem" }}>Let's land your first job</h2>
+                  <p style={{ color:"rgba(var(--ff-muted), .55)", fontSize:".85rem", margin:0 }}>Here's what gets contractors hired fastest:</p>
+                </div>
+                {[
+                  { done: !!contractor && contractorMissing(contractor).length === 0, label: "Complete your profile", sub: contractor && contractorMissing(contractor).length > 0 ? "Missing: " + contractorMissing(contractor).join(", ") : "Done — clients can see your credentials.", onClick: () => setActiveTab("profile") },
+                  { done: !!contractor?.stripe_payouts_enabled, label: "Set up payouts", sub: contractor?.stripe_payouts_enabled ? "Connected — you're ready to get paid." : "Connect a bank account so you can be paid.", onClick: setupPayouts },
+                  { done: false, label: availableJobs.length > 0 ? "Bid on " + availableJobs.length + " open job" + (availableJobs.length === 1 ? "" : "s") + " matching your trades" : "Watch for open jobs matching your trades", sub: "Jobs with fewer bids are easier to win.", onClick: () => setActiveTab("available") },
+                ].map((step, i) => (
+                  <div key={i} onClick={step.onClick} style={{ display:"flex", gap:".7rem", alignItems:"flex-start", padding:".75rem .25rem", borderTop: i === 0 ? "none" : "1px solid rgba(var(--ff-fg), .06)", cursor:"pointer" }}>
+                    <div style={{ width:"22px", height:"22px", borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background: step.done ? "rgba(34,197,94,.15)" : "rgba(234,107,20,.12)", border:"1px solid " + (step.done ? "rgba(34,197,94,.4)" : "rgba(234,107,20,.35)"), color: step.done ? "#22c55e" : "#ea6b14", fontSize:".72rem", fontWeight:700 }}>{step.done ? <Ic name="check" size={12} color="#22c55e" /> : i + 1}</div>
+                    <div>
+                      <div style={{ fontSize:".88rem", fontWeight:500, color:"var(--ff-text)" }}>{step.label}</div>
+                      <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .55)", marginTop:".1rem" }}>{step.sub}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : myJobs.map(job => (
               <div key={job.id} style={s.jobCard} onClick={() => openJob(job)}>
@@ -874,7 +937,7 @@ export default function ContractorDashboard() {
             {availableJobs.length === 0 ? (
               <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
                 <div style={{ marginBottom:"1rem" }}><Ic name="clipboard-list" size={48} color="#ea6b14" /></div>
-                <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", marginBottom:".5rem" }}>No Open Jobs Right Now</h2>
+                <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".03em", lineHeight:1.1, marginBottom:".5rem" }}>No Open Jobs Right Now</h2>
                 <p style={{ color:"rgba(var(--ff-muted), .5)" }}>New jobs matching your specialties will show up here. Add more specialties in your profile to see more work.</p>
                 <button onClick={() => setActiveTab("profile")} style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", marginTop:"1.25rem" }}>Update your specialties</button>
               </div>
@@ -906,7 +969,7 @@ export default function ContractorDashboard() {
                 <div style={{ margin:".75rem 0", padding:".75rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:".5rem" }}>
                     <span style={{ fontSize:".75rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .5)" }}>Bids</span>
-                    <span style={{ fontSize:".78rem", fontWeight:600, color: (r.bid_count ?? 0) >= 3 ? "#ef4444" : "var(--ff-success)" }}>{r.bid_count ?? 0}/3</span>
+                    <span style={{ fontSize:".78rem", fontWeight:600, color: (r.bid_count ?? 0) >= 3 ? "#f59e0b" : "var(--ff-success)" }}>{r.bid_count ?? 0}/3</span>
                   </div>
                   {r.my_amount != null && <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".5rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />You bid {"$" + r.my_amount}. You can update it below.</div>}
                   {r.my_amount == null && (r.bid_count ?? 0) >= 3 && <div style={{ fontSize:".82rem", color:"var(--ff-warn)" }}>This job already has 3 bids.</div>}
@@ -1129,7 +1192,7 @@ export default function ContractorDashboard() {
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:".75rem", flexWrap:"wrap" as const }}>
                     <div>
                       <div style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(var(--ff-muted), .5)" }}>This week</div>
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(2rem,9vw,3rem)", letterSpacing:".03em", color:"#ea6b14", lineHeight:1.05 }}>${week.toFixed(0)}</div>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(2rem,8vw,2.6rem)", letterSpacing:".02em", color:"#ea6b14", lineHeight:1.05 }}>${week.toFixed(0)}</div>
                       <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)" }}>{earn.jobs_this_week || 0} job{(earn.jobs_this_week===1)?"":"s"} paid out this week</div>
                     </div>
                     <button style={{ ...s.btn, display:"inline-flex", alignItems:"center", gap:".4rem", background:"rgba(234,107,20,.9)", color:"#fff", border:"none" }} onClick={() => setRewindOpen(true)}>
@@ -1168,6 +1231,24 @@ export default function ContractorDashboard() {
                           );
                         })}
                       </div>
+                      {(() => {
+                        // Insight next to the chart — say what the numbers mean.
+                        const nums = trend.map((t: any) => Number(t.amount || 0));
+                        if (nums.length < 2) return null;
+                        const cur = nums[nums.length - 1], prev = nums[nums.length - 2];
+                        const best = Math.max(...nums);
+                        if (best <= 0) return null;
+                        let msg = "";
+                        if (cur > 0 && cur >= best) msg = prev > 0 ? "Best week in 2 months — $" + cur.toFixed(0) + ", up " + Math.round(((cur - prev) / prev) * 100) + "% from last week." : "Best week in 2 months — $" + cur.toFixed(0) + ".";
+                        else if (prev > 0 && cur > prev) msg = "Up " + Math.round(((cur - prev) / prev) * 100) + "% from last week — keep it rolling.";
+                        else if (prev > 0 && cur < prev) msg = "$" + (prev - cur).toFixed(0) + " behind last week — one more job closes the gap.";
+                        else msg = "Your best week was $" + best.toFixed(0) + " — that's the bar to beat.";
+                        return (
+                          <div style={{ marginTop:".65rem", display:"flex", alignItems:"center", gap:".4rem", fontSize:".8rem", color:"#ea6b14", fontWeight:500 }}>
+                            <Ic name="star" size={12} />{msg}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
 
@@ -1180,9 +1261,9 @@ export default function ContractorDashboard() {
               );
             })()}
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))", gap:"1rem", marginBottom:"1.5rem" }}>
-              {[["$" + totalEarned.toFixed(2), "Total Earned"], [contractor?.total_jobs ?? 0, "Jobs Completed"], [myJobs.filter(j=>j.status==="assigned"||j.status==="in_progress").length, "Active Jobs"], [contractor?.rating ? `⭐ ${contractor.rating}` : "—", "Avg Rating"]].map(([v,l]) => (
-                <div key={String(l)} style={s.earnCard}>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(1.5rem,6vw,2rem)", letterSpacing:".04em", color:"#ea6b14", marginBottom:".25rem" }}>{v}</div>
+              {[["$" + totalEarned.toFixed(2), "Total Earned"], [contractor?.total_jobs ?? 0, "Jobs Completed"], [myJobs.filter(j=>j.status==="assigned"||j.status==="in_progress").length, "Active Jobs"], [contractor?.rating ? `⭐ ${contractor.rating}` : "—", "Avg Rating"], [streak > 0 ? "🔥 " + streak : "—", "Reliability Streak"]].map(([v,l]) => (
+                <div key={String(l)} style={s.earnCard} title={l === "Reliability Streak" ? "Jobs in a row completed and confirmed with no claims — clients see pros they can count on." : undefined}>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(1.4rem,5vw,1.7rem)", letterSpacing:".04em", lineHeight:1.1, color:"#ea6b14", marginBottom:".25rem" }}>{v}</div>
                   <div style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)" }}>{l}</div>
                 </div>
               ))}
@@ -1253,7 +1334,7 @@ export default function ContractorDashboard() {
             {myReviews.length === 0 ? (
               <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
                 <div style={{ marginBottom:"1rem" }}><Ic name="star" size={48} color="#ea6b14" /></div>
-                <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", marginBottom:".5rem" }}>No Reviews Yet</h2>
+                <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".03em", lineHeight:1.1, marginBottom:".5rem" }}>No Reviews Yet</h2>
                 <p style={{ color:"rgba(var(--ff-muted), .5)" }}>Reviews from clients appear here after jobs are completed.</p>
               </div>
             ) : (
@@ -1265,7 +1346,7 @@ export default function ContractorDashboard() {
                     ["Results", myReviews.reduce((a,r)=>a+(r.result_score??0),0)/myReviews.length || 0],
                   ].map(([label, avg]) => (
                     <div key={String(label)} style={s.earnCard}>
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"#ea6b14", marginBottom:".25rem" }}>{(avg as number).toFixed(1)}<span style={{ fontSize:"1rem", color:"rgba(var(--ff-muted), .4)" }}>/10</span></div>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.7rem", lineHeight:1.1, color:"#ea6b14", marginBottom:".25rem" }}>{(avg as number).toFixed(1)}<span style={{ fontSize:"1rem", color:"rgba(var(--ff-muted), .4)" }}>/10</span></div>
                       <div style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)" }}>{label}</div>
                     </div>
                   ))}

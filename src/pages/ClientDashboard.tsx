@@ -600,8 +600,8 @@ export default function ClientDashboard() {
     header: { background:"rgba(var(--ff-fg), .03)", borderBottom:"1px solid rgba(var(--ff-fg), .07)", padding:".75rem 1.5rem", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const, gap:".75rem" },
     logo: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.4rem", letterSpacing:".1em" },
     content: { maxWidth:"800px", margin:"0 auto", padding:"1.5rem" },
-    card: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"1.5rem", marginBottom:"1.5rem" },
-    cardTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", color:"#ea6b14", marginBottom:"1.25rem" },
+    card: { background:"rgba(var(--ff-fg), .055)", border:"1px solid rgba(var(--ff-fg), .05)", borderRadius:"14px", padding:"1.5rem", marginBottom:"1.5rem" },
+    cardTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", lineHeight:1.1, color:"#ea6b14", marginBottom:"1.25rem" },
     btn: { padding:".5rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"6px", color:"rgba(var(--ff-muted), .7)", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer" },
     primaryBtn: { padding:".75rem 1.5rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer" },
     tabs: { display:"flex", gap:".5rem", marginBottom:"1.5rem", flexWrap:"wrap" as const },
@@ -630,7 +630,8 @@ export default function ClientDashboard() {
   );
 
   return (
-    <div style={s.wrap}>
+    <div style={s.wrap} className="ffdash">
+      <style>{".ffdash button{transition:filter .12s ease, transform .08s ease, opacity .12s ease} .ffdash button:hover:not(:disabled){filter:brightness(1.09)} .ffdash button:active:not(:disabled){transform:translateY(1px)} .ffdash button:disabled{opacity:.55; cursor:not-allowed}"}</style>
       {toast && (
         <div onClick={() => setToast(null)} style={{ position:"fixed", left:"50%", bottom:"1.5rem", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
       )}
@@ -653,7 +654,7 @@ export default function ClientDashboard() {
 
       <div style={s.header}>
         <div>
-          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", letterSpacing:".02em", margin:0, lineHeight:1.1 }}>
+          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.7rem", letterSpacing:".02em", margin:0, lineHeight:1.1 }}>
             Welcome{profile?.first_name ? ", " + profile.first_name : " back"}
           </h1>
           <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .6)", marginTop:".2rem" }}>Here's what's happening with your requests.</div>
@@ -687,6 +688,29 @@ export default function ClientDashboard() {
         })()}
         <ProfileCompletionModal role="client" profile={profile} />
         {rewindOpen && <FreddyRewind mode="client" onClose={() => setRewindOpen(false)} />}
+
+        {(() => {
+          // "Needs your attention" — surfaces the next action on the selected request.
+          const attn: { key: string; text: string; cta: string }[] = [];
+          if (activeJob?.price_change_pending) attn.push({ key: "price", text: "Your pro proposed a new price — review and approve or decline.", cta: "Review price" });
+          else if (activeJob?.status === "pending_confirmation" && !activeJob?.is_milestone) attn.push({ key: "confirm", text: "Your pro marked the job complete — confirm the work to release payment.", cta: "Confirm now" });
+          if (activeJob?.status === "assigned" && activeJob?.schedule_proposed_at && !activeJob?.client_approved_at && !(activeJob?.client_rescheduled_at && !activeJob?.reschedule_accepted_at)) attn.push({ key: "sched", text: "Your pro proposed a time and price — approve it to book the visit.", cta: "Review proposal" });
+          if (!activeJob && clientBids.length > 0) attn.push({ key: "bids", text: clientBids.length + " pro" + (clientBids.length === 1 ? " has" : "s have") + " bid on your request — pick the one you like.", cta: "See bids" });
+          if (attn.length === 0) return null;
+          return (
+            <div style={{ ...s.card, padding:"1.1rem 1.25rem", marginBottom:"1.25rem", border:"1px solid rgba(234,107,20,.3)" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:".45rem", fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"#ea6b14", fontWeight:700 }}>
+                <Ic name="alert-triangle" size={13} />Needs your attention
+              </div>
+              {attn.slice(0, 3).map((a, i) => (
+                <div key={a.key} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".75rem", padding:".6rem 0", borderTop: i === 0 ? "none" : "1px solid rgba(var(--ff-fg), .06)", marginTop: i === 0 ? ".5rem" : 0 }}>
+                  <div style={{ fontSize:".85rem", color:"var(--ff-text)", lineHeight:1.45 }}>{a.text}</div>
+                  <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", whiteSpace:"nowrap" as const, flexShrink:0 }} onClick={() => { setActiveTab("requests"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>{a.cta}</button>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
 
         {activeTab === "profile" && (
           <>
@@ -725,7 +749,7 @@ export default function ClientDashboard() {
         ) : (
           <div style={{ textAlign:"center", padding:"3.5rem 2rem" }}>
             <div style={{ marginBottom:"1rem" }}><Ic name="user-check" size={44} color="#ea6b14" /></div>
-            <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.8rem", marginBottom:".4rem" }}>No pros yet</h2>
+            <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".03em", lineHeight:1.1, marginBottom:".4rem" }}>No pros yet</h2>
             <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".9rem" }}>Once you've worked with a contractor, they'll show up here so you can rebook them in one tap.</p>
           </div>
         ))}
@@ -742,7 +766,7 @@ export default function ClientDashboard() {
               </div>
               <div style={{ textAlign:"center" }}>
                 <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.8rem", letterSpacing:".12em", color:"#ea6b14", border:"1px dashed rgba(234,107,20,.5)", borderRadius:"10px", padding:".35rem .9rem" }}>{referral.code}</div>
-                <button style={{ ...s.tab, marginTop:".45rem", fontSize:".78rem" }} onClick={copyReferral}>{refCopied ? "Copied!" : "Copy invite link"}</button>
+                <button style={{ ...s.tab, marginTop:".45rem", fontSize:".78rem", ...(refCopied ? { color:"#22c55e", borderColor:"rgba(34,197,94,.4)", background:"rgba(34,197,94,.1)" } : {}) }} onClick={copyReferral}>{refCopied ? "Copied ✓" : "Copy invite link"}</button>
               </div>
             </div>
           </div>
@@ -797,7 +821,7 @@ export default function ClientDashboard() {
         ) : (
           <div style={{ textAlign:"center", padding:"3.5rem 2rem" }}>
             <div style={{ marginBottom:"1rem" }}><Ic name="refresh" size={44} color="#ea6b14" /></div>
-            <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.8rem", marginBottom:".4rem" }}>No recurring plans</h2>
+            <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".03em", lineHeight:1.1, marginBottom:".4rem" }}>No recurring plans</h2>
             <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".9rem" }}>Book a job as recurring and we'll line up each visit automatically — you can manage and prepay them here.</p>
           </div>
         ))}
@@ -805,11 +829,12 @@ export default function ClientDashboard() {
         {activeTab === "requests" && (
         <>
             {requests.length === 0 ? (
-              <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
-                <div style={{ marginBottom:"1rem" }}><Ic name="home" size={48} color="#ea6b14" /></div>
-                <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", marginBottom:".5rem" }}>No Requests Yet</h2>
-                <p style={{ color:"rgba(var(--ff-muted), .5)", marginBottom:"1.5rem" }}>Submit your first job request and we'll get you sorted.</p>
-                <button style={s.primaryBtn} onClick={() => setLocation("/client-onboarding")}>Submit a Request →</button>
+              <div style={{ textAlign:"center", padding:"3rem 2rem" }}>
+                <div style={{ marginBottom:"1rem" }}><Ic name="home" size={44} color="#ea6b14" /></div>
+                <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".03em", lineHeight:1.1, marginBottom:".5rem" }}>What needs fixing?</h2>
+                <p style={{ color:"rgba(var(--ff-muted), .5)", marginBottom:"1.25rem", maxWidth:"380px", marginLeft:"auto", marginRight:"auto", lineHeight:1.55 }}>Describe the job, get free estimates from vetted Calgary pros, and pick the one you like. Your payment is held securely until the work is done.</p>
+                <button style={s.primaryBtn} onClick={() => setLocation("/client-onboarding")}>Post your first request →</button>
+                <div style={{ marginTop:"1rem", fontSize:".78rem", color:"rgba(var(--ff-muted), .45)" }}>Popular: handyman visits · plumbing · electrical · furnace tune-ups</div>
               </div>
             ) : (
               <>

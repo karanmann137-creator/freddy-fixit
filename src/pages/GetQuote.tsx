@@ -113,6 +113,7 @@ export default function GetQuote() {
 
           <label style={s.label}>Phone <span style={{ opacity:.5, textTransform:"none", letterSpacing:0 }}>(optional if email given)</span></label>
           <input autoComplete="tel" type="tel" style={{ ...inp, borderColor: errors.contact ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="(403) 555-0123" value={phone} onChange={e => { setPhone(e.target.value); setErrors(x => ({ ...x, contact:"" })); }} />
+          <p style={{ margin:".35rem 0 0", fontSize:".74rem", color:"rgba(var(--ff-muted), .5)", lineHeight:1.45 }}>Only used to send your estimate — we never share your contact info or spam you.</p>
           {errors.contact && <p style={s.err}>{errors.contact}</p>}
 
           <label style={s.label}>What do you need?</label>

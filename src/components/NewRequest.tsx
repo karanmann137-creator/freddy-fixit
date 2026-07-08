@@ -480,6 +480,7 @@ export default function NewRequest() {
                 {addrChoice === "new" && (
                   <>
                     <AddressAutocomplete autoComplete="street-address" style={{ ...inp, marginTop:".4rem", borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="e.g. 123 Main St NW" value={newLocation} onChange={v => { setNewLocation(v); setErrors(er => ({ ...er, location:"" })); }} />
+                    <p style={{ margin:".35rem 0 0", fontSize:".74rem", color:"rgba(var(--ff-muted), .5)", lineHeight:1.45 }}>Used to match you with pros in your area — never shown publicly.</p>
                     <label style={{ display:"flex", alignItems:"center", gap:".5rem", cursor:"pointer", fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginTop:".5rem" }}>
                       <input type="checkbox" checked={saveNewAddress} onChange={e => setSaveNewAddress(e.target.checked)} style={{ width:"15px", height:"15px", accentColor:"#ea6b14" }} />
                       Save this address for next time
