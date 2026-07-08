@@ -652,7 +652,12 @@ export default function ClientDashboard() {
         <div style={{ flex:1, minWidth:0 }}>
 
       <div style={s.header}>
-        <div style={{ fontSize:".95rem", color:"rgba(var(--ff-muted), .7)" }}>Welcome back, {profile?.first_name}</div>
+        <div>
+          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", letterSpacing:".02em", margin:0, lineHeight:1.1 }}>
+            Welcome{profile?.first_name ? ", " + profile.first_name : " back"}
+          </h1>
+          <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .6)", marginTop:".2rem" }}>Here's what's happening with your requests.</div>
+        </div>
         <div style={{ display:"flex", gap:".75rem", flexWrap:"wrap" as const }}>
           <button style={{ ...s.tab, display:"inline-flex", alignItems:"center", gap:".35rem" }} onClick={() => setRewindOpen(true)}><Ic name="star" size={13} color="#ea6b14" />My Rewind</button>
           <button style={s.primaryBtn} onClick={() => setLocation("/client-onboarding")}>+ New Request</button>
@@ -660,6 +665,26 @@ export default function ClientDashboard() {
       </div>
 
       <div style={s.content}>
+        {(() => {
+          const missing: string[] = [];
+          if (!profile?.first_name || !profile?.last_name) missing.push("your name");
+          if (!profile?.phone) missing.push("phone number");
+          return missing.length > 0 ? (
+            <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.45)", display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".75rem", justifyContent:"space-between" }}>
+              <div style={{ flex:"1 1 260px" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".85rem", fontWeight:600, color:"#ea6b14", marginBottom:".3rem" }}>
+                  <Ic name="alert-triangle" size={14} />Complete your profile
+                </div>
+                <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
+                  Add {missing.join(" and ")} so your pros can reach you.
+                </div>
+              </div>
+              <button style={{ ...s.primaryBtn, whiteSpace:"nowrap" as const }} onClick={() => { setActiveTab("profile"); window.scrollTo({ top:0, behavior:"smooth" }); }}>
+                Complete profile
+              </button>
+            </div>
+          ) : null;
+        })()}
         <ProfileCompletionModal role="client" profile={profile} />
         {rewindOpen && <FreddyRewind mode="client" onClose={() => setRewindOpen(false)} />}
 

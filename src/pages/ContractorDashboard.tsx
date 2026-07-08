@@ -650,8 +650,13 @@ export default function ContractorDashboard() {
         <div style={{ flex:1, minWidth:0 }}>
 
       <div style={s.header}>
-        <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .6)" }}>
-          {contractor?.status === "pending" ? "Profile under review" : contractor?.status === "active" ? "Active" : "Account inactive"}
+        <div>
+          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", letterSpacing:".02em", margin:0, lineHeight:1.1 }}>
+            Welcome{profile?.first_name ? ", " + profile.first_name : ""}
+          </h1>
+          <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .6)", marginTop:".2rem" }}>
+            {contractor?.status === "pending" ? "Profile under review" : contractor?.status === "active" ? "Active" : "Account inactive"}
+          </div>
         </div>
       </div>
 
@@ -679,6 +684,22 @@ export default function ContractorDashboard() {
             </div>
             <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", whiteSpace:"nowrap" as const }} disabled={busyStripe} onClick={setupPayouts}>
               {busyStripe ? "Opening Stripe…" : (contractor.stripe_account_id ? "Finish setup" : "Set up payouts")}
+            </button>
+          </div>
+        )}
+
+        {contractor && contractorMissing(contractor).length > 0 && (
+          <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.45)", display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".75rem", justifyContent:"space-between" }}>
+            <div style={{ flex:"1 1 260px" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".85rem", fontWeight:600, color:"#ea6b14", marginBottom:".3rem" }}>
+                <Ic name="alert-triangle" size={14} />Finish setting up your profile
+              </div>
+              <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
+                Still needed before you can take jobs: {contractorMissing(contractor).join(", ")}.
+              </div>
+            </div>
+            <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", whiteSpace:"nowrap" as const }} onClick={() => { setActiveTab("profile"); window.scrollTo({ top:0, behavior:"smooth" }); }}>
+              Complete profile
             </button>
           </div>
         )}
