@@ -13,7 +13,8 @@ import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 import FreddyRewind from "@/components/FreddyRewind";
 import { freqLabel } from "@/lib/recurrence";
-import DashboardSidebar, { type SidebarItem } from "@/components/DashboardSidebar";
+import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/components/DashboardSidebar";
+import NotificationBell from "@/components/NotificationBell";
 import { SettingsPanel } from "@/components/SettingsModal";
 
 type ClientTab = "requests" | "pros" | "recurring" | "history" | "profile" | "settings";
@@ -637,7 +638,17 @@ export default function ClientDashboard() {
 
       <div style={{ height: "3.75rem" }} />
       <div style={{ display:"flex", alignItems:"flex-start" as const }}>
-        <DashboardSidebar items={CLIENT_NAV} active={activeTab} onSelect={(k) => setActiveTab(k as ClientTab)} title="Dashboard" />
+        <DashboardSidebar
+          items={CLIENT_NAV}
+          active={activeTab}
+          onSelect={(k) => setActiveTab(k as ClientTab)}
+          title="Dashboard"
+          bell={profile?.id ? <NotificationBell userId={profile.id} dashboardPath="/client-dashboard" /> : undefined}
+          actions={[
+            { key: "contact", label: "Contact us", icon: "mail", onClick: () => { window.location.href = "mailto:hello@freddyfixit.ca"; } },
+            { key: "logout",  label: "Log out",    icon: "door", onClick: handleSignOut, danger: true },
+          ] as SidebarAction[]}
+        />
         <div style={{ flex:1, minWidth:0 }}>
 
       <div style={s.header}>

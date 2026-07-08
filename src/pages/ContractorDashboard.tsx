@@ -14,7 +14,8 @@ import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 import ContractorProfileCompletion from "@/components/ContractorProfileCompletion";
 import ProfileCompleteCelebration from "@/components/ProfileCompleteCelebration";
-import DashboardSidebar, { type SidebarItem } from "@/components/DashboardSidebar";
+import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/components/DashboardSidebar";
+import NotificationBell from "@/components/NotificationBell";
 
 const CONTRACTOR_NAV: SidebarItem[] = [
   { key: "jobs",      label: "My Jobs",        icon: "briefcase" },
@@ -634,7 +635,18 @@ export default function ContractorDashboard() {
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       <div style={{ height: "3.75rem" }} />
       <div style={{ display:"flex", alignItems:"flex-start" as const }}>
-        <DashboardSidebar items={CONTRACTOR_NAV} active={activeTab} onSelect={(k) => setActiveTab(k as any)} title="Dashboard" />
+        <DashboardSidebar
+          items={CONTRACTOR_NAV}
+          active={activeTab}
+          onSelect={(k) => setActiveTab(k as any)}
+          title="Dashboard"
+          bell={profile?.id ? <NotificationBell userId={profile.id} dashboardPath="/contractor-dashboard" /> : undefined}
+          actions={[
+            { key: "contact",  label: "Contact us", icon: "mail",     onClick: () => { window.location.href = "mailto:hello@freddyfixit.ca"; } },
+            { key: "settings", label: "Settings",   icon: "settings", onClick: () => window.dispatchEvent(new Event("ff:open-settings")) },
+            { key: "logout",   label: "Log out",    icon: "door",     onClick: handleSignOut, danger: true },
+          ] as SidebarAction[]}
+        />
         <div style={{ flex:1, minWidth:0 }}>
 
       <div style={s.header}>

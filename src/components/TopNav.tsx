@@ -12,7 +12,11 @@ const NAV_LINKS: { label: string; to: string; accent?: boolean }[] = [
 ];
 
 export default function TopNav() {
-  const [, setLocation] = useLocation();
+  const [loc, setLocation] = useLocation();
+  // On the client/contractor dashboards the account actions live in the left
+  // sidebar, so hide the top-right Menu there (SettingsModal stays mounted so
+  // the sidebar's Settings action can still open it via ff:open-settings).
+  const onSidebarDash = loc === "/client-dashboard" || loc === "/contractor-dashboard";
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [uid, setUid] = useState<string | null>(null);
@@ -109,7 +113,10 @@ export default function TopNav() {
           </button>
         ))}
 
-        {authed ? (
+        {authed && onSidebarDash ? (
+          // Dashboard: account actions live in the left sidebar — no top-right Menu.
+          null
+        ) : authed ? (
           // Logged in: collapse account actions into a menu button.
           <div ref={menuRef} style={{ position: "relative" }}>
             <button
