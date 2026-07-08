@@ -4,7 +4,6 @@ import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
-import DeleteAccount from "@/components/DeleteAccount";
 import ProfileBar from "@/components/ProfileBar";
 import JobChat from "@/components/JobChat";
 import JobTimeline from "@/components/JobTimeline";
@@ -14,6 +13,19 @@ import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 import FreddyRewind from "@/components/FreddyRewind";
 import { freqLabel } from "@/lib/recurrence";
+import DashboardSidebar, { type SidebarItem } from "@/components/DashboardSidebar";
+import { SettingsPanel } from "@/components/SettingsModal";
+
+type ClientTab = "requests" | "pros" | "recurring" | "history" | "profile" | "settings";
+
+const CLIENT_NAV: SidebarItem[] = [
+  { key: "requests",  label: "My Requests",    icon: "clipboard-list" },
+  { key: "pros",      label: "My Pros",        icon: "user-check" },
+  { key: "recurring", label: "Recurring Plans", icon: "refresh" },
+  { key: "history",   label: "History",        icon: "clock" },
+  { key: "profile",   label: "Profile",        icon: "user" },
+  { key: "settings",  label: "Settings",       icon: "settings" },
+];
 
 function QuoteBreakdownView({ row, assumptionsKey = "assumptions" }: { row: any; assumptionsKey?: string }) {
   const items: [string, any][] = [["Labour", row?.labour_amount], ["Parts & materials", row?.parts_amount], ["Call-out", row?.callout_fee]];
@@ -114,6 +126,7 @@ export default function ClientDashboard() {
   const [newVisitTime, setNewVisitTime] = useState<string>("");
   const [showChangeTime, setShowChangeTime] = useState(false);
   const [toast, setToast]           = useState<{ kind:"err"|"ok"; text:string }|null>(null);
+  const [activeTab, setActiveTab]   = useState<ClientTab>("requests");
   const toastTimer = useRef<number | null>(null);
   const notify = (text: string, kind: "err" | "ok" = "err") => {
     setToast({ kind, text });
@@ -623,6 +636,10 @@ export default function ClientDashboard() {
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 
       <div style={{ height: "3.75rem" }} />
+      <div style={{ display:"flex", alignItems:"flex-start" as const }}>
+        <DashboardSidebar items={CLIENT_NAV} active={activeTab} onSelect={(k) => setActiveTab(k as ClientTab)} title="Dashboard" />
+        <div style={{ flex:1, minWidth:0 }}>
+
       <div style={s.header}>
         <div style={{ fontSize:".95rem", color:"rgba(var(--ff-muted), .7)" }}>Welcome back, {profile?.first_name}</div>
         <div style={{ display:"flex", gap:".75rem", flexWrap:"wrap" as const }}>
@@ -633,10 +650,19 @@ export default function ClientDashboard() {
 
       <div style={s.content}>
         <ProfileCompletionModal role="client" profile={profile} />
-        <ProfileBar role="client" />
         {rewindOpen && <FreddyRewind mode="client" onClose={() => setRewindOpen(false)} />}
 
-        {pros.length > 0 && (
+        {activeTab === "profile" && (
+          <>
+            <ProfileBar role="client" />
+          </>
+        )}
+
+        {activeTab === "settings" && (
+          <SettingsPanel role="client" />
+        )}
+
+        {activeTab === "pros" && (pros.length > 0 ? (
           <div style={{ ...s.card }}>
             <div style={s.cardTitle}>Your pros</div>
             <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .55)", marginTop:"-.4rem", marginBottom:".9rem" }}>Rebook someone you trust — they'll be requested directly.</div>
@@ -660,9 +686,15 @@ export default function ClientDashboard() {
               ))}
             </div>
           </div>
-        )}
+        ) : (
+          <div style={{ textAlign:"center", padding:"3.5rem 2rem" }}>
+            <div style={{ marginBottom:"1rem" }}><Ic name="user-check" size={44} color="#ea6b14" /></div>
+            <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.8rem", marginBottom:".4rem" }}>No pros yet</h2>
+            <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".9rem" }}>Once you've worked with a contractor, they'll show up here so you can rebook them in one tap.</p>
+          </div>
+        ))}
 
-        {referral?.code && (
+        {activeTab === "requests" && referral?.code && (
           <div style={{ ...s.card, background:"linear-gradient(135deg, rgba(234,107,20,.10), rgba(var(--ff-fg),.03))", borderColor:"rgba(234,107,20,.28)" }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".75rem", flexWrap:"wrap" as const }}>
               <div>
@@ -680,7 +712,7 @@ export default function ClientDashboard() {
           </div>
         )}
 
-        {plans.length > 0 && (
+        {activeTab === "recurring" && (plans.length > 0 ? (
           <div style={{ ...s.card }}>
             <div style={s.cardTitle}>Recurring plans</div>
             <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .55)", marginTop:"-.4rem", marginBottom:".9rem" }}>We'll line up each visit automatically. Prepay ahead to lock it in — held securely, released one visit at a time.</div>
@@ -726,8 +758,15 @@ export default function ClientDashboard() {
               })}
             </div>
           </div>
-        )}
+        ) : (
+          <div style={{ textAlign:"center", padding:"3.5rem 2rem" }}>
+            <div style={{ marginBottom:"1rem" }}><Ic name="refresh" size={44} color="#ea6b14" /></div>
+            <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.8rem", marginBottom:".4rem" }}>No recurring plans</h2>
+            <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".9rem" }}>Book a job as recurring and we'll line up each visit automatically — you can manage and prepay them here.</p>
+          </div>
+        ))}
 
+        {activeTab === "requests" && (
         <>
             {requests.length === 0 ? (
               <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
@@ -1004,8 +1043,12 @@ export default function ClientDashboard() {
                     </div>
                   </div>
                 )}
+              </>
+            )}
+        </>
+        )}
 
-                {(() => {
+        {activeTab === "history" && (() => {
                   const histAll = requests.filter(r => r.id !== activeReq?.id);
                   if (histAll.length === 0) return null;
                   const matches = (r: any) =>
@@ -1056,11 +1099,8 @@ export default function ClientDashboard() {
                     </div>
                   );
                 })()}
-              </>
-            )}
-        </>
-
-        <DeleteAccount />
+      </div>
+        </div>
       </div>
 
       {chatOpen && activeJob && profile && (

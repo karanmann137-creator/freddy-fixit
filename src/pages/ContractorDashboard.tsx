@@ -14,6 +14,15 @@ import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 import ContractorProfileCompletion from "@/components/ContractorProfileCompletion";
 import ProfileCompleteCelebration from "@/components/ProfileCompleteCelebration";
+import DashboardSidebar, { type SidebarItem } from "@/components/DashboardSidebar";
+
+const CONTRACTOR_NAV: SidebarItem[] = [
+  { key: "jobs",      label: "My Jobs",        icon: "briefcase" },
+  { key: "available", label: "Available Jobs", icon: "search" },
+  { key: "earnings",  label: "Earnings",       icon: "dollar" },
+  { key: "reviews",   label: "Reviews",        icon: "star" },
+  { key: "profile",   label: "Profile",        icon: "user" },
+];
 
 // Which required pieces of a contractor profile are still missing. Shared by the
 // "finish setting up" nudge and the profile-complete celebration trigger.
@@ -624,19 +633,13 @@ export default function ContractorDashboard() {
       )}
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       <div style={{ height: "3.75rem" }} />
+      <div style={{ display:"flex", alignItems:"flex-start" as const }}>
+        <DashboardSidebar items={CONTRACTOR_NAV} active={activeTab} onSelect={(k) => setActiveTab(k as any)} title="Dashboard" />
+        <div style={{ flex:1, minWidth:0 }}>
+
       <div style={s.header}>
         <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .6)" }}>
           {contractor?.status === "pending" ? "Profile under review" : contractor?.status === "active" ? "Active" : "Account inactive"}
-        </div>
-      </div>
-
-      <div style={s.tabsBar}>
-        <div style={s.tabsInner}>
-          {(["jobs","available","profile","earnings","reviews"] as const).map(t => (
-            <button key={t} style={{ ...s.tab, ...(activeTab===t ? s.activeTab : {}) }} onClick={() => setActiveTab(t)}>
-              {{ jobs:"My Jobs", available:"Available Jobs", profile:"My Profile", earnings:"Earnings", reviews:"My Reviews" }[t]}
-            </button>
-          ))}
         </div>
       </div>
 
@@ -649,7 +652,6 @@ export default function ContractorDashboard() {
 
       <div style={s.content}>
         <ProfileCompletionModal role="contractor" profile={profile} contractor={contractor} onSetupPayouts={setupPayouts} />
-        <ProfileBar role="contractor" />
 
         {contractor && !contractor.stripe_payouts_enabled && (
           <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.45)", display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".75rem", justifyContent:"space-between" }}>
@@ -895,6 +897,7 @@ export default function ContractorDashboard() {
 
         {activeTab === "profile" && (
           <div>
+            <ProfileBar role="contractor" />
             {(() => {
               const missing = contractorMissing(contractor);
               if (missing.length === 0) return null;
@@ -1253,6 +1256,8 @@ export default function ContractorDashboard() {
           </div>
         )}
 
+      </div>
+        </div>
       </div>
 
       {chatJob && profile && (
