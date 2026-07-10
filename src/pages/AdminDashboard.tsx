@@ -358,7 +358,7 @@ export default function AdminDashboard() {
                 <div style={{ ...s.badge, marginTop:".5rem" }}>● {r.status}</div>
                 {r.status === "pending" && (bidsBy[r.id]?.length ?? 0) > 0 && (
                   <div style={{ marginTop:".75rem" }}>
-                    <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)", marginBottom:".4rem" }}>Bids ({bidsBy[r.id].length}/3)</div>
+                    <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)", marginBottom:".4rem" }}>Bids ({bidsBy[r.id].length}/7)</div>
                     {bidsBy[r.id].map((b: any) => (
                       <div key={b.id} style={{ padding:".5rem .6rem", marginBottom:".4rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
                         <div style={{ fontSize:".85rem", color:"var(--ff-text)" }}>{nameFor(b.contractor_id)}{b.amount != null ? " — $" + b.amount : ""}</div>

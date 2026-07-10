@@ -973,11 +973,11 @@ export default function ContractorDashboard() {
                 <div style={{ margin:".75rem 0", padding:".75rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:".5rem" }}>
                     <span style={{ fontSize:".75rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .5)" }}>Bids</span>
-                    <span style={{ fontSize:".78rem", fontWeight:600, color: (r.bid_count ?? 0) >= 3 ? "#f59e0b" : "var(--ff-success)" }}>{r.bid_count ?? 0}/3</span>
+                    <span style={{ fontSize:".78rem", fontWeight:600, color: (r.bid_count ?? 0) >= 7 ? "#f59e0b" : "var(--ff-success)" }}>{r.bid_count ?? 0}/7</span>
                   </div>
                   {r.my_amount != null && <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".5rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />You bid {"$" + r.my_amount}. You can update it below.</div>}
-                  {r.my_amount == null && (r.bid_count ?? 0) >= 3 && <div style={{ fontSize:".82rem", color:"var(--ff-warn)" }}>This job already has 3 bids.</div>}
-                  {(r.my_amount != null || (r.bid_count ?? 0) < 3) && (
+                  {r.my_amount == null && (r.bid_count ?? 0) >= 7 && <div style={{ fontSize:".82rem", color:"var(--ff-warn)" }}>This job already has 7 bids.</div>}
+                  {(r.my_amount != null || (r.bid_count ?? 0) < 7) && (
                     <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center" }}>
                       <input type="number" min="0" placeholder="Price $" value={bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "")} onChange={e => setBid(r.id, { amount: e.target.value, message: bidForm[r.id]?.message ?? (r.my_message ?? ""), used_base_price:false })} style={{ width:"100px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
                       <input placeholder="Short message (optional)" value={bidForm[r.id]?.message ?? (r.my_message ?? "")} onChange={e => setBid(r.id, { message: e.target.value, amount: bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "") })} style={{ flex:"1 1 150px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
