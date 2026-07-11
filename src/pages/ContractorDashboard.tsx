@@ -18,14 +18,33 @@ import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/compon
 import NotificationBell from "@/components/NotificationBell";
 import RequestHelpModal from "@/components/RequestHelpModal";
 import { jobCode } from "@/lib/jobCode";
+import JobsCalendar from "@/components/JobsCalendar";
 
 const CONTRACTOR_NAV: SidebarItem[] = [
   { key: "jobs",      label: "My Jobs",        icon: "briefcase" },
   { key: "available", label: "Available Jobs", icon: "search" },
+  { key: "calendar",  label: "Calendar",       icon: "calendar" },
   { key: "earnings",  label: "Earnings",       icon: "dollar" },
   { key: "reviews",   label: "Reviews",        icon: "star" },
   { key: "profile",   label: "Profile",        icon: "user" },
 ];
+
+// Pipeline-stage matchers — single source shared by the workflow strip counters
+// and the My Jobs stage filter, so a stage's count always equals what its click shows.
+const STAGE_MATCH: Record<string, (j: any) => boolean> = {
+  propose:   j => j.status === "assigned" && !j.schedule_proposed_at,
+  awaiting:  j => j.status === "assigned" && !!j.schedule_proposed_at,
+  scheduled: j => j.status === "scheduled",
+  working:   j => j.status === "in_progress",
+  payment:   j => j.status === "pending_confirmation" || (j.status === "completed" && j.payment_status === "held"),
+};
+const STAGE_LABEL: Record<string, string> = {
+  propose: "needs your estimate",
+  awaiting: "awaiting client approval",
+  scheduled: "scheduled",
+  working: "in progress",
+  payment: "awaiting payment",
+};
 
 // Which required pieces of a contractor profile are still missing. Shared by the
 // "finish setting up" nudge and the profile-complete celebration trigger.
@@ -113,7 +132,8 @@ export default function ContractorDashboard() {
   const [chatJob, setChatJob]         = useState<any|null>(null);
   const [confirmState, setConfirmState] = useState<ConfirmState|null>(null);
   const [loading, setLoading]         = useState(true);
-  const [activeTab, setActiveTab]     = useState<"jobs"|"available"|"profile"|"earnings"|"reviews">("jobs");
+  const [activeTab, setActiveTab]     = useState<"jobs"|"available"|"calendar"|"profile"|"earnings"|"reviews">("jobs");
+  const [jobFilter, setJobFilter]     = useState<string|null>(null); // pipeline-strip stage filter for the My Jobs list
   const [showProfileCongrats, setShowProfileCongrats] = useState(false);
   const [showCustomAvail, setShowCustomAvail] = useState(false);
   const [proposeForm, setProposeForm] = useState({ when:"", amount:"", notes:"", labour:"", parts:"", callout:"", subject:false, price_low:"", price_high:"", used_base_price:false });
@@ -717,10 +737,51 @@ export default function ContractorDashboard() {
           </div>
         )}
 
+        {(activeTab === "jobs" || activeTab === "available" || activeTab === "calendar") && (() => {
+          // Jobber-style workflow pipeline strip: where every job sits, at a glance.
+          // Clicking a stage jumps to the right tab (and filters My Jobs by stage).
+          const stages: { key: string; label: string; count: number; color: string; onClick: () => void }[] = [
+            { key: "leads", label: "New leads", count: availableJobs.length, color: "#3b82f6",
+              onClick: () => { setActiveTab("available"); window.scrollTo({ top: 0, behavior: "smooth" }); } },
+            { key: "propose", label: "Needs your estimate", count: myJobs.filter(STAGE_MATCH.propose).length, color: "#f59e0b",
+              onClick: () => { setActiveTab("jobs"); setJobFilter(f => f === "propose" ? null : "propose"); } },
+            { key: "awaiting", label: "Awaiting client", count: myJobs.filter(STAGE_MATCH.awaiting).length, color: "#8b5cf6",
+              onClick: () => { setActiveTab("jobs"); setJobFilter(f => f === "awaiting" ? null : "awaiting"); } },
+            { key: "scheduled", label: "Scheduled", count: myJobs.filter(STAGE_MATCH.scheduled).length, color: "#8b5cf6",
+              onClick: () => { setActiveTab("jobs"); setJobFilter(f => f === "scheduled" ? null : "scheduled"); } },
+            { key: "working", label: "In progress", count: myJobs.filter(STAGE_MATCH.working).length, color: "#ea6b14",
+              onClick: () => { setActiveTab("jobs"); setJobFilter(f => f === "working" ? null : "working"); } },
+            { key: "payment", label: "Awaiting payment", count: myJobs.filter(STAGE_MATCH.payment).length, color: "#22c55e",
+              onClick: () => { setActiveTab("jobs"); setJobFilter(f => f === "payment" ? null : "payment"); } },
+          ];
+          return (
+            <div style={{ display:"flex", gap:".5rem", overflowX:"auto" as const, paddingBottom:".35rem", marginBottom:"1.25rem" }}>
+              {stages.map(st => {
+                const on = jobFilter === st.key && activeTab === "jobs";
+                return (
+                  <button
+                    key={st.key}
+                    onClick={st.onClick}
+                    style={{
+                      flex:"1 0 108px", minWidth:"108px", padding:".7rem .6rem", textAlign:"left" as const, cursor:"pointer", fontFamily:"inherit",
+                      borderRadius:"12px", background: on ? "rgba(234,107,20,.1)" : "rgba(var(--ff-fg), .045)",
+                      border: on ? "1px solid rgba(234,107,20,.5)" : "1px solid rgba(var(--ff-fg), .06)",
+                      borderTop: "3px solid " + st.color,
+                    }}
+                  >
+                    <div style={{ fontSize:"1.25rem", fontWeight:700, color: st.count > 0 ? "var(--ff-text)" : "rgba(var(--ff-muted), .35)", lineHeight:1.1 }}>{st.count}</div>
+                    <div style={{ fontSize:".68rem", color:"rgba(var(--ff-muted), .6)", marginTop:".2rem", lineHeight:1.25 }}>{st.label}</div>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
+
         {(() => {
           // "Needs your attention" — the one place that answers "what should I do next?"
           const attn: { key: string; text: string; cta: string; onClick: () => void; danger?: boolean }[] = [];
-          const goJob = (job: any) => { setActiveTab("jobs"); if (activeJobId !== job.id) openJob(job); window.scrollTo({ top: 0, behavior: "smooth" }); };
+          const goJob = (job: any) => { setActiveTab("jobs"); setJobFilter(null); if (activeJobId !== job.id) openJob(job); window.scrollTo({ top: 0, behavior: "smooth" }); };
           for (const job of myJobs) {
             const d = disputes[job.id];
             const svc = job.request?.service_needed ?? "a job";
@@ -755,8 +816,23 @@ export default function ContractorDashboard() {
           );
         })()}
 
-        {activeTab === "jobs" && (
+        {activeTab === "jobs" && (() => {
+          const shown = jobFilter && STAGE_MATCH[jobFilter] ? myJobs.filter(STAGE_MATCH[jobFilter]) : myJobs;
+          return (
           <div>
+            {jobFilter && myJobs.length > 0 && (
+              <div style={{ display:"flex", alignItems:"center", gap:".6rem", marginBottom:"1rem", flexWrap:"wrap" as const }}>
+                <span style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .6)" }}>
+                  Showing {shown.length} job{shown.length === 1 ? "" : "s"} — {STAGE_LABEL[jobFilter] ?? jobFilter}
+                </span>
+                <button onClick={() => setJobFilter(null)} style={{ ...s.btn, padding:".3rem .75rem", borderRadius:"99px", fontSize:".75rem" }}>Show all ×</button>
+              </div>
+            )}
+            {jobFilter && myJobs.length > 0 && shown.length === 0 && (
+              <div style={{ textAlign:"center" as const, padding:"2.5rem 1.5rem", color:"rgba(var(--ff-muted), .5)", fontSize:".9rem" }}>
+                No jobs {STAGE_LABEL[jobFilter] ?? "in this stage"} right now.
+              </div>
+            )}
             {myJobs.length === 0 ? (
               <div style={{ ...s.card, maxWidth:"460px", margin:"2rem auto" }}>
                 <div style={{ textAlign:"center" as const, marginBottom:"1.25rem" }}>
@@ -778,7 +854,7 @@ export default function ContractorDashboard() {
                   </div>
                 ))}
               </div>
-            ) : myJobs.map(job => (
+            ) : shown.map(job => (
               <div key={job.id} style={s.jobCard} onClick={() => openJob(job)}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:".75rem" }}>
                   <div>
@@ -933,6 +1009,15 @@ export default function ContractorDashboard() {
               </div>
             ))}
           </div>
+          );
+        })()}
+
+        {activeTab === "calendar" && (
+          <JobsCalendar
+            jobs={myJobs}
+            statusColors={STATUS_COLORS}
+            onOpen={(job) => { setActiveTab("jobs"); setJobFilter(null); if (activeJobId !== job.id) openJob(job); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+          />
         )}
 
         {activeTab === "available" && (
