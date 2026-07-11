@@ -619,6 +619,31 @@ export default function ClientDashboard() {
     }
   };
 
+  // Walkthrough-first: the contractor proposed a free site visit before pricing.
+  const approveWalkthrough = async () => {
+    if (!activeJob) return;
+    setBusyReq(true);
+    const { error } = await supabase.rpc("approve_walkthrough", { p_job_id: activeJob.id });
+    setBusyReq(false);
+    if (error) { notify("Couldn't confirm the walkthrough: " + error.message); return; }
+    setActiveJob({ ...activeJob, walkthrough_approved_at: new Date().toISOString() });
+    notify("Walkthrough confirmed — your pro will come take a look. It's free.", "ok");
+  };
+  const declineWalkthrough = async () => {
+    if (!activeJob) return;
+    if (!(await askConfirm({
+      title: "Decline this walkthrough time?",
+      message: "Your pro will be asked to propose another time or send an estimate without a visit.",
+      confirmLabel: "Yes, decline the time",
+      danger: false,
+    }))) return;
+    setBusyReq(true);
+    const { error } = await supabase.rpc("decline_walkthrough", { p_job_id: activeJob.id, p_reason: null });
+    setBusyReq(false);
+    if (error) { notify("Couldn't decline: " + error.message); return; }
+    setActiveJob({ ...activeJob, walkthrough_proposed_at: null, walkthrough_at: null, walkthrough_approved_at: null, walkthrough_note: null });
+  };
+
   const submitReview = async () => {
     if (!activeJob) return;
     setBusyReq(true);
@@ -734,6 +759,7 @@ export default function ClientDashboard() {
           if (activeJob?.price_change_pending) attn.push({ key: "price", text: "Your pro proposed a new price — review and approve or decline.", cta: "Review price" });
           else if (activeJob?.status === "pending_confirmation" && !activeJob?.is_milestone) attn.push({ key: "confirm", text: "Your pro marked the job complete — confirm the work to release payment.", cta: "Confirm now" });
           if (activeJob?.status === "assigned" && activeJob?.schedule_proposed_at && !activeJob?.client_approved_at && !(activeJob?.client_rescheduled_at && !activeJob?.reschedule_accepted_at)) attn.push({ key: "sched", text: "Your pro proposed a time and price — approve it to book the visit.", cta: "Review proposal" });
+          if (activeJob?.status === "assigned" && activeJob?.walkthrough_proposed_at && !activeJob?.walkthrough_approved_at) attn.push({ key: "walkthrough", text: "Your pro wants to do a free walkthrough before pricing — confirm the visit time.", cta: "Review time" });
           if (!activeJob && clientBids.length > 0) attn.push({ key: "bids", text: clientBids.length + " pro" + (clientBids.length === 1 ? " has" : "s have") + " bid on your request — pick the one you like.", cta: "See bids" });
           if (attn.length === 0) return null;
           return (
@@ -932,8 +958,18 @@ export default function ClientDashboard() {
                           <div key={b.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", padding:".6rem .7rem", marginBottom:".5rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px", flexWrap:"wrap" as const }}>
                             <div style={{ flex:"1 1 160px" }}>
                               <div style={{ fontSize:".88rem", color:"var(--ff-text)" }}>{bidNames[b.contractor_id] ?? "Contractor"}{b.amount != null ? " — $" + b.amount : ""}</div>
+                              {b.walkthrough_requested && (
+                                <div style={{ display:"inline-flex", alignItems:"center", gap:".35rem", padding:".22rem .55rem", borderRadius:"99px", background:"rgba(234,107,20,.14)", color:"#ea6b14", fontSize:".72rem", fontWeight:700, marginTop:".3rem" }}>
+                                  <Ic name="search" size={11} />Wants a free walkthrough first
+                                </div>
+                              )}
+                              {b.walkthrough_requested && (
+                                <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .65)", marginTop:".25rem", lineHeight:1.45 }}>
+                                  This pro prefers to see the space before giving a firm price{b.price_low != null && b.price_high != null ? " — ballpark $" + b.price_low + "–$" + b.price_high : ""}. If you choose them, they'll propose a quick free visit, then send your estimate.
+                                </div>
+                              )}
                               {b.message && <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .65)", marginTop:".15rem" }}>{b.message}</div>}
-                              <QuoteBreakdownView row={b} assumptionsKey="assumptions" />
+                              {!b.walkthrough_requested && <QuoteBreakdownView row={b} assumptionsKey="assumptions" />}
                             </div>
                             <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f", padding:".5rem 1rem" }} disabled={busyPick === b.id} onClick={() => pickBid(b.id)}>{busyPick === b.id ? "…" : "Choose"}</button>
                           </div>
@@ -1030,7 +1066,30 @@ export default function ClientDashboard() {
                             )}
                           </>
                         )}
-                        {activeJob.status === "assigned" && !activeJob.schedule_proposed_at && (
+                        {activeJob.status === "assigned" && activeJob.walkthrough_proposed_at && !activeJob.walkthrough_approved_at && (
+                          <div style={{ marginBottom: activeJob.schedule_proposed_at ? "1rem" : 0 }}>
+                            <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}><Ic name="search" size={14} style={{ marginRight:5 }} />Your pro wants to do a quick walkthrough first</div>
+                            <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5, marginBottom:".5rem" }}>
+                              They'd like to see the space before giving you a firm price. Proposed visit: <strong style={{ color:"var(--ff-text)" }}>{activeJob.walkthrough_at ? new Date(activeJob.walkthrough_at).toLocaleString() : "—"}</strong>. The visit is free — nothing is charged. After it, they'll send your estimate to approve.
+                            </div>
+                            {activeJob.walkthrough_note && <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)", fontStyle:"italic" as const, marginBottom:".55rem" }}>&ldquo;{activeJob.walkthrough_note}&rdquo;</div>}
+                            <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
+                              <button style={s.primaryBtn} disabled={busyReq} onClick={approveWalkthrough}>{busyReq ? "…" : "Confirm the visit"}</button>
+                              <button style={s.btn} disabled={busyReq} onClick={declineWalkthrough}>That time doesn't work</button>
+                            </div>
+                          </div>
+                        )}
+                        {activeJob.status === "assigned" && activeJob.walkthrough_approved_at && !activeJob.walkthrough_done_at && (
+                          <div style={{ fontSize:".85rem", color:"var(--ff-success)", lineHeight:1.5, marginBottom: activeJob.schedule_proposed_at ? "1rem" : 0 }}>
+                            <Ic name="calendar" size={13} style={{ marginRight:4 }} />Walkthrough booked for {activeJob.walkthrough_at ? new Date(activeJob.walkthrough_at).toLocaleString() : "the agreed time"} — free visit, nothing charged. Your estimate comes after.
+                          </div>
+                        )}
+                        {activeJob.status === "assigned" && activeJob.walkthrough_done_at && !activeJob.schedule_proposed_at && (
+                          <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.5 }}>
+                            <Ic name="check-circle" size={14} style={{ marginRight:4 }} />Walkthrough done — your pro is putting your estimate together. You'll get a notification when it lands.
+                          </div>
+                        )}
+                        {activeJob.status === "assigned" && !activeJob.schedule_proposed_at && !activeJob.walkthrough_proposed_at && (
                           <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .75)" }}><Ic name="check-circle" size={14} style={{ marginRight:4 }} />Matched! Waiting for your contractor to propose a time and price.</div>
                         )}
                         {activeJob.status === "scheduled" && !activeJob.is_milestone && (
