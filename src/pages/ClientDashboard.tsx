@@ -8,6 +8,8 @@ import ProfileBar from "@/components/ProfileBar";
 import JobChat from "@/components/JobChat";
 import JobTimeline from "@/components/JobTimeline";
 import MilestonePanel from "@/components/MilestonePanel";
+import JobTimer from "@/components/JobTimer";
+import JobChecklist from "@/components/JobChecklist";
 import ReportProblem from "@/components/ReportProblem";
 import FileClaimModal, { type ClaimJob } from "@/components/FileClaimModal";
 import { jobCode } from "@/lib/jobCode";
@@ -128,6 +130,7 @@ export default function ClientDashboard() {
   const [busyPlan, setBusyPlan]     = useState<string|null>(null);
   const [newVisitTime, setNewVisitTime] = useState<string>("");
   const [showChangeTime, setShowChangeTime] = useState(false);
+  const [selAddons, setSelAddons]   = useState<number[]>([]); // optional add-on indexes ticked on the approval card
   const [toast, setToast]           = useState<{ kind:"err"|"ok"; text:string }|null>(null);
   const [activeTab, setActiveTab]   = useState<ClientTab>("requests");
   const toastTimer = useRef<number | null>(null);
@@ -225,6 +228,7 @@ export default function ClientDashboard() {
       if (cancelled) return;
       setContractor(con ?? null);
       setActiveJob(job ?? null);
+      setSelAddons([]); // fresh add-on selection per job
       // Referral perk: the 3% service fee is waived on a referred client's first
       // job. Check the specific job so the displayed total matches what Stripe charges.
       if (job && job.payment_status !== "released" && job.total_charged == null) {
@@ -311,7 +315,10 @@ export default function ClientDashboard() {
   const approveSchedule = async () => {
     if (!activeJob) return;
     setBusyReq(true);
-    const { error } = await supabase.rpc("approve_job_schedule", { p_job_id: activeJob.id });
+    const { error } = await supabase.rpc("approve_job_schedule", {
+      p_job_id: activeJob.id,
+      p_selected_items: selAddons.length ? selAddons : null,
+    });
     setBusyReq(false);
     if (error) { notify("Couldn't approve: " + error.message); return; }
     // Email the client a written contract copy (Alberta: starts the 10-day cancellation clock).
@@ -323,7 +330,19 @@ export default function ClientDashboard() {
       const { data: used } = await supabase.rpc("consume_prepaid_occurrence", { p_job: activeJob.id });
       covered = used === true;
     } catch { /* no pool / not eligible — falls through to normal pay flow */ }
+    // Mirror the server's idempotent add-on math: amount − previously-accepted + newly-selected.
+    const qi = Array.isArray(activeJob.quote_items) ? activeJob.quote_items : null;
+    let newAmount = activeJob.amount;
+    let newItems = qi;
+    if (qi) {
+      const prevAccepted = qi.reduce((t: number, i: any) => t + (i.accepted ? Number(i.amount) || 0 : 0), 0);
+      const newSelected = selAddons.reduce((t, idx) => t + (Number(qi[idx]?.amount) || 0), 0);
+      newAmount = Math.round((Number(activeJob.amount) - prevAccepted + newSelected) * 100) / 100;
+      newItems = qi.map((i: any, idx: number) => ({ ...i, accepted: selAddons.includes(idx) }));
+    }
+    setSelAddons([]);
     setActiveJob({ ...activeJob, status: "scheduled", client_approved_at: new Date().toISOString(),
+      amount: newAmount, quote_items: newItems,
       ...(covered ? { payment_status: "held", paid_at: new Date().toISOString() } : {}) });
   };
   const requestReschedule = () => {
@@ -969,6 +988,29 @@ export default function ClientDashboard() {
                             <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}>Your contractor proposed a time &amp; price</div>
                             <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .8)", marginBottom:".5rem" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />{activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "—"}{activeJob.amount ? " · $" + activeJob.amount : ""}</div>
                             <QuoteBreakdownView row={activeJob} assumptionsKey="quote_assumptions" />
+                            {Array.isArray(activeJob.quote_items) && activeJob.quote_items.length > 0 && (() => {
+                              const baseAmt = Number(activeJob.amount ?? 0) - activeJob.quote_items.reduce((t: number, i: any) => t + (i.accepted ? Number(i.amount) || 0 : 0), 0);
+                              const addonSum = selAddons.reduce((t, idx) => t + (Number(activeJob.quote_items[idx]?.amount) || 0), 0);
+                              return (
+                                <div style={{ margin:".6rem 0 .25rem", padding:".7rem .8rem", borderRadius:"10px", background:"rgba(234,107,20,.05)", border:"1px dashed rgba(234,107,20,.35)" }}>
+                                  <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .55)", fontWeight:700, marginBottom:".45rem" }}>
+                                    <Ic name="sparkles" size={12} color="#ea6b14" style={{ marginRight:4 }} />Optional add-ons
+                                  </div>
+                                  <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .65)", lineHeight:1.45, marginBottom:".5rem" }}>Your pro offered these extras. Tick any you'd like — they're added to the price. Totally optional.</div>
+                                  {activeJob.quote_items.map((it: any, idx: number) => (
+                                    <label key={idx} style={{ display:"flex", alignItems:"flex-start", gap:".55rem", padding:".35rem 0", cursor:"pointer" }}>
+                                      <input type="checkbox" checked={selAddons.includes(idx)} onChange={() => setSelAddons(prev => prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx])} style={{ marginTop:"2px", cursor:"pointer", accentColor:"#ea6b14" }} />
+                                      <span style={{ flex:1, fontSize:".84rem", lineHeight:1.45, color:"var(--ff-text)" }}>{it.label}</span>
+                                      <span style={{ fontSize:".84rem", fontWeight:600, color: selAddons.includes(idx) ? "#ea6b14" : "rgba(var(--ff-muted), .7)" }}>{"+$" + Number(it.amount).toFixed(2)}</span>
+                                    </label>
+                                  ))}
+                                  <div style={{ marginTop:".5rem", paddingTop:".5rem", borderTop:"1px solid rgba(234,107,20,.2)", display:"flex", justifyContent:"space-between", fontSize:".88rem", fontWeight:700 }}>
+                                    <span>Total if approved</span>
+                                    <span style={{ color:"#ea6b14" }}>{"$" + (Math.round((baseAmt + addonSum) * 100) / 100).toFixed(2)}</span>
+                                  </div>
+                                </div>
+                              );
+                            })()}
                             {activeJob.notes && /Price update:/.test(activeJob.notes) && (
                               <div style={{ fontSize:".8rem", color:"var(--ff-warn)", margin:".5rem 0 .75rem", lineHeight:1.45 }}>{activeJob.notes.split("\n").filter((l: string) => l.startsWith("Price update:")).pop()}</div>
                             )}
@@ -1014,6 +1056,15 @@ export default function ClientDashboard() {
                                 </div>
                               )}
                             </div>
+                            {Array.isArray(activeJob.quote_items) && activeJob.quote_items.some((i: any) => i.accepted) && (
+                              <div style={{ margin:".25rem 0 .9rem", padding:".6rem .8rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .1)", fontSize:".8rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.5 }}>
+                                <Ic name="sparkles" size={12} color="#ea6b14" style={{ marginRight:4 }} />Add-ons included: {activeJob.quote_items.filter((i: any) => i.accepted).map((i: any) => i.label + " (+$" + Number(i.amount).toFixed(2) + ")").join(", ")}
+                              </div>
+                            )}
+                            <div style={{ display:"grid", gap:".6rem", margin:".25rem 0 .9rem" }}>
+                              <JobTimer job={activeJob} role="client" />
+                              <JobChecklist job={activeJob} role="client" />
+                            </div>
                             {(activeJob.payment_status === "held" || activeJob.payment_status === "released") ? (
                               <>
                                 <div style={{ fontSize:".82rem", color:"var(--ff-success)", marginBottom:".6rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Payment secured — we'll release it to your contractor once you confirm the work is done.</div>
@@ -1034,6 +1085,10 @@ export default function ClientDashboard() {
                           <>
                             <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}>Your contractor marked this complete</div>
                             {completionPhotoUrl && <img src={completionPhotoUrl} alt="Completed work" style={{ width:"100%", maxWidth:"320px", borderRadius:"10px", margin:".5rem 0", display:"block" }} />}
+                            <div style={{ display:"grid", gap:".6rem", margin:".25rem 0 .75rem" }}>
+                              <JobTimer job={activeJob} role="client" />
+                              <JobChecklist job={activeJob} role="client" />
+                            </div>
                             {(activeJob.payment_status === "held" || activeJob.payment_status === "released") ? (
                               <>
                                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".75rem" }}>Confirm the work is done and we'll release your held payment to the contractor. If you don't, it auto-confirms in a few days.</div>

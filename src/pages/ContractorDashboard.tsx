@@ -19,6 +19,8 @@ import NotificationBell from "@/components/NotificationBell";
 import RequestHelpModal from "@/components/RequestHelpModal";
 import { jobCode } from "@/lib/jobCode";
 import JobsCalendar from "@/components/JobsCalendar";
+import JobTimer from "@/components/JobTimer";
+import JobChecklist from "@/components/JobChecklist";
 
 const CONTRACTOR_NAV: SidebarItem[] = [
   { key: "jobs",      label: "My Jobs",        icon: "briefcase" },
@@ -134,9 +136,10 @@ export default function ContractorDashboard() {
   const [loading, setLoading]         = useState(true);
   const [activeTab, setActiveTab]     = useState<"jobs"|"available"|"calendar"|"profile"|"earnings"|"reviews">("jobs");
   const [jobFilter, setJobFilter]     = useState<string|null>(null); // pipeline-strip stage filter for the My Jobs list
+  const [bidsCount, setBidsCount]     = useState(0); // lifetime bids — drives the "place your first bid" setup step
   const [showProfileCongrats, setShowProfileCongrats] = useState(false);
   const [showCustomAvail, setShowCustomAvail] = useState(false);
-  const [proposeForm, setProposeForm] = useState({ when:"", amount:"", notes:"", labour:"", parts:"", callout:"", subject:false, price_low:"", price_high:"", used_base_price:false });
+  const [proposeForm, setProposeForm] = useState<{ when:string; amount:string; notes:string; labour:string; parts:string; callout:string; subject:boolean; price_low:string; price_high:string; used_base_price:boolean; items:{label:string;amount:string}[] }>({ when:"", amount:"", notes:"", labour:"", parts:"", callout:"", subject:false, price_low:"", price_high:"", used_base_price:false, items:[] });
   const [photoFile, setPhotoFile]     = useState<File | null>(null);
   const [busyJobId, setBusyJobId]     = useState<string | null>(null); // per-job busy flag — only the job being acted on shows a spinner/disables
   const [portfolio, setPortfolio]     = useState<any[]>([]);
@@ -216,6 +219,7 @@ export default function ContractorDashboard() {
         { data: revs },
         { data: disp },
         { data: earnStats },
+        { count: bidsCnt },
       ] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
         supabase.from("contractors").select("*").eq("id", user.id).maybeSingle(),
@@ -233,10 +237,12 @@ export default function ContractorDashboard() {
           .eq("contractor_id", user.id)
           .order("created_at", { ascending: false }),
         supabase.rpc("get_contractor_earnings_stats"),
+        supabase.from("bids").select("id", { count: "exact", head: true }).eq("contractor_id", user.id),
       ]);
 
       setProfile(prof);
       setContractor(con);
+      setBidsCount(bidsCnt ?? 0);
       setEarn(earnStats ?? null);
       setGoalInput(earnStats?.weekly_goal ? String(earnStats.weekly_goal) : "");
       setGoogleUrl(con?.google_reviews_url ?? "");
@@ -312,13 +318,17 @@ export default function ContractorDashboard() {
       price_low: job.price_low != null ? String(job.price_low) : "",
       price_high: job.price_high != null ? String(job.price_high) : "",
       used_base_price: !!job.used_base_price,
+      items: Array.isArray(job.quote_items) ? job.quote_items.map((i: any) => ({ label: String(i.label ?? ""), amount: i.amount != null ? String(i.amount) : "" })) : [],
     });
   };
   const proposeSchedule = async (job: any) => {
     if (!proposeForm.when) { notify("Pick a date and time first."); return; }
+    const cleanItems = (proposeForm.items || []).filter(i => i.label.trim() && i.amount !== "" && !isNaN(Number(i.amount)));
+    if ((proposeForm.items || []).some(i => i.label.trim() && (i.amount === "" || isNaN(Number(i.amount))))) { notify("Give every optional add-on a price (or remove it)."); return; }
     setBusyJobId(job.id);
     const whenIso = new Date(proposeForm.when).toISOString();
     const ptotal = quoteTotal(proposeForm);
+    const quoteItems = cleanItems.length ? cleanItems.map(i => ({ label: i.label.trim(), amount: Number(i.amount) })) : null;
     const { error } = await supabase.rpc("propose_job_schedule", {
       p_job_id: job.id,
       p_scheduled_at: whenIso,
@@ -331,10 +341,11 @@ export default function ContractorDashboard() {
       p_price_low: proposeForm.price_low ? Number(proposeForm.price_low) : null,
       p_price_high: proposeForm.price_high ? Number(proposeForm.price_high) : null,
       p_used_base_price: !!proposeForm.used_base_price,
+      p_quote_items: quoteItems,
     });
     setBusyJobId(null);
     if (error) { notify("Couldn't send proposal: " + error.message); return; }
-    setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, scheduled_at: whenIso, amount: ptotal != null ? ptotal : j.amount, labour_amount: proposeForm.labour ? Number(proposeForm.labour) : null, parts_amount: proposeForm.parts ? Number(proposeForm.parts) : null, callout_fee: proposeForm.callout ? Number(proposeForm.callout) : null, subject_to_inspection: !!proposeForm.subject, schedule_proposed_at: new Date().toISOString(), client_approved_at: null } : j));
+    setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, scheduled_at: whenIso, amount: ptotal != null ? ptotal : j.amount, labour_amount: proposeForm.labour ? Number(proposeForm.labour) : null, parts_amount: proposeForm.parts ? Number(proposeForm.parts) : null, callout_fee: proposeForm.callout ? Number(proposeForm.callout) : null, subject_to_inspection: !!proposeForm.subject, quote_items: quoteItems ? quoteItems.map(i => ({ ...i, optional: true, accepted: null })) : null, schedule_proposed_at: new Date().toISOString(), client_approved_at: null } : j));
   };
   const onMyWay = async (job: any) => {
     setBusyJobId(job.id);
@@ -573,6 +584,20 @@ export default function ContractorDashboard() {
       notify("Couldn't save your availability — please try again.");
     }
   };
+  // "I don't need this step" on the Get-set-up checklist — persisted so it stays
+  // skipped across devices/sessions (contractors.setup_skipped, own-row RLS update).
+  const skipSetupStep = async (key: string) => {
+    if (!profile) return;
+    const prev: string[] = contractor?.setup_skipped ?? [];
+    const next = Array.from(new Set([...prev, key]));
+    setContractor((c: any) => ({ ...c, setup_skipped: next })); // optimistic
+    const { error } = await supabase.from("contractors").update({ setup_skipped: next }).eq("id", profile.id);
+    if (error) {
+      setContractor((c: any) => ({ ...c, setup_skipped: prev }));
+      notify("Couldn't save that — please try again.");
+    }
+  };
+
   const setAvailDays  = (days: string[]) => saveAvail({ ...avail, days });
   const toggleDay     = (day: string) => saveAvail({ ...avail, days: avail.days.includes(day) ? avail.days.filter(d => d !== day) : [...avail.days, day] });
   const setAvailStart = (start: string) => saveAvail({ ...avail, start });
@@ -833,26 +858,65 @@ export default function ContractorDashboard() {
                 No jobs {STAGE_LABEL[jobFilter] ?? "in this stage"} right now.
               </div>
             )}
-            {myJobs.length === 0 ? (
-              <div style={{ ...s.card, maxWidth:"460px", margin:"2rem auto" }}>
-                <div style={{ textAlign:"center" as const, marginBottom:"1.25rem" }}>
-                  <div style={{ marginBottom:".75rem" }}><Ic name="clipboard-list" size={40} color="#ea6b14" /></div>
-                  <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".03em", lineHeight:1.1, margin:"0 0 .35rem" }}>Let's land your first job</h2>
-                  <p style={{ color:"rgba(var(--ff-muted), .55)", fontSize:".85rem", margin:0 }}>Here's what gets contractors hired fastest:</p>
-                </div>
-                {[
-                  { done: !!contractor && contractorMissing(contractor).length === 0, label: "Complete your profile", sub: contractor && contractorMissing(contractor).length > 0 ? "Missing: " + contractorMissing(contractor).join(", ") : "Done — clients can see your credentials.", onClick: () => setActiveTab("profile") },
-                  { done: !!contractor?.stripe_payouts_enabled, label: "Set up payouts", sub: contractor?.stripe_payouts_enabled ? "Connected — you're ready to get paid." : "Connect a bank account so you can be paid.", onClick: setupPayouts },
-                  { done: false, label: availableJobs.length > 0 ? "Bid on " + availableJobs.length + " open job" + (availableJobs.length === 1 ? "" : "s") + " matching your trades" : "Watch for open jobs matching your trades", sub: "Jobs with fewer bids are easier to win.", onClick: () => setActiveTab("available") },
-                ].map((step, i) => (
-                  <div key={i} onClick={step.onClick} style={{ display:"flex", gap:".7rem", alignItems:"flex-start", padding:".75rem .25rem", borderTop: i === 0 ? "none" : "1px solid rgba(var(--ff-fg), .06)", cursor:"pointer" }}>
-                    <div style={{ width:"22px", height:"22px", borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background: step.done ? "rgba(34,197,94,.15)" : "rgba(234,107,20,.12)", border:"1px solid " + (step.done ? "rgba(34,197,94,.4)" : "rgba(234,107,20,.35)"), color: step.done ? "#22c55e" : "#ea6b14", fontSize:".72rem", fontWeight:700 }}>{step.done ? <Ic name="check" size={12} color="#22c55e" /> : i + 1}</div>
-                    <div>
-                      <div style={{ fontSize:".88rem", fontWeight:500, color:"var(--ff-text)" }}>{step.label}</div>
-                      <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .55)", marginTop:".1rem" }}>{step.sub}</div>
-                    </div>
+            {(() => {
+              // Persistent "Get set up" checklist — shows until every step is done or
+              // skipped ("I don't need this step"). Skips persist to the DB.
+              if (!contractor) return null;
+              const skipped: string[] = contractor.setup_skipped ?? [];
+              const steps = [
+                { key: "profile", label: "Complete your profile", done: contractorMissing(contractor).length === 0,
+                  sub: contractorMissing(contractor).length > 0 ? "Missing: " + contractorMissing(contractor).join(", ") : "Done — clients can see your credentials.",
+                  onClick: () => setActiveTab("profile"), skippable: false },
+                { key: "payouts", label: "Set up payouts", done: !!contractor.stripe_payouts_enabled,
+                  sub: contractor.stripe_payouts_enabled ? "Connected — you're ready to get paid." : "Connect a bank account so you can be paid.",
+                  onClick: setupPayouts, skippable: true },
+                { key: "availability", label: "Set your working days & hours", done: avail.days.length > 0,
+                  sub: avail.days.length > 0 ? "Done — clients see when you work." : "Tell clients when you're available to work.",
+                  onClick: () => setActiveTab("profile"), skippable: true },
+                { key: "first_bid", label: "Place your first bid", done: bidsCount > 0 || myJobs.length > 0,
+                  sub: availableJobs.length > 0 ? availableJobs.length + " open job" + (availableJobs.length === 1 ? "" : "s") + " match your trades right now — fewer bids = easier to win." : "New jobs matching your trades show up in Available Jobs.",
+                  onClick: () => setActiveTab("available"), skippable: true },
+              ];
+              const remaining = steps.filter(st => !st.done && !skipped.includes(st.key));
+              if (remaining.length === 0) return null;
+              const settled = steps.length - remaining.length;
+              return (
+                <div style={{ ...s.card, padding:"1.25rem 1.4rem" }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".6rem", flexWrap:"wrap" as const, marginBottom:".35rem" }}>
+                    <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.35rem", letterSpacing:".03em", lineHeight:1.1, margin:0 }}>Get set up</h2>
+                    <span style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .6)" }}>{settled} of {steps.length} done</span>
                   </div>
-                ))}
+                  <div style={{ height:"6px", borderRadius:"99px", background:"rgba(var(--ff-fg), .07)", marginBottom:".6rem", overflow:"hidden" }}>
+                    <div style={{ height:"100%", width:(settled / steps.length) * 100 + "%", background:"#ea6b14", borderRadius:"99px", transition:"width .25s ease" }} />
+                  </div>
+                  {steps.map((step, i) => {
+                    const isSkipped = skipped.includes(step.key);
+                    return (
+                      <div key={step.key} style={{ display:"flex", gap:".7rem", alignItems:"flex-start", padding:".7rem .1rem", borderTop: i === 0 ? "none" : "1px solid rgba(var(--ff-fg), .06)", opacity: isSkipped && !step.done ? .55 : 1 }}>
+                        <div style={{ width:"22px", height:"22px", borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background: step.done ? "rgba(34,197,94,.15)" : "rgba(234,107,20,.12)", border:"1px solid " + (step.done ? "rgba(34,197,94,.4)" : "rgba(234,107,20,.35)"), color: step.done ? "#22c55e" : "#ea6b14", fontSize:".72rem", fontWeight:700 }}>{step.done ? <Ic name="check" size={12} color="#22c55e" /> : i + 1}</div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div onClick={step.done || isSkipped ? undefined : step.onClick} style={{ fontSize:".88rem", fontWeight:500, color:"var(--ff-text)", cursor: step.done || isSkipped ? "default" : "pointer", textDecoration: isSkipped && !step.done ? "line-through" : "none" }}>{step.label}</div>
+                          <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .55)", marginTop:".1rem" }}>{isSkipped && !step.done ? "Skipped — you can still do this any time from your Profile tab." : step.sub}</div>
+                        </div>
+                        {!step.done && !isSkipped && (
+                          <div style={{ display:"flex", flexDirection:"column" as const, gap:".3rem", alignItems:"flex-end", flexShrink:0 }}>
+                            <button onClick={step.onClick} style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", padding:".35rem .8rem", fontSize:".76rem", whiteSpace:"nowrap" as const }}>Do it</button>
+                            {step.skippable && (
+                              <button onClick={() => skipSetupStep(step.key)} style={{ background:"none", border:"none", color:"rgba(var(--ff-muted), .45)", fontFamily:"inherit", fontSize:".7rem", cursor:"pointer", padding:0, whiteSpace:"nowrap" as const }}>I don't need this step</button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+            {myJobs.length === 0 ? (
+              <div style={{ textAlign:"center" as const, padding:"2.5rem 1.5rem", color:"rgba(var(--ff-muted), .5)" }}>
+                <div style={{ marginBottom:".75rem" }}><Ic name="clipboard-list" size={40} color="#ea6b14" /></div>
+                <div style={{ fontSize:".95rem", marginBottom:".3rem", color:"var(--ff-text)" }}>No jobs yet</div>
+                <div style={{ fontSize:".85rem" }}>Jobs you win show up here. Check <button onClick={() => setActiveTab("available")} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".85rem", fontWeight:600, cursor:"pointer", padding:0 }}>Available Jobs</button> for open work matching your trades.</div>
               </div>
             ) : shown.map(job => (
               <div key={job.id} style={s.jobCard} onClick={() => openJob(job)}>
@@ -958,6 +1022,24 @@ export default function ContractorDashboard() {
                           </div>
                           <textarea value={proposeForm.notes} rows={2} placeholder="Notes for the client (optional)" onChange={e => setProposeForm(f => ({ ...f, notes: e.target.value }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const }} />
                           <QuoteBreakdown v={proposeForm} on={pp => setProposeForm(f => ({ ...f, ...pp }))} calloutHint={contractor?.min_callout ?? null} price={priceFor(job.request?.service_needed)} />
+                          {/* Optional add-ons the client can tick when approving — great upsell for
+                              "while I'm there" extras. Not part of the base price. */}
+                          <div style={{ padding:".7rem .8rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .03)", border:"1px dashed rgba(var(--ff-fg), .14)" }}>
+                            <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .5)", fontWeight:700, marginBottom:".2rem" }}>Optional add-ons</div>
+                            <div style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .55)", lineHeight:1.45, marginBottom: proposeForm.items.length ? ".55rem" : ".45rem" }}>
+                              Offer extras the client can tick when approving (e.g. "Replace supply lines — $45"). They're added on top of your price only if the client picks them.
+                            </div>
+                            {proposeForm.items.map((it, idx) => (
+                              <div key={idx} style={{ display:"flex", gap:".45rem", alignItems:"center", marginBottom:".4rem" }}>
+                                <input value={it.label} placeholder="Add-on description" onChange={e => setProposeForm(f => ({ ...f, items: f.items.map((x,i) => i === idx ? { ...x, label: e.target.value } : x) }))} style={{ ...ffInp, flex:"1 1 140px" }} />
+                                <input type="number" min="0" value={it.amount} placeholder="$" onChange={e => setProposeForm(f => ({ ...f, items: f.items.map((x,i) => i === idx ? { ...x, amount: e.target.value } : x) }))} style={{ ...ffInp, width:"86px", flex:"0 0 86px" }} />
+                                <button type="button" aria-label="Remove add-on" onClick={() => setProposeForm(f => ({ ...f, items: f.items.filter((_,i) => i !== idx) }))} style={{ background:"none", border:"none", color:"rgba(var(--ff-muted), .45)", fontFamily:"inherit", fontSize:"1rem", cursor:"pointer", padding:"0 .15rem", flexShrink:0 }}>×</button>
+                              </div>
+                            ))}
+                            {proposeForm.items.length < 15 && (
+                              <button type="button" onClick={() => setProposeForm(f => ({ ...f, items: [...f.items, { label:"", amount:"" }] }))} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".8rem", fontWeight:600, cursor:"pointer", padding:0 }}>+ Add an optional item</button>
+                            )}
+                          </div>
                           <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                             <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyJobId === job.id} onClick={() => proposeSchedule(job)}>{busyJobId === job.id ?"Sending…" : (job.schedule_proposed_at ? "Update proposal" : "Propose time & price")}</button>
                             <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJobId === job.id} onClick={() => withdrawJob(job)}>Withdraw</button>
@@ -967,6 +1049,18 @@ export default function ContractorDashboard() {
                       {(job.status === "scheduled" || job.status === "in_progress") && (
                         <>
                           <div style={{ fontSize:".85rem", color:"var(--ff-success)" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Booked for {job.scheduled_at ? new Date(job.scheduled_at).toLocaleString() : "the agreed time"}{job.amount ? " · $" + job.amount : ""}.</div>
+                          {Array.isArray(job.quote_items) && job.quote_items.some((i: any) => i.accepted) && (
+                            <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.5 }}>
+                              <Ic name="check-circle" size={13} color="#22c55e" style={{ marginRight:4 }} />
+                              Add-ons the client picked: {job.quote_items.filter((i: any) => i.accepted).map((i: any) => i.label + " ($" + i.amount + ")").join(", ")} — included in the price above.
+                            </div>
+                          )}
+                          <JobTimer job={job} role="contractor" hourlyRate={contractor?.hourly_rate ?? null} onError={m => notify(m)}
+                            onBill={(_h, amt, reason) => {
+                              setRequoteForm(o => ({ ...o, [job.id]: { ...(o[job.id] ?? { amount:"", reason:"", labour:"", parts:"", callout:"", subject:false }), amount: amt != null ? String(amt) : (o[job.id]?.amount ?? ""), labour:"", parts:"", callout:"", reason } }));
+                              setRequoteOpen(o => ({ ...o, [job.id]: true }));
+                            }} />
+                          <JobChecklist job={job} role="contractor" onError={m => notify(m)} />
                           {job.on_my_way_at ? (
                             <div style={{ fontSize:".82rem", color:"var(--ff-success)" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />You let the client know you're on the way.</div>
                           ) : (
@@ -988,6 +1082,12 @@ export default function ContractorDashboard() {
                       {job.status === "pending_confirmation" && (
                         <>
                           <div style={{ fontSize:".85rem", color:"var(--ff-warn)" }}><Ic name="clock" size={13} style={{ marginRight:4 }} />You marked this complete — waiting for the client to confirm.</div>
+                          <JobTimer job={job} role="contractor" hourlyRate={contractor?.hourly_rate ?? null} onError={m => notify(m)}
+                            onBill={(_h, amt, reason) => {
+                              setRequoteForm(o => ({ ...o, [job.id]: { ...(o[job.id] ?? { amount:"", reason:"", labour:"", parts:"", callout:"", subject:false }), amount: amt != null ? String(amt) : (o[job.id]?.amount ?? ""), labour:"", parts:"", callout:"", reason } }));
+                              setRequoteOpen(o => ({ ...o, [job.id]: true }));
+                            }} />
+                          <JobChecklist job={job} role="contractor" onError={m => notify(m)} />
                           {renderPriceChange(job)}
                         </>
                       )}
