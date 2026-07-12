@@ -12,7 +12,7 @@
 //   4. Re-run the latest apply-*.sh installer and hard-refresh.
 // (Full walkthrough: Analytics-Setup-Guide.docx on your Desktop.)
 
-export const GA_MEASUREMENT_ID = "G-XXXXXXXXXX"; // ← paste your real GA4 ID here
+export const GA_MEASUREMENT_ID = "G-WFMM73FJVL"; // real GA4 ID — analytics ON (set 2026-07-11)
 
 // True only when a real ID has been set (placeholder = disabled).
 export const analyticsEnabled = (): boolean =>
