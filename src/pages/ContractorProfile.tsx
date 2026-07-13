@@ -16,6 +16,12 @@ export default function ContractorProfile() {
   useEffect(() => {
     if (!id) return;
     (async () => {
+      // Ensure the auth session is hydrated from storage BEFORE we query. On a
+      // fresh tab (e.g. admin clicking "View Profile ↗" which opens a new tab)
+      // the RPC could otherwise fire before the JWT is attached, so is_admin()
+      // would be false and a pending/inactive contractor would look "not found".
+      await supabase.auth.getSession();
+
       // RPC instead of the contractor_directory view: returns the same
       // contact-free columns, but lets admins preview contractors of any
       // status (pending/inactive) while the public still only sees active ones.

@@ -18,35 +18,14 @@ import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/compon
 import NotificationBell from "@/components/NotificationBell";
 import RequestHelpModal from "@/components/RequestHelpModal";
 import { jobCode } from "@/lib/jobCode";
-import JobsCalendar from "@/components/JobsCalendar";
-import JobTimer from "@/components/JobTimer";
-import JobChecklist from "@/components/JobChecklist";
 
 const CONTRACTOR_NAV: SidebarItem[] = [
   { key: "jobs",      label: "My Jobs",        icon: "briefcase" },
   { key: "available", label: "Available Jobs", icon: "search" },
-  { key: "calendar",  label: "Calendar",       icon: "calendar" },
   { key: "earnings",  label: "Earnings",       icon: "dollar" },
   { key: "reviews",   label: "Reviews",        icon: "star" },
   { key: "profile",   label: "Profile",        icon: "user" },
 ];
-
-// Pipeline-stage matchers — single source shared by the workflow strip counters
-// and the My Jobs stage filter, so a stage's count always equals what its click shows.
-const STAGE_MATCH: Record<string, (j: any) => boolean> = {
-  propose:   j => j.status === "assigned" && !j.schedule_proposed_at,
-  awaiting:  j => j.status === "assigned" && !!j.schedule_proposed_at,
-  scheduled: j => j.status === "scheduled",
-  working:   j => j.status === "in_progress",
-  payment:   j => j.status === "pending_confirmation" || (j.status === "completed" && j.payment_status === "held"),
-};
-const STAGE_LABEL: Record<string, string> = {
-  propose: "needs your estimate",
-  awaiting: "awaiting client approval",
-  scheduled: "scheduled",
-  working: "in progress",
-  payment: "awaiting payment",
-};
 
 // Which required pieces of a contractor profile are still missing. Shared by the
 // "finish setting up" nudge and the profile-complete celebration trigger.
@@ -134,19 +113,17 @@ export default function ContractorDashboard() {
   const [chatJob, setChatJob]         = useState<any|null>(null);
   const [confirmState, setConfirmState] = useState<ConfirmState|null>(null);
   const [loading, setLoading]         = useState(true);
-  const [activeTab, setActiveTab]     = useState<"jobs"|"available"|"calendar"|"profile"|"earnings"|"reviews">("jobs");
-  const [jobFilter, setJobFilter]     = useState<string|null>(null); // pipeline-strip stage filter for the My Jobs list
-  const [bidsCount, setBidsCount]     = useState(0); // lifetime bids — drives the "place your first bid" setup step
+  const [activeTab, setActiveTab]     = useState<"jobs"|"available"|"profile"|"earnings"|"reviews">("jobs");
   const [showProfileCongrats, setShowProfileCongrats] = useState(false);
   const [showCustomAvail, setShowCustomAvail] = useState(false);
-  const [proposeForm, setProposeForm] = useState<{ when:string; amount:string; notes:string; labour:string; parts:string; callout:string; subject:boolean; price_low:string; price_high:string; used_base_price:boolean; items:{label:string;amount:string}[] }>({ when:"", amount:"", notes:"", labour:"", parts:"", callout:"", subject:false, price_low:"", price_high:"", used_base_price:false, items:[] });
+  const [proposeForm, setProposeForm] = useState({ when:"", amount:"", notes:"", labour:"", parts:"", callout:"", subject:false, price_low:"", price_high:"", used_base_price:false });
   const [photoFile, setPhotoFile]     = useState<File | null>(null);
   const [busyJobId, setBusyJobId]     = useState<string | null>(null); // per-job busy flag — only the job being acted on shows a spinner/disables
   const [portfolio, setPortfolio]     = useState<any[]>([]);
   const [pfForm, setPfForm]           = useState<{ title:string; description:string; file:File|null }>({ title:"", description:"", file:null });
   const [googleUrl, setGoogleUrl]     = useState("");
   const [busyPf, setBusyPf]           = useState(false);
-  const [bidForm, setBidForm]         = useState<Record<string,{amount:string;message:string;labour?:string;parts?:string;callout?:string;assumptions?:string;subject?:boolean;price_low?:string;price_high?:string;used_base_price?:boolean;walkthrough?:boolean}>>({});
+  const [bidForm, setBidForm]         = useState<Record<string,{amount:string;message:string;labour?:string;parts?:string;callout?:string;assumptions?:string;subject?:boolean;price_low?:string;price_high?:string;used_base_price?:boolean}>>({});
   const [requoteOpen, setRequoteOpen] = useState<Record<string,boolean>>({});
   const [requoteForm, setRequoteForm] = useState<Record<string,{amount:string;reason:string;labour:string;parts:string;callout:string;subject:boolean;price_low?:string;price_high?:string;used_base_price?:boolean}>>({});
   const [pricingForm, setPricingForm] = useState({ hourly:"", callout:"" });
@@ -219,7 +196,6 @@ export default function ContractorDashboard() {
         { data: revs },
         { data: disp },
         { data: earnStats },
-        { count: bidsCnt },
       ] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
         supabase.from("contractors").select("*").eq("id", user.id).maybeSingle(),
@@ -237,12 +213,10 @@ export default function ContractorDashboard() {
           .eq("contractor_id", user.id)
           .order("created_at", { ascending: false }),
         supabase.rpc("get_contractor_earnings_stats"),
-        supabase.from("bids").select("id", { count: "exact", head: true }).eq("contractor_id", user.id),
       ]);
 
       setProfile(prof);
       setContractor(con);
-      setBidsCount(bidsCnt ?? 0);
       setEarn(earnStats ?? null);
       setGoalInput(earnStats?.weekly_goal ? String(earnStats.weekly_goal) : "");
       setGoogleUrl(con?.google_reviews_url ?? "");
@@ -293,9 +267,6 @@ export default function ContractorDashboard() {
 
   const handleSignOut = async () => { await supabase.auth.signOut(); setLocation("/"); };
   const [helpOpen, setHelpOpen] = useState(false);
-  // Walkthrough-first flow: free site visit before the priced estimate.
-  const [wtForm, setWtForm] = useState({ when:"", note:"" });
-  const [wtOpen, setWtOpen] = useState(false);
 
   // Format a timestamp as LOCAL "YYYY-MM-DDTHH:mm" for datetime inputs.
   // (toISOString() is UTC — it used to prefill Calgary times 6–7h late.)
@@ -321,38 +292,13 @@ export default function ContractorDashboard() {
       price_low: job.price_low != null ? String(job.price_low) : "",
       price_high: job.price_high != null ? String(job.price_high) : "",
       used_base_price: !!job.used_base_price,
-      items: Array.isArray(job.quote_items) ? job.quote_items.map((i: any) => ({ label: String(i.label ?? ""), amount: i.amount != null ? String(i.amount) : "" })) : [],
     });
-    setWtForm({ when: job.walkthrough_at ? toLocalInput(job.walkthrough_at) : "", note: job.walkthrough_note ?? "" });
-    setWtOpen(false);
-  };
-  const proposeWalkthrough = async (job: any) => {
-    if (!wtForm.when) { notify("Pick a date and time for the walkthrough."); return; }
-    setBusyJobId(job.id);
-    const iso = new Date(wtForm.when).toISOString();
-    const { error } = await supabase.rpc("propose_walkthrough", { p_job_id: job.id, p_at: iso, p_note: wtForm.note || null });
-    setBusyJobId(null);
-    if (error) { notify("Couldn't propose the walkthrough: " + error.message); return; }
-    setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, walkthrough_proposed_at: new Date().toISOString(), walkthrough_at: iso, walkthrough_note: wtForm.note || null, walkthrough_approved_at: null, walkthrough_done_at: null } : j));
-    setWtOpen(false);
-    notify("Walkthrough proposed — the client will confirm the time.", "ok");
-  };
-  const completeWalkthrough = async (job: any) => {
-    setBusyJobId(job.id);
-    const { error } = await supabase.rpc("complete_walkthrough", { p_job_id: job.id });
-    setBusyJobId(null);
-    if (error) { notify("Couldn't mark the walkthrough done: " + error.message); return; }
-    setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, walkthrough_done_at: new Date().toISOString() } : j));
-    notify("Walkthrough done — now send your estimate below.", "ok");
   };
   const proposeSchedule = async (job: any) => {
     if (!proposeForm.when) { notify("Pick a date and time first."); return; }
-    const cleanItems = (proposeForm.items || []).filter(i => i.label.trim() && i.amount !== "" && !isNaN(Number(i.amount)));
-    if ((proposeForm.items || []).some(i => i.label.trim() && (i.amount === "" || isNaN(Number(i.amount))))) { notify("Give every optional add-on a price (or remove it)."); return; }
     setBusyJobId(job.id);
     const whenIso = new Date(proposeForm.when).toISOString();
     const ptotal = quoteTotal(proposeForm);
-    const quoteItems = cleanItems.length ? cleanItems.map(i => ({ label: i.label.trim(), amount: Number(i.amount) })) : null;
     const { error } = await supabase.rpc("propose_job_schedule", {
       p_job_id: job.id,
       p_scheduled_at: whenIso,
@@ -365,11 +311,10 @@ export default function ContractorDashboard() {
       p_price_low: proposeForm.price_low ? Number(proposeForm.price_low) : null,
       p_price_high: proposeForm.price_high ? Number(proposeForm.price_high) : null,
       p_used_base_price: !!proposeForm.used_base_price,
-      p_quote_items: quoteItems,
     });
     setBusyJobId(null);
     if (error) { notify("Couldn't send proposal: " + error.message); return; }
-    setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, scheduled_at: whenIso, amount: ptotal != null ? ptotal : j.amount, labour_amount: proposeForm.labour ? Number(proposeForm.labour) : null, parts_amount: proposeForm.parts ? Number(proposeForm.parts) : null, callout_fee: proposeForm.callout ? Number(proposeForm.callout) : null, subject_to_inspection: !!proposeForm.subject, quote_items: quoteItems ? quoteItems.map(i => ({ ...i, optional: true, accepted: null })) : null, schedule_proposed_at: new Date().toISOString(), client_approved_at: null } : j));
+    setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, scheduled_at: whenIso, amount: ptotal != null ? ptotal : j.amount, labour_amount: proposeForm.labour ? Number(proposeForm.labour) : null, parts_amount: proposeForm.parts ? Number(proposeForm.parts) : null, callout_fee: proposeForm.callout ? Number(proposeForm.callout) : null, subject_to_inspection: !!proposeForm.subject, schedule_proposed_at: new Date().toISOString(), client_approved_at: null } : j));
   };
   const onMyWay = async (job: any) => {
     setBusyJobId(job.id);
@@ -462,32 +407,28 @@ export default function ContractorDashboard() {
   };
   const placeBid = async (r: any) => {
     const f = bidForm[r.id] || { amount:"", message:"" };
-    const wt = !!f.walkthrough;
-    let total = wt ? null : quoteTotal(f);
-    if (!wt && total == null && r.my_amount != null) total = Number(r.my_amount);
-    if (!wt && total == null) { notify("Enter your bid amount or an itemised breakdown."); return; }
-    if (wt && f.price_low && f.price_high && Number(f.price_high) < Number(f.price_low)) { notify("Your ballpark high can't be below the low."); return; }
+    let total = quoteTotal(f);
+    if (total == null && r.my_amount != null) total = Number(r.my_amount);
+    if (total == null) { notify("Enter your bid amount or an itemised breakdown."); return; }
     setBusyBid(r.id);
     const msg = f.message !== undefined ? f.message : (r.my_message ?? "");
     const { error } = await supabase.rpc("place_bid", {
       p_request_id: r.id,
       p_amount: total,
       p_message: msg || null,
-      p_labour: wt ? null : (f.labour ? Number(f.labour) : null),
-      p_parts: wt ? null : (f.parts ? Number(f.parts) : null),
-      p_callout: wt ? null : (f.callout ? Number(f.callout) : null),
+      p_labour: f.labour ? Number(f.labour) : null,
+      p_parts: f.parts ? Number(f.parts) : null,
+      p_callout: f.callout ? Number(f.callout) : null,
       p_assumptions: f.assumptions || null,
       p_subject_to_inspection: !!f.subject,
       p_price_low: f.price_low ? Number(f.price_low) : null,
       p_price_high: f.price_high ? Number(f.price_high) : null,
-      p_used_base_price: wt ? false : !!f.used_base_price,
-      p_walkthrough: wt,
+      p_used_base_price: !!f.used_base_price,
     });
     setBusyBid(null);
     if (error) { notify("Couldn't place bid: " + error.message); return; }
-    const hadBid = r.my_amount != null || r.my_walkthrough;
     setAvailableJobs(prev => prev.map(x => x.id === r.id
-      ? { ...x, my_amount: total, my_message: msg || null, my_walkthrough: wt, bid_count: hadBid ? x.bid_count : (x.bid_count ?? 0) + 1 }
+      ? { ...x, my_amount: total, my_message: msg || null, bid_count: x.my_amount != null ? x.bid_count : (x.bid_count ?? 0) + 1 }
       : x));
   };
 
@@ -612,20 +553,6 @@ export default function ContractorDashboard() {
       notify("Couldn't save your availability — please try again.");
     }
   };
-  // "I don't need this step" on the Get-set-up checklist — persisted so it stays
-  // skipped across devices/sessions (contractors.setup_skipped, own-row RLS update).
-  const skipSetupStep = async (key: string) => {
-    if (!profile) return;
-    const prev: string[] = contractor?.setup_skipped ?? [];
-    const next = Array.from(new Set([...prev, key]));
-    setContractor((c: any) => ({ ...c, setup_skipped: next })); // optimistic
-    const { error } = await supabase.from("contractors").update({ setup_skipped: next }).eq("id", profile.id);
-    if (error) {
-      setContractor((c: any) => ({ ...c, setup_skipped: prev }));
-      notify("Couldn't save that — please try again.");
-    }
-  };
-
   const setAvailDays  = (days: string[]) => saveAvail({ ...avail, days });
   const toggleDay     = (day: string) => saveAvail({ ...avail, days: avail.days.includes(day) ? avail.days.filter(d => d !== day) : [...avail.days, day] });
   const setAvailStart = (start: string) => saveAvail({ ...avail, start });
@@ -790,51 +717,10 @@ export default function ContractorDashboard() {
           </div>
         )}
 
-        {(activeTab === "jobs" || activeTab === "available" || activeTab === "calendar") && (() => {
-          // Jobber-style workflow pipeline strip: where every job sits, at a glance.
-          // Clicking a stage jumps to the right tab (and filters My Jobs by stage).
-          const stages: { key: string; label: string; count: number; color: string; onClick: () => void }[] = [
-            { key: "leads", label: "New leads", count: availableJobs.length, color: "#3b82f6",
-              onClick: () => { setActiveTab("available"); window.scrollTo({ top: 0, behavior: "smooth" }); } },
-            { key: "propose", label: "Needs your estimate", count: myJobs.filter(STAGE_MATCH.propose).length, color: "#f59e0b",
-              onClick: () => { setActiveTab("jobs"); setJobFilter(f => f === "propose" ? null : "propose"); } },
-            { key: "awaiting", label: "Awaiting client", count: myJobs.filter(STAGE_MATCH.awaiting).length, color: "#8b5cf6",
-              onClick: () => { setActiveTab("jobs"); setJobFilter(f => f === "awaiting" ? null : "awaiting"); } },
-            { key: "scheduled", label: "Scheduled", count: myJobs.filter(STAGE_MATCH.scheduled).length, color: "#8b5cf6",
-              onClick: () => { setActiveTab("jobs"); setJobFilter(f => f === "scheduled" ? null : "scheduled"); } },
-            { key: "working", label: "In progress", count: myJobs.filter(STAGE_MATCH.working).length, color: "#ea6b14",
-              onClick: () => { setActiveTab("jobs"); setJobFilter(f => f === "working" ? null : "working"); } },
-            { key: "payment", label: "Awaiting payment", count: myJobs.filter(STAGE_MATCH.payment).length, color: "#22c55e",
-              onClick: () => { setActiveTab("jobs"); setJobFilter(f => f === "payment" ? null : "payment"); } },
-          ];
-          return (
-            <div style={{ display:"flex", gap:".5rem", overflowX:"auto" as const, paddingBottom:".35rem", marginBottom:"1.25rem" }}>
-              {stages.map(st => {
-                const on = jobFilter === st.key && activeTab === "jobs";
-                return (
-                  <button
-                    key={st.key}
-                    onClick={st.onClick}
-                    style={{
-                      flex:"1 0 108px", minWidth:"108px", padding:".7rem .6rem", textAlign:"left" as const, cursor:"pointer", fontFamily:"inherit",
-                      borderRadius:"12px", background: on ? "rgba(234,107,20,.1)" : "rgba(var(--ff-fg), .045)",
-                      border: on ? "1px solid rgba(234,107,20,.5)" : "1px solid rgba(var(--ff-fg), .06)",
-                      borderTop: "3px solid " + st.color,
-                    }}
-                  >
-                    <div style={{ fontSize:"1.25rem", fontWeight:700, color: st.count > 0 ? "var(--ff-text)" : "rgba(var(--ff-muted), .35)", lineHeight:1.1 }}>{st.count}</div>
-                    <div style={{ fontSize:".68rem", color:"rgba(var(--ff-muted), .6)", marginTop:".2rem", lineHeight:1.25 }}>{st.label}</div>
-                  </button>
-                );
-              })}
-            </div>
-          );
-        })()}
-
         {(() => {
           // "Needs your attention" — the one place that answers "what should I do next?"
           const attn: { key: string; text: string; cta: string; onClick: () => void; danger?: boolean }[] = [];
-          const goJob = (job: any) => { setActiveTab("jobs"); setJobFilter(null); if (activeJobId !== job.id) openJob(job); window.scrollTo({ top: 0, behavior: "smooth" }); };
+          const goJob = (job: any) => { setActiveTab("jobs"); if (activeJobId !== job.id) openJob(job); window.scrollTo({ top: 0, behavior: "smooth" }); };
           for (const job of myJobs) {
             const d = disputes[job.id];
             const svc = job.request?.service_needed ?? "a job";
@@ -842,11 +728,7 @@ export default function ContractorDashboard() {
               attn.push({ key: "claim-" + job.id, text: "A client filed a claim on “" + svc + "” — your payout is paused until you respond.", cta: "Respond now", onClick: () => goJob(job), danger: true });
             } else if (job.client_rescheduled_at && !job.reschedule_accepted_at) {
               attn.push({ key: "resched-" + job.id, text: (job.client?.first_name || "Your client") + " changed the time on “" + svc + "”.", cta: "Review new time", onClick: () => goJob(job) });
-            } else if (job.status === "assigned" && job.walkthrough_approved_at && !job.walkthrough_done_at) {
-              attn.push({ key: "wt-" + job.id, text: "Walkthrough confirmed for “" + svc + "”" + (job.walkthrough_at ? " — " + new Date(job.walkthrough_at).toLocaleString() : "") + ". After the visit, mark it done and send your estimate.", cta: "View job", onClick: () => goJob(job) });
-            } else if (job.status === "assigned" && job.walkthrough_done_at && !job.schedule_proposed_at) {
-              attn.push({ key: "wtdone-" + job.id, text: "You finished the walkthrough on “" + svc + "” — the client is waiting for your estimate.", cta: "Send estimate", onClick: () => goJob(job) });
-            } else if (job.status === "assigned" && !job.schedule_proposed_at && !job.walkthrough_proposed_at) {
+            } else if (job.status === "assigned" && !job.schedule_proposed_at) {
               attn.push({ key: "propose-" + job.id, text: "“" + svc + "” is waiting for your time and price.", cta: "Propose now", onClick: () => goJob(job) });
             } else if (job.status === "scheduled" && job.scheduled_at) {
               const dt = new Date(job.scheduled_at).getTime() - Date.now();
@@ -873,84 +755,30 @@ export default function ContractorDashboard() {
           );
         })()}
 
-        {activeTab === "jobs" && (() => {
-          const shown = jobFilter && STAGE_MATCH[jobFilter] ? myJobs.filter(STAGE_MATCH[jobFilter]) : myJobs;
-          return (
+        {activeTab === "jobs" && (
           <div>
-            {jobFilter && myJobs.length > 0 && (
-              <div style={{ display:"flex", alignItems:"center", gap:".6rem", marginBottom:"1rem", flexWrap:"wrap" as const }}>
-                <span style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .6)" }}>
-                  Showing {shown.length} job{shown.length === 1 ? "" : "s"} — {STAGE_LABEL[jobFilter] ?? jobFilter}
-                </span>
-                <button onClick={() => setJobFilter(null)} style={{ ...s.btn, padding:".3rem .75rem", borderRadius:"99px", fontSize:".75rem" }}>Show all ×</button>
-              </div>
-            )}
-            {jobFilter && myJobs.length > 0 && shown.length === 0 && (
-              <div style={{ textAlign:"center" as const, padding:"2.5rem 1.5rem", color:"rgba(var(--ff-muted), .5)", fontSize:".9rem" }}>
-                No jobs {STAGE_LABEL[jobFilter] ?? "in this stage"} right now.
-              </div>
-            )}
-            {(() => {
-              // Persistent "Get set up" checklist — shows until every step is done or
-              // skipped ("I don't need this step"). Skips persist to the DB.
-              if (!contractor) return null;
-              const skipped: string[] = contractor.setup_skipped ?? [];
-              const steps = [
-                { key: "profile", label: "Complete your profile", done: contractorMissing(contractor).length === 0,
-                  sub: contractorMissing(contractor).length > 0 ? "Missing: " + contractorMissing(contractor).join(", ") : "Done — clients can see your credentials.",
-                  onClick: () => setActiveTab("profile"), skippable: false },
-                { key: "payouts", label: "Set up payouts", done: !!contractor.stripe_payouts_enabled,
-                  sub: contractor.stripe_payouts_enabled ? "Connected — you're ready to get paid." : "Connect a bank account so you can be paid.",
-                  onClick: setupPayouts, skippable: true },
-                { key: "availability", label: "Set your working days & hours", done: avail.days.length > 0,
-                  sub: avail.days.length > 0 ? "Done — clients see when you work." : "Tell clients when you're available to work.",
-                  onClick: () => setActiveTab("profile"), skippable: true },
-                { key: "first_bid", label: "Place your first bid", done: bidsCount > 0 || myJobs.length > 0,
-                  sub: availableJobs.length > 0 ? availableJobs.length + " open job" + (availableJobs.length === 1 ? "" : "s") + " match your trades right now — fewer bids = easier to win." : "New jobs matching your trades show up in Available Jobs.",
-                  onClick: () => setActiveTab("available"), skippable: true },
-              ];
-              const remaining = steps.filter(st => !st.done && !skipped.includes(st.key));
-              if (remaining.length === 0) return null;
-              const settled = steps.length - remaining.length;
-              return (
-                <div style={{ ...s.card, padding:"1.25rem 1.4rem" }}>
-                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".6rem", flexWrap:"wrap" as const, marginBottom:".35rem" }}>
-                    <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.35rem", letterSpacing:".03em", lineHeight:1.1, margin:0 }}>Get set up</h2>
-                    <span style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .6)" }}>{settled} of {steps.length} done</span>
-                  </div>
-                  <div style={{ height:"6px", borderRadius:"99px", background:"rgba(var(--ff-fg), .07)", marginBottom:".6rem", overflow:"hidden" }}>
-                    <div style={{ height:"100%", width:(settled / steps.length) * 100 + "%", background:"#ea6b14", borderRadius:"99px", transition:"width .25s ease" }} />
-                  </div>
-                  {steps.map((step, i) => {
-                    const isSkipped = skipped.includes(step.key);
-                    return (
-                      <div key={step.key} style={{ display:"flex", gap:".7rem", alignItems:"flex-start", padding:".7rem .1rem", borderTop: i === 0 ? "none" : "1px solid rgba(var(--ff-fg), .06)", opacity: isSkipped && !step.done ? .55 : 1 }}>
-                        <div style={{ width:"22px", height:"22px", borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background: step.done ? "rgba(34,197,94,.15)" : "rgba(234,107,20,.12)", border:"1px solid " + (step.done ? "rgba(34,197,94,.4)" : "rgba(234,107,20,.35)"), color: step.done ? "#22c55e" : "#ea6b14", fontSize:".72rem", fontWeight:700 }}>{step.done ? <Ic name="check" size={12} color="#22c55e" /> : i + 1}</div>
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div onClick={step.done || isSkipped ? undefined : step.onClick} style={{ fontSize:".88rem", fontWeight:500, color:"var(--ff-text)", cursor: step.done || isSkipped ? "default" : "pointer", textDecoration: isSkipped && !step.done ? "line-through" : "none" }}>{step.label}</div>
-                          <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .55)", marginTop:".1rem" }}>{isSkipped && !step.done ? "Skipped — you can still do this any time from your Profile tab." : step.sub}</div>
-                        </div>
-                        {!step.done && !isSkipped && (
-                          <div style={{ display:"flex", flexDirection:"column" as const, gap:".3rem", alignItems:"flex-end", flexShrink:0 }}>
-                            <button onClick={step.onClick} style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", padding:".35rem .8rem", fontSize:".76rem", whiteSpace:"nowrap" as const }}>Do it</button>
-                            {step.skippable && (
-                              <button onClick={() => skipSetupStep(step.key)} style={{ background:"none", border:"none", color:"rgba(var(--ff-muted), .45)", fontFamily:"inherit", fontSize:".7rem", cursor:"pointer", padding:0, whiteSpace:"nowrap" as const }}>I don't need this step</button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
             {myJobs.length === 0 ? (
-              <div style={{ textAlign:"center" as const, padding:"2.5rem 1.5rem", color:"rgba(var(--ff-muted), .5)" }}>
-                <div style={{ marginBottom:".75rem" }}><Ic name="clipboard-list" size={40} color="#ea6b14" /></div>
-                <div style={{ fontSize:".95rem", marginBottom:".3rem", color:"var(--ff-text)" }}>No jobs yet</div>
-                <div style={{ fontSize:".85rem" }}>Jobs you win show up here. Check <button onClick={() => setActiveTab("available")} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".85rem", fontWeight:600, cursor:"pointer", padding:0 }}>Available Jobs</button> for open work matching your trades.</div>
+              <div style={{ ...s.card, maxWidth:"460px", margin:"2rem auto" }}>
+                <div style={{ textAlign:"center" as const, marginBottom:"1.25rem" }}>
+                  <div style={{ marginBottom:".75rem" }}><Ic name="clipboard-list" size={40} color="#ea6b14" /></div>
+                  <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".03em", lineHeight:1.1, margin:"0 0 .35rem" }}>Let's land your first job</h2>
+                  <p style={{ color:"rgba(var(--ff-muted), .55)", fontSize:".85rem", margin:0 }}>Here's what gets contractors hired fastest:</p>
+                </div>
+                {[
+                  { done: !!contractor && contractorMissing(contractor).length === 0, label: "Complete your profile", sub: contractor && contractorMissing(contractor).length > 0 ? "Missing: " + contractorMissing(contractor).join(", ") : "Done — clients can see your credentials.", onClick: () => setActiveTab("profile") },
+                  { done: !!contractor?.stripe_payouts_enabled, label: "Set up payouts", sub: contractor?.stripe_payouts_enabled ? "Connected — you're ready to get paid." : "Connect a bank account so you can be paid.", onClick: setupPayouts },
+                  { done: false, label: availableJobs.length > 0 ? "Bid on " + availableJobs.length + " open job" + (availableJobs.length === 1 ? "" : "s") + " matching your trades" : "Watch for open jobs matching your trades", sub: "Jobs with fewer bids are easier to win.", onClick: () => setActiveTab("available") },
+                ].map((step, i) => (
+                  <div key={i} onClick={step.onClick} style={{ display:"flex", gap:".7rem", alignItems:"flex-start", padding:".75rem .25rem", borderTop: i === 0 ? "none" : "1px solid rgba(var(--ff-fg), .06)", cursor:"pointer" }}>
+                    <div style={{ width:"22px", height:"22px", borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background: step.done ? "rgba(34,197,94,.15)" : "rgba(234,107,20,.12)", border:"1px solid " + (step.done ? "rgba(34,197,94,.4)" : "rgba(234,107,20,.35)"), color: step.done ? "#22c55e" : "#ea6b14", fontSize:".72rem", fontWeight:700 }}>{step.done ? <Ic name="check" size={12} color="#22c55e" /> : i + 1}</div>
+                    <div>
+                      <div style={{ fontSize:".88rem", fontWeight:500, color:"var(--ff-text)" }}>{step.label}</div>
+                      <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .55)", marginTop:".1rem" }}>{step.sub}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ) : shown.map(job => (
+            ) : myJobs.map(job => (
               <div key={job.id} style={s.jobCard} onClick={() => openJob(job)}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:".75rem" }}>
                   <div>
@@ -1044,51 +872,6 @@ export default function ContractorDashboard() {
                       )}
                       {job.status === "assigned" && (
                         <>
-                          {/* Walkthrough-first: a free site visit before the priced estimate. */}
-                          {job.walkthrough_done_at ? (
-                            <div style={{ fontSize:".82rem", color:"var(--ff-success)" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Walkthrough done — send your estimate below while it's fresh.</div>
-                          ) : job.walkthrough_proposed_at && job.walkthrough_approved_at ? (
-                            <div style={{ padding:".7rem .8rem", borderRadius:"10px", background:"rgba(34,197,94,.08)", border:"1px solid rgba(34,197,94,.3)" }}>
-                              <div style={{ fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.5, marginBottom:".55rem" }}>
-                                <Ic name="calendar" size={14} color="#22c55e" style={{ marginRight:5 }} />
-                                <strong>Walkthrough confirmed</strong> for {job.walkthrough_at ? new Date(job.walkthrough_at).toLocaleString() : "the agreed time"}. It's a free visit — after you've seen the space, mark it done and send your estimate.
-                              </div>
-                              <button style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none", fontWeight:600 }} disabled={busyJobId === job.id} onClick={() => completeWalkthrough(job)}>{busyJobId === job.id ? "…" : "✓ Walkthrough done"}</button>
-                            </div>
-                          ) : job.walkthrough_proposed_at ? (
-                            <div style={{ padding:".7rem .8rem", borderRadius:"10px", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.28)" }}>
-                              <div style={{ fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.5, marginBottom:".55rem" }}>
-                                <Ic name="clock" size={13} color="#ea6b14" style={{ marginRight:5 }} />
-                                Waiting for the client to confirm your walkthrough on <strong>{job.walkthrough_at ? new Date(job.walkthrough_at).toLocaleString() : "the proposed time"}</strong>. Need to change it?
-                              </div>
-                              <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center" }}>
-                                <input type="datetime-local" value={wtForm.when} onChange={e => setWtForm(f => ({ ...f, when: e.target.value }))} style={{ ...ffInp, width:"auto" }} />
-                                <button style={s.btn} disabled={busyJobId === job.id} onClick={() => proposeWalkthrough(job)}>{busyJobId === job.id ? "…" : "Update time"}</button>
-                              </div>
-                            </div>
-                          ) : !job.schedule_proposed_at && (
-                            <div style={{ padding:".7rem .8rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .03)", border:"1px dashed rgba(var(--ff-fg), .14)" }}>
-                              {!wtOpen ? (
-                                <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.5 }}>
-                                  Hard to price without seeing it?{" "}
-                                  <button type="button" onClick={() => setWtOpen(true)} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".8rem", fontWeight:600, cursor:"pointer", padding:0, textDecoration:"underline" }}>Propose a free walkthrough first</button>
-                                  {" "}— see the space, then send your estimate on the spot.
-                                </div>
-                              ) : (
-                                <>
-                                  <div style={{ fontSize:".8rem", color:"var(--ff-text)", lineHeight:1.5, marginBottom:".55rem" }}><strong>Propose a walkthrough visit.</strong> The client approves the time — it's free, nothing is charged. After the visit, send your estimate below.</div>
-                                  <div style={{ display:"flex", flexDirection:"column" as const, gap:".5rem" }}>
-                                    <input type="datetime-local" value={wtForm.when} onChange={e => setWtForm(f => ({ ...f, when: e.target.value }))} style={{ ...ffInp, width:"auto", alignSelf:"flex-start" }} />
-                                    <input placeholder="Note for the client (optional, e.g. takes about 20 minutes)" value={wtForm.note} onChange={e => setWtForm(f => ({ ...f, note: e.target.value }))} style={ffInp} />
-                                    <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
-                                      <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyJobId === job.id} onClick={() => proposeWalkthrough(job)}>{busyJobId === job.id ? "Sending…" : "Propose walkthrough"}</button>
-                                      <button style={s.btn} disabled={busyJobId === job.id} onClick={() => setWtOpen(false)}>Cancel</button>
-                                    </div>
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          )}
                           {job.schedule_proposed_at && !job.client_approved_at && (
                             <div style={{ fontSize:".8rem", color:"var(--ff-warn)" }}><Ic name="clock" size={13} style={{ marginRight:4 }} />Waiting for the client to approve {job.scheduled_at ? new Date(job.scheduled_at).toLocaleString() : "your proposed time"}. You can update it below.</div>
                           )}
@@ -1099,24 +882,6 @@ export default function ContractorDashboard() {
                           </div>
                           <textarea value={proposeForm.notes} rows={2} placeholder="Notes for the client (optional)" onChange={e => setProposeForm(f => ({ ...f, notes: e.target.value }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const }} />
                           <QuoteBreakdown v={proposeForm} on={pp => setProposeForm(f => ({ ...f, ...pp }))} calloutHint={contractor?.min_callout ?? null} price={priceFor(job.request?.service_needed)} />
-                          {/* Optional add-ons the client can tick when approving — great upsell for
-                              "while I'm there" extras. Not part of the base price. */}
-                          <div style={{ padding:".7rem .8rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .03)", border:"1px dashed rgba(var(--ff-fg), .14)" }}>
-                            <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .5)", fontWeight:700, marginBottom:".2rem" }}>Optional add-ons</div>
-                            <div style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .55)", lineHeight:1.45, marginBottom: proposeForm.items.length ? ".55rem" : ".45rem" }}>
-                              Offer extras the client can tick when approving (e.g. "Replace supply lines — $45"). They're added on top of your price only if the client picks them.
-                            </div>
-                            {proposeForm.items.map((it, idx) => (
-                              <div key={idx} style={{ display:"flex", gap:".45rem", alignItems:"center", marginBottom:".4rem" }}>
-                                <input value={it.label} placeholder="Add-on description" onChange={e => setProposeForm(f => ({ ...f, items: f.items.map((x,i) => i === idx ? { ...x, label: e.target.value } : x) }))} style={{ ...ffInp, flex:"1 1 140px" }} />
-                                <input type="number" min="0" value={it.amount} placeholder="$" onChange={e => setProposeForm(f => ({ ...f, items: f.items.map((x,i) => i === idx ? { ...x, amount: e.target.value } : x) }))} style={{ ...ffInp, width:"86px", flex:"0 0 86px" }} />
-                                <button type="button" aria-label="Remove add-on" onClick={() => setProposeForm(f => ({ ...f, items: f.items.filter((_,i) => i !== idx) }))} style={{ background:"none", border:"none", color:"rgba(var(--ff-muted), .45)", fontFamily:"inherit", fontSize:"1rem", cursor:"pointer", padding:"0 .15rem", flexShrink:0 }}>×</button>
-                              </div>
-                            ))}
-                            {proposeForm.items.length < 15 && (
-                              <button type="button" onClick={() => setProposeForm(f => ({ ...f, items: [...f.items, { label:"", amount:"" }] }))} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".8rem", fontWeight:600, cursor:"pointer", padding:0 }}>+ Add an optional item</button>
-                            )}
-                          </div>
                           <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                             <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyJobId === job.id} onClick={() => proposeSchedule(job)}>{busyJobId === job.id ?"Sending…" : (job.schedule_proposed_at ? "Update proposal" : "Propose time & price")}</button>
                             <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJobId === job.id} onClick={() => withdrawJob(job)}>Withdraw</button>
@@ -1126,18 +891,6 @@ export default function ContractorDashboard() {
                       {(job.status === "scheduled" || job.status === "in_progress") && (
                         <>
                           <div style={{ fontSize:".85rem", color:"var(--ff-success)" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Booked for {job.scheduled_at ? new Date(job.scheduled_at).toLocaleString() : "the agreed time"}{job.amount ? " · $" + job.amount : ""}.</div>
-                          {Array.isArray(job.quote_items) && job.quote_items.some((i: any) => i.accepted) && (
-                            <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.5 }}>
-                              <Ic name="check-circle" size={13} color="#22c55e" style={{ marginRight:4 }} />
-                              Add-ons the client picked: {job.quote_items.filter((i: any) => i.accepted).map((i: any) => i.label + " ($" + i.amount + ")").join(", ")} — included in the price above.
-                            </div>
-                          )}
-                          <JobTimer job={job} role="contractor" hourlyRate={contractor?.hourly_rate ?? null} onError={m => notify(m)}
-                            onBill={(_h, amt, reason) => {
-                              setRequoteForm(o => ({ ...o, [job.id]: { ...(o[job.id] ?? { amount:"", reason:"", labour:"", parts:"", callout:"", subject:false }), amount: amt != null ? String(amt) : (o[job.id]?.amount ?? ""), labour:"", parts:"", callout:"", reason } }));
-                              setRequoteOpen(o => ({ ...o, [job.id]: true }));
-                            }} />
-                          <JobChecklist job={job} role="contractor" onError={m => notify(m)} />
                           {job.on_my_way_at ? (
                             <div style={{ fontSize:".82rem", color:"var(--ff-success)" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />You let the client know you're on the way.</div>
                           ) : (
@@ -1159,12 +912,6 @@ export default function ContractorDashboard() {
                       {job.status === "pending_confirmation" && (
                         <>
                           <div style={{ fontSize:".85rem", color:"var(--ff-warn)" }}><Ic name="clock" size={13} style={{ marginRight:4 }} />You marked this complete — waiting for the client to confirm.</div>
-                          <JobTimer job={job} role="contractor" hourlyRate={contractor?.hourly_rate ?? null} onError={m => notify(m)}
-                            onBill={(_h, amt, reason) => {
-                              setRequoteForm(o => ({ ...o, [job.id]: { ...(o[job.id] ?? { amount:"", reason:"", labour:"", parts:"", callout:"", subject:false }), amount: amt != null ? String(amt) : (o[job.id]?.amount ?? ""), labour:"", parts:"", callout:"", reason } }));
-                              setRequoteOpen(o => ({ ...o, [job.id]: true }));
-                            }} />
-                          <JobChecklist job={job} role="contractor" onError={m => notify(m)} />
                           {renderPriceChange(job)}
                         </>
                       )}
@@ -1186,15 +933,6 @@ export default function ContractorDashboard() {
               </div>
             ))}
           </div>
-          );
-        })()}
-
-        {activeTab === "calendar" && (
-          <JobsCalendar
-            jobs={myJobs}
-            statusColors={STATUS_COLORS}
-            onOpen={(job) => { setActiveTab("jobs"); setJobFilter(null); if (activeJobId !== job.id) openJob(job); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-          />
         )}
 
         {activeTab === "available" && (
@@ -1237,34 +975,17 @@ export default function ContractorDashboard() {
                     <span style={{ fontSize:".75rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .5)" }}>Bids</span>
                     <span style={{ fontSize:".78rem", fontWeight:600, color: (r.bid_count ?? 0) >= 7 ? "#f59e0b" : "var(--ff-success)" }}>{r.bid_count ?? 0}/7</span>
                   </div>
-                  {r.my_walkthrough && <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".5rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />You offered to walk through the space first. You can update your bid below.</div>}
-                  {!r.my_walkthrough && r.my_amount != null && <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".5rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />You bid {"$" + r.my_amount}. You can update it below.</div>}
-                  {r.my_amount == null && !r.my_walkthrough && (r.bid_count ?? 0) >= 7 && <div style={{ fontSize:".82rem", color:"var(--ff-warn)" }}>This job already has 7 bids.</div>}
-                  {(r.my_amount != null || r.my_walkthrough || (r.bid_count ?? 0) < 7) && (() => {
-                    const wtOn = bidForm[r.id]?.walkthrough ?? !!r.my_walkthrough;
-                    return (
+                  {r.my_amount != null && <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".5rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />You bid {"$" + r.my_amount}. You can update it below.</div>}
+                  {r.my_amount == null && (r.bid_count ?? 0) >= 7 && <div style={{ fontSize:".82rem", color:"var(--ff-warn)" }}>This job already has 7 bids.</div>}
+                  {(r.my_amount != null || (r.bid_count ?? 0) < 7) && (
                     <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center" }}>
-                      <label style={{ flexBasis:"100%", display:"flex", alignItems:"flex-start", gap:".5rem", cursor:"pointer", padding:".45rem .55rem", borderRadius:"8px", background: wtOn ? "rgba(234,107,20,.08)" : "transparent", border: wtOn ? "1px solid rgba(234,107,20,.3)" : "1px solid transparent" }}>
-                        <input type="checkbox" checked={wtOn} onChange={e => setBid(r.id, { walkthrough: e.target.checked })} style={{ marginTop:"2px", cursor:"pointer", accentColor:"#ea6b14" }} />
-                        <span style={{ fontSize:".8rem", lineHeight:1.45, color:"var(--ff-text)" }}>
-                          <strong>I'd like to see the space first.</strong> Bid without a firm price — if the client picks you, you'll book a free walkthrough, then send your estimate. Great for bigger or hard-to-price jobs.
-                        </span>
-                      </label>
-                      {wtOn ? (
-                        <>
-                          <input type="number" min="0" placeholder="Ballpark low $ (optional)" value={bidForm[r.id]?.price_low ?? ""} onChange={e => setBid(r.id, { price_low: e.target.value })} style={{ width:"170px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
-                          <input type="number" min="0" placeholder="Ballpark high $ (optional)" value={bidForm[r.id]?.price_high ?? ""} onChange={e => setBid(r.id, { price_high: e.target.value })} style={{ width:"170px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
-                        </>
-                      ) : (
-                        <input type="number" min="0" placeholder="Price $" value={bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "")} onChange={e => setBid(r.id, { amount: e.target.value, message: bidForm[r.id]?.message ?? (r.my_message ?? ""), used_base_price:false })} style={{ width:"100px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
-                      )}
+                      <input type="number" min="0" placeholder="Price $" value={bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "")} onChange={e => setBid(r.id, { amount: e.target.value, message: bidForm[r.id]?.message ?? (r.my_message ?? ""), used_base_price:false })} style={{ width:"100px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
                       <input placeholder="Short message (optional)" value={bidForm[r.id]?.message ?? (r.my_message ?? "")} onChange={e => setBid(r.id, { message: e.target.value, amount: bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "") })} style={{ flex:"1 1 150px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
-                      <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyBid === r.id} onClick={() => placeBid(r)}>{busyBid === r.id ? "…" : ((r.my_amount != null || r.my_walkthrough) ? "Update bid" : "Place bid")}</button>
-                      {!wtOn && <QuoteBreakdown v={bidForm[r.id] ?? {}} on={patch => setBid(r.id, patch)} calloutHint={contractor?.min_callout ?? null} price={priceFor(r.service_needed)} />}
+                      <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyBid === r.id} onClick={() => placeBid(r)}>{busyBid === r.id ? "…" : (r.my_amount != null ? "Update bid" : "Place bid")}</button>
+                      <QuoteBreakdown v={bidForm[r.id] ?? {}} on={patch => setBid(r.id, patch)} calloutHint={contractor?.min_callout ?? null} price={priceFor(r.service_needed)} />
                       <input placeholder="Assumptions (optional, e.g. price assumes parts are accessible)" value={bidForm[r.id]?.assumptions ?? ""} onChange={e => setBid(r.id, { assumptions: e.target.value })} style={{ ...ffInp, flexBasis:"100%" }} />
                     </div>
-                    );
-                  })()}
+                  )}
                 </div>
                 <button onClick={() => hideJob(r)} disabled={hiding === r.id} style={{ background:"none", border:"none", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".78rem", cursor:"pointer", padding:0, marginTop:".25rem" }}>
                   {hiding === r.id ? "Hiding…" : "Not a fit — hide this job"}

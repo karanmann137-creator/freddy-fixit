@@ -7,6 +7,7 @@ import ProfileBar from "@/components/ProfileBar";
 import MilestonePanel from "@/components/MilestonePanel";
 import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/components/DashboardSidebar";
 import NotificationBell from "@/components/NotificationBell";
+import AdminMessageModal, { type MsgRecipient } from "@/components/AdminMessageModal";
 import { jobCode } from "@/lib/jobCode";
 
 // Re-signup flagging is computed server-side by admin_resignup_matches().
@@ -51,6 +52,8 @@ export default function AdminDashboard() {
   const [flagMatches, setFlagMatches] = useState<Record<string, { fields: string[]; avg: number; count: number; date: string }>>({});
   const [accountQ, setAccountQ] = useState("");
   const [accountRole, setAccountRole] = useState<"all"|"client"|"contractor"|"admin"|"orphaned">("all");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [msgRecipients, setMsgRecipients] = useState<MsgRecipient[] | null>(null);
   const PAGE_SIZE = 20;
   const [page, setPage] = useState<{ requests: number; jobs: number }>({ requests: 0, jobs: 0 });
   const [counts, setCounts] = useState<{ requests: number; jobs: number }>({ requests: 0, jobs: 0 });
@@ -316,6 +319,20 @@ export default function AdminDashboard() {
     return true;
   });
 
+  // Contractors are eligible email targets (role or profile signals).
+  const isContractorAcct = (a: any) =>
+    (a.role === "contractor") || !!a.company_name || (a.specialties && a.specialties.length);
+  const toRecipient = (a: any): MsgRecipient => ({
+    id: a.id,
+    name: [a.first_name, a.last_name].filter(Boolean).join(" ") || a.company_name || "contractor",
+    email: a.email,
+  });
+  const contractorAccts = accounts.filter(isContractorAcct);
+  const selectedRecipients = () =>
+    contractorAccts.filter(a => selectedIds.has(a.id)).map(toRecipient);
+  const toggleSelect = (id: string) =>
+    setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
   return (
     <div style={s.wrap} className="ffdash">
       <style>{".ffdash button{transition:filter .12s ease, transform .08s ease, opacity .12s ease} .ffdash button:hover:not(:disabled){filter:brightness(1.09)} .ffdash button:active:not(:disabled){transform:translateY(1px)} .ffdash button:disabled{opacity:.55; cursor:not-allowed}"}</style>
@@ -396,6 +413,22 @@ export default function AdminDashboard() {
                 </button>
               ))}
             </div>
+            <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const, marginBottom:"1rem", padding:".7rem .85rem", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"8px" }}>
+              <span style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)", flex:1 }}>
+                Email contractors a custom message{selectedIds.size > 0 ? ` · ${selectedIds.size} selected` : ""}.
+              </span>
+              {selectedIds.size > 0 && (
+                <button style={s.btn} onClick={() => setSelectedIds(new Set())}>Clear</button>
+              )}
+              <button style={{ ...s.btn, color:"#ea6b14", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.1)" }}
+                disabled={selectedIds.size === 0} onClick={() => setMsgRecipients(selectedRecipients())}>
+                <Ic name="mail" size={13} style={{ marginRight:4 }} />Email selected{selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
+              </button>
+              <button style={{ ...s.btn, color:"#ea6b14", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.1)" }}
+                disabled={contractorAccts.length === 0} onClick={() => setMsgRecipients(contractorAccts.map(toRecipient))}>
+                <Ic name="mail" size={13} style={{ marginRight:4 }} />Email all contractors ({contractorAccts.length})
+              </button>
+            </div>
             {accounts.some(a => a.orphaned) && (
               <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const, marginBottom:"1rem", padding:".7rem .85rem", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"8px" }}>
                 <span style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)", flex:1 }}>
@@ -414,7 +447,13 @@ export default function AdminDashboard() {
               return (
                 <div key={a.id} style={s.card}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const, gap:".5rem" }}>
-                    <div style={s.title}>{nm}{a.company_name && a.company_name !== nm ? ` · ${a.company_name}` : ""}</div>
+                    <div style={{ display:"flex", alignItems:"center", gap:".55rem" }}>
+                      {isContractor && (
+                        <input type="checkbox" checked={selectedIds.has(a.id)} onChange={() => toggleSelect(a.id)}
+                          title="Select for bulk email" style={{ width:16, height:16, accentColor:"#ea6b14", cursor:"pointer" }} />
+                      )}
+                      <div style={s.title}>{nm}{a.company_name && a.company_name !== nm ? ` · ${a.company_name}` : ""}</div>
+                    </div>
                     {roleChip(a.role)}
                   </div>
                   {a.orphaned && <div style={{ fontSize:".74rem", color:"var(--ff-warn)", marginBottom:".3rem" }}>⚠ No profile row (orphaned auth account)</div>}
@@ -489,6 +528,12 @@ export default function AdminDashboard() {
                   <div style={{ display:"flex", gap:".5rem", marginTop:".75rem", flexWrap:"wrap" as const }}>
                     {isContractor && (
                       <button style={s.btn} onClick={() => window.open("/contractors/" + a.id, "_blank")}>View Profile ↗</button>
+                    )}
+                    {isContractor && (
+                      <button style={{ ...s.btn, color:"#ea6b14", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.1)" }}
+                        disabled={!a.email} title={a.email ? "" : "No email on file"} onClick={() => setMsgRecipients([toRecipient(a)])}>
+                        <Ic name="mail" size={13} style={{ marginRight:4 }} />Email
+                      </button>
                     )}
                     {isContractor && a.contractor_status !== "active" && (
                       <button style={{ ...s.btn, color:"var(--ff-success)", borderColor:"rgba(34,197,94,.35)" }}
@@ -741,6 +786,9 @@ export default function AdminDashboard() {
       </div>
         </div>
       </div>
+      {msgRecipients && (
+        <AdminMessageModal recipients={msgRecipients} onClose={() => setMsgRecipients(null)} />
+      )}
     </div>
   );
 }
