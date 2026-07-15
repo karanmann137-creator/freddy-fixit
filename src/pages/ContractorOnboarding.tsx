@@ -104,6 +104,7 @@ export default function ContractorOnboarding() {
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [success, setSuccess] = useState(false);
   const [verifyEmail, setVerifyEmail] = useState(false);
@@ -239,6 +240,10 @@ export default function ContractorOnboarding() {
         if (authErr) throw authErr;
         if (!authData.user) throw new Error("Account creation failed.");
         if (((authData.user.identities?.length) ?? 0) === 0) { setSubmitError("An account with this email already exists. Please sign in instead."); window.scrollTo(0,0); setLoading(false); return; }
+        // Weekly pro-tips opt-in (CASL express consent — checkbox is never pre-checked).
+        if (newsletterOptIn) {
+          try { await supabase.rpc("newsletter_subscribe", { p_email: form.email, p_audience: "contractor", p_name: form.firstName, p_source: "signup_checkbox" }); } catch {}
+        }
         userId = authData.user.id;
         // No session => email confirmation is required. The trigger has already
         // saved their profile + contractor details; show the verify screen.
@@ -667,6 +672,12 @@ export default function ContractorOnboarding() {
                   {" "}and{" "}
                   <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>Privacy Policy</a>.
                   {" "}I confirm that I hold all licences, permits, and insurance required to perform the services I offer in Alberta.
+                </label>
+              </div>
+              <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", margin:".5rem 0", padding:".85rem 1rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
+                <input type="checkbox" id="newsTips" checked={newsletterOptIn} onChange={e => setNewsletterOptIn(e.target.checked)} style={{ marginTop:"2px", accentColor:"#ea6b14", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }} />
+                <label htmlFor="newsTips" style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.6, cursor:"pointer", fontWeight:300 }}>
+                  Email me practical tips on winning more jobs on Freddy Fix It (about once a week &mdash; unsubscribe anytime).
                 </label>
               </div>
               {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"var(--ff-danger)", marginTop:"1rem" }}>{submitError}</div>}

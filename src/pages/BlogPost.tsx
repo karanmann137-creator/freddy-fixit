@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
+import { getDbPost, fmtDate, readTime, MdBody, type DbPost } from "../lib/blogDb";
 
 // ── Chart component ──────────────────────────────────────────────────────────
 
@@ -664,8 +665,9 @@ const POSTS: Record<string, {
 };
 
 const TAG_COLORS: Record<string, string> = {
-  Comparison: "#ea6b14", Pricing: "#3b82f6", Maintenance: "#22c55e", Tips: "#a855f7", Vehicle: "#14b8a6",
+  Comparison: "#ea6b14", Pricing: "#3b82f6", Maintenance: "#22c55e", Tips: "#a855f7", Vehicle: "#14b8a6", Contractor: "#f59e0b",
 };
+const tagColor = (tag: string) => TAG_COLORS[tag] ?? "#a855f7";
 
 // Short, search-friendly summaries used for each post's <meta description> and
 // Open Graph tags (set client-side in BlogPost's effect).
@@ -707,6 +709,7 @@ const TAG_IMAGES: Record<string, string> = {
   Tips:       "https://images.unsplash.com/photo-1685320198649-781e83a61de4?auto=format&fit=crop&w=1600&q=70",
   Maintenance:"https://images.unsplash.com/photo-1750128973550-750f796f431b?auto=format&fit=crop&w=1600&q=70",
   Vehicle:    "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=1600&q=70",
+  Contractor: "https://images.unsplash.com/photo-1750128973550-750f796f431b?auto=format&fit=crop&w=1600&q=70",
 };
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -716,30 +719,65 @@ export default function BlogPost() {
   const [, setLocation] = useLocation();
   const post = POSTS[params.slug ?? ""];
 
+  // DB fallback — weekly newsletter issues auto-published to blog_posts.
+  const [dbPost, setDbPost] = useState<DbPost | null>(null);
+  const [dbChecked, setDbChecked] = useState(false);
   useEffect(() => {
-    if (!post) { setLocation("/blog"); return; }
+    if (post) return;
+    let alive = true;
+    setDbChecked(false);
+    getDbPost(params.slug ?? "").then(p => {
+      if (!alive) return;
+      setDbPost(p);
+      setDbChecked(true);
+      if (!p) setLocation("/blog");
+    });
+    return () => { alive = false; };
+  }, [post, params.slug, setLocation]);
+
+  // Unified display fields (hardcoded article or DB post).
+  const view = post
+    ? { title: post.title, tag: post.tag, date: post.date, readTime: post.readTime,
+        desc: POST_DESCRIPTIONS[params.slug ?? ""] ?? "Calgary home repair and contractor advice from Freddy Fix It." }
+    : dbPost
+      ? { title: dbPost.title, tag: dbPost.tag || "Tips", date: fmtDate(dbPost.published_at), readTime: readTime(dbPost.body_md),
+          desc: dbPost.description || "Calgary home repair and contractor advice from Freddy Fix It." }
+      : null;
+
+  useEffect(() => {
+    if (!view) return;
 
     const url = "https://freddyfixit.ca/blog/" + (params.slug ?? "");
-    const desc = POST_DESCRIPTIONS[params.slug ?? ""] ?? "Calgary home repair and contractor advice from Freddy Fix It.";
-    const fullTitle = post.title + " | Freddy Fix It";
+    const fullTitle = view.title + " | Freddy Fix It";
     const prevTitle = document.title;
     document.title = fullTitle;
 
-    upsertMeta('meta[name="description"]', "name", "description", desc);
+    upsertMeta('meta[name="description"]', "name", "description", view.desc);
     upsertMeta('link[rel="canonical"]', "rel", "canonical", url, "href");
     upsertMeta('meta[property="og:type"]', "property", "og:type", "article");
-    upsertMeta('meta[property="og:title"]', "property", "og:title", post.title);
-    upsertMeta('meta[property="og:description"]', "property", "og:description", desc);
+    upsertMeta('meta[property="og:title"]', "property", "og:title", view.title);
+    upsertMeta('meta[property="og:description"]', "property", "og:description", view.desc);
     upsertMeta('meta[property="og:url"]', "property", "og:url", url);
-    upsertMeta('meta[name="twitter:title"]', "name", "twitter:title", post.title);
-    upsertMeta('meta[name="twitter:description"]', "name", "twitter:description", desc);
+    upsertMeta('meta[name="twitter:title"]', "name", "twitter:title", view.title);
+    upsertMeta('meta[name="twitter:description"]', "name", "twitter:description", view.desc);
 
     return () => { document.title = prevTitle; };
-  }, [post, params.slug, setLocation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view?.title, params.slug]);
 
-  if (!post) return null;
+  if (!view) {
+    // Waiting on the DB lookup (or about to redirect).
+    if (!post && !dbChecked) {
+      return (
+        <div style={{ fontFamily: "'DM Sans',sans-serif", background: "var(--ff-bg)", color: "rgba(var(--ff-muted), .6)", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          Loading article…
+        </div>
+      );
+    }
+    return null;
+  }
 
-  const Content = post.content;
+  const Content = post ? post.content : () => <MdBody md={dbPost!.body_md} />;
 
   return (
     <div style={{ fontFamily: "'DM Sans',sans-serif", background: "var(--ff-bg)", backgroundImage: "radial-gradient(ellipse 55% 30% at 22% -2%, rgba(234,107,20,0.26) 0%, transparent 66%), radial-gradient(ellipse 50% 34% at 82% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), repeating-linear-gradient(45deg, transparent 0 27px, rgba(var(--ff-fg), 0.02) 27px, rgba(var(--ff-fg), 0.02) 28px), repeating-linear-gradient(-45deg, transparent 0 27px, rgba(var(--ff-fg), 0.016) 27px, rgba(var(--ff-fg), 0.016) 28px)", backgroundAttachment: "fixed", color: "var(--ff-text)", minHeight: "100vh", padding: "6rem 1.5rem 5rem" }}>
@@ -765,17 +803,17 @@ export default function BlogPost() {
           border: "1px solid rgba(var(--ff-fg), .08)", margin: "2rem 0 3rem",
           padding: "2.75rem 1.75rem",
           background: "var(--ff-surface-141)",
-          backgroundImage: `linear-gradient(rgba(var(--ff-bg-rgb), 0.80), rgba(var(--ff-bg-rgb), 0.90)), radial-gradient(ellipse 70% 90% at 12% 0%, ${TAG_COLORS[post.tag]}55 0%, transparent 60%), radial-gradient(ellipse 60% 80% at 95% 110%, rgba(234,107,20,.28) 0%, transparent 60%), url("${TAG_IMAGES[post.tag] ?? ""}")`,
+          backgroundImage: `linear-gradient(rgba(var(--ff-bg-rgb), 0.80), rgba(var(--ff-bg-rgb), 0.90)), radial-gradient(ellipse 70% 90% at 12% 0%, ${tagColor(view.tag)}55 0%, transparent 60%), radial-gradient(ellipse 60% 80% at 95% 110%, rgba(234,107,20,.28) 0%, transparent 60%), url("${TAG_IMAGES[view.tag] ?? ""}")`,
           backgroundSize: "cover, cover, cover, cover",
           backgroundPosition: "center, center, center, center",
         }}>
-          <span style={{ display: "inline-block", fontSize: ".72rem", fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: TAG_COLORS[post.tag], background: TAG_COLORS[post.tag] + "22", padding: ".25rem .6rem", borderRadius: 4, marginBottom: ".9rem" }}>{post.tag}</span>
+          <span style={{ display: "inline-block", fontSize: ".72rem", fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: tagColor(view.tag), background: tagColor(view.tag) + "22", padding: ".25rem .6rem", borderRadius: 4, marginBottom: ".9rem" }}>{view.tag}</span>
 
-          <h1 style={{ fontSize: "clamp(1.8rem,4vw,2.8rem)", color: "var(--ff-text)", lineHeight: 1.2, marginBottom: "1rem" }}>{post.title}</h1>
+          <h1 style={{ fontSize: "clamp(1.8rem,4vw,2.8rem)", color: "var(--ff-text)", lineHeight: 1.2, marginBottom: "1rem" }}>{view.title}</h1>
 
           <div style={{ display: "flex", gap: "1.5rem", fontSize: ".8rem", color: "rgba(var(--ff-muted), .5)", flexWrap: "wrap" }}>
-            <span>{post.date}</span>
-            <span>{post.readTime}</span>
+            <span>{view.date}</span>
+            <span>{view.readTime}</span>
             <span>By Freddy Fix It Team</span>
           </div>
         </div>

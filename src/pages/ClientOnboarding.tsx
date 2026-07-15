@@ -147,6 +147,7 @@ export default function ClientOnboarding() {
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
   const [success, setSuccess] = useState(false);
   const [verifyEmail, setVerifyEmail] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -230,6 +231,10 @@ export default function ClientOnboarding() {
       // Email-confirmation mode returns a fake "success" (no identities) when the
       // email already exists. Treat that as a duplicate instead of a new signup.
       if (((authData.user.identities?.length) ?? 0) === 0) { setSubmitError("An account with this email already exists. Please sign in instead."); window.scrollTo(0,0); setLoading(false); return; }
+      // Weekly-tips opt-in (CASL express consent — checkbox is never pre-checked).
+      if (newsletterOptIn) {
+        try { await supabase.rpc("newsletter_subscribe", { p_email: form.email, p_audience: "client", p_name: form.firstName, p_source: "signup_checkbox" }); } catch {}
+      }
       const userId = authData.user.id;
       // No session => email confirmation required. The trigger saved their
       // request already; show the verify screen.
@@ -375,6 +380,18 @@ export default function ClientOnboarding() {
                   <a href="/user-agreement" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>User Agreement</a>
                   {" "}and{" "}
                   <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>Privacy Policy</a>.
+                </label>
+              </div>
+              <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", margin:".5rem 0", padding:".85rem 1rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
+                <input
+                  type="checkbox"
+                  id="newsTips"
+                  checked={newsletterOptIn}
+                  onChange={e => setNewsletterOptIn(e.target.checked)}
+                  style={{ marginTop:"2px", accentColor:"#ea6b14", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }}
+                />
+                <label htmlFor="newsTips" style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.6, cursor:"pointer", fontWeight:300 }}>
+                  Email me practical Calgary home &amp; vehicle tips (about once a week — unsubscribe anytime).
                 </label>
               </div>
               {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"var(--ff-danger)", marginTop:"1rem" }}>{submitError}</div>}

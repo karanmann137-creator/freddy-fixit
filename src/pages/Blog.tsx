@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { getDbPosts, fmtDate, readTime, type DbPost } from "../lib/blogDb";
 
 const POSTS = [
   {
@@ -121,12 +123,36 @@ const TAG_COLORS: Record<string, string> = {
   Maintenance: "#22c55e",
   Tips: "#a855f7",
   Vehicle: "#14b8a6",
+  Contractor: "#f59e0b",
 };
+const tagColor = (tag: string) => TAG_COLORS[tag] ?? "#a855f7";
 
 export default function Blog() {
   const [, setLocation] = useLocation();
+  const [dbPosts, setDbPosts] = useState<DbPost[]>([]);
+  useEffect(() => {
+    let alive = true;
+    getDbPosts().then(posts => { if (alive) setDbPosts(posts); });
+    return () => { alive = false; };
+  }, []);
+
   const featured = POSTS[0];
-  const rest = POSTS.slice(1);
+  const hardSlugs = new Set(POSTS.map(p => p.slug));
+  const dbCards = dbPosts
+    .filter(p => !hardSlugs.has(p.slug))
+    .map(p => ({
+      slug: p.slug,
+      title: p.title,
+      excerpt: p.description || p.body_md.replace(/[#*\-\[\]]/g, "").slice(0, 160) + "…",
+      date: fmtDate(p.published_at),
+      readTime: readTime(p.body_md),
+      tag: p.tag || "Tips",
+      _ts: new Date(p.published_at).getTime(),
+    }));
+  const rest = [
+    ...dbCards.sort((a, b) => b._ts - a._ts).map(({ _ts, ...p }) => p),
+    ...POSTS.slice(1),
+  ];
 
   return (
     <div style={{ fontFamily: "'DM Sans',sans-serif", background: "var(--ff-bg)", backgroundImage: "radial-gradient(ellipse 55% 30% at 22% -2%, rgba(234,107,20,0.26) 0%, transparent 66%), radial-gradient(ellipse 50% 34% at 82% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), repeating-linear-gradient(45deg, transparent 0 27px, rgba(var(--ff-fg), 0.02) 27px, rgba(var(--ff-fg), 0.02) 28px), repeating-linear-gradient(-45deg, transparent 0 27px, rgba(var(--ff-fg), 0.016) 27px, rgba(var(--ff-fg), 0.016) 28px)", backgroundAttachment: "fixed", color: "var(--ff-text)", minHeight: "100vh", padding: "6rem 1.5rem 4rem" }}>
@@ -150,7 +176,7 @@ export default function Blog() {
           onClick={() => setLocation(`/blog/${featured.slug}`)}
         >
           <div style={{ display: "flex", alignItems: "center", gap: ".75rem", marginBottom: "1rem" }}>
-            <span className="tag" style={{ background: TAG_COLORS[featured.tag] + "22", color: TAG_COLORS[featured.tag] }}>{featured.tag}</span>
+            <span className="tag" style={{ background: tagColor(featured.tag) + "22", color: tagColor(featured.tag) }}>{featured.tag}</span>
             <span style={{ fontSize: ".8rem", color: "rgba(var(--ff-muted), .4)" }}>Featured</span>
           </div>
           <h2 style={{ fontSize: "clamp(1.4rem,3vw,2rem)", color: "var(--ff-text)", marginBottom: ".75rem", lineHeight: 1.25 }}>{featured.title}</h2>
@@ -166,7 +192,7 @@ export default function Blog() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: "1.25rem" }}>
           {rest.map(p => (
             <div key={p.slug} className="blog-card" onClick={() => setLocation(`/blog/${p.slug}`)}>
-              <span className="tag" style={{ background: TAG_COLORS[p.tag] + "22", color: TAG_COLORS[p.tag], marginBottom: ".75rem" }}>{p.tag}</span>
+              <span className="tag" style={{ background: tagColor(p.tag) + "22", color: tagColor(p.tag), marginBottom: ".75rem" }}>{p.tag}</span>
               <h3 style={{ fontSize: "1.05rem", color: "var(--ff-text)", margin: ".75rem 0 .5rem", lineHeight: 1.35 }}>{p.title}</h3>
               <p style={{ fontSize: ".88rem", color: "rgba(var(--ff-muted), .6)", lineHeight: 1.7, marginBottom: "1rem" }}>{p.excerpt}</p>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".78rem", color: "rgba(var(--ff-muted), .35)" }}>
