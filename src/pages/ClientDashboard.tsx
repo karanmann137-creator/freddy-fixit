@@ -8,6 +8,8 @@ import ProfileBar from "@/components/ProfileBar";
 import JobChat from "@/components/JobChat";
 import JobTimeline from "@/components/JobTimeline";
 import MilestonePanel from "@/components/MilestonePanel";
+import JobTimer from "@/components/JobTimer";
+import JobChecklist from "@/components/JobChecklist";
 import ReportProblem from "@/components/ReportProblem";
 import FileClaimModal, { type ClaimJob } from "@/components/FileClaimModal";
 import { jobCode } from "@/lib/jobCode";
@@ -15,6 +17,7 @@ import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 import FreddyRewind from "@/components/FreddyRewind";
 import { freqLabel } from "@/lib/recurrence";
+import { respText } from "@/lib/respTime";
 import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/components/DashboardSidebar";
 import NotificationBell from "@/components/NotificationBell";
 import { SettingsPanel } from "@/components/SettingsModal";
@@ -112,6 +115,7 @@ export default function ClientDashboard() {
   const [ratingForm, setRatingForm] = useState<{ price:number; experience:number; result:number; comment:string }>({ price:8, experience:8, result:8, comment:"" });
   const [clientBids, setClientBids] = useState<any[]>([]);
   const [bidNames, setBidNames] = useState<Record<string,string>>({});
+  const [bidResp, setBidResp] = useState<Record<string,number>>({}); // contractor_id -> median first-response minutes
   const [busyPick, setBusyPick] = useState<string|null>(null);
   const [busyPay, setBusyPay] = useState(false);
   const [feeRate, setFeeRate] = useState(0.03); // base service-fee rate; loaded from platform_fee_rate() so it matches what Stripe charges
@@ -128,6 +132,7 @@ export default function ClientDashboard() {
   const [busyPlan, setBusyPlan]     = useState<string|null>(null);
   const [newVisitTime, setNewVisitTime] = useState<string>("");
   const [showChangeTime, setShowChangeTime] = useState(false);
+  const [selAddons, setSelAddons]   = useState<number[]>([]); // optional add-on indexes ticked on the approval card
   const [toast, setToast]           = useState<{ kind:"err"|"ok"; text:string }|null>(null);
   const [activeTab, setActiveTab]   = useState<ClientTab>("requests");
   const toastTimer = useRef<number | null>(null);
@@ -225,6 +230,7 @@ export default function ClientDashboard() {
       if (cancelled) return;
       setContractor(con ?? null);
       setActiveJob(job ?? null);
+      setSelAddons([]); // fresh add-on selection per job
       // Referral perk: the 3% service fee is waived on a referred client's first
       // job. Check the specific job so the displayed total matches what Stripe charges.
       if (job && job.payment_status !== "released" && job.total_charged == null) {
@@ -311,7 +317,10 @@ export default function ClientDashboard() {
   const approveSchedule = async () => {
     if (!activeJob) return;
     setBusyReq(true);
-    const { error } = await supabase.rpc("approve_job_schedule", { p_job_id: activeJob.id });
+    const { error } = await supabase.rpc("approve_job_schedule", {
+      p_job_id: activeJob.id,
+      p_selected_items: selAddons.length ? selAddons : null,
+    });
     setBusyReq(false);
     if (error) { notify("Couldn't approve: " + error.message); return; }
     // Email the client a written contract copy (Alberta: starts the 10-day cancellation clock).
@@ -323,7 +332,19 @@ export default function ClientDashboard() {
       const { data: used } = await supabase.rpc("consume_prepaid_occurrence", { p_job: activeJob.id });
       covered = used === true;
     } catch { /* no pool / not eligible — falls through to normal pay flow */ }
+    // Mirror the server's idempotent add-on math: amount − previously-accepted + newly-selected.
+    const qi = Array.isArray(activeJob.quote_items) ? activeJob.quote_items : null;
+    let newAmount = activeJob.amount;
+    let newItems = qi;
+    if (qi) {
+      const prevAccepted = qi.reduce((t: number, i: any) => t + (i.accepted ? Number(i.amount) || 0 : 0), 0);
+      const newSelected = selAddons.reduce((t, idx) => t + (Number(qi[idx]?.amount) || 0), 0);
+      newAmount = Math.round((Number(activeJob.amount) - prevAccepted + newSelected) * 100) / 100;
+      newItems = qi.map((i: any, idx: number) => ({ ...i, accepted: selAddons.includes(idx) }));
+    }
+    setSelAddons([]);
     setActiveJob({ ...activeJob, status: "scheduled", client_approved_at: new Date().toISOString(),
+      amount: newAmount, quote_items: newItems,
       ...(covered ? { payment_status: "held", paid_at: new Date().toISOString() } : {}) });
   };
   const requestReschedule = () => {
@@ -574,6 +595,11 @@ export default function ClientDashboard() {
             const m: Record<string,string> = {};
             ((dir ?? []) as any[]).forEach((c: any) => { m[c.id] = ((c.first_name ?? "") + " " + (c.last_name ? c.last_name[0] + "." : "")).trim() || "Contractor"; });
             setBidNames(m);
+            // Speed-to-lead: median first-response time per bidding pro (badge on the bid card).
+            const { data: rs } = await supabase.rpc("contractor_response_stats", { p_ids: ids });
+            const rm: Record<string,number> = {};
+            ((rs ?? []) as any[]).forEach((r: any) => { rm[r.contractor_id] = Number(r.median_minutes); });
+            setBidResp(rm);
           }
         });
     } else { setClientBids([]); }
@@ -598,6 +624,31 @@ export default function ClientDashboard() {
       setRequests(prev => prev.map(r => r.id === ar.id ? { ...r, status: "matched" } : r));
       setClientBids([]);
     }
+  };
+
+  // Walkthrough-first: the contractor proposed a free site visit before pricing.
+  const approveWalkthrough = async () => {
+    if (!activeJob) return;
+    setBusyReq(true);
+    const { error } = await supabase.rpc("approve_walkthrough", { p_job_id: activeJob.id });
+    setBusyReq(false);
+    if (error) { notify("Couldn't confirm the walkthrough: " + error.message); return; }
+    setActiveJob({ ...activeJob, walkthrough_approved_at: new Date().toISOString() });
+    notify("Walkthrough confirmed — your pro will come take a look. It's free.", "ok");
+  };
+  const declineWalkthrough = async () => {
+    if (!activeJob) return;
+    if (!(await askConfirm({
+      title: "Decline this walkthrough time?",
+      message: "Your pro will be asked to propose another time or send an estimate without a visit.",
+      confirmLabel: "Yes, decline the time",
+      danger: false,
+    }))) return;
+    setBusyReq(true);
+    const { error } = await supabase.rpc("decline_walkthrough", { p_job_id: activeJob.id, p_reason: null });
+    setBusyReq(false);
+    if (error) { notify("Couldn't decline: " + error.message); return; }
+    setActiveJob({ ...activeJob, walkthrough_proposed_at: null, walkthrough_at: null, walkthrough_approved_at: null, walkthrough_note: null });
   };
 
   const submitReview = async () => {
@@ -715,6 +766,7 @@ export default function ClientDashboard() {
           if (activeJob?.price_change_pending) attn.push({ key: "price", text: "Your pro proposed a new price — review and approve or decline.", cta: "Review price" });
           else if (activeJob?.status === "pending_confirmation" && !activeJob?.is_milestone) attn.push({ key: "confirm", text: "Your pro marked the job complete — confirm the work to release payment.", cta: "Confirm now" });
           if (activeJob?.status === "assigned" && activeJob?.schedule_proposed_at && !activeJob?.client_approved_at && !(activeJob?.client_rescheduled_at && !activeJob?.reschedule_accepted_at)) attn.push({ key: "sched", text: "Your pro proposed a time and price — approve it to book the visit.", cta: "Review proposal" });
+          if (activeJob?.status === "assigned" && activeJob?.walkthrough_proposed_at && !activeJob?.walkthrough_approved_at) attn.push({ key: "walkthrough", text: "Your pro wants to do a free walkthrough before pricing — confirm the visit time.", cta: "Review time" });
           if (!activeJob && clientBids.length > 0) attn.push({ key: "bids", text: clientBids.length + " pro" + (clientBids.length === 1 ? " has" : "s have") + " bid on your request — pick the one you like.", cta: "See bids" });
           if (attn.length === 0) return null;
           return (
@@ -913,8 +965,23 @@ export default function ClientDashboard() {
                           <div key={b.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", padding:".6rem .7rem", marginBottom:".5rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px", flexWrap:"wrap" as const }}>
                             <div style={{ flex:"1 1 160px" }}>
                               <div style={{ fontSize:".88rem", color:"var(--ff-text)" }}>{bidNames[b.contractor_id] ?? "Contractor"}{b.amount != null ? " — $" + b.amount : ""}</div>
+                              {bidResp[b.contractor_id] != null && (
+                                <div style={{ display:"inline-block", marginTop:".25rem", padding:".15rem .5rem", borderRadius:"999px", fontSize:".68rem", fontWeight:600, background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.3)", color:"#22c55e" }}>
+                                  ⚡ Usually responds in {respText(bidResp[b.contractor_id])}
+                                </div>
+                              )}
+                              {b.walkthrough_requested && (
+                                <div style={{ display:"inline-flex", alignItems:"center", gap:".35rem", padding:".22rem .55rem", borderRadius:"99px", background:"rgba(234,107,20,.14)", color:"#ea6b14", fontSize:".72rem", fontWeight:700, marginTop:".3rem" }}>
+                                  <Ic name="search" size={11} />Wants a free walkthrough first
+                                </div>
+                              )}
+                              {b.walkthrough_requested && (
+                                <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .65)", marginTop:".25rem", lineHeight:1.45 }}>
+                                  This pro prefers to see the space before giving a firm price{b.price_low != null && b.price_high != null ? " — ballpark $" + b.price_low + "–$" + b.price_high : ""}. If you choose them, they'll propose a quick free visit, then send your estimate.
+                                </div>
+                              )}
                               {b.message && <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .65)", marginTop:".15rem" }}>{b.message}</div>}
-                              <QuoteBreakdownView row={b} assumptionsKey="assumptions" />
+                              {!b.walkthrough_requested && <QuoteBreakdownView row={b} assumptionsKey="assumptions" />}
                             </div>
                             <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f", padding:".5rem 1rem" }} disabled={busyPick === b.id} onClick={() => pickBid(b.id)}>{busyPick === b.id ? "…" : "Choose"}</button>
                           </div>
@@ -969,6 +1036,29 @@ export default function ClientDashboard() {
                             <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}>Your contractor proposed a time &amp; price</div>
                             <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .8)", marginBottom:".5rem" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />{activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "—"}{activeJob.amount ? " · $" + activeJob.amount : ""}</div>
                             <QuoteBreakdownView row={activeJob} assumptionsKey="quote_assumptions" />
+                            {Array.isArray(activeJob.quote_items) && activeJob.quote_items.length > 0 && (() => {
+                              const baseAmt = Number(activeJob.amount ?? 0) - activeJob.quote_items.reduce((t: number, i: any) => t + (i.accepted ? Number(i.amount) || 0 : 0), 0);
+                              const addonSum = selAddons.reduce((t, idx) => t + (Number(activeJob.quote_items[idx]?.amount) || 0), 0);
+                              return (
+                                <div style={{ margin:".6rem 0 .25rem", padding:".7rem .8rem", borderRadius:"10px", background:"rgba(234,107,20,.05)", border:"1px dashed rgba(234,107,20,.35)" }}>
+                                  <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .55)", fontWeight:700, marginBottom:".45rem" }}>
+                                    <Ic name="sparkles" size={12} color="#ea6b14" style={{ marginRight:4 }} />Optional add-ons
+                                  </div>
+                                  <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .65)", lineHeight:1.45, marginBottom:".5rem" }}>Your pro offered these extras. Tick any you'd like — they're added to the price. Totally optional.</div>
+                                  {activeJob.quote_items.map((it: any, idx: number) => (
+                                    <label key={idx} style={{ display:"flex", alignItems:"flex-start", gap:".55rem", padding:".35rem 0", cursor:"pointer" }}>
+                                      <input type="checkbox" checked={selAddons.includes(idx)} onChange={() => setSelAddons(prev => prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx])} style={{ marginTop:"2px", cursor:"pointer", accentColor:"#ea6b14" }} />
+                                      <span style={{ flex:1, fontSize:".84rem", lineHeight:1.45, color:"var(--ff-text)" }}>{it.label}</span>
+                                      <span style={{ fontSize:".84rem", fontWeight:600, color: selAddons.includes(idx) ? "#ea6b14" : "rgba(var(--ff-muted), .7)" }}>{"+$" + Number(it.amount).toFixed(2)}</span>
+                                    </label>
+                                  ))}
+                                  <div style={{ marginTop:".5rem", paddingTop:".5rem", borderTop:"1px solid rgba(234,107,20,.2)", display:"flex", justifyContent:"space-between", fontSize:".88rem", fontWeight:700 }}>
+                                    <span>Total if approved</span>
+                                    <span style={{ color:"#ea6b14" }}>{"$" + (Math.round((baseAmt + addonSum) * 100) / 100).toFixed(2)}</span>
+                                  </div>
+                                </div>
+                              );
+                            })()}
                             {activeJob.notes && /Price update:/.test(activeJob.notes) && (
                               <div style={{ fontSize:".8rem", color:"var(--ff-warn)", margin:".5rem 0 .75rem", lineHeight:1.45 }}>{activeJob.notes.split("\n").filter((l: string) => l.startsWith("Price update:")).pop()}</div>
                             )}
@@ -988,7 +1078,30 @@ export default function ClientDashboard() {
                             )}
                           </>
                         )}
-                        {activeJob.status === "assigned" && !activeJob.schedule_proposed_at && (
+                        {activeJob.status === "assigned" && activeJob.walkthrough_proposed_at && !activeJob.walkthrough_approved_at && (
+                          <div style={{ marginBottom: activeJob.schedule_proposed_at ? "1rem" : 0 }}>
+                            <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}><Ic name="search" size={14} style={{ marginRight:5 }} />Your pro wants to do a quick walkthrough first</div>
+                            <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5, marginBottom:".5rem" }}>
+                              They'd like to see the space before giving you a firm price. Proposed visit: <strong style={{ color:"var(--ff-text)" }}>{activeJob.walkthrough_at ? new Date(activeJob.walkthrough_at).toLocaleString() : "—"}</strong>. The visit is free — nothing is charged. After it, they'll send your estimate to approve.
+                            </div>
+                            {activeJob.walkthrough_note && <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)", fontStyle:"italic" as const, marginBottom:".55rem" }}>&ldquo;{activeJob.walkthrough_note}&rdquo;</div>}
+                            <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
+                              <button style={s.primaryBtn} disabled={busyReq} onClick={approveWalkthrough}>{busyReq ? "…" : "Confirm the visit"}</button>
+                              <button style={s.btn} disabled={busyReq} onClick={declineWalkthrough}>That time doesn't work</button>
+                            </div>
+                          </div>
+                        )}
+                        {activeJob.status === "assigned" && activeJob.walkthrough_approved_at && !activeJob.walkthrough_done_at && (
+                          <div style={{ fontSize:".85rem", color:"var(--ff-success)", lineHeight:1.5, marginBottom: activeJob.schedule_proposed_at ? "1rem" : 0 }}>
+                            <Ic name="calendar" size={13} style={{ marginRight:4 }} />Walkthrough booked for {activeJob.walkthrough_at ? new Date(activeJob.walkthrough_at).toLocaleString() : "the agreed time"} — free visit, nothing charged. Your estimate comes after.
+                          </div>
+                        )}
+                        {activeJob.status === "assigned" && activeJob.walkthrough_done_at && !activeJob.schedule_proposed_at && (
+                          <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.5 }}>
+                            <Ic name="check-circle" size={14} style={{ marginRight:4 }} />Walkthrough done — your pro is putting your estimate together. You'll get a notification when it lands.
+                          </div>
+                        )}
+                        {activeJob.status === "assigned" && !activeJob.schedule_proposed_at && !activeJob.walkthrough_proposed_at && (
                           <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .75)" }}><Ic name="check-circle" size={14} style={{ marginRight:4 }} />Matched! Waiting for your contractor to propose a time and price.</div>
                         )}
                         {activeJob.status === "scheduled" && !activeJob.is_milestone && (
@@ -1014,6 +1127,15 @@ export default function ClientDashboard() {
                                 </div>
                               )}
                             </div>
+                            {Array.isArray(activeJob.quote_items) && activeJob.quote_items.some((i: any) => i.accepted) && (
+                              <div style={{ margin:".25rem 0 .9rem", padding:".6rem .8rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .1)", fontSize:".8rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.5 }}>
+                                <Ic name="sparkles" size={12} color="#ea6b14" style={{ marginRight:4 }} />Add-ons included: {activeJob.quote_items.filter((i: any) => i.accepted).map((i: any) => i.label + " (+$" + Number(i.amount).toFixed(2) + ")").join(", ")}
+                              </div>
+                            )}
+                            <div style={{ display:"grid", gap:".6rem", margin:".25rem 0 .9rem" }}>
+                              <JobTimer job={activeJob} role="client" />
+                              <JobChecklist job={activeJob} role="client" />
+                            </div>
                             {(activeJob.payment_status === "held" || activeJob.payment_status === "released") ? (
                               <>
                                 <div style={{ fontSize:".82rem", color:"var(--ff-success)", marginBottom:".6rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Payment secured — we'll release it to your contractor once you confirm the work is done.</div>
@@ -1034,6 +1156,10 @@ export default function ClientDashboard() {
                           <>
                             <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}>Your contractor marked this complete</div>
                             {completionPhotoUrl && <img src={completionPhotoUrl} alt="Completed work" style={{ width:"100%", maxWidth:"320px", borderRadius:"10px", margin:".5rem 0", display:"block" }} />}
+                            <div style={{ display:"grid", gap:".6rem", margin:".25rem 0 .75rem" }}>
+                              <JobTimer job={activeJob} role="client" />
+                              <JobChecklist job={activeJob} role="client" />
+                            </div>
                             {(activeJob.payment_status === "held" || activeJob.payment_status === "released") ? (
                               <>
                                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".75rem" }}>Confirm the work is done and we'll release your held payment to the contractor. If you don't, it auto-confirms in a few days.</div>
