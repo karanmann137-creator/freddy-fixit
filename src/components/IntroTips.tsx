@@ -41,27 +41,26 @@ export default function IntroTips() {
 
   const box = {
     position: "fixed" as const,
-    width: "min(230px, 76vw)",
+    width: "min(180px, 64vw)",
     background: "#1a2236",
     border: "1px solid rgba(234,107,20,.55)",
-    borderRadius: "12px",
-    padding: "0.85rem 0.9rem 0.8rem",
+    borderRadius: "11px",
+    padding: "0.65rem 0.7rem 0.6rem",
     color: "#f0f4ff",
     fontFamily: "'DM Sans', sans-serif",
-    boxShadow: "0 12px 40px rgba(0,0,0,.5)",
+    boxShadow: "0 10px 32px rgba(0,0,0,.5)",
     zIndex: 10000,
-    animation: "ff-tip-in .35s ease both",
   };
   const closeBtn = {
-    position: "absolute" as const, top: 4, right: 6, background: "none", border: "none",
-    color: "rgba(240,244,255,.5)", fontSize: "1rem", lineHeight: 1, cursor: "pointer", padding: 2,
+    position: "absolute" as const, top: 3, right: 5, background: "none", border: "none",
+    color: "rgba(240,244,255,.5)", fontSize: ".9rem", lineHeight: 1, cursor: "pointer", padding: 2,
   };
-  const title = { fontFamily: "'Bebas Neue', sans-serif", fontSize: "1.05rem", letterSpacing: ".03em", margin: "0 0 .15rem", color: "#ea6b14" };
-  const body = { margin: 0, fontSize: ".82rem", lineHeight: 1.35, color: "rgba(240,244,255,.85)" };
+  const title = { fontFamily: "'Bebas Neue', sans-serif", fontSize: ".95rem", letterSpacing: ".03em", margin: "0 0 .1rem", color: "#ea6b14" };
+  const body = { margin: 0, fontSize: ".73rem", lineHeight: 1.35, color: "rgba(240,244,255,.85)" };
   const action = {
-    marginTop: ".55rem", background: "linear-gradient(135deg, #ea6b14, #f09020)", border: "none",
-    color: "#fff", fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: ".8rem",
-    padding: ".38rem .8rem", borderRadius: "7px", cursor: "pointer",
+    marginTop: ".45rem", background: "linear-gradient(135deg, #ea6b14, #f09020)", border: "none",
+    color: "#fff", fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: ".72rem",
+    padding: ".3rem .65rem", borderRadius: "7px", cursor: "pointer",
   };
   // Small triangle pointer toward the target element.
   const arrow = (extra: any) => ({
@@ -71,7 +70,7 @@ export default function IntroTips() {
   return (
     <>
       {showSettings && (
-        <div style={{ ...box, top: "4.3rem", right: "0.8rem" }} role="dialog" aria-label="Customize tip">
+        <div className="ff-tip ff-tip-a" style={{ ...box, top: "4.3rem", right: "0.8rem" }} role="dialog" aria-label="Customize tip">
           {/* pointer up toward the gear */}
           <span style={arrow({ top: -8, right: 16, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderBottom: "8px solid #1a2236" })} />
           <button aria-label="Dismiss" style={closeBtn} onClick={() => setShowSettings(false)}>×</button>
@@ -82,7 +81,7 @@ export default function IntroTips() {
       )}
 
       {showChat && (
-        <div style={{ ...box, bottom: "6rem", right: "1.5rem" }} role="dialog" aria-label="Chat tip">
+        <div className="ff-tip ff-tip-b" style={{ ...box, bottom: "6rem", right: "1.5rem" }} role="dialog" aria-label="Chat tip">
           {/* pointer down toward the chat bubble */}
           <span style={arrow({ bottom: -8, right: 14, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: "8px solid #1a2236" })} />
           <button aria-label="Dismiss" style={closeBtn} onClick={() => setShowChat(false)}>×</button>
@@ -92,7 +91,14 @@ export default function IntroTips() {
         </div>
       )}
 
-      <style>{"@keyframes ff-tip-in { from { opacity: 0; transform: translateY(6px) scale(.97); } to { opacity: 1; transform: none; } }"}</style>
+      <style>{
+        ".ff-tip { animation: ff-tip-pop .55s cubic-bezier(.34,1.56,.64,1) both, ff-tip-bob 3.2s ease-in-out 1.4s infinite; }" +
+        ".ff-tip-b { animation-delay: .55s, 2s; }" +
+        "@keyframes ff-tip-pop { 0% { opacity: 0; transform: translateY(16px) scale(.6); } 65% { opacity: 1; transform: translateY(-4px) scale(1.04); } 100% { opacity: 1; transform: none; } }" +
+        "@keyframes ff-tip-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }" +
+        "@media (prefers-reduced-motion: reduce) { .ff-tip { animation: ff-tip-fade .3s ease both; } }" +
+        "@keyframes ff-tip-fade { from { opacity: 0; } to { opacity: 1; } }"
+      }</style>
     </>
   );
 }
