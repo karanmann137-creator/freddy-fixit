@@ -216,14 +216,29 @@ export default function ContractorProfile() {
               </div>
             )}
 
-            {admin.review_status && (
-              <div style={{ marginTop:".9rem", fontSize:".85rem" }}>
-                <span style={{ fontWeight:600 }}>AI doc review ({admin.review_status}): </span>
-                <span style={{ color:"rgba(var(--ff-muted), .75)" }}>
-                  {(typeof admin.review_result === "string" ? admin.review_result : JSON.stringify(admin.review_result ?? "")).slice(0, 300)}
+            <div style={{ marginTop:".9rem", fontSize:".85rem" }}>
+              <span style={{ fontWeight:600 }}>AI doc review: </span>
+              {admin.review_result?.results ? (
+                <div style={{ color:"rgba(var(--ff-muted), .75)", marginTop:".3rem" }}>
+                  {Object.entries(admin.review_result.results as Record<string, any>).map(([k, r]) =>
+                    r?.uploaded ? (
+                      <div key={k} style={{ marginBottom:".15rem" }}>
+                        <span style={{ color: r.pass ? "#22c55e" : "#ef4444", fontWeight:600 }}>{r.pass ? "✓" : "✗"}</span>
+                        {" "}{DOC_LABELS[k] ?? k}{r.reason ? " — " + r.reason : ""}
+                      </div>
+                    ) : null
+                  )}
+                  {admin.review_result.summary && <div style={{ marginTop:".3rem", fontStyle:"italic" }}>{admin.review_result.summary}</div>}
+                  <div style={{ marginTop:".3rem", fontSize:".78rem", color:"rgba(var(--ff-muted), .55)" }}>
+                    AI verdict: {admin.review_status} — advisory only; you decide with the buttons above.
+                  </div>
+                </div>
+              ) : (
+                <span style={{ color:"rgba(var(--ff-muted), .6)" }}>
+                  Not run yet — it runs automatically when the contractor uploads documents, then shows a pass/fail per document here.
                 </span>
-              </div>
-            )}
+              )}
+            </div>
 
             <div style={{ marginTop:"1rem" }}>
               <div style={{ fontWeight:600, fontSize:".85rem", marginBottom:".45rem" }}>Documents</div>
