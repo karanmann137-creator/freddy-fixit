@@ -3,6 +3,7 @@
 // regardless of which page-level <style> blocks are present. Rendered once,
 // globally, from App.tsx beneath the router.
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { supabase } from "../lib/supabase";
 
 function NewsletterSignup() {
@@ -89,6 +90,11 @@ function NewsletterSignup() {
 }
 
 export default function Footer() {
+  // During onboarding, keep the footer minimal: no newsletter form, no service /
+  // blog link grid — just contact + the legal links (the terms checkbox points
+  // at User Agreement / Privacy Policy, so those must stay reachable).
+  const [loc] = useLocation();
+  const onOnboarding = ["/client-onboarding", "/contractor-onboarding"].some(p => loc === p || loc.startsWith(p + "/"));
   const bar: React.CSSProperties = {
     background: "var(--ff-surface-2)",
     borderTop: "1px solid rgba(var(--ff-fg), 0.06)",
@@ -104,12 +110,12 @@ export default function Footer() {
   return (
     <div style={bar}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
-      <NewsletterSignup />
+      {!onOnboarding && <NewsletterSignup />}
       <div style={{ fontSize: "1rem", fontWeight: 500, color: "rgba(var(--ff-muted), 0.6)", marginBottom: "0.75rem" }}>
         Contact us: <a href="mailto:hello@freddyfixit.ca" style={{ color: "#ea6b14", textDecoration: "none" }}>hello@freddyfixit.ca</a>
       </div>
       <div>Home Repairs · Vehicle Maintenance · Trusted Tradespeople</div>
-      <div style={{ marginTop: "0.85rem", fontSize: "0.72rem", maxWidth: "760px", margin: "0.85rem auto 0", lineHeight: 1.9 }}>
+      {!onOnboarding && <div style={{ marginTop: "0.85rem", fontSize: "0.72rem", maxWidth: "760px", margin: "0.85rem auto 0", lineHeight: 1.9 }}>
         {[
           ["Handyman", "handyman"], ["Plumbers", "plumbing"], ["Electricians", "electrical"],
           ["HVAC & Furnace", "hvac"], ["Painters", "painting"], ["Drywall & Flooring", "drywall-flooring"],
@@ -122,7 +128,7 @@ export default function Footer() {
           </span>
         ))}
         {" · "}<a href="/services" style={link}>All services</a>{" · "}<a href="/for-contractors" style={link}>For Contractors</a>{" · "}<a href="/blog" style={link}>Blog</a>
-      </div>
+      </div>}
       <div style={{ marginTop: "0.75rem", fontSize: "0.65rem", color: "rgba(var(--ff-muted), 0.2)", maxWidth: "700px", margin: "0.75rem auto 0", lineHeight: 1.6 }}>
         Freddy Fix It is a platform that connects clients with independent contractors. We are not liable for any damages, defects, injury, or loss arising from services booked through this platform. All contractors are independent professionals. Use of this platform constitutes acceptance of our{" "}
         <a href="/user-agreement" target="_blank" rel="noopener noreferrer" style={link}>User Agreement</a>,{" "}

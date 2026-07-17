@@ -700,6 +700,22 @@ export default function ClientDashboard() {
     </div>
   );
 
+  // Signed in but signup was never finished (e.g. Google one-tap creates the login
+  // instantly, before the profile exists). Point them back to finish, not a blank page.
+  if (!profile) return (
+    <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+      <div style={{ textAlign:"center", maxWidth:"380px", padding:"1.5rem" }}>
+        <div style={{ width:56, height:56, borderRadius:"50%", margin:"0 auto 1rem", background:"linear-gradient(135deg,#ea6b14,#f59e42)", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.9rem" }}>F</div>
+        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.7rem", letterSpacing:".04em", lineHeight:1.1, color:"var(--ff-text)", marginBottom:".5rem" }}>You're almost there</div>
+        <div style={{ fontSize:".92rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.55, marginBottom:"1.25rem" }}>
+          Your login is set up, but we need a couple more details before you can post a request and get estimates. It takes about two minutes.
+        </div>
+        <button style={s.primaryBtn} onClick={() => setLocation("/client-onboarding")}>Finish setting up →</button>
+      </div>
+    </div>
+  );
+
   return (
     <div style={s.wrap} className="ffdash">
       <style>{".ffdash button{transition:filter .12s ease, transform .08s ease, opacity .12s ease} .ffdash button:hover:not(:disabled){filter:brightness(1.09)} .ffdash button:active:not(:disabled){transform:translateY(1px)} .ffdash button:disabled{opacity:.55; cursor:not-allowed}"}</style>

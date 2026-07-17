@@ -13,6 +13,7 @@ import TopNav from "@/components/TopNav";
 import ChatWidget from "@/components/ChatWidget";
 import IntroTips from "@/components/IntroTips";
 import GoogleReviewModal from "@/components/GoogleReviewModal";
+import FinishSignupBanner from "@/components/FinishSignupBanner";
 import Footer from "@/components/Footer";
 
 // Lazy: heavy pages are split into their own chunks and fetched on demand,
@@ -162,6 +163,7 @@ export default function App() {
       <ChatWidget />
       <IntroTips />
       <GoogleReviewModal />
+      <FinishSignupBanner />
       <Suspense fallback={<PageLoader />}>
       <Switch>
       {/* Public */}

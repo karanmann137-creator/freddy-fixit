@@ -17,6 +17,9 @@ export default function TopNav() {
   // sidebar, so hide the top-right Menu there (SettingsModal stays mounted so
   // the sidebar's Settings action can still open it via ff:open-settings).
   const onSidebarDash = loc === "/client-dashboard" || loc === "/contractor-dashboard" || loc === "/admin-dashboard";
+  // During onboarding, keep people focused: logo only — no Blog link, no Sign In,
+  // no Menu (SettingsModal stays mounted for ff:open-settings).
+  const onOnboarding = ["/client-onboarding", "/contractor-onboarding"].some(p => loc === p || loc.startsWith(p + "/"));
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [uid, setUid] = useState<string | null>(null);
@@ -101,8 +104,8 @@ export default function TopNav() {
       <div className="ff-brand" style={brand} onClick={() => setLocation("/")}>FREDDYFIXIT</div>
 
       <div style={right}>
-        {/* Blog stays visible outside the menu on every screen size. */}
-        {NAV_LINKS.map(l => (
+        {/* Blog stays visible outside the menu on every screen size (hidden during onboarding). */}
+        {!onOnboarding && NAV_LINKS.map(l => (
           <button
             key={l.to}
             onClick={() => setLocation(l.to)}
@@ -113,7 +116,12 @@ export default function TopNav() {
           </button>
         ))}
 
-        {authed && onSidebarDash ? (
+        {onOnboarding ? (
+          // Onboarding: no account controls — just the settings gear (theme/text size).
+          <button aria-label="Settings" onClick={() => setSettingsOpen(true)} className="ff-nav-btn ff-nav-btn-ghost" style={{ ...btn, ...ghostBtn, padding:".5rem", display:"inline-flex", alignItems:"center", justifyContent:"center" }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+        ) : authed && onSidebarDash ? (
           // Dashboard: account actions live in the left sidebar — no top-right Menu.
           null
         ) : authed ? (

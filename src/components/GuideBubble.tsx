@@ -28,7 +28,7 @@ export default function GuideBubble({
       <div style={avatar} aria-hidden="true">F</div>
       <div style={bubble}>
         <div style={nameRow}>
-          <span style={{ fontWeight: 600, color: "#f0f4ff" }}>{name}</span>
+          <span style={{ fontWeight: 600, color: "var(--ff-text)" }}>{name}</span>
           {total > 1 && <span style={stepPill}>Step {step} of {total}</span>}
         </div>
         <p style={msg}>{message}</p>
@@ -55,7 +55,11 @@ const avatar: React.CSSProperties = {
   boxShadow: "0 2px 10px rgba(234,107,20,.35)", marginTop: 2,
 };
 const bubble: React.CSSProperties = {
-  flex: 1, background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.28)",
+  // Opaque: theme background with an orange tint layered on top, so the bubble
+  // stays readable over hero photos and in the light theme (was a transparent tint).
+  flex: 1,
+  background: "linear-gradient(rgba(234,107,20,.08), rgba(234,107,20,.08)), var(--ff-bg)",
+  border: "1px solid rgba(234,107,20,.28)",
   borderRadius: "4px 14px 14px 14px", padding: ".8rem 1rem", lineHeight: 1.5,
 };
 const nameRow: React.CSSProperties = {
@@ -66,10 +70,10 @@ const stepPill: React.CSSProperties = {
   color: "#ea6b14", background: "rgba(234,107,20,.14)",
   padding: ".12rem .5rem", borderRadius: "99px", fontWeight: 600,
 };
-const msg: React.CSSProperties = { margin: 0, color: "#f0f4ff", fontSize: ".92rem" };
+const msg: React.CSSProperties = { margin: 0, color: "var(--ff-text)", fontSize: ".92rem" };
 const whyLine: React.CSSProperties = {
-  margin: ".5rem 0 0", color: "rgba(240,244,255,.72)", fontSize: ".8rem",
+  margin: ".5rem 0 0", color: "rgba(var(--ff-muted), .85)", fontSize: ".8rem",
 };
 const tipLine: React.CSSProperties = {
-  margin: ".35rem 0 0", color: "rgba(240,244,255,.55)", fontSize: ".78rem", fontStyle: "italic",
+  margin: ".35rem 0 0", color: "rgba(var(--ff-muted), .7)", fontSize: ".78rem", fontStyle: "italic",
 };
