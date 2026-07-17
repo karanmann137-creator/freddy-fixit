@@ -12,6 +12,7 @@ export default function ContractorProfile() {
   const [portfolio,  setPortfolio]  = useState<any[]>([]);
   const [reviews,    setReviews]    = useState<any[]>([]);
   const [loading,    setLoading]    = useState(true);
+  const [myRole,     setMyRole]     = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -20,7 +21,14 @@ export default function ContractorProfile() {
       // fresh tab (e.g. admin clicking "View Profile ↗" which opens a new tab)
       // the RPC could otherwise fire before the JWT is attached, so is_admin()
       // would be false and a pending/inactive contractor would look "not found".
-      await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      // Know who's viewing so "← Back" can return to THEIR dashboard when this
+      // page was opened in a fresh tab (no history to go back to).
+      if (session?.user) {
+        supabase.from("profiles").select("role").eq("id", session.user.id).maybeSingle()
+          .then(({ data }) => setMyRole(data?.role ?? null));
+      }
 
       // RPC instead of the contractor_directory view: returns the same
       // contact-free columns, but lets admins preview contractors of any
@@ -48,10 +56,14 @@ export default function ContractorProfile() {
     })();
   }, [id]);
 
-  // The browse page was removed, so "back" returns to the previous page when
-  // there's history (in-app nav) and falls back to home (e.g. opened in a new tab).
+  // "Back" returns to the previous page when there's real history (in-app nav).
+  // When this page was opened in a NEW tab (e.g. admin "View Profile ↗") there is
+  // no history, so send signed-in users to their own dashboard instead of home.
   const goBack = () => {
-    if (window.history.length > 1) window.history.back();
+    if (window.history.length > 1) { window.history.back(); return; }
+    if (myRole === "admin") setLocation("/admin-dashboard");
+    else if (myRole === "contractor") setLocation("/contractor-dashboard");
+    else if (myRole === "client") setLocation("/client-dashboard");
     else setLocation("/");
   };
 

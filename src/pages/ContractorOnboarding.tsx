@@ -268,8 +268,18 @@ export default function ContractorOnboarding() {
         // saved their profile + contractor details; show the verify screen.
         if (!authData.session) { try { localStorage.removeItem("ff_contractor_draft"); } catch {} trackEvent("sign_up", { method: "contractor" }); setVerifyEmail(true); window.scrollTo(0,0); setLoading(false); return; }
       } else {
-        // Already signed in (OAuth): set their role so the trigger's default doesn't stick.
-        await supabase.from("profiles").update({ role: "contractor", first_name: form.firstName, last_name: form.lastName, phone: form.phone }).eq("id", userId);
+        // Already signed in (OAuth): make sure a profiles row exists (Google
+        // one-tap creates the auth user but the trigger may not have made a
+        // profile), then set their role + details.
+        try { await supabase.rpc("ensure_profile", { p_role: "contractor" }); } catch {}
+        const { error: profErr } = await supabase.from("profiles")
+          .update({ role: "contractor", first_name: form.firstName, last_name: form.lastName || null, phone: form.phone || null })
+          .eq("id", userId);
+        if (profErr) throw profErr;
+        // Weekly pro-tips opt-in (CASL express consent — checkbox is never pre-checked).
+        if (newsletterOptIn) {
+          try { await supabase.rpc("newsletter_subscribe", { p_email: form.email, p_audience: "contractor", p_name: form.firstName, p_source: "signup_checkbox" }); } catch {}
+        }
       }
       let photoPublicUrl: string | null = null;
       if (photoFile) {
@@ -293,7 +303,8 @@ export default function ContractorOnboarding() {
         if (!docErr) docUrls[key] = path;
       }
 
-      await supabase.from("contractors").upsert({ id: userId, company_name: form.companyName || null, specialties: selectedSpec, years_of_experience: form.yearsOfExperience === "" ? null : Number(form.yearsOfExperience), service_area: selectedArea, availability: { days: availDays, start: availStart, end: availEnd }, work_type: form.workType || null, photo_url: photoPublicUrl, licensed: form.licensed, license_number: form.licenseNumber || null, has_liability_insurance: form.hasInsurance, insurance_provider: form.insuranceProvider || null, insurance_expiry: form.insuranceExpiry || null, has_wcb: form.hasWcb, work_references: form.workReferences || null, status: "pending", doc_urls: docUrls });
+      const { error: conErr } = await supabase.from("contractors").upsert({ id: userId, company_name: form.companyName || null, specialties: selectedSpec, years_of_experience: form.yearsOfExperience === "" ? null : Number(form.yearsOfExperience), service_area: selectedArea, availability: { days: availDays, start: availStart, end: availEnd }, work_type: form.workType || null, photo_url: photoPublicUrl, licensed: form.licensed, license_number: form.licenseNumber || null, has_liability_insurance: form.hasInsurance, insurance_provider: form.insuranceProvider || null, insurance_expiry: form.insuranceExpiry || null, has_wcb: form.hasWcb, work_references: form.workReferences || null, status: "pending", doc_urls: docUrls });
+      if (conErr) throw conErr;
 
       // Trigger automated document review (non-blocking)
       if (Object.keys(docUrls).length > 0) {

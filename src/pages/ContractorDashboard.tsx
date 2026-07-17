@@ -244,8 +244,26 @@ export default function ContractorDashboard() {
         supabase.from("bids").select("id", { count: "exact", head: true }).eq("contractor_id", user.id),
       ]);
 
-      setProfile(prof);
-      setContractor(con);
+      // Half-finished signup (e.g. Google one-tap / email-only account): self-repair
+      // the account so the dashboard loads and the rest can be completed from the
+      // Profile tab, instead of blocking them out.
+      let prof2 = prof, con2 = con;
+      if (!prof2 || !con2) {
+        try {
+          const { data: role } = await supabase.rpc("ensure_profile", { p_role: "contractor" });
+          if (role && role !== "contractor") {
+            setLocation(role === "admin" ? "/admin-dashboard" : "/client-dashboard");
+            return;
+          }
+          const [{ data: p2 }, { data: c2 }] = await Promise.all([
+            supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+            supabase.from("contractors").select("*").eq("id", user.id).maybeSingle(),
+          ]);
+          prof2 = p2; con2 = c2;
+        } catch { /* fall through to the finish-setup screen */ }
+      }
+      setProfile(prof2);
+      setContractor(con2);
       setBidsCount(bidsCnt ?? 0);
       setEarn(earnStats ?? null);
       // Speed-to-lead: own median first-response time (fire-and-forget; null = not enough bids yet)
@@ -255,9 +273,9 @@ export default function ContractorDashboard() {
       supabase.from("job_expenses").select("*").order("created_at", { ascending: false })
         .then(({ data }: any) => setExpenses((data ?? []) as JobExpense[]));
       setGoalInput(earnStats?.weekly_goal ? String(earnStats.weekly_goal) : "");
-      setGoogleUrl(con?.google_reviews_url ?? "");
+      setGoogleUrl(con2?.google_reviews_url ?? "");
       // Sync live Stripe payout status (no account.updated webhook needed)
-      if (con?.stripe_account_id && !con?.stripe_payouts_enabled) {
+      if (con2?.stripe_account_id && !con2?.stripe_payouts_enabled) {
         supabase.functions.invoke("refresh-connect-status", { body: {} })
           .then(({ data }: any) => {
             if (data && (data.payouts_enabled != null)) {

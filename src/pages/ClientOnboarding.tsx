@@ -616,7 +616,7 @@ export default function ClientOnboarding() {
               </div>
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Photo of the Problem <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
-                <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0] ?? null; if (f && f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB."); return; } setSubmitError(""); setPhotoFile(f); }} style={{ ...inp, padding:".6rem", cursor:"pointer" }} />
+                <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB."); e.target.value = ""; return; } setSubmitError(""); setPhotoFile(f); }} style={{ ...inp, padding:".6rem", cursor:"pointer" }} />
                 <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginTop:".4rem" }}>A photo helps us give you a faster, more accurate estimate. Max 5MB.</p>
                 {photoFile && <p style={{ fontSize:".78rem", color:"var(--ff-success)", marginTop:".3rem" }}>Attached: {photoFile.name}</p>}
               </div>

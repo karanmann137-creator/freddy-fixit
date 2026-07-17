@@ -474,12 +474,45 @@ export default function AdminDashboard() {
                     <div style={{ marginTop:".5rem", padding:".6rem .8rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .07)", borderRadius:"8px" }}>
                       <div style={s.meta}>Specialties: {(a.specialties ?? []).join(", ") || "—"}</div>
                       <div style={s.meta}>Area: {(a.service_area ?? []).join(", ") || "—"}</div>
+                      <div style={s.meta}>
+                        Trade: {a.work_type || "—"}
+                        {a.years_of_experience != null ? "  ·  " + a.years_of_experience + " yr" + (Number(a.years_of_experience) === 1 ? "" : "s") + " experience" : ""}
+                      </div>
+                      {(a.availability?.days?.length || a.availability?.start) ? (
+                        <div style={s.meta}>
+                          Availability: {(a.availability?.days ?? []).join(", ") || "—"}
+                          {a.availability?.start ? " · " + a.availability.start + "–" + (a.availability.end || "?") : ""}
+                        </div>
+                      ) : null}
                       <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .55)" }}>
                         {"Licensed: "}{a.licensed === true ? ("Yes" + (a.license_number ? " (#" + a.license_number + ")" : "")) : a.licensed === false ? "No" : "—"}
                         {"  ·  Insurance: "}{a.has_liability_insurance === true ? ("Yes" + (a.insurance_provider ? " (" + a.insurance_provider + (a.insurance_expiry ? ", exp " + a.insurance_expiry : "") + ")" : "")) : a.has_liability_insurance === false ? "No" : "—"}
                         {"  ·  WCB: "}{a.has_wcb === true ? "Yes" : a.has_wcb === false ? "No" : "—"}
                       </div>
+                      <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .55)" }}>
+                        {"Rating: "}{a.rating ? Number(a.rating).toFixed(1) + "/10 (" + (a.rating_count ?? 0) + " review" + ((a.rating_count ?? 0) === 1 ? "" : "s") + ")" : "no reviews yet"}
+                        {"  ·  Jobs done: "}{a.total_jobs ?? 0}
+                        {"  ·  Earned: $"}{Number(a.total_earned ?? 0).toLocaleString()}
+                        {"  ·  Payouts: "}{a.stripe_payouts_enabled ? "set up ✓" : "not set up"}
+                      </div>
+                      {(a.hourly_rate || a.min_callout) ? (
+                        <div style={s.meta}>
+                          {"Pricing: "}
+                          {a.hourly_rate ? "$" + a.hourly_rate + "/hr" : ""}
+                          {a.hourly_rate && a.min_callout ? " · " : ""}
+                          {a.min_callout ? "$" + a.min_callout + " min callout" : ""}
+                        </div>
+                      ) : null}
                       {a.work_references ? <div style={s.meta}>References: {a.work_references}</div> : null}
+                      {a.google_reviews_url ? (
+                        <div style={s.meta}><a href={a.google_reviews_url} target="_blank" rel="noreferrer" style={{ color:"#ea6b14" }}>Google reviews page ↗</a></div>
+                      ) : null}
+                      {a.review_status && a.review_status !== "pending" ? (
+                        <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .5)" }}>
+                          Doc review (AI): {a.review_status}
+                          {a.review_result ? " — " + (typeof a.review_result === "string" ? a.review_result : JSON.stringify(a.review_result)).slice(0, 240) : ""}
+                        </div>
+                      ) : null}
                       {(() => {
                         const docs = (a.doc_urls && typeof a.doc_urls === "object") ? a.doc_urls as Record<string,string> : {};
                         const docKeys = Object.keys(docs).filter(k => docs[k]);

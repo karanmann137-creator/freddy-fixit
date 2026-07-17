@@ -192,7 +192,22 @@ export default function ClientDashboard() {
         if (typeof rate.data === "number" && rate.data >= 0 && rate.data < 0.2) setFeeRate(Number(rate.data));
         // A failed profile/requests read must show an error+retry, not a false "no jobs" empty state.
         if (prof.error || reqs.error) { setLoadError(true); return; }
-        setProfile(prof.data);
+        // Half-finished signup (e.g. Google one-tap / email-only account): self-repair
+        // the account so the dashboard loads and details can be completed from the
+        // Profile tab, instead of blocking them out.
+        let profData = prof.data;
+        if (!profData) {
+          try {
+            const { data: role } = await supabase.rpc("ensure_profile", { p_role: "client" });
+            if (role && role !== "client") {
+              setLocation(role === "admin" ? "/admin-dashboard" : "/contractor-dashboard");
+              return;
+            }
+            const { data: p2 } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+            profData = p2;
+          } catch { /* fall through to the finish-setup screen */ }
+        }
+        setProfile(profData);
         setRequests(reqs.data ?? []);
         setPros(myPros.data ?? []);
         setReferral(ref.data ?? null);

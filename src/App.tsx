@@ -112,16 +112,19 @@ function ProtectedRoute({
         if (userError || !user) { setRedirectTo("/login"); setStatus("redirect"); return; }
 
         if (requiredRole) {
-          const { data: profile, error: profileError } = await supabase
+          const { data: profile } = await supabase
             .from("profiles")
             .select("role")
             .eq("id", user.id)
-            .single();
+            .maybeSingle();
 
-          if (profileError || !profile || profile.role !== requiredRole) {
+          // No profile row yet (half-finished signup, e.g. Google one-tap) —
+          // let the dashboard through; it repairs the account via ensure_profile
+          // and walks the user through completing their info.
+          if (profile && profile.role !== requiredRole) {
             const dest =
-              profile?.role === "admin" ? "/admin-dashboard" :
-              profile?.role === "contractor" ? "/contractor-dashboard" :
+              profile.role === "admin" ? "/admin-dashboard" :
+              profile.role === "contractor" ? "/contractor-dashboard" :
               "/client-dashboard";
             setRedirectTo(dest);
             setStatus("redirect");
