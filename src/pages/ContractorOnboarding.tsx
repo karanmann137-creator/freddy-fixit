@@ -82,6 +82,15 @@ const CONTRACTOR_GUIDE: { message: string; why?: string; tip?: string }[] = [
 
 type DocFiles = { insurance: File|null; wcb: File|null; certification: File|null; gov_id: File|null };
 
+// Guess first/last name from an email address ("mike.taylor84@…" → Mike Taylor).
+// Only used to PREFILL empty fields — always editable, never overwrites typing.
+function namesFromEmail(email: string): { first: string; last: string } {
+  const local = (email.split("@")[0] || "").replace(/\d+/g, "");
+  const parts = local.split(/[._\-+]+/).filter(p => p.length > 1);
+  const cap = (w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+  return { first: parts[0] ? cap(parts[0]) : "", last: parts[1] ? cap(parts[1]) : "" };
+}
+
 // Format a North-American phone as the user types: 403-555-0100.
 function fmtPhone(v: string) {
   const d = v.replace(/\D/g, "").slice(0, 10);
@@ -118,7 +127,19 @@ export default function ContractorOnboarding() {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
         setAuthedUserId(data.user.id);
-        setForm(f => ({ ...f, email: data.user!.email ?? f.email }));
+        // Prefill name from Google metadata, falling back to their email
+        // address — always editable, never overwrites what's already typed.
+        const m: any = data.user.user_metadata || {};
+        const full = String(m.full_name || m.name || "").trim();
+        const guess = namesFromEmail(data.user.email || "");
+        const first = m.given_name || m.first_name || full.split(/\s+/)[0] || guess.first;
+        const last  = m.family_name || m.last_name || full.split(/\s+/).slice(1).join(" ") || guess.last;
+        setForm(f => ({
+          ...f,
+          email: data.user!.email ?? f.email,
+          firstName: f.firstName || first || "",
+          lastName:  f.lastName  || last  || "",
+        }));
       }
     });
   }, []);
@@ -190,11 +211,9 @@ export default function ContractorOnboarding() {
       else if (availEnd <= availStart) errs.avail = "End time must be after the start time";
     }
     if (step === 5 && !form.workType)             errs.workType = "Select what best describes your work";
-    if (step === 8) {
-      if (!docFiles.gov_id) errs.docs = "Upload your government-issued photo ID";
-      else if (insuranceRequired && (!docFiles.insurance || !docFiles.wcb)) errs.docs = "Upload your insurance and WCB certificates";
-      else if (wt?.licence === "required" && !docFiles.certification) errs.docs = "Upload your trade certification";
-    }
+    // Step 8: documents are OPTIONAL at signup — add now or later from the
+    // dashboard. Approval (and taking jobs) still requires verified docs, and
+    // the dashboard "finish your profile" card collects anything missing.
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -388,7 +407,12 @@ export default function ContractorOnboarding() {
               </div>
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Email</label>
-                <input autoComplete="email" style={{ ...inp, borderColor: errors.email ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="email" placeholder="mike@email.com" value={form.email} onChange={e => setF("email",e.target.value)} />
+                <input autoComplete="email" style={{ ...inp, borderColor: errors.email ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="email" placeholder="mike@email.com" value={form.email} onChange={e => setF("email",e.target.value)}
+                  onBlur={e => {
+                    // Prefill empty name fields from the email — editable, of course.
+                    const g = namesFromEmail(e.target.value);
+                    setForm(f => ({ ...f, firstName: f.firstName || g.first, lastName: f.lastName || g.last }));
+                  }} />
                 {errors.email && <p style={s.err}>{errors.email}</p>}
               </div>
               <div style={{ marginBottom:"1.2rem" }}>
@@ -582,8 +606,10 @@ export default function ContractorOnboarding() {
                         type="file"
                         accept="image/*,application/pdf"
                         onChange={e => {
-                          const f = e.target.files?.[0] ?? null;
-                          if (f) { const err = docFileError(f); if (err) { setSubmitError(err); e.target.value=""; return; } }
+                          const f = e.target.files?.[0];
+                          if (!f) return; // cancelled the picker — keep the file already chosen
+                          const err = docFileError(f);
+                          if (err) { setSubmitError(err); e.target.value=""; return; }
                           setDocFiles(prev => ({ ...prev, insurance: f }));
                           setSubmitError("");
                         }}
@@ -609,7 +635,7 @@ export default function ContractorOnboarding() {
           {step === 8 && (
             <div>
               <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"1rem", fontWeight:300, lineHeight:1.6 }}>
-                Upload your credentials and our AI reviews them instantly. These are required to complete your registration. You'll be approved to take jobs once they're verified.
+                Snap a photo or upload now — or skip this and add them later from your dashboard. You&rsquo;ll need them verified before you can take jobs, but they won&rsquo;t hold up your signup.
               </p>
               {([
                 { key:"insurance",    label:"Liability Insurance Certificate", required:insuranceRequired,  hint:"Certificate of Insurance showing min. $1M coverage in Alberta" },
@@ -621,7 +647,7 @@ export default function ContractorOnboarding() {
                   <label style={{ ...s.label, display:"flex", alignItems:"center", gap:".4rem" }}>
                     {doc.label}
                     {doc.required
-                      ? <span style={{ color:"#ea6b14", fontSize:".7rem" }}>Required</span>
+                      ? <span style={{ color:"#ea6b14", fontSize:".7rem" }}>Needed before approval</span>
                       : <span style={{ color:"rgba(var(--ff-muted), .35)", fontSize:".7rem" }}>Optional</span>
                     }
                   </label>
@@ -644,8 +670,10 @@ export default function ContractorOnboarding() {
                       type="file"
                       accept="image/*,application/pdf"
                       onChange={e => {
-                        const f = e.target.files?.[0] ?? null;
-                        if (f) { const err = docFileError(f); if (err) { setSubmitError(err); e.target.value=""; return; } }
+                        const f = e.target.files?.[0];
+                        if (!f) return; // cancelled the picker — keep the file already chosen
+                        const err = docFileError(f);
+                        if (err) { setSubmitError(err); e.target.value=""; return; }
                         setDocFiles(prev => ({ ...prev, [doc.key]: f }));
                         setSubmitError("");
                       }}
@@ -693,7 +721,7 @@ export default function ContractorOnboarding() {
                 <label htmlFor="co-photo-upload" style={{ display:"inline-flex", alignItems:"center", gap:".5rem", marginTop:".75rem", padding:".6rem 1.25rem", background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.3)", borderRadius:"8px", cursor:"pointer", fontSize:".85rem", color:"#ea6b14", fontWeight:500 }}>
                   <Ic name="camera" size={16} color="#ea6b14" />
                   {photoFile ? photoFile.name : "Choose a photo"}
-                  <input id="co-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0] ?? null; if (f && f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB. Please choose a smaller one."); e.target.value = ""; setPhotoFile(null); return; } setSubmitError(""); setPhotoFile(f); }} style={{ display:"none" }} />
+                  <input id="co-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB. Please choose a smaller one."); e.target.value = ""; return; } setSubmitError(""); setPhotoFile(f); }} style={{ display:"none" }} />
                 </label>
               </div>
               {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"var(--ff-danger)", marginBottom:"1rem" }}>{submitError}</div>}

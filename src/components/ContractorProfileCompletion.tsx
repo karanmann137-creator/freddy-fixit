@@ -46,15 +46,15 @@ export default function ContractorProfileCompletion({
 
   const toggleArea = (z: string) => setArea(prev => prev.includes(z) ? prev.filter(x => x !== z) : [...prev, z]);
 
-  const pickDoc = (key: DocKey, f: File | null) => {
+  const pickDoc = (key: DocKey, e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return; // picker cancelled — keep any previously chosen file
     setMsg(null);
-    if (f) {
-      const t = (f.type || "").toLowerCase();
-      const n = f.name.toLowerCase();
-      const okType = t.startsWith("image/") || t === "application/pdf" || /\.(pdf|jpe?g|png|webp|gif|heic|heif)$/.test(n);
-      if (!okType) { setMsg({ kind: "err", text: "Please upload a PDF or a photo (JPG, PNG, HEIC)." }); return; }
-      if (f.size > 10 * 1024 * 1024) { setMsg({ kind: "err", text: DOC_LABELS[key] + " must be under 10MB." }); return; }
-    }
+    const t = (f.type || "").toLowerCase();
+    const n = f.name.toLowerCase();
+    const okType = t.startsWith("image/") || t === "application/pdf" || /\.(pdf|jpe?g|png|webp|gif|heic|heif)$/.test(n);
+    if (!okType) { setMsg({ kind: "err", text: "Please upload a PDF or a photo (JPG, PNG, HEIC)." }); e.target.value = ""; return; }
+    if (f.size > 10 * 1024 * 1024) { setMsg({ kind: "err", text: DOC_LABELS[key] + " must be under 10MB." }); e.target.value = ""; return; }
     setDocFiles(prev => ({ ...prev, [key]: f }));
   };
 
@@ -176,7 +176,7 @@ export default function ContractorProfileCompletion({
                 {existingDocs[key] && !docFiles[key] && <span style={{ color: "#22c55e", marginLeft: ".4rem", fontSize: ".76rem" }}>✓ on file</span>}
                 {docFiles[key] && <span style={{ color: "#ea6b14", marginLeft: ".4rem", fontSize: ".76rem" }}>{docFiles[key]!.name}</span>}
               </div>
-              <input type="file" accept="image/*,application/pdf" onChange={e => pickDoc(key, e.target.files?.[0] ?? null)} style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .7)" }} />
+              <input type="file" accept="image/*,application/pdf" onChange={e => pickDoc(key, e)} style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .7)" }} />
             </div>
           ))}
         </div>

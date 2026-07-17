@@ -63,11 +63,13 @@ export default function ProfileBar({ role, onSaved }: { role: Role; onSaved?: ()
   const save = async () => {
     if (!userId) return;
     if (!form.firstName.trim()) { setError("First name is required."); return; }
-    if (form.phone.replace(/\D/g, "").length < 10) { setError("Enter a valid 10-digit phone number."); return; }
+    // Phone is optional — only validate when something was entered.
+    const phoneDigits = form.phone.replace(/\D/g, "");
+    if (phoneDigits.length > 0 && phoneDigits.length < 10) { setError("Enter a valid 10-digit phone number (or leave it blank)."); return; }
     setSaving(true); setError(""); setSaved(false);
     try {
       const { error: pErr } = await supabase.from("profiles")
-        .update({ first_name: form.firstName.trim(), last_name: form.lastName.trim() || null, phone: form.phone.trim() })
+        .update({ first_name: form.firstName.trim(), last_name: form.lastName.trim() || null, phone: form.phone.trim() || null })
         .eq("id", userId);
       if (pErr) throw pErr;
 
