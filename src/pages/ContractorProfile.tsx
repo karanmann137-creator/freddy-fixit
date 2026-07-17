@@ -13,6 +13,9 @@ export default function ContractorProfile() {
   const [reviews,    setReviews]    = useState<any[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [myRole,     setMyRole]     = useState<string | null>(null);
+  const [admin,      setAdmin]      = useState<any>(null); // full detail, admin viewers only
+  const [busyStatus, setBusyStatus] = useState(false);
+  const [adminMsg,   setAdminMsg]   = useState("");
 
   useEffect(() => {
     if (!id) return;
@@ -24,10 +27,15 @@ export default function ContractorProfile() {
       const { data: { session } } = await supabase.auth.getSession();
 
       // Know who's viewing so "← Back" can return to THEIR dashboard when this
-      // page was opened in a fresh tab (no history to go back to).
+      // page was opened in a fresh tab (no history to go back to) — and so an
+      // admin gets the full review panel with everything needed to approve.
       if (session?.user) {
-        supabase.from("profiles").select("role").eq("id", session.user.id).maybeSingle()
-          .then(({ data }) => setMyRole(data?.role ?? null));
+        const { data: me } = await supabase.from("profiles").select("role").eq("id", session.user.id).maybeSingle();
+        setMyRole(me?.role ?? null);
+        if (me?.role === "admin") {
+          supabase.rpc("admin_get_contractor_detail", { p_id: id })
+            .then(({ data }) => setAdmin(data ?? null));
+        }
       }
 
       // RPC instead of the contractor_directory view: returns the same
@@ -72,6 +80,29 @@ export default function ContractorProfile() {
   const avatarUrl = (path: string) =>
     supabase.storage.from("profile-photos").getPublicUrl(path).data.publicUrl;
 
+  // ── Admin-only helpers ────────────────────────────────────────────────────
+  const DOC_LABELS: Record<string, string> = {
+    gov_id: "Government ID", insurance: "Insurance certificate",
+    wcb: "WCB clearance", certification: "Trade certification",
+  };
+
+  // Docs live in the PRIVATE contractor-docs bucket — open via signed URL.
+  const openDoc = async (path: string) => {
+    const { data, error } = await supabase.storage.from("contractor-docs").createSignedUrl(path, 3600);
+    if (error || !data?.signedUrl) { setAdminMsg("Couldn't open that document — try again."); return; }
+    window.open(data.signedUrl, "_blank", "noopener");
+  };
+
+  const setStatus = async (status: "active" | "inactive") => {
+    if (!id || busyStatus) return;
+    setBusyStatus(true); setAdminMsg("");
+    const { error } = await supabase.rpc("admin_set_contractor_status", { p_id: id, p_status: status });
+    setBusyStatus(false);
+    if (error) { setAdminMsg("Couldn't update status: " + error.message); return; }
+    setAdmin((a: any) => a ? { ...a, status } : a);
+    setAdminMsg(status === "active" ? "✓ Contractor approved — they can now bid on jobs." : "Contractor deactivated.");
+  };
+
   const avgScore = (key: string) => {
     const vals = reviews.map((r: any) => r[key]).filter((v: any) => v != null);
     return vals.length ? (vals.reduce((a: number, b: number) => a + b, 0) / vals.length).toFixed(1) : null;
@@ -112,6 +143,105 @@ export default function ContractorProfile() {
         <button onClick={goBack} style={{ background:"none", border:"none", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", marginBottom:"1.25rem", padding:0 }}>
           ← Back
         </button>
+
+        {/* Admin review panel — everything needed to vet + approve, right here */}
+        {myRole === "admin" && admin && (
+          <div style={{ ...s.card, border:"1px solid rgba(234,107,20,.45)", background:"rgba(234,107,20,.06)" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const, gap:".75rem", marginBottom:"1rem" }}>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", color:"#ea6b14" }}>
+                Admin Review
+                <span style={{ ...s.chip, marginLeft:".6rem", verticalAlign:"middle",
+                  background: admin.status === "active" ? "rgba(34,197,94,.12)" : admin.status === "inactive" ? "rgba(239,68,68,.12)" : "rgba(245,158,11,.12)",
+                  border: "1px solid " + (admin.status === "active" ? "rgba(34,197,94,.4)" : admin.status === "inactive" ? "rgba(239,68,68,.4)" : "rgba(245,158,11,.4)"),
+                  color: admin.status === "active" ? "#22c55e" : admin.status === "inactive" ? "#ef4444" : "#f59e0b" }}>
+                  {admin.status ?? "pending"}
+                </span>
+              </div>
+              <div style={{ display:"flex", gap:".6rem" }}>
+                {admin.status !== "active" && (
+                  <button style={{ ...s.btn, background:"#22c55e", opacity: busyStatus ? .6 : 1 }} disabled={busyStatus} onClick={() => setStatus("active")}>
+                    {busyStatus ? "Saving…" : "✓ Approve"}
+                  </button>
+                )}
+                {admin.status === "active" && (
+                  <button style={{ ...s.btn, background:"rgba(239,68,68,.85)", opacity: busyStatus ? .6 : 1 }} disabled={busyStatus} onClick={() => setStatus("inactive")}>
+                    {busyStatus ? "Saving…" : "Deactivate"}
+                  </button>
+                )}
+              </div>
+            </div>
+            {adminMsg && <div style={{ fontSize:".85rem", color:"#ea6b14", marginBottom:".9rem" }}>{adminMsg}</div>}
+
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:".9rem", fontSize:".85rem", lineHeight:1.65 }}>
+              <div>
+                <div style={{ fontWeight:600, marginBottom:".2rem" }}>Contact</div>
+                <div style={{ color:"rgba(var(--ff-muted), .75)" }}>
+                  {admin.email ?? "No email"}<br />
+                  {admin.phone ?? "No phone"}<br />
+                  Joined {admin.created_at ? new Date(admin.created_at).toLocaleDateString() : "—"}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontWeight:600, marginBottom:".2rem" }}>Trade & experience</div>
+                <div style={{ color:"rgba(var(--ff-muted), .75)" }}>
+                  {admin.work_type ?? "Not set"}{admin.years_of_experience != null ? " · " + admin.years_of_experience + " yrs" : ""}<br />
+                  {admin.availability?.days?.length
+                    ? "Available: " + admin.availability.days.join(", ") + (admin.availability.start ? " · " + admin.availability.start + "–" + (admin.availability.end ?? "") : "")
+                    : "Availability not set"}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontWeight:600, marginBottom:".2rem" }}>Credentials</div>
+                <div style={{ color:"rgba(var(--ff-muted), .75)" }}>
+                  Licensed: {admin.licensed ? "Yes" + (admin.license_number ? " (#" + admin.license_number + ")" : "") : "No"}<br />
+                  Insurance: {admin.has_liability_insurance ? "Yes" + (admin.insurance_provider ? " — " + admin.insurance_provider : "") + (admin.insurance_expiry ? ", expires " + admin.insurance_expiry : "") : "No"}<br />
+                  WCB: {admin.has_wcb ? "Yes" : "No"}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontWeight:600, marginBottom:".2rem" }}>Pricing & payouts</div>
+                <div style={{ color:"rgba(var(--ff-muted), .75)" }}>
+                  {admin.hourly_rate != null ? "$" + admin.hourly_rate + "/hr" : "No hourly rate"}
+                  {admin.min_callout != null ? " · min callout $" + admin.min_callout : ""}<br />
+                  Payouts: {admin.stripe_payouts_enabled ? "✓ Ready" : "Not set up"}<br />
+                  {admin.total_jobs != null && ("Jobs: " + admin.total_jobs + " · Earned: $" + Number(admin.total_earned ?? 0).toLocaleString())}
+                </div>
+              </div>
+            </div>
+
+            {admin.work_references && (
+              <div style={{ marginTop:".9rem", fontSize:".85rem" }}>
+                <span style={{ fontWeight:600 }}>References: </span>
+                <span style={{ color:"rgba(var(--ff-muted), .75)" }}>{admin.work_references}</span>
+              </div>
+            )}
+
+            {admin.review_status && (
+              <div style={{ marginTop:".9rem", fontSize:".85rem" }}>
+                <span style={{ fontWeight:600 }}>AI doc review ({admin.review_status}): </span>
+                <span style={{ color:"rgba(var(--ff-muted), .75)" }}>
+                  {(typeof admin.review_result === "string" ? admin.review_result : JSON.stringify(admin.review_result ?? "")).slice(0, 300)}
+                </span>
+              </div>
+            )}
+
+            <div style={{ marginTop:"1rem" }}>
+              <div style={{ fontWeight:600, fontSize:".85rem", marginBottom:".45rem" }}>Documents</div>
+              {admin.doc_urls && Object.keys(admin.doc_urls).some(k => admin.doc_urls[k]) ? (
+                <div style={{ display:"flex", gap:".55rem", flexWrap:"wrap" as const }}>
+                  {Object.entries(admin.doc_urls as Record<string, string | null>).map(([k, path]) => path ? (
+                    <button key={k} onClick={() => openDoc(path)}
+                      style={{ padding:".45rem .9rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".8rem", cursor:"pointer" }}>
+                      <Ic name="download" size={13} style={{ marginRight:5 }} />{DOC_LABELS[k] ?? k}
+                    </button>
+                  ) : null)}
+                </div>
+              ) : (
+                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .55)" }}>No documents uploaded yet.</div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Header card */}
         <div style={{ ...s.card, display:"flex", gap:"1.5rem", alignItems:"flex-start", flexWrap:"wrap" as const }}>
