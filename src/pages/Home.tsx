@@ -110,6 +110,7 @@ const SERVICES = [
   { iconName:"sparkles", label:"Cleaning Services",       desc:"Deep cleans, move-outs, and regular upkeep" },
   { iconName:"key", label:"Locksmith",               desc:"Lock changes, rekeying, lockouts, and security installs" },
   { iconName:"refrigerator", label:"Appliance Repair / Install", desc:"Repairs and installations for all major appliances" },
+  { iconName:"sun", label:"Solar",                 desc:"Panel installs, repairs, and cleaning" },
 ];
 
 const HOW_IT_WORKS = [
@@ -217,19 +218,15 @@ export default function Home() {
         .ff-title span { color: #ea6b14; text-shadow: 0 0 30px rgba(234,107,20,0.7), 0 0 60px rgba(234,107,20,0.3); }
         .ff-tagline { font-size: 1rem; font-weight: 300; color: rgba(var(--ff-muted), 0.75); text-align: center; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 3rem; }
         .ff-divider { width: 48px; height: 2px; background: linear-gradient(90deg, transparent, #ea6b14, transparent); margin: 0 auto 3rem; }
-        .ff-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; width: 100%; margin-bottom: 1.5rem; }
-        @media (max-width: 480px) { .ff-cards { grid-template-columns: 1fr; } }
-        .ff-card-client { border-color: rgba(234,107,20,0.55) !important; box-shadow: 0 0 0 1px rgba(234,107,20,0.25), 0 8px 30px rgba(234,107,20,0.12); }
-        .ff-card { background: rgba(var(--ff-fg), 0.04); border: 1px solid rgba(var(--ff-fg), 0.08); border-radius: 12px; padding: 2rem 1.5rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; transition: all 0.25s ease; position: relative; overflow: hidden; text-align: center; }
-        .ff-card::before { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity 0.25s ease; border-radius: 12px; }
-        .ff-card-contractor::before { background: radial-gradient(ellipse at 50% 0%, rgba(234,107,20,0.15) 0%, transparent 70%); }
-        .ff-card-client::before { background: radial-gradient(ellipse at 50% 0%, rgba(100,150,220,0.15) 0%, transparent 70%); }
-        .ff-card:hover { transform: translateY(-3px); border-color: rgba(234,107,20,0.4); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
-        .ff-card:hover::before { opacity: 1; }
-        .ff-card-icon { font-size: 2.2rem; line-height: 1; }
-        .ff-card-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.08em; color: var(--ff-text); }
-        .ff-card-sub { font-size: 0.8rem; color: rgba(var(--ff-muted), 0.55); font-weight: 300; line-height: 1.4; }
-        .ff-card-cta { margin-top: 0.5rem; font-size: 0.78rem; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: #ea6b14; }
+        /* Hero CTAs: one big client button, one much smaller contractor button below. */
+        .ff-cta-main { display: block; width: 100%; max-width: 420px; padding: 1.15rem 2rem; background: #ea6b14; color: #fff;
+          border: none; border-radius: 14px; font-family: 'Bebas Neue', sans-serif; font-size: 1.65rem; letter-spacing: 0.07em;
+          cursor: pointer; transition: all 0.25s ease; box-shadow: 0 0 0 1px rgba(234,107,20,0.35), 0 10px 36px rgba(234,107,20,0.3); }
+        .ff-cta-main:hover { background: #f07a28; transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(234,107,20,0.5), 0 14px 44px rgba(234,107,20,0.4); }
+        .ff-cta-sub { background: rgba(var(--ff-fg), 0.05); border: 1px solid rgba(var(--ff-fg), 0.12); border-radius: 999px;
+          padding: 0.45rem 1.1rem; color: rgba(var(--ff-muted), 0.75); font-family: 'DM Sans', sans-serif; font-size: 0.8rem;
+          font-weight: 500; cursor: pointer; transition: all 0.2s; }
+        .ff-cta-sub:hover { border-color: rgba(234,107,20,0.45); color: var(--ff-text); }
         .ff-signin { display: flex; align-items: center; gap: 0.5rem; background: rgba(var(--ff-fg), 0.05); border: 1px solid rgba(var(--ff-fg), 0.1); border-radius: 999px; padding: 0.6rem 1.4rem; color: rgba(var(--ff-muted), 0.7); font-size: 0.85rem; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; margin-top: 0.75rem; }
         .ff-signin:hover { background: rgba(var(--ff-fg), 0.1); color: var(--ff-text); }
         .ff-scroll-hint { position: absolute; bottom: 0.6rem; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 0.4rem; color: rgba(var(--ff-muted), 0.3); font-size: 0.72rem; letter-spacing: 0.15em; text-transform: uppercase; animation: bounce 2s infinite; }
@@ -362,19 +359,14 @@ export default function Home() {
               ))}
             </div>
           </motion.div>
-          <motion.div className="ff-cards" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.45 }}>
-            <div className="ff-card ff-card-client" onClick={() => setLocation("/client-onboarding")}>
-              <div className="ff-card-icon"><Ic name="home" size={32} color="#ea6b14" /></div>
-              <div className="ff-card-title">I Need a Fix</div>
-              <div className="ff-card-sub">Home repairs &amp; vehicle maintenance — get a free estimate</div>
-              <div className="ff-card-cta">Get my free estimate →</div>
-            </div>
-            <div className="ff-card ff-card-contractor" onClick={() => setLocation("/contractor-onboarding")}>
-              <div className="ff-card-icon"><Ic name="wrench" size={32} color="#ea6b14" /></div>
-              <div className="ff-card-title">I'm a Contractor</div>
-              <div className="ff-card-sub">Join our Calgary network and get more local jobs</div>
-              <div className="ff-card-cta">Get started →</div>
-            </div>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.45 }}
+            style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:".9rem" }}>
+            <button className="ff-cta-main" onClick={() => setLocation("/client-onboarding")}>
+              Request Free Estimates →
+            </button>
+            <button className="ff-cta-sub" onClick={() => setLocation("/contractor-onboarding")}>
+              <Ic name="wrench" size={13} color="#ea6b14" style={{ marginRight:6, verticalAlign:"-2px" }} />Join Freddy's Team
+            </button>
           </motion.div>
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.55 }}

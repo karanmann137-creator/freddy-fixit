@@ -35,6 +35,7 @@ export const SERVICES = [
   { iconName: "trowel", label: "Concrete / Masonry" },
   { iconName: "key", label: "Locksmith" },
   { iconName: "refrigerator", label: "Appliance Repair / Install" },
+  { iconName: "sun", label: "Solar" },
   { iconName: "package", label: "Other" },
 ];
 

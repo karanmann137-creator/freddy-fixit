@@ -31,6 +31,7 @@ const SPECIALTIES = [
   { iconName: "sparkles", label: "Cleaning Services" },
   { iconName: "key", label: "Locksmith" },
   { iconName: "refrigerator", label: "Appliance Repair / Install" },
+  { iconName: "sun", label: "Solar" },
 ];
 
 const AREAS = ["NW","NE","SW","SE","Downtown / Beltline","Airdrie","Cochrane","Chestermere"];

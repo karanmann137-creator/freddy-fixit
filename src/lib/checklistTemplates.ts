@@ -130,6 +130,16 @@ const TEMPLATES: Record<string, string[]> = {
     "Water new plantings if applicable",
     "Take after photos",
   ],
+  "Solar": [
+    "Confirm scope with the client (install, repair or cleaning)",
+    "Photograph the array/roof before starting",
+    "Check roof condition and mounting points",
+    "Follow fall-protection and electrical safety procedures",
+    "Complete the agreed work",
+    "Verify system output / inverter status after work",
+    "Clean panels and clear debris from the work area",
+    "Walk the client through what was done and take after photos",
+  ],
   "Snow Removal": [
     "Clear driveway and walkways fully",
     "Clear the city sidewalk (bylaw requirement)",

@@ -47,6 +47,7 @@ const OPTION_MAP: Record<string, Freq[]> = {
   // Frequent household upkeep.
   "Cleaning Services":     ["weekly", "biweekly", "monthly", "quarterly"],
   "General Handyman":      ["monthly", "quarterly", "semiannual", "annual"],
+  "Solar":                 ["seasonal", "semiannual", "annual"],
 };
 
 const DEFAULT_OPTIONS: Freq[] = [
