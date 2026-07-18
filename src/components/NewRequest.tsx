@@ -83,12 +83,16 @@ export default function NewRequest() {
   const [submitting, setSubmitting] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
+  const [loadError, setLoadError] = useState(false);
+  const [loadTick, setLoadTick] = useState(0);
   useEffect(() => {
     (async () => {
+      try {
+      setLoadError(false);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLocation("/login"); return; }
       const [{ data: prof }, { data: reqs }, { data: addrs }, { data: vehs }] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", user.id).single(),
+        supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
         supabase.from("client_requests").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1),
         supabase.from("saved_addresses").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
         supabase.from("saved_vehicles").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
@@ -104,9 +108,14 @@ export default function NewRequest() {
       else { setAddrChoice("new"); setSameAddress(false); }
       if ((vehs ?? []).length) setVehChoice((vehs as any[])[0].id);
       if (last?.client_type === "business") setRecurring(!!last.recurring);
-      setLoading(false);
+      } catch (e) {
+        console.error("NewRequest load failed", e);
+        setLoadError(true);
+      } finally {
+        setLoading(false);
+      }
     })();
-  }, []);
+  }, [loadTick]);
 
   // Rehire: a "Book again" link carries ?pro=<contractorId> so this request is
   // sent directly to that pro (they get an in-app "a past client wants you" ping).
@@ -253,7 +262,17 @@ export default function NewRequest() {
     navBtn: { flex:1, padding:".85rem 1.5rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer", border:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:".4rem" },
   };
 
-  if (loading) return <div style={{ minHeight:"100vh", background:"var(--ff-bg)" }} />;
+  if (loading) return (
+    <div style={{ minHeight:"100vh", background:"var(--ff-bg)", display:"flex", alignItems:"center", justifyContent:"center", color:"rgba(var(--ff-muted), .6)", fontFamily:"'DM Sans', sans-serif" }}>
+      Loading…
+    </div>
+  );
+  if (loadError) return (
+    <div style={{ minHeight:"100vh", background:"var(--ff-bg)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"1rem", fontFamily:"'DM Sans', sans-serif", padding:"2rem", textAlign:"center" }}>
+      <p style={{ margin:0, color:"var(--ff-text)", fontSize:"1rem" }}>We couldn&rsquo;t load your details. Check your connection and try again.</p>
+      <button onClick={() => { setLoading(true); setLoadTick(t => t + 1); }} style={{ padding:".7rem 1.6rem", borderRadius:"8px", border:"none", background:"#ea6b14", color:"#fff", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer" }}>Try again</button>
+    </div>
+  );
 
   return (
     <div style={s.wrap}>
@@ -272,7 +291,7 @@ export default function NewRequest() {
 
         <GuideBubble step={1} total={1}
           message="Good to see you again. Just tell me about this job — the service, when you need it, and where. A few details and photos help your pro give an accurate estimate."
-          why="You only pay once you approve an estimate and the work is done." />
+          why="You pay when you approve an estimate — we hold it safely and only release it to your pro after you confirm the work is done." />
 
         {preferredPro && (
           <div style={{ ...s.card, marginBottom:"1rem", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.07)", display:"flex", alignItems:"center", gap:".6rem" }}>
@@ -553,7 +572,7 @@ export default function NewRequest() {
                   {photoFile ? "Tap to change" : "Tap to choose — max 5 MB"}
                 </p>
               </div>
-              <input id="nr-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0] ?? null; if (f && f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB. Please choose a smaller one."); e.target.value = ""; setPhotoFile(null); return; } setSubmitError(""); setPhotoFile(f); }} style={{ display:"none" }} />
+              <input id="nr-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB. Please choose a smaller one."); e.target.value = ""; return; } setSubmitError(""); setPhotoFile(f); }} style={{ display:"none" }} />
             </label>
           </div>
 

@@ -568,6 +568,9 @@ export default function ContractorDashboard() {
   // in_progress, pending_confirmation) until the money is released to the pro.
   const renderPriceChange = (job: any) => {
     if (job.payment_status === "released") return null;
+    // Milestone jobs are priced per stage (MilestonePanel) — the whole-job price
+    // change RPC rejects them, so don't offer a form that can only fail.
+    if (job.is_milestone) return null;
     const rf = requoteForm[job.id] || { amount:"", reason:"", labour:"", parts:"", callout:"", subject:false };
     const setRf = (patch: any) => setRequoteForm(o => ({ ...o, [job.id]: { ...rf, ...patch } }));
     const pending = job.price_change_pending;
@@ -1194,7 +1197,7 @@ export default function ContractorDashboard() {
                           {!job.is_milestone && (
                           <div>
                             <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".25rem" }}>Completion photo (optional)</div>
-                            <input type="file" accept="image/*" onChange={e => setPhotoFile(e.target.files?.[0] ?? null)} style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)" }} />
+                            <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; setPhotoFile(f); }} style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)" }} />
                           </div>
                           )}
                           <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
@@ -1418,7 +1421,7 @@ export default function ContractorDashboard() {
               <div style={{ display:"flex", flexDirection:"column", gap:".5rem", borderTop:"1px solid rgba(var(--ff-fg), .07)", paddingTop:".9rem" }}>
                 <input value={pfForm.title} placeholder="Title (e.g. Kitchen sink replacement)" onChange={e => setPfForm(f => ({ ...f, title: e.target.value }))} style={{ padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const }} />
                 <textarea value={pfForm.description} rows={2} placeholder="Short description (optional)" onChange={e => setPfForm(f => ({ ...f, description: e.target.value }))} style={{ padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const }} />
-                <input type="file" accept="image/*" onChange={e => setPfForm(f => ({ ...f, file: e.target.files?.[0] ?? null }))} style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)" }} />
+                <input type="file" accept="image/*" onChange={e => { const nf = e.target.files?.[0]; if (!nf) return; setPfForm(f => ({ ...f, file: nf })); }} style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)" }} />
                 <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", alignSelf:"flex-start" as const }} disabled={busyPf} onClick={addPortfolioItem}>{busyPf ? "Adding…" : "+ Add portfolio item"}</button>
               </div>
             </div>

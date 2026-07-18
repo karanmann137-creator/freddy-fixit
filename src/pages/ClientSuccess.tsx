@@ -7,8 +7,8 @@ export default function ClientSuccess() {
 
   const steps = [
     { iconName: "clipboard-list", title: "Request Received", desc: "Your job request is in our system and we're on it." },
-    { iconName: "phone", title: "We'll Call You", desc: "A Freddy Fix It coordinator will reach out within a few hours to confirm details." },
-    { iconName: "wrench", title: "Contractor Matched", desc: "We'll match you with a vetted pro in your area and confirm the visit time." },
+    { iconName: "dollar", title: "Estimates Come In", desc: "Vetted local pros review your request and send free estimates — you'll get an email and a notification for each one." },
+    { iconName: "wrench", title: "You Pick Your Pro", desc: "Compare estimates on your dashboard, pick the pro you like, and approve a visit time." },
     { iconName: "check-circle", title: "Job Done", desc: "Your contractor shows up, fixes the problem. Simple as that." },
   ];
 

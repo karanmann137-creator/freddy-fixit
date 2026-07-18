@@ -43,6 +43,8 @@ export default function AdminDashboard() {
   const [partialAmt, setPartialAmt] = useState<Record<string, string>>({});
   const [resolveNote, setResolveNote] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [healthFailed, setHealthFailed] = useState(false);
   const [busyStatus, setBusyStatus] = useState<string|null>(null); // contractor id whose status is toggling
   const [busyDelete, setBusyDelete] = useState(false);
   const [busyDeleteAccount, setBusyDeleteAccount] = useState<string|null>(null);
@@ -75,10 +77,11 @@ export default function AdminDashboard() {
 
   const loadAll = async () => {
     setLoading(true);
+    setLoadError("");
     try {
     const rRange: [number, number] = [page.requests * PAGE_SIZE, page.requests * PAGE_SIZE + PAGE_SIZE - 1];
     const jRange: [number, number] = [page.jobs * PAGE_SIZE, page.jobs * PAGE_SIZE + PAGE_SIZE - 1];
-    const [{ data: reqs, count: reqCount }, { data: js, count: jobCount }, { data: accts }, { data: bids }, { data: resignup }, { data: disp }, { data: leadsData }, { data: healthData }] = await Promise.all([
+    const results = await Promise.all([
       supabase.from("client_requests").select("*", { count: "exact" }).order("created_at", { ascending: false }).range(rRange[0], rRange[1]),
       supabase.from("jobs").select("*", { count: "exact" }).order("created_at", { ascending: false }).range(jRange[0], jRange[1]),
       supabase.rpc("admin_list_accounts"),
@@ -88,7 +91,12 @@ export default function AdminDashboard() {
       supabase.from("quote_leads").select("*").order("created_at", { ascending: false }).limit(100),
       supabase.rpc("admin_health"),
     ]);
+    // Surface query failures instead of silently rendering empty tabs.
+    const failed = results.map((r: any, i: number) => r?.error ? ["requests","jobs","accounts","bids","re-signup flags","disputes","leads","health"][i] : null).filter(Boolean);
+    if (failed.length) setLoadError("Some data failed to load (" + failed.join(", ") + ") — what's shown may be incomplete.");
+    const [{ data: reqs, count: reqCount }, { data: js, count: jobCount }, { data: accts }, { data: bids }, { data: resignup }, { data: disp }, { data: leadsData }, { data: healthData, error: healthErr }] = results as any[];
     setRequests(reqs ?? []);
+    setHealthFailed(!!healthErr);
     setJobs(js ?? []);
     setAccounts((accts as any[]) ?? []);
     setDisputes(disp ?? []);
@@ -129,6 +137,7 @@ export default function AdminDashboard() {
     setFlagMatches(fm);
     } catch (e) {
       console.error("AdminDashboard loadAll error:", e);
+      setLoadError("Couldn't load the dashboard — check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -359,6 +368,13 @@ export default function AdminDashboard() {
           <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .6)", marginTop:".2rem" }}>Manage requests, jobs, accounts and disputes.</div>
         </div>
       </div>
+
+      {loadError && (
+        <div style={{ margin:"1rem 1.5rem 0", padding:".8rem 1rem", background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.4)", borderRadius:"10px", display:"flex", alignItems:"center", gap:".75rem", flexWrap:"wrap" }}>
+          <span style={{ fontSize:".85rem", color:"var(--ff-text)" }}>{loadError}</span>
+          <button style={{ ...s.btn, borderColor:"rgba(239,68,68,.5)" }} onClick={() => loadAll()}>Retry</button>
+        </div>
+      )}
 
       <div style={s.content}>
         <ProfileBar role="admin" />
@@ -773,7 +789,9 @@ export default function AdminDashboard() {
             <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".82rem", marginBottom:"1rem", lineHeight:1.5 }}>
               Things that may need your attention. Buckets only show items that have been waiting too long.
             </p>
-            {!health && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>Loading…</p>}
+            {!health && (healthFailed
+              ? <p style={{ color:"var(--ff-warn)" }}>Couldn&rsquo;t load the health checks. <button style={s.btn} onClick={() => loadAll()}>Retry</button></p>
+              : <p style={{ color:"rgba(var(--ff-muted), .45)" }}>Loading…</p>)}
             {health && (() => {
               const buckets: { key:string; title:string; hint:string; count:number; items:any[] }[] = [
                 { key:"no_bid", title:"Requests with no bids", hint:"Pending & unassigned for over 24h — may need a contractor invited.", count: health.no_bid_count||0, items: health.no_bid||[] },

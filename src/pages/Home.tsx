@@ -298,7 +298,7 @@ export default function Home() {
         .ff-ba-tabs { display: flex; justify-content: center; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
         .ff-ba-tab { font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 500; letter-spacing: 0.04em; color: rgba(var(--ff-muted), 0.7); background: rgba(var(--ff-fg), 0.04); border: 1px solid rgba(var(--ff-fg), 0.1); border-radius: 999px; padding: 0.55rem 1.25rem; cursor: pointer; transition: all 0.2s; }
         .ff-ba-tab:hover { color: var(--ff-text); border-color: rgba(234,107,20,0.4); }
-        .ff-ba-tab-on { color: #fff; background: rgba(234,107,20,0.18); border-color: rgba(234,107,20,0.6); }
+        .ff-ba-tab-on { color: var(--ff-text); background: rgba(234,107,20,0.18); border-color: rgba(234,107,20,0.6); }
         .ff-ba-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; border: 1px solid rgba(var(--ff-fg), 0.08); cursor: ew-resize; user-select: none; touch-action: none; box-shadow: 0 14px 44px rgba(0,0,0,0.4); background: var(--ff-surface-0e); }
         .ff-ba-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; -webkit-user-drag: none; }
         .ff-ba-badge { position: absolute; top: 1rem; font-family: 'Bebas Neue', sans-serif; font-size: 0.95rem; letter-spacing: 0.1em; color: var(--ff-text); background: rgba(var(--ff-bg-rgb), 0.7); backdrop-filter: blur(4px); border: 1px solid rgba(var(--ff-fg), 0.12); padding: 0.3rem 0.85rem; border-radius: 999px; pointer-events: none; transition: opacity 0.2s; }

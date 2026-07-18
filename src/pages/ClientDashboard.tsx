@@ -154,11 +154,16 @@ export default function ClientDashboard() {
     try {
       const ids = requests.map(r => r.id);
       if (ids.length === 0) { setClaimJobs([]); return; }
-      const { data } = await supabase.from("jobs").select("id, status, request_id").in("request_id", ids);
+      const { data, error } = await supabase.from("jobs").select("id, status, request_id").in("request_id", ids);
+      if (error) throw error;
       const svc = new Map(requests.map(r => [r.id, r.service_needed as string | null]));
-      setClaimJobs((data ?? []).map((j: any) => ({ id: j.id, status: j.status, service: svc.get(j.request_id) ?? null })));
-    } catch {
+      // Cancelled jobs can't be claimed against — don't offer them.
+      setClaimJobs((data ?? []).filter((j: any) => j.status !== "cancelled").map((j: any) => ({ id: j.id, status: j.status, service: svc.get(j.request_id) ?? null })));
+    } catch (e) {
+      console.error("openClaim failed", e);
       setClaimJobs([]);
+      setClaimOpen(false);
+      notify("Couldn't load your jobs just now — try again in a moment.");
     }
   };
 
@@ -257,7 +262,7 @@ export default function ClientDashboard() {
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeReq?.id]);
+  }, [activeReq?.id, activeReq?.assigned_contractor_id]);
 
   // Realtime: keep the active job's status/payment live as the contractor acts
   // (proposes a time, marks on-the-way, completes) without a manual refresh.
@@ -330,18 +335,19 @@ export default function ClientDashboard() {
   };
 
   const approveSchedule = async () => {
-    if (!activeJob) return;
+    if (!activeJob || busyReq) return;
     setBusyReq(true);
+    try {
     const { error } = await supabase.rpc("approve_job_schedule", {
       p_job_id: activeJob.id,
       p_selected_items: selAddons.length ? selAddons : null,
     });
-    setBusyReq(false);
     if (error) { notify("Couldn't approve: " + error.message); return; }
     // Email the client a written contract copy (Alberta: starts the 10-day cancellation clock).
     supabase.functions.invoke("notify-email", { body: { event: "contract_copy", job_id: activeJob.id } }).catch(() => {});
     // If this job is covered by a prepaid recurring pool, draw down one occurrence
     // now (links the job to the held funds — no separate checkout needed).
+    // (Stays inside the busy window so a double-tap can't race the draw-down.)
     let covered = false;
     try {
       const { data: used } = await supabase.rpc("consume_prepaid_occurrence", { p_job: activeJob.id });
@@ -361,6 +367,7 @@ export default function ClientDashboard() {
     setActiveJob({ ...activeJob, status: "scheduled", client_approved_at: new Date().toISOString(),
       amount: newAmount, quote_items: newItems,
       ...(covered ? { payment_status: "held", paid_at: new Date().toISOString() } : {}) });
+    } finally { setBusyReq(false); }
   };
   const requestReschedule = () => {
     if (!activeJob || !profile) return;
@@ -636,7 +643,9 @@ export default function ClientDashboard() {
     if (ar) {
       const { data: job } = await supabase.from("jobs").select("*").eq("request_id", ar.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
       setActiveJob(job);
-      setRequests(prev => prev.map(r => r.id === ar.id ? { ...r, status: "matched" } : r));
+      // Also patch assigned_contractor_id so the contractor card + chat appear
+      // immediately (the load effect reads it off the request) — not after a reload.
+      setRequests(prev => prev.map(r => r.id === ar.id ? { ...r, status: "matched", assigned_contractor_id: job?.contractor_id ?? r.assigned_contractor_id } : r));
       setClientBids([]);
     }
   };
@@ -1290,8 +1299,14 @@ export default function ClientDashboard() {
         )}
 
         {activeTab === "history" && (() => {
-                  const histAll = requests.filter(r => r.id !== activeReq?.id);
-                  if (histAll.length === 0) return null;
+                  // Include every request (the active one too) so History is the complete record.
+                  const histAll = requests;
+                  if (histAll.length === 0) return (
+                    <div style={s.card}>
+                      <div style={s.cardTitle}>Request History</div>
+                      <p style={{ fontSize:".88rem", color:"rgba(var(--ff-muted), .55)", margin:0 }}>Nothing here yet — your past requests will show up once you&rsquo;ve posted one.</p>
+                    </div>
+                  );
                   const matches = (r: any) =>
                     histFilter === "all" ? true :
                     histFilter === "completed" ? r.status === "completed" :
@@ -1323,7 +1338,7 @@ export default function ClientDashboard() {
                           </div>
                           <div style={{ display:"flex", alignItems:"center", gap:".75rem" }}>
                             {r.status !== "completed" && r.status !== "cancelled" && (
-                              <button style={{ ...s.btn, padding:".3rem .7rem" }} onClick={() => setSelectedReqId(r.id)}>View</button>
+                              <button style={{ ...s.btn, padding:".3rem .7rem" }} onClick={() => { setSelectedReqId(r.id); setActiveTab("requests"); window.scrollTo({ top: 0 }); }}>View</button>
                             )}
                             <div style={{ fontSize:".78rem", fontWeight:500, color: STATUS_META[r.status]?.color, whiteSpace:"nowrap" as const }}>
                               <Ic name={STATUS_META[r.status]?.icon as any} size={13} color={STATUS_META[r.status]?.color} style={{ marginRight:4 }} />{STATUS_META[r.status]?.label}

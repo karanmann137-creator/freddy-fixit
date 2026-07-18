@@ -20,6 +20,7 @@ export default function ContractorProfile() {
   useEffect(() => {
     if (!id) return;
     (async () => {
+      try {
       // Ensure the auth session is hydrated from storage BEFORE we query. On a
       // fresh tab (e.g. admin clicking "View Profile ↗" which opens a new tab)
       // the RPC could otherwise fire before the JWT is attached, so is_admin()
@@ -34,7 +35,10 @@ export default function ContractorProfile() {
         setMyRole(me?.role ?? null);
         if (me?.role === "admin") {
           supabase.rpc("admin_get_contractor_detail", { p_id: id })
-            .then(({ data }) => setAdmin(data ?? null));
+            .then(({ data, error }) => {
+              setAdmin(data ?? null);
+              if (error) setAdminMsg("Couldn't load the admin review details — refresh to try again.");
+            });
         }
       }
 
@@ -59,8 +63,11 @@ export default function ContractorProfile() {
       const { data: revs } = await supabase
         .rpc("get_contractor_reviews", { p_id: id });
       setReviews(revs ?? []);
-
-      setLoading(false);
+      } catch (e) {
+        console.error("ContractorProfile load failed", e);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [id]);
 
@@ -297,7 +304,8 @@ export default function ContractorProfile() {
             )}
           </div>
           <div style={{ display:"flex", flexDirection:"column" as const, gap:".6rem", alignSelf:"flex-start" }}>
-            <button style={s.btn} onClick={() => setLocation("/client-onboarding")}>Book This Contractor →</button>
+            {/* Carry ?pro= so a signed-in client's request is reserved for THIS pro (NewRequest reads it). */}
+            <button style={s.btn} onClick={() => setLocation("/client-onboarding?pro=" + id)}>Book This Contractor →</button>
             {contractor.google_reviews_url && (
               <a href={contractor.google_reviews_url} target="_blank" rel="noopener noreferrer"
                 style={{ padding:".5rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"8px", color:"rgba(var(--ff-muted), .7)", fontSize:".82rem", textAlign:"center" as const, textDecoration:"none" }}>

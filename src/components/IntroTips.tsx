@@ -24,6 +24,7 @@ export default function IntroTips() {
 
   useEffect(() => {
     let mounted = true;
+    if (show || routeHidden) return;            // don't burn the once-ever flag on a hidden route
     try { if (localStorage.getItem(SEEN_KEY)) return; } catch {}
     (async () => {
       const { data } = await supabase.auth.getSession();
@@ -33,7 +34,7 @@ export default function IntroTips() {
       try { localStorage.setItem(SEEN_KEY, "1"); } catch {}
     })();
     return () => { mounted = false; };
-  }, []);
+  }, [routeHidden]); // re-check when the visitor reaches a marketing page
 
   if (!show || routeHidden) return null;
 

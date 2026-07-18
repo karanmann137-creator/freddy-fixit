@@ -117,6 +117,7 @@ export default function ContractorOnboarding() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [success, setSuccess] = useState(false);
   const [verifyEmail, setVerifyEmail] = useState(false);
+  const [uploadWarn, setUploadWarn] = useState(""); // files that failed to upload at submit
   const [docFiles, setDocFiles] = useState<DocFiles>({ insurance: null, wcb: null, certification: null, gov_id: null });
   const [restored, setRestored] = useState(false);
   const [hydrated, setHydrated] = useState(false);
@@ -282,6 +283,7 @@ export default function ContractorOnboarding() {
         }
       }
       let photoPublicUrl: string | null = null;
+      const failedUploads: string[] = [];
       if (photoFile) {
         const ext = (photoFile.name.split(".").pop() || "jpg").toLowerCase();
         const filePath = userId + "/avatar." + ext;
@@ -289,10 +291,11 @@ export default function ContractorOnboarding() {
         if (!upErr) {
           const { data: pub } = supabase.storage.from("contractor-photos").getPublicUrl(filePath);
           photoPublicUrl = pub?.publicUrl ?? null;
-        }
+        } else { failedUploads.push("profile photo"); }
       }
       // Upload verification documents
       const docUrls: Record<string, string> = {};
+      const DOC_NAMES: Record<string, string> = { insurance: "insurance certificate", wcb: "WCB clearance", certification: "trade certification", gov_id: "government ID" };
       const docKeys: Array<keyof DocFiles> = ["insurance", "wcb", "certification", "gov_id"];
       for (const key of docKeys) {
         const file = docFiles[key];
@@ -301,7 +304,9 @@ export default function ContractorOnboarding() {
         const path = `${userId}/${key}.${ext}`;
         const { error: docErr } = await supabase.storage.from("contractor-docs").upload(path, file, { upsert: true });
         if (!docErr) docUrls[key] = path;
+        else failedUploads.push(DOC_NAMES[key] ?? key);
       }
+      if (failedUploads.length) setUploadWarn(failedUploads.join(", "));
 
       const { error: conErr } = await supabase.from("contractors").upsert({ id: userId, company_name: form.companyName || null, specialties: selectedSpec, years_of_experience: form.yearsOfExperience === "" ? null : Number(form.yearsOfExperience), service_area: selectedArea, availability: { days: availDays, start: availStart, end: availEnd }, work_type: form.workType || null, photo_url: photoPublicUrl, licensed: form.licensed, license_number: form.licenseNumber || null, has_liability_insurance: form.hasInsurance, insurance_provider: form.insuranceProvider || null, insurance_expiry: form.insuranceExpiry || null, has_wcb: form.hasWcb, work_references: form.workReferences || null, status: "pending", doc_urls: docUrls });
       if (conErr) throw conErr;
@@ -343,6 +348,11 @@ export default function ContractorOnboarding() {
         <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.6rem", letterSpacing:".06em", marginBottom:".5rem" }}>Verify Your <span style={{ color:"#ea6b14" }}>Email</span></h1>
         <p style={{ color:"rgba(var(--ff-muted), .7)", marginBottom:".5rem", lineHeight:1.6 }}>We sent a confirmation link to <strong>{form.email}</strong>. Click it to activate your account and sign in.</p>
         <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".85rem", marginBottom:"2rem", fontWeight:300 }}>Your details are saved. After verifying, sign in and upload any remaining documents from your dashboard.</p>
+        {(Object.values(docFiles).some(Boolean) || photoFile) && (
+          <p style={{ background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.45)", borderRadius:"10px", padding:".85rem 1rem", color:"var(--ff-text)", fontSize:".85rem", lineHeight:1.55, marginBottom:"2rem", textAlign:"left" }}>
+            One thing: the files you picked can't be uploaded until your email is verified — please re-add your photo/documents from your dashboard's Profile tab after signing in.
+          </p>
+        )}
         <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff", maxWidth:"260px", margin:"0 auto" }} onClick={() => setLocation("/login")}>Go to Sign In →</button>
       </div>
     </div>
@@ -357,6 +367,11 @@ export default function ContractorOnboarding() {
         </div>
         <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"3rem", letterSpacing:".06em", marginBottom:".5rem" }}>Welcome to <span style={{ color:"#ea6b14" }}>the Team!</span></h1>
         <p style={{ color:"rgba(var(--ff-muted), .65)", marginBottom:"2rem" }}>Your profile has been submitted. We'll review it within 24 hours.</p>
+        {uploadWarn && (
+          <p style={{ background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.45)", borderRadius:"10px", padding:".85rem 1rem", color:"var(--ff-text)", fontSize:".88rem", lineHeight:1.55, marginBottom:"2rem", textAlign:"left" }}>
+            Heads up — we couldn't upload your {uploadWarn}. Please add {uploadWarn.includes(",") ? "them" : "it"} again from your dashboard's Profile tab.
+          </p>
+        )}
         <div style={{ display:"flex", gap:".75rem", justifyContent:"center" }}>
           <button style={{ ...s.navBtn, background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"1px solid rgba(var(--ff-fg), .1)" }} onClick={() => setLocation("/")}>← Home</button>
           <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff" }} onClick={() => setLocation("/contractor-dashboard")}>My Dashboard →</button>

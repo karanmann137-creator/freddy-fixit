@@ -55,7 +55,7 @@ const CLIENT_GUIDE: { message: string; why?: string; tip?: string }[] = [
   { message: "Now, where's the job and what needs doing? A few details help pros give you an accurate estimate — photos help a lot too.",
     why: "The more you share, the more accurate your estimate." },
   { message: "Last step — create a quick free account so you can track your request and message your pro.",
-    why: "There's no charge now; you only pay once you approve an estimate and the work is done." },
+    why: "There's no charge now. You pay when you approve an estimate — we hold it safely and only release it to your pro after you confirm the work is done." },
 ];
 
 const HOME_TO_SERVICE: Record<string,string> = {
@@ -151,6 +151,7 @@ export default function ClientOnboarding() {
   const [success, setSuccess] = useState(false);
   const [verifyEmail, setVerifyEmail] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoWarn, setPhotoWarn] = useState(false); // photo failed to upload at submit
 
   const set = (key: string, val: string) => { setForm(f => ({ ...f, [key]: val })); setErrors(e => ({ ...e, [key]: "" })); };
 
@@ -248,6 +249,8 @@ export default function ClientOnboarding() {
         if (!up.error) {
           const { data: reqRow } = await supabase.from("client_requests").select("id").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
           if (reqRow) await supabase.from("client_requests").update({ photo_path: path }).eq("id", reqRow.id);
+        } else {
+          setPhotoWarn(true); // surface on the success screen instead of failing silently
         }
       }
       // Apply a stashed referral code now that the client has an active session.
@@ -310,6 +313,11 @@ export default function ClientOnboarding() {
         </div>
         <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"3rem", letterSpacing:".06em", marginBottom:".5rem" }}>Request <span style={{ color:"#ea6b14" }}>Received!</span></h1>
         <p style={{ color:"rgba(var(--ff-muted), .65)", marginBottom:"2rem" }}>We'll be in touch within a few hours.</p>
+        {photoWarn && (
+          <p style={{ background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.45)", borderRadius:"10px", padding:".85rem 1rem", color:"var(--ff-text)", fontSize:".88rem", lineHeight:1.55, marginBottom:"2rem", textAlign:"left" }}>
+            Heads up — your photo didn't upload. Your request went through fine; you can add the photo again from your dashboard.
+          </p>
+        )}
         <div style={{ display:"flex", gap:".75rem", justifyContent:"center" }}>
           <button style={{ ...s.navBtn, background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"1px solid rgba(var(--ff-fg), .1)" }} onClick={() => setLocation("/")}>← Home</button>
           <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff" }} onClick={() => setLocation("/client-dashboard")}>My Dashboard →</button>

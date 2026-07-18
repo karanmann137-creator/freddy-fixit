@@ -102,7 +102,9 @@ export default function MilestonePanel({ job, role, onUpdated }: { job: any; rol
   const canFundIndex = milestones.findIndex(m => m.status === "pending");
   const anyDisputed = milestones.some(m => m.status === "disputed");
   const firstPendingId = canFundIndex >= 0 ? milestones[canFundIndex].id : null;
-  const earlierAllReleased = (seq: number) => milestones.filter(m => m.seq < seq).every(m => m.status === "released");
+  // Refunded is terminal too (matches release-payment/refund-milestone server logic) —
+  // a refunded earlier stage must not block funding the next one.
+  const earlierAllReleased = (seq: number) => milestones.filter(m => m.seq < seq).every(m => m.status === "released" || m.status === "refunded");
 
   async function run(fn: () => Promise<void>) {
     setBusy(true); setErr(null); setMsg(null);
@@ -185,6 +187,7 @@ export default function MilestonePanel({ job, role, onUpdated }: { job: any; rol
   const dispute = (m: Milestone) => run(async () => {
     const reason = window.prompt("What's wrong with this stage? We'll freeze its payment and review.");
     if (reason == null) return;
+    if (!reason.trim()) throw new Error("Please tell us what went wrong so we can review it.");
     const { error } = await supabase.rpc("dispute_milestone", { p_milestone: m.id, p_reason: reason });
     if (error) throw error;
     setMsg("Stage disputed — its payment is frozen while we review.");
@@ -327,7 +330,7 @@ export default function MilestonePanel({ job, role, onUpdated }: { job: any; rol
                 <>
                   {m.status === "funded" && (
                     <div style={{ marginTop: ".5rem", display: "flex", flexDirection: "column", gap: ".4rem" }}>
-                      <input type="file" accept="image/*" onChange={e => setPhotoFor(p => ({ ...p, [m.id]: e.target.files?.[0] ?? null }))} style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .7)" }} />
+                      <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; setPhotoFor(p => ({ ...p, [m.id]: f })); }} style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .7)" }} />
                       <button style={{ ...btnGreen, alignSelf: "flex-start", opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => complete(m)}>{busy ? "…" : "✓ Mark stage complete"}</button>
                     </div>
                   )}
