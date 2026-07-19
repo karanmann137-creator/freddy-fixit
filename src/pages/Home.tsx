@@ -351,7 +351,7 @@ export default function Home() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.45 }}
             style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:".9rem" }}>
             <button className="ff-cta-main" onClick={() => setLocation("/client-onboarding")}>
-              Request Free Estimates →
+              Freddy's 5 Free Estimates →
             </button>
             <button className="ff-cta-sub" onClick={() => setLocation("/contractor-onboarding")}>
               <Ic name="wrench" size={13} color="#ea6b14" style={{ marginRight:6, verticalAlign:"-2px" }} />Join Freddy's Team
