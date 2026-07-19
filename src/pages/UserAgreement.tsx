@@ -7,7 +7,7 @@ export default function UserAgreement() {
 
         {/* ─── PART I: GENERAL USER AGREEMENT ─── */}
         <h1 style={{ fontSize:"clamp(2.5rem,6vw,4rem)", color:"var(--ff-text)", marginBottom:".5rem" }}>User Agreement</h1>
-        <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)", marginBottom:"3rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 26, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
+        <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)", marginBottom:"3rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 26, 2026 &nbsp;·&nbsp; Last Updated: July 19, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
 
         <section style={{ marginBottom:"2.5rem" }}>
           <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>1. Agreement to Terms</h2>
@@ -60,41 +60,58 @@ export default function UserAgreement() {
           <p><strong>7.2 Prohibited Content.</strong> You agree not to upload User Content that is unlawful, defamatory, harassing, hateful, fraudulent, sexually explicit, or that infringes any copyright, trademark, privacy, or other right of a third party, or that contains another person&rsquo;s personal information without their consent.</p>
           <p><strong>7.3 Notice and Takedown.</strong> If you believe any User Content on the Platform infringes your rights or otherwise violates Section 7.2, you may request its removal by emailing <a href="mailto:hello@freddyfixit.ca">hello@freddyfixit.ca</a> with the subject line &ldquo;Content Removal Request&rdquo; and including: (a) a description and location (URL or job reference) of the content; (b) the reason for removal and, where applicable, the right you claim is being infringed; and (c) your contact information and a good-faith statement that your complaint is accurate. We will acknowledge your request within <strong>5 business days</strong> and, where the complaint is valid, remove or disable access to the content within a reasonable time. We may notify the user who posted the content and give them an opportunity to respond.</p>
           <p><strong>7.4 Our Right to Remove.</strong> The Company may, at its sole discretion and without prior notice, remove, disable, or restrict any User Content that it reasonably believes violates this Agreement or applicable law, or that exposes the Company or its users to liability. Repeated violations may result in suspension or termination of your account.</p>
+          <p><strong>7.5 Truthful and Accurate Information.</strong> <strong>We expect everything you upload or submit to the Platform to be truthful and accurate.</strong> This applies to all information and content you provide, including your name and contact details, profile information, licences, certifications, insurance and other credential documents, service requests and job descriptions, photos and videos, estimates and prices, invoices, completion records, reviews and ratings, and messages sent through the Platform. You must not submit information or documents that are false, misleading, altered, fabricated, or that misrepresent you, your qualifications, your business, the condition of a property, or the work performed. Other Users and the Company rely on what you upload to make real decisions — hiring a Contractor, approving an estimate, releasing payment, or resolving a claim. The Company may (but is not obligated to) verify any information or document you provide and may request supporting evidence at any time. Submitting false or misleading information or documents is a <strong>material breach</strong> of this Agreement and may result in immediate suspension or termination of your account, removal of content, reversal or withholding of payments connected to the falsified information, and, where appropriate, referral to law enforcement or regulatory authorities.</p>
         </section>
 
         <section style={{ marginBottom:"2.5rem" }}>
-          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>8. Disclaimer of Warranties</h2>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>8. Prohibited Conduct</h2>
+          <p>While using the Platform, you agree that you will not:</p>
+          <ol type="a">
+            <li>Register more than one account, register an account for someone else without authority, or impersonate any person or entity, or otherwise misrepresent your identity or affiliation;</li>
+            <li>Post a service request you do not intend to have completed or pay for, or (as a Contractor) submit a bid or estimate for work you do not intend or are not qualified to perform;</li>
+            <li>Arrange, solicit, or accept payment outside the Platform for services introduced through the Platform, or recruit other Users to competing services;</li>
+            <li>Harass, stalk, threaten, intimidate, or collect personal information about other Users other than as needed to complete a Job;</li>
+            <li>Request, offer, or perform any service that is unlawful or that you have no legal right to request or perform;</li>
+            <li>Scrape, data-mine, reverse engineer, interfere with, or disrupt the Platform, attempt to gain unauthorized access to it, or use it to build a competing product; or</li>
+            <li>Use the Platform for any purpose other than requesting or providing Services as permitted by this Agreement.</li>
+          </ol>
+          <p>Violation of this Section is grounds for suspension or termination of your account, in addition to any other remedy available to the Company.</p>
+        </section>
+
+        <section style={{ marginBottom:"2.5rem" }}>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>9. Disclaimer of Warranties</h2>
           <p>THE PLATFORM IS PROVIDED <strong>&ldquo;AS IS&rdquo;</strong> AND <strong>&ldquo;AS AVAILABLE&rdquo;</strong> WITHOUT WARRANTIES OF ANY KIND. THE COMPANY DOES NOT WARRANT THAT THE PLATFORM WILL BE UNINTERRUPTED OR ERROR-FREE, NOR DOES IT GUARANTEE THE QUALITY, SAFETY, OR LEGALITY OF ANY SERVICES PROVIDED BY CONTRACTORS.</p>
+          <p>References on the Platform to a Contractor being &ldquo;vetted,&rdquo; &ldquo;verified,&rdquo; &ldquo;approved,&rdquo; or similar mean only that the Contractor has completed the Company&rsquo;s review process at the relevant time. They are not a guarantee or endorsement of any Contractor&rsquo;s identity, qualifications, workmanship, or conduct, and you should exercise your own judgment when hiring.</p>
         </section>
 
         <section style={{ marginBottom:"2.5rem" }}>
-          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>9. Limitation of Liability</h2>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>10. Limitation of Liability</h2>
           <p>TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, FREDDY FIXIT CONTRACTORS INC. AND ITS OFFICERS, DIRECTORS, EMPLOYEES, AND AGENTS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, PUNITIVE, OR EXEMPLARY DAMAGES ARISING OUT OF OR RELATED TO YOUR USE OF THE PLATFORM OR ANY SERVICES ARRANGED THROUGH IT.</p>
           <p>THE COMPANY&rsquo;S TOTAL CUMULATIVE LIABILITY SHALL NOT EXCEED THE GREATER OF: (A) THE TOTAL PLATFORM FEES PAID IN CONNECTION WITH YOUR ACCOUNT IN THE PRECEDING 12 MONTHS; OR (B) <strong>ONE HUNDRED CANADIAN DOLLARS ($100 CAD)</strong>.</p>
         </section>
 
         <section style={{ marginBottom:"2.5rem" }}>
-          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>10. Indemnification</h2>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>11. Indemnification</h2>
           <p>You agree to defend, indemnify, and hold harmless Freddy FixIt Contractors Inc. and its officers, directors, employees, and agents from any claims, damages, losses, and expenses (including legal fees) arising from: (a) your use of the Platform; (b) your breach of this Agreement; (c) services you perform or receive through the Platform; (d) your User Content; or (e) your violation of any third-party rights.</p>
         </section>
 
         <section style={{ marginBottom:"2.5rem" }}>
-          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>11. Changes to This Agreement</h2>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>12. Changes to This Agreement</h2>
           <p>We may update this Agreement from time to time. For material changes, we will provide at least <strong>14 days&rsquo; advance notice</strong> by email. Your continued use of the Platform after the effective date constitutes acceptance of the revised Agreement.</p>
         </section>
 
         <section style={{ marginBottom:"2.5rem" }}>
-          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>12. Governing Law</h2>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>13. Governing Law</h2>
           <p>This Agreement is governed by the laws of the <strong>Province of Alberta</strong> and the federal laws of Canada. Any dispute shall be submitted exclusively to the courts of <strong>Calgary, Alberta</strong>.</p>
         </section>
 
         <section style={{ marginBottom:"3rem" }}>
-          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>13. General Provisions</h2>
-          <p><strong>13.1 Entire Agreement.</strong> This Agreement, together with the Privacy Policy, constitutes the entire agreement between you and the Company and supersedes all prior agreements.</p>
-          <p><strong>13.2 Severability.</strong> If any provision is found invalid or unenforceable, the remaining provisions continue in full force.</p>
-          <p><strong>13.3 No Waiver.</strong> The Company&rsquo;s failure to enforce any right shall not constitute a waiver.</p>
-          <p><strong>13.4 Assignment.</strong> You may not assign your rights without prior written consent. The Company may assign its rights freely.</p>
-          <p><strong>13.5 Language.</strong> This Agreement is written in English. In any conflict with a translation, the English version prevails.</p>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>14. General Provisions</h2>
+          <p><strong>14.1 Entire Agreement.</strong> This Agreement, together with the Privacy Policy, constitutes the entire agreement between you and the Company and supersedes all prior agreements.</p>
+          <p><strong>14.2 Severability.</strong> If any provision is found invalid or unenforceable, the remaining provisions continue in full force.</p>
+          <p><strong>14.3 No Waiver.</strong> The Company&rsquo;s failure to enforce any right shall not constitute a waiver.</p>
+          <p><strong>14.4 Assignment.</strong> You may not assign your rights without prior written consent. The Company may assign its rights freely.</p>
+          <p><strong>14.5 Language.</strong> This Agreement is written in English. In any conflict with a translation, the English version prevails.</p>
         </section>
 
         <hr className="divider" />
@@ -184,7 +201,7 @@ export default function UserAgreement() {
         {/* Section 5 */}
         <section style={{ marginBottom:"2.5rem" }}>
           <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>5. Professional Conduct — Things You Must Not Do</h2>
-          <p>In addition to the general Prohibited Conduct in the User Agreement, as a Contractor you specifically agree that you will not:</p>
+          <p>In addition to the general Prohibited Conduct in Section 8 of the User Agreement and the accuracy obligations in Section 7.5, as a Contractor you specifically agree that you will not:</p>
           <ol type="a">
             <li><strong>Misrepresent your qualifications.</strong> Claim to hold any licence, certification, insurance, or credential that you do not currently and validly hold;</li>
             <li><strong>Circumvent the Platform.</strong> Solicit, accept, or arrange payment from a Client outside the Platform for any services introduced through the Platform, whether during or after a Job engagement (see Section 6 for full Non-Circumvention terms);</li>

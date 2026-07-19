@@ -101,6 +101,20 @@ export function SettingsPanel({ role }: { role: Role }) {
           </div>
         </>
       )}
+
+      {/* Support */}
+      <div style={card}>
+        <p style={sectionTitle}>Support</p>
+        <p style={{ fontSize:".88rem", color:"rgb(var(--ff-muted))", margin:"0 0 .8rem", lineHeight:1.5 }}>
+          Found something broken or behaving strangely? Tell us and we'll fix it.
+        </p>
+        <a
+          href={"mailto:hello@freddyfixit.ca?subject=" + encodeURIComponent("🐞 Bug report — Freddy Fix It")}
+          style={{ display:"block", textAlign:"center", padding:".7rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .14)", borderRadius:"10px", color:"var(--ff-text)", fontFamily:"inherit", fontWeight:600, fontSize:".88rem", textDecoration:"none" }}
+        >
+          🐞 Report a bug
+        </a>
+      </div>
     </>
   );
 }

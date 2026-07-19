@@ -12,6 +12,7 @@ import JobTimer from "@/components/JobTimer";
 import JobChecklist from "@/components/JobChecklist";
 import ReportProblem from "@/components/ReportProblem";
 import FileClaimModal, { type ClaimJob } from "@/components/FileClaimModal";
+import RequestHelpModal from "@/components/RequestHelpModal";
 import { jobCode } from "@/lib/jobCode";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
@@ -145,6 +146,7 @@ export default function ClientDashboard() {
   const [reschedNote, setReschedNote] = useState("");
   const [claimOpen, setClaimOpen]   = useState(false);
   const [claimJobs, setClaimJobs]   = useState<ClaimJob[]>([]);
+  const [bugOpen, setBugOpen]       = useState(false);
 
   // "File a claim" (sidebar footer): load every job tied to this client's
   // requests so they can pick which one the claim is about, then hand off to
@@ -758,6 +760,7 @@ export default function ClientDashboard() {
           bell={profile?.id ? <NotificationBell userId={profile.id} dashboardPath="/client-dashboard" /> : undefined}
           actions={[
             { key: "claim",   label: "File a claim", icon: "alert-triangle", onClick: openClaim },
+            { key: "bug",     label: "Report a bug", icon: "message-square", onClick: () => setBugOpen(true) },
             { key: "logout",  label: "Log out",    icon: "door", onClick: handleSignOut, danger: true },
           ] as SidebarAction[]}
         />
@@ -1386,6 +1389,9 @@ export default function ClientDashboard() {
           onClose={() => setClaimOpen(false)}
           onSubmitted={() => notify("Claim submitted — we'll review it.", "ok")}
         />
+      )}
+      {bugOpen && profile && (
+        <RequestHelpModal userId={profile.id} role="client" mode="bug" onClose={() => setBugOpen(false)} />
       )}
       <ConfirmDialog state={confirmState} onClose={(ok) => { confirmState?.resolve(ok); setConfirmState(null); }} />
     </div>

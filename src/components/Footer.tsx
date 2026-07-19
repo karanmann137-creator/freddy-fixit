@@ -113,6 +113,8 @@ export default function Footer() {
       {!onOnboarding && <NewsletterSignup />}
       <div style={{ fontSize: "1rem", fontWeight: 500, color: "rgba(var(--ff-muted), 0.6)", marginBottom: "0.75rem" }}>
         Contact us: <a href="mailto:hello@freddyfixit.ca" style={{ color: "#ea6b14", textDecoration: "none" }}>hello@freddyfixit.ca</a>
+        <span style={{ color: "rgba(var(--ff-muted), 0.35)", margin: "0 .5rem" }}>·</span>
+        <a href={"mailto:hello@freddyfixit.ca?subject=" + encodeURIComponent("🐞 Bug report — Freddy Fix It")} style={{ color: "#ea6b14", textDecoration: "none" }}>Report a bug</a>
       </div>
       <div>Home Repairs · Vehicle Maintenance · Trusted Tradespeople</div>
       {!onOnboarding && <div style={{ marginTop: "0.85rem", fontSize: "0.72rem", maxWidth: "760px", margin: "0.85rem auto 0", lineHeight: 1.9 }}>

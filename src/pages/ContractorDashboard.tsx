@@ -321,6 +321,7 @@ export default function ContractorDashboard() {
 
   const handleSignOut = async () => { await supabase.auth.signOut(); setLocation("/"); };
   const [helpOpen, setHelpOpen] = useState(false);
+  const [bugOpen, setBugOpen] = useState(false);
   // Walkthrough-first flow: free site visit before the priced estimate.
   const [wtForm, setWtForm] = useState({ when:"", note:"" });
   const [wtOpen, setWtOpen] = useState(false);
@@ -778,6 +779,7 @@ export default function ContractorDashboard() {
           bell={profile?.id ? <NotificationBell userId={profile.id} dashboardPath="/contractor-dashboard" /> : undefined}
           actions={[
             { key: "help",     label: "Request help", icon: "message-square", onClick: () => setHelpOpen(true) },
+            { key: "bug",      label: "Report a bug", icon: "alert-triangle", onClick: () => setBugOpen(true) },
             { key: "settings", label: "Settings",   icon: "settings", onClick: () => window.dispatchEvent(new Event("ff:open-settings")) },
             { key: "logout",   label: "Log out",    icon: "door",     onClick: handleSignOut, danger: true },
           ] as SidebarAction[]}
@@ -1751,6 +1753,9 @@ export default function ContractorDashboard() {
       {rewindOpen && <FreddyRewind mode="contractor" onClose={() => setRewindOpen(false)} />}
         {helpOpen && profile && (
           <RequestHelpModal userId={profile.id} onClose={() => setHelpOpen(false)} />
+        )}
+        {bugOpen && profile && (
+          <RequestHelpModal userId={profile.id} role="contractor" mode="bug" onClose={() => setBugOpen(false)} />
         )}
         <ConfirmDialog state={confirmState} onClose={(ok) => { confirmState?.resolve(ok); setConfirmState(null); }} />
     </div>
