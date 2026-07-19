@@ -216,8 +216,8 @@ export default function Home() {
         .ff-logo-mark { width: 80px; height: 80px; margin-bottom: 1.5rem; filter: drop-shadow(0 0 18px rgba(234,107,20,0.6)); }
         .ff-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(3.5rem, 10vw, 6rem); letter-spacing: 0.08em; line-height: 0.9; text-align: center; margin: 0 0 0.5rem; color: var(--ff-text); text-shadow: 0 0 40px rgba(234,107,20,0.3); }
         .ff-title span { color: #ea6b14; text-shadow: 0 0 30px rgba(234,107,20,0.7), 0 0 60px rgba(234,107,20,0.3); }
-        .ff-tagline { font-size: 1rem; font-weight: 300; color: rgba(var(--ff-muted), 0.75); text-align: center; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 3rem; }
-        .ff-divider { width: 48px; height: 2px; background: linear-gradient(90deg, transparent, #ea6b14, transparent); margin: 0 auto 3rem; }
+        .ff-tagline { font-size: 1rem; font-weight: 300; color: rgba(var(--ff-muted), 0.75); text-align: center; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 1.5rem; }
+        .ff-divider { width: 48px; height: 2px; background: linear-gradient(90deg, transparent, #ea6b14, transparent); margin: 0 auto 1.5rem; }
         /* Hero CTAs: one big client button, one much smaller contractor button below. */
         .ff-cta-main { display: block; width: 100%; max-width: 420px; padding: 1.15rem 2rem; background: #ea6b14; color: #fff;
           border: none; border-radius: 14px; font-family: 'Bebas Neue', sans-serif; font-size: 1.65rem; letter-spacing: 0.07em;
@@ -337,27 +337,16 @@ export default function Home() {
           </motion.h1>
 
           <motion.p className="ff-tagline" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.35 }}>
-            Vetted Handymen & Trades — On Demand
+            Free Estimates — No Signup
           </motion.p>
 
           <div className="ff-divider" />
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.4 }}
-            style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:".7rem", marginBottom:"1.7rem" }}>
+            style={{ display:"flex", justifyContent:"center", marginBottom:"1.4rem" }}>
             <span style={{ display:"inline-flex", alignItems:"center", gap:".45rem", fontSize:"1rem", fontWeight:500, color:"rgba(var(--ff-fg), .9)" }}>
-              <Ic name="clipboard-list" size={17} color="#ea6b14" />Free estimate — no signup
+              <Ic name="user-check" size={17} color="#ea6b14" />Vetted Handymen & Trades — On Demand
             </span>
-            <div style={{ display:"flex", flexWrap:"wrap", justifyContent:"center", gap:".45rem 1.4rem", maxWidth:"560px" }}>
-              {[
-                { icon:"user-check", label:"Vetted, licensed & insured" },
-                { icon:"dollar", label:"Payment held until you confirm" },
-                { icon:"map-pin", label:"Calgary local" },
-              ].map((t) => (
-                <span key={t.label} style={{ display:"inline-flex", alignItems:"center", gap:".4rem", fontSize:".78rem", fontWeight:300, letterSpacing:".01em", color:"rgba(var(--ff-muted), .62)" }}>
-                  <Ic name={t.icon as any} size={14} color="#ea6b14" />{t.label}
-                </span>
-              ))}
-            </div>
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.45 }}
             style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:".9rem" }}>
