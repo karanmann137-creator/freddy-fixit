@@ -212,17 +212,7 @@ export default function Home() {
           -webkit-mask-image: radial-gradient(circle at 50% 35%, #000 30%, transparent 82%);
                   mask-image: radial-gradient(circle at 50% 35%, #000 30%, transparent 82%);
         }
-        /* soft out-of-focus bokeh dots in the lower half */
-        .ff-hero::after {
-          content: ''; position: absolute; inset: 0; pointer-events: none;
-          background-image:
-            radial-gradient(circle at 24% 90%, rgba(245,210,150,0.18) 0%, transparent 4%),
-            radial-gradient(circle at 47% 97%, rgba(245,210,150,0.14) 0%, transparent 3%),
-            radial-gradient(circle at 63% 82%, rgba(245,210,150,0.16) 0%, transparent 5%),
-            radial-gradient(circle at 81% 78%, rgba(245,210,150,0.13) 0%, transparent 3.5%),
-            radial-gradient(circle at 35% 84%, rgba(245,210,150,0.12) 0%, transparent 2.5%);
-        }
-        /* scattered, faint trade icons hinting at the jobs we do */
+                /* scattered, faint trade icons hinting at the jobs we do */
         .ff-hero-icons { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
         .ff-hero-icons span { position: absolute; color: #ea6b14; opacity: 0.07; }
         .ff-hero-icons span svg { display: block; }
@@ -367,11 +357,16 @@ export default function Home() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.45 }}
             style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:".9rem" }}>
             <button className="ff-cta-main" onClick={() => setLocation("/client-onboarding")}>
-              Freddy's 5 Free Estimates →
+              Get 5 Free Estimates →
             </button>
             <button className="ff-cta-sub" onClick={() => setLocation("/contractor-onboarding")}>
               <Ic name="wrench" size={13} color="#ea6b14" style={{ marginRight:6, verticalAlign:"-2px" }} />Join Freddy's Team
             </button>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", flexWrap:"wrap" as const, gap:".4rem", fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", textAlign:"center" as const }}>
+              <Ic name="user-check" size={13} color="#ea6b14" /> Licensed &amp; insured
+              <span style={{ opacity:.5 }}>·</span> WCB covered
+              <span style={{ opacity:.5 }}>·</span> Payment held until you approve
+            </div>
           </motion.div>
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.55 }}
@@ -481,7 +476,7 @@ export default function Home() {
               <strong>compare estimates without calling.</strong>
             </p>
             <p className="ff-about-tagline">
-              Power-packed maintenance & repair solutions and on-site services that dominate deadlines and crush downtime.
+              Honest local pros, fair prices, and work you can count on.
             </p>
           </motion.div>
           <motion.div className="ff-stats" initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7, delay: 0.2 }}>
@@ -549,7 +544,7 @@ export default function Home() {
                     <div style={{ minWidth:0 }}>
                       <div style={{ fontSize:".98rem", fontWeight:600, color:"var(--ff-text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{p.company_name || p.first_name || "Vetted pro"}</div>
                       <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", marginTop:".15rem" }}>
-                        {p.rating ? "⭐ " + Number(p.rating).toFixed(1) : "Vetted & approved"}
+                        {p.rating ? "⭐ " + Number(p.rating).toFixed(1) + "/10" : "Vetted & approved"}
                         {Number(p.total_jobs) > 0 ? " · " + p.total_jobs + " job" + (Number(p.total_jobs) === 1 ? "" : "s") + " done" : ""}
                       </div>
                       {Array.isArray(p.specialties) && p.specialties.length > 0 && (
