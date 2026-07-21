@@ -37,7 +37,7 @@ export default function TopNav() {
       setUid(userId);
       if (!userId) { setAuthed(false); setRole(null); return; }
       setAuthed(true);
-      const { data } = await supabase.from("profiles").select("role").eq("id", userId).single();
+      const { data } = await supabase.from("profiles").select("role").eq("id", userId).maybeSingle();
       setRole(data?.role ?? null);
     };
     supabase.auth.getUser().then(({ data }) => sync(data.user?.id ?? null));

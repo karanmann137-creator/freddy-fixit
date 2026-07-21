@@ -91,7 +91,7 @@ function ArticleComparison() {
       <p><strong>Protection if something goes wrong.</strong> Check whether the platform offers any recourse, guarantee, or support if a job doesn't go as planned.</p>
 
       <h2>How Freddy Fix It Works</h2>
-      <p>Freddy Fix It is built specifically for Calgary. Every contractor must submit their trade licence and proof of insurance before they can accept a job. You post once, receive up to seven fixed-price bids from vetted contractors, and reviews are only unlocked after a job is completed and confirmed by both parties. We also offer recurring and seasonal scheduling for ongoing maintenance.</p>
+      <p>Freddy Fix It is built specifically for Calgary. Every contractor must submit their trade licence and proof of insurance before they can accept a job. You post once, receive up to five fixed-price bids from vetted contractors, and reviews are only unlocked after a job is completed and confirmed by both parties. We also offer recurring and seasonal scheduling for ongoing maintenance.</p>
       <p>Whichever platform you choose, the same fundamentals protect you: hire licensed, insured contractors, get the price in writing first, and keep records of the work.</p>
 
       <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
@@ -137,7 +137,7 @@ function ArticlePricing() {
       <p>Calgary's strong economy and competitive labour market push contractor rates above national averages. The city also has strict building code enforcement, which means licensed trades command a premium — and you should be wary of bids that seem unusually low. Unlicensed or unpermitted work can create insurance and resale complications down the road, so it's worth confirming a contractor's credentials before hiring.</p>
 
       <h2>How to Know If You're Getting a Fair Price</h2>
-      <p>On Freddy Fix It, you receive up to 7 bids from vetted contractors before committing. This gives you real market data for your specific job — not just estimates pulled from the internet. All bids are fixed-price: no surprise invoices at the end.</p>
+      <p>On Freddy Fix It, you receive up to 5 bids from vetted contractors before committing. This gives you real market data for your specific job — not just estimates pulled from the internet. All bids are fixed-price: no surprise invoices at the end.</p>
     </article>
   );
 }
@@ -234,7 +234,7 @@ function ArticlePlumberCost() {
       <p>Be cautious of any plumber who gives you a rock-bottom estimate over the phone without seeing the job, asks for full payment upfront, or can't provide a trade licence number. All plumbers on Freddy Fix It are licensed and insured — you get a fixed-price estimate before anyone touches your pipes.</p>
 
       <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
-        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Need a plumber in Calgary? Get 7 fixed-price estimates from licensed pros.</p>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Need a plumber in Calgary? Get 5 fixed-price estimates from licensed pros.</p>
         <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>

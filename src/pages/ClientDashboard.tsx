@@ -93,7 +93,11 @@ function calcJobScore(r: any): { score: number; max: number; label: string; colo
 const STATUS_META: Record<string, { icon: string; label: string; color: string }> = {
   pending:     { icon: "clock", label: "Pending Review",     color: "#f59e0b" },
   matched:     { icon: "link", label: "Contractor Matched", color: "#3b82f6" },
+  assigned:    { icon: "user-check", label: "Contractor Assigned", color: "#3b82f6" },
+  scheduled:   { icon: "calendar", label: "Scheduled",          color: "#3b82f6" },
   in_progress: { icon: "wrench", label: "Work In Progress",   color: "#ea6b14" },
+  pending_confirmation: { icon: "clock", label: "Awaiting Your Confirmation", color: "#f59e0b" },
+  disputed:    { icon: "alert-triangle", label: "Under Review", color: "#ef4444" },
   completed:   { icon: "check-circle", label: "Completed",          color: "#22c55e" },
   cancelled:   { icon: "x-circle", label: "Cancelled",          color: "#ef4444" },
 };

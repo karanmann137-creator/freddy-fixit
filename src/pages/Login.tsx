@@ -38,7 +38,7 @@ export default function Login() {
     try {
       const { data, error: authErr } = await supabase.auth.signInWithPassword({ email, password });
       if (authErr) throw authErr;
-      const { data: profile } = await supabase.from("profiles").select("role").eq("id", data.user.id).single();
+      const { data: profile } = await supabase.from("profiles").select("role").eq("id", data.user.id).maybeSingle();
       if (profile?.role === "admin")           setLocation("/admin-dashboard");
       else if (profile?.role === "contractor") setLocation("/contractor-dashboard");
       else                                     setLocation("/client-dashboard");
