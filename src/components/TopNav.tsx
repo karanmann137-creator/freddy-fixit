@@ -204,7 +204,6 @@ const wrap: React.CSSProperties = {
 const brand: React.CSSProperties = {
   fontFamily: "'Bebas Neue', sans-serif", fontSize: "1.75rem", letterSpacing: ".04em",
   color: "#ea6b14", cursor: "pointer", lineHeight: 1, userSelect: "none",
-  textShadow: "0 0 18px rgba(234,107,20,.4)",
 };
 const right: React.CSSProperties = { display: "flex", gap: ".6rem", alignItems: "center" };
 const btn: React.CSSProperties = {

@@ -131,6 +131,12 @@ const FAQS = [
   { q:"I'm a contractor — how do I join, and what does it cost?", a:"Signing up is free, with no monthly charges and no upfront cost. We take a small service fee from completed jobs. Once you're approved, you'll be notified about nearby jobs that match your trade, bid or get assigned, agree on price and timing, and get paid when the work's done." },
 ];
 
+const SHOW_PRO_IDS = [
+  "61fbcfd2-d0cc-4c04-94f8-c4d0bc4b70fb", // FREDDYFIXIT
+  "58ac39b5-fa19-4629-9fb7-2d97262e6c99", // Iron peak group
+  "23d832ce-656a-4b0c-99cc-e7ce42aa4327", // Phase Canada Inc
+];
+
 export default function Home() {
   const [, setLocation] = useLocation();
   const [reviews, setReviews] = useState<HomeReview[]>([]);
@@ -149,7 +155,16 @@ export default function Home() {
           supabase.rpc("get_top_pros", { p_limit: 6 }),
         ]);
         if (alive && Array.isArray(data)) setReviews(data as HomeReview[]);
-        if (alive && Array.isArray(pros)) setTopPros(pros);
+        if (alive && Array.isArray(pros)) {
+          // Hand-picked homepage pros (owner request 2026-07-20): FreddyFixIt + two
+          // established companies only. Referenced by id — never by client PII.
+          const order = SHOW_PRO_IDS;
+          setTopPros(
+            pros
+              .filter((p: any) => order.includes(p.contractor_id))
+              .sort((a: any, b: any) => order.indexOf(a.contractor_id) - order.indexOf(b.contractor_id))
+          );
+        }
       } catch {
         /* non-blocking: homepage renders fine without reviews */
       }
@@ -173,7 +188,7 @@ export default function Home() {
   };
 
   return (
-    <div style={{ fontFamily:"'DM Sans', sans-serif", background:"var(--ff-bg)", color:"var(--ff-text)" }}>
+    <div style={{ fontFamily:"'DM Sans', sans-serif", background:"var(--ff-bg)", color:"var(--ff-text)", overflowX:"clip" as const }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -214,8 +229,8 @@ export default function Home() {
         @media (max-width: 600px) { .ff-hero-icons span.ff-hi-hide { display: none; } }
         .ff-inner { max-width: 680px; width: 100%; position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; }
         .ff-logo-mark { width: 80px; height: 80px; margin-bottom: 1.5rem; filter: drop-shadow(0 0 18px rgba(234,107,20,0.6)); }
-        .ff-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(3.5rem, 10vw, 6rem); letter-spacing: 0.08em; line-height: 0.9; text-align: center; margin: 0 0 0.5rem; color: var(--ff-text); text-shadow: 0 0 40px rgba(234,107,20,0.3); }
-        .ff-title span { color: #ea6b14; text-shadow: 0 0 30px rgba(234,107,20,0.7), 0 0 60px rgba(234,107,20,0.3); }
+        .ff-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(3.5rem, 10vw, 6rem); letter-spacing: 0.08em; line-height: 0.9; text-align: center; margin: 0 0 0.5rem; color: var(--ff-text); }
+        .ff-title span { color: #ea6b14; }
         .ff-tagline { font-size: 1rem; font-weight: 300; color: rgba(var(--ff-muted), 0.75); text-align: center; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 1.5rem; }
         .ff-divider { width: 48px; height: 2px; background: linear-gradient(90deg, transparent, #ea6b14, transparent); margin: 0 auto 1.5rem; }
         /* Hero CTAs: one big client button, one much smaller contractor button below. */
@@ -288,8 +303,9 @@ export default function Home() {
         .ff-stat-label { font-size: 0.82rem; color: rgba(var(--ff-muted), 0.5); font-weight: 300; line-height: 1.4; }
 
         /* ── Reviews ── */
-        .ff-reviews-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
-        @media (max-width: 760px) { .ff-reviews-grid { grid-template-columns: 1fr; } }
+        .ff-reviews-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; }
+        @media (max-width: 760px) { .ff-reviews-grid { grid-template-columns: minmax(0, 1fr); } }
+        .ff-reviews-grid > div { min-width: 0; }
 
         /* ── Before / After ── */
         .ff-ba-tabs { display: flex; justify-content: center; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
