@@ -53,7 +53,7 @@ function suggestStages(total: number) {
   });
 }
 
-export default function MilestonePanel({ job, role, onUpdated }: { job: any; role: Role; onUpdated?: () => void }) {
+export default function MilestonePanel({ job, role, onUpdated, contractBlocked = false }: { job: any; role: Role; onUpdated?: () => void; contractBlocked?: boolean }) {
   const total = Number(job?.amount ?? 0);
   const [milestones, setMilestones] = useState<Milestone[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -308,7 +308,10 @@ export default function MilestonePanel({ job, role, onUpdated }: { job: any; rol
                   {m.status === "pending" && isNextToFund && (
                     <div style={{ marginTop: ".5rem" }}>
                       <div style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .75)", marginBottom: ".4rem" }}>Pay {money(m.amount)} + {Math.round(feeRate * 1000) / 10}% service fee ({money(m.amount * feeRate)}) = <strong>{money(m.amount * (1 + feeRate))}</strong>. Held safely until you approve this stage.</div>
-                      <button style={{ ...btnPrimary, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => fund(m)}>{busy ? "Opening checkout…" : "Fund this stage"}</button>
+                      {contractBlocked && (
+                        <div style={{ display: "flex", alignItems: "center", gap: ".35rem", fontSize: ".76rem", color: "#f59e0b", marginBottom: ".4rem" }}><Ic name="alert-triangle" size={14} />Please sign the service agreement above before funding this stage.</div>
+                      )}
+                      <button style={{ ...btnPrimary, opacity: (busy || contractBlocked) ? .6 : 1 }} disabled={busy || contractBlocked} onClick={() => fund(m)}>{busy ? "Opening checkout…" : "Fund this stage"}</button>
                     </div>
                   )}
                   {m.status === "pending" && !isNextToFund && (

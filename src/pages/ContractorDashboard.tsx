@@ -61,6 +61,7 @@ const contractorMissing = (c: any): string[] => {
 };
 import FreddyRewind from "@/components/FreddyRewind";
 import MilestonePanel from "@/components/MilestonePanel";
+import ContractPanel from "@/components/ContractPanel";
 import { useServicePricing, rangeText, money, type ServicePrice } from "@/lib/servicePricing";
 import { freqLabel } from "@/lib/recurrence";
 import { respShort } from "@/lib/respTime";
@@ -1018,6 +1019,8 @@ export default function ContractorDashboard() {
                 {activeJobId === job.id && (
                   <div onClick={e => e.stopPropagation()} style={{ marginTop:"1rem", borderTop:"1px solid rgba(var(--ff-fg), .07)", paddingTop:"1rem" }}>
                     <RequestPhotoQuote requestId={job.request_id} photoPath={job.request?.photo_path} estimatedQuote={job.request?.estimated_quote} quoteNotes={job.request?.quote_notes} canQuote />
+
+                    <ContractPanel role="contractor" job={job} />
 
                     {Number(job.amount) > 2000 && <MilestonePanel role="contractor" job={job} />}
 

@@ -45,6 +45,23 @@ Deno.serve(async (req) => {
     if (job.payment_status === "held" || job.payment_status === "released")
       return json({ error: "This job is already paid" }, 409);
 
+    // Every job requires a signed service agreement before any money is collected.
+    // Fail-CLOSED: if we can't confirm the agreement is signed (unsigned OR a check
+    // error), block checkout and ask the client to refresh — never charge for a job
+    // that isn't legally bound by a signed contract.
+    try {
+      const { data: needs, error: needErr } = await admin.rpc("contract_required", { p_job_id: job.id });
+      if (needErr) throw needErr;
+      if (needs === true) {
+        const { data: signed, error: signErr } = await admin.rpc("contract_signed", { p_job_id: job.id });
+        if (signErr) throw signErr;
+        if (signed !== true)
+          return json({ error: "Please sign the service agreement for this job before paying." }, 428);
+      }
+    } catch (_) {
+      return json({ error: "We couldn't verify the signed service agreement for this job. Please refresh the page and try again." }, 428);
+    }
+
     const amount = Number(job.amount);
     // Standard 3% service fee — waived on a referred client's FIRST job.
     // Eligibility is checked read-only here; stripe-webhook consumes the reward

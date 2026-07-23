@@ -51,6 +51,23 @@ Deno.serve(async (req) => {
     if (m.status !== "pending")
       return json({ error: "This stage is already funded" }, 409);
 
+    // Milestone jobs require a signed service agreement before any stage is
+    // funded. Fail-open: a check error never blocks funding.
+    // Every job requires a signed service agreement before any money is collected.
+    // Fail-CLOSED: unsigned OR a check error blocks funding and asks for a refresh.
+    try {
+      const { data: needs, error: needErr } = await admin.rpc("contract_required", { p_job_id: job.id });
+      if (needErr) throw needErr;
+      if (needs === true) {
+        const { data: signed, error: signErr } = await admin.rpc("contract_signed", { p_job_id: job.id });
+        if (signErr) throw signErr;
+        if (signed !== true)
+          return json({ error: "Please sign the service agreement for this job before funding a stage." }, 428);
+      }
+    } catch (_) {
+      return json({ error: "We couldn't verify the signed service agreement for this job. Please refresh the page and try again." }, 428);
+    }
+
     // A disputed stage pauses the whole schedule.
     const { data: disputed } = await admin.from("job_milestones")
       .select("id").eq("job_id", m.job_id).eq("status", "disputed").limit(1);

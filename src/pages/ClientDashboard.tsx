@@ -8,6 +8,7 @@ import ProfileBar from "@/components/ProfileBar";
 import JobChat from "@/components/JobChat";
 import JobTimeline from "@/components/JobTimeline";
 import MilestonePanel from "@/components/MilestonePanel";
+import ContractPanel from "@/components/ContractPanel";
 import JobTimer from "@/components/JobTimer";
 import JobChecklist from "@/components/JobChecklist";
 import ReportProblem from "@/components/ReportProblem";
@@ -125,6 +126,8 @@ export default function ClientDashboard() {
   const [busyPay, setBusyPay] = useState(false);
   const [feeRate, setFeeRate] = useState(0.03); // base service-fee rate; loaded from platform_fee_rate() so it matches what Stripe charges
   const [waivedForJob, setWaivedForJob] = useState<string|null>(null); // job whose 3% fee a referral waives
+  const [contractBlocked, setContractBlocked] = useState(false); // contract-required job not yet signed → block payment
+  const [contractCheckError, setContractCheckError] = useState(false); // couldn't verify the signature → fail closed, ask to refresh
   const [loadError, setLoadError] = useState(false);
   const [selectedReqId, setSelectedReqId] = useState<string|null>(null);
   const [histFilter, setHistFilter] = useState<"all"|"active"|"completed"|"cancelled">("all");
@@ -257,6 +260,18 @@ export default function ClientDashboard() {
       setContractor(con ?? null);
       setActiveJob(job ?? null);
       setSelAddons([]); // fresh add-on selection per job
+      // Contract gate: EVERY job needs a service agreement signed by both parties
+      // before any payment. Fail CLOSED — if we can't confirm it's signed, stay
+      // blocked and ask the client to refresh rather than let an unsigned job pay.
+      if (job) {
+        setContractBlocked(true); // assume blocked until we confirm it's signed
+        setContractCheckError(false);
+        supabase.rpc("contract_signed", { p_job_id: job.id }).then(({ data, error }) => {
+          if (cancelled) return;
+          if (error) { setContractBlocked(true); setContractCheckError(true); }
+          else { setContractBlocked(data !== true); setContractCheckError(false); }
+        }, () => { if (!cancelled) { setContractBlocked(true); setContractCheckError(true); } });
+      } else if (!cancelled) { setContractBlocked(false); setContractCheckError(false); }
       // Referral perk: the 3% service fee is waived on a referred client's first
       // job. Check the specific job so the displayed total matches what Stripe charges.
       if (job && job.payment_status !== "released" && job.total_charged == null) {
@@ -501,6 +516,7 @@ export default function ClientDashboard() {
   }
   const payForJob = async () => {
     if (!activeJob) return;
+    if (contractBlocked) { notify(contractCheckError ? "We couldn't verify the service agreement. Please refresh the page and try again." : "Please sign the service agreement above before paying for this job."); return; }
     if (!(await askConfirm({
       title: "Pay " + "$" + jobTotal(activeJob).toFixed(2) + "?",
       message: "You'll be taken to a secure checkout. Your payment is held safely and only released to the contractor after you confirm the work is done.",
@@ -1043,8 +1059,12 @@ export default function ClientDashboard() {
                       </div>
                     )}
 
+                    {activeJob && (
+                      <ContractPanel role="client" job={activeJob} />
+                    )}
+
                     {activeJob && activeJob.is_milestone && (
-                      <MilestonePanel role="client" job={activeJob} />
+                      <MilestonePanel role="client" job={activeJob} contractBlocked={contractBlocked} />
                     )}
 
                     {activeJob && activeJob.payment_status === "disputed" && (
@@ -1194,7 +1214,8 @@ export default function ClientDashboard() {
                                   <div style={{ fontSize:".82rem", color:"var(--ff-danger)", marginBottom:".6rem", lineHeight:1.5 }}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />Your last payment didn't go through. No charge was made — please try again below.</div>
                                 )}
                                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".6rem", lineHeight:1.5 }}>Pay now to secure the job. Your money is <strong>held safely</strong> and only released to the contractor after you confirm the work is done. {feeText(activeJob)}</div>
-                                <button style={s.primaryBtn} disabled={busyPay} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " (held until you confirm)"}</button>
+                                {contractBlocked && <div style={{ fontSize:".82rem", color:"var(--ff-warn)", marginBottom:".6rem", lineHeight:1.5 }}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />{contractCheckError ? "We couldn't verify the service agreement. Please refresh the page and try again." : "Please sign the service agreement above before paying for this job."}</div>}
+                                <button style={s.primaryBtn} disabled={busyPay || contractBlocked} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " (held until you confirm)"}</button>
                               </>
                             ) : null}
                           </>
@@ -1219,7 +1240,8 @@ export default function ClientDashboard() {
                             ) : activeJob.amount ? (
                               <>
                                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".6rem", lineHeight:1.5 }}>Pay for the job, then confirm. Your payment is held and only released to the contractor once you confirm. {feeText(activeJob)}</div>
-                                <button style={s.primaryBtn} disabled={busyPay} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " now"}</button>
+                                {contractBlocked && <div style={{ fontSize:".82rem", color:"var(--ff-warn)", marginBottom:".6rem", lineHeight:1.5 }}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />{contractCheckError ? "We couldn't verify the service agreement. Please refresh the page and try again." : "Please sign the service agreement above before paying for this job."}</div>}
+                                <button style={s.primaryBtn} disabled={busyPay || contractBlocked} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " now"}</button>
                               </>
                             ) : (
                               <>

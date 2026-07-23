@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import ProfileBar from "@/components/ProfileBar";
 import MilestonePanel from "@/components/MilestonePanel";
+import ContractPanel from "@/components/ContractPanel";
 import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/components/DashboardSidebar";
 import NotificationBell from "@/components/NotificationBell";
 import AdminMessageModal, { type MsgRecipient } from "@/components/AdminMessageModal";
@@ -616,6 +617,7 @@ export default function AdminDashboard() {
                 <div style={s.meta}>Status: {j.status}</div>
                 {j.amount && <div style={s.meta}>Amount: ${j.amount}</div>}
                 {j.scheduled_at && <div style={s.meta}>Date: {new Date(j.scheduled_at).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" })}</div>}
+                <ContractPanel role="admin" job={j} />
                 {j.is_milestone && <MilestonePanel role="admin" job={j} />}
                 <div style={{ marginTop:".75rem" }}>
                   <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJob === j.id} onClick={() => deleteJob(j)}><Ic name="trash" size={13} style={{ marginRight:4 }} />{busyJob === j.id ? "Deleting…" : "Delete job"}</button>

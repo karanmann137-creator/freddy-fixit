@@ -47,6 +47,28 @@ Deno.serve(async (req) => {
     if (plan.user_id !== user.id) return json({ error: "Not your plan" }, 403);
     if (!plan.recurring) return json({ error: "That request is not a recurring plan" }, 409);
 
+    // Recurring plans require a signed service agreement on the plan's job before
+    // any money is collected. Fail-CLOSED: unsigned, a check error, or an
+    // unresolvable job all block the pre-payment and ask the client to refresh.
+    try {
+      const { data: pj, error: pjErr } = await admin.from("jobs")
+        .select("id").eq("request_id", plan_request_id)
+        .order("created_at", { ascending: true }).limit(1);
+      if (pjErr) throw pjErr;
+      const jobId = Array.isArray(pj) && pj[0]?.id ? pj[0].id : null;
+      if (!jobId) throw new Error("no job for plan");
+      const { data: needs, error: needErr } = await admin.rpc("contract_required", { p_job_id: jobId });
+      if (needErr) throw needErr;
+      if (needs === true) {
+        const { data: signed, error: signErr } = await admin.rpc("contract_signed", { p_job_id: jobId });
+        if (signErr) throw signErr;
+        if (signed !== true)
+          return json({ error: "Please sign the service agreement for this plan before prepaying." }, 428);
+      }
+    } catch (_) {
+      return json({ error: "We couldn't verify the signed service agreement for this plan. Please refresh the page and try again." }, 428);
+    }
+
     // Don't stack pools: refuse if an active (held/pending) pool already exists.
     const { data: existing } = await admin.from("recurring_prepayments")
       .select("id").eq("plan_request_id", plan_request_id)
