@@ -61,7 +61,6 @@ const contractorMissing = (c: any): string[] => {
 };
 import FreddyRewind from "@/components/FreddyRewind";
 import MilestonePanel from "@/components/MilestonePanel";
-import ContractPanel from "@/components/ContractPanel";
 import { useServicePricing, rangeText, money, type ServicePrice } from "@/lib/servicePricing";
 import { freqLabel } from "@/lib/recurrence";
 import { respShort } from "@/lib/respTime";
@@ -401,6 +400,10 @@ export default function ContractorDashboard() {
     if (error) { notify("Couldn't send proposal: " + error.message); return; }
     setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, scheduled_at: whenIso, amount: ptotal != null ? ptotal : j.amount, labour_amount: proposeForm.labour ? Number(proposeForm.labour) : null, parts_amount: proposeForm.parts ? Number(proposeForm.parts) : null, callout_fee: proposeForm.callout ? Number(proposeForm.callout) : null, subject_to_inspection: !!proposeForm.subject, quote_items: quoteItems ? quoteItems.map(i => ({ ...i, optional: true, accepted: null })) : null, schedule_proposed_at: new Date().toISOString(), client_approved_at: null } : j));
   };
+  // Tap-to-navigate: opens the job address in Google Maps (app on mobile, web on desktop).
+  const mapsUrl = (addr: string) =>
+    "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(addr);
+
   const onMyWay = async (job: any) => {
     setBusyJobId(job.id);
     const { error } = await supabase.rpc("contractor_on_my_way", { p_job_id: job.id });
@@ -1009,7 +1012,12 @@ export default function ContractorDashboard() {
                     <div style={{ fontSize:"1rem", fontWeight:500, marginBottom:".2rem" }}>{job.request?.service_needed ?? "Job"}</div>
                     <div style={{ fontSize:".72rem", fontFamily:"monospace", color:"#ea6b14", marginBottom:".3rem" }}>{jobCode(job.id)}</div>
                     <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", marginBottom:".2rem" }}><Ic name="user" size={13} style={{ marginRight:4 }} />{job.client?.first_name || "Your client"}</div>
-                    <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .5)" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{job.request?.location}</div>
+                    {job.request?.location && (
+                      <a href={mapsUrl(job.request.location)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                        style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .65)", textDecoration:"underline", textUnderlineOffset:"3px" }}>
+                        <Ic name="map-pin" size={13} color="#ea6b14" style={{ marginRight:4 }} />{job.request.location}
+                      </a>
+                    )}
                   </div>
                   <div style={{ textAlign:"right" }}>
                     <div style={{ fontSize:".78rem", fontWeight:500, color: STATUS_COLORS[job.status] ?? "#94a3b8" }}>● {job.status.replace("_"," ")}</div>
@@ -1019,8 +1027,6 @@ export default function ContractorDashboard() {
                 {activeJobId === job.id && (
                   <div onClick={e => e.stopPropagation()} style={{ marginTop:"1rem", borderTop:"1px solid rgba(var(--ff-fg), .07)", paddingTop:"1rem" }}>
                     <RequestPhotoQuote requestId={job.request_id} photoPath={job.request?.photo_path} estimatedQuote={job.request?.estimated_quote} quoteNotes={job.request?.quote_notes} canQuote />
-
-                    <ContractPanel role="contractor" job={job} />
 
                     {Number(job.amount) > 2000 && <MilestonePanel role="contractor" job={job} />}
 
@@ -1194,11 +1200,29 @@ export default function ContractorDashboard() {
                           <JobChecklist job={job} role="contractor" onError={m => notify(m)} />
                           <JobExpenses jobId={job.id} items={expenses.filter(e => e.job_id === job.id)} jobAmount={job.amount}
                             onAdd={r => setExpenses(p => [r, ...p])} onDelete={id => setExpenses(p => p.filter(e => e.id !== id))} onError={m => notify(m)} />
-                          {job.on_my_way_at ? (
-                            <div style={{ fontSize:".82rem", color:"var(--ff-success)" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />You let the client know you're on the way.</div>
-                          ) : (
-                            <button style={{ ...s.btn, color:"var(--ff-text)", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.12)", alignSelf:"flex-start" }} disabled={busyJobId === job.id} onClick={() => onMyWay(job)}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{busyJobId === job.id ?"…" : "I'm on my way"}</button>
-                          )}
+                          {/* Heading out: tappable map + on-my-way, side by side */}
+                          <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const, alignItems:"stretch" }}>
+                            {job.request?.location && (
+                              <a href={mapsUrl(job.request.location)} target="_blank" rel="noopener noreferrer"
+                                style={{ flex:"1 1 230px", minWidth:0, display:"flex", alignItems:"center", gap:".65rem", padding:".75rem .9rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .05)", border:"1px solid rgba(var(--ff-fg), .12)", textDecoration:"none" }}>
+                                <Ic name="map-pin" size={20} color="#ea6b14" style={{ flexShrink:0 }} />
+                                <div style={{ minWidth:0 }}>
+                                  <div style={{ fontSize:".66rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .5)", marginBottom:".15rem" }}>Job location — tap for directions</div>
+                                  <div style={{ fontSize:".86rem", fontWeight:600, color:"var(--ff-text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{job.request.location}</div>
+                                </div>
+                              </a>
+                            )}
+                            {job.on_my_way_at ? (
+                              <div style={{ flex:"1 1 190px", display:"flex", alignItems:"center", justifyContent:"center", gap:".45rem", padding:".75rem .9rem", borderRadius:"12px", background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.35)", fontSize:".84rem", color:"var(--ff-success)", fontWeight:600, textAlign:"center" as const }}>
+                                <Ic name="check-circle" size={16} color="#22c55e" style={{ flexShrink:0 }} />Client knows you're on the way
+                              </div>
+                            ) : (
+                              <button disabled={busyJobId === job.id} onClick={() => onMyWay(job)}
+                                style={{ flex:"1 1 190px", padding:".75rem 1.1rem", borderRadius:"12px", border:"none", background:"#ea6b14", color:"#fff", fontFamily:"inherit", fontSize:".95rem", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:".45rem" }}>
+                                <Ic name="map-pin" size={17} color="#fff" style={{ flexShrink:0 }} />{busyJobId === job.id ? "Sending…" : "I'm on my way"}
+                              </button>
+                            )}
+                          </div>
                           {!job.is_milestone && (
                           <div>
                             <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".25rem" }}>Completion photo (optional)</div>

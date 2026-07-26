@@ -367,6 +367,9 @@ export default function Home() {
               <span style={{ opacity:.5 }}>·</span> WCB covered
               <span style={{ opacity:.5 }}>·</span> Payment held until you approve
             </div>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:".4rem", fontSize:".82rem", color:"rgba(var(--ff-fg), .85)", fontWeight:500 }}>
+              <Ic name="sparkles" size={14} color="#ea6b14" /> Have AI match you to your ideal contractor
+            </div>
           </motion.div>
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.55 }}

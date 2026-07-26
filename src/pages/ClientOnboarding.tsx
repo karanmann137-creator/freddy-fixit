@@ -374,6 +374,7 @@ export default function ClientOnboarding() {
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Password (for your account)</label>
                 <input autoComplete="new-password" style={{ ...inp, borderColor: errors.password ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="password" placeholder="Min 8 characters" value={form.password} onChange={e => set("password",e.target.value)} />
+                <p style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .55)", margin:".3rem 0 0", lineHeight:1.4 }}>At least 8 characters. A mix of letters, numbers and symbols is strongest.</p>
                 {errors.password && <p id="co-err-password" style={s.err}>{errors.password}</p>}
               </div>
               <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", margin:"1.5rem 0 .5rem", padding:"1rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
