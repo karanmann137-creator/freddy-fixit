@@ -8,7 +8,6 @@ import ProfileBar from "@/components/ProfileBar";
 import JobChat from "@/components/JobChat";
 import JobTimeline from "@/components/JobTimeline";
 import MilestonePanel from "@/components/MilestonePanel";
-import ContractPanel from "@/components/ContractPanel";
 import JobTimer from "@/components/JobTimer";
 import JobChecklist from "@/components/JobChecklist";
 import ReportProblem from "@/components/ReportProblem";
@@ -94,11 +93,7 @@ function calcJobScore(r: any): { score: number; max: number; label: string; colo
 const STATUS_META: Record<string, { icon: string; label: string; color: string }> = {
   pending:     { icon: "clock", label: "Pending Review",     color: "#f59e0b" },
   matched:     { icon: "link", label: "Contractor Matched", color: "#3b82f6" },
-  assigned:    { icon: "user-check", label: "Contractor Assigned", color: "#3b82f6" },
-  scheduled:   { icon: "calendar", label: "Scheduled",          color: "#3b82f6" },
   in_progress: { icon: "wrench", label: "Work In Progress",   color: "#ea6b14" },
-  pending_confirmation: { icon: "clock", label: "Awaiting Your Confirmation", color: "#f59e0b" },
-  disputed:    { icon: "alert-triangle", label: "Under Review", color: "#ef4444" },
   completed:   { icon: "check-circle", label: "Completed",          color: "#22c55e" },
   cancelled:   { icon: "x-circle", label: "Cancelled",          color: "#ef4444" },
 };
@@ -122,12 +117,11 @@ export default function ClientDashboard() {
   const [clientBids, setClientBids] = useState<any[]>([]);
   const [bidNames, setBidNames] = useState<Record<string,string>>({});
   const [bidResp, setBidResp] = useState<Record<string,number>>({}); // contractor_id -> median first-response minutes
+  const [bidMatch, setBidMatch] = useState<Record<string,any>>({}); // contractor_id -> smart-match score + signals
   const [busyPick, setBusyPick] = useState<string|null>(null);
   const [busyPay, setBusyPay] = useState(false);
   const [feeRate, setFeeRate] = useState(0.03); // base service-fee rate; loaded from platform_fee_rate() so it matches what Stripe charges
   const [waivedForJob, setWaivedForJob] = useState<string|null>(null); // job whose 3% fee a referral waives
-  const [contractBlocked, setContractBlocked] = useState(false); // contract-required job not yet signed → block payment
-  const [contractCheckError, setContractCheckError] = useState(false); // couldn't verify the signature → fail closed, ask to refresh
   const [loadError, setLoadError] = useState(false);
   const [selectedReqId, setSelectedReqId] = useState<string|null>(null);
   const [histFilter, setHistFilter] = useState<"all"|"active"|"completed"|"cancelled">("all");
@@ -260,18 +254,6 @@ export default function ClientDashboard() {
       setContractor(con ?? null);
       setActiveJob(job ?? null);
       setSelAddons([]); // fresh add-on selection per job
-      // Contract gate: EVERY job needs a service agreement signed by both parties
-      // before any payment. Fail CLOSED — if we can't confirm it's signed, stay
-      // blocked and ask the client to refresh rather than let an unsigned job pay.
-      if (job) {
-        setContractBlocked(true); // assume blocked until we confirm it's signed
-        setContractCheckError(false);
-        supabase.rpc("contract_signed", { p_job_id: job.id }).then(({ data, error }) => {
-          if (cancelled) return;
-          if (error) { setContractBlocked(true); setContractCheckError(true); }
-          else { setContractBlocked(data !== true); setContractCheckError(false); }
-        }, () => { if (!cancelled) { setContractBlocked(true); setContractCheckError(true); } });
-      } else if (!cancelled) { setContractBlocked(false); setContractCheckError(false); }
       // Referral perk: the 3% service fee is waived on a referred client's first
       // job. Check the specific job so the displayed total matches what Stripe charges.
       if (job && job.payment_status !== "released" && job.total_charged == null) {
@@ -516,7 +498,6 @@ export default function ClientDashboard() {
   }
   const payForJob = async () => {
     if (!activeJob) return;
-    if (contractBlocked) { notify(contractCheckError ? "We couldn't verify the service agreement. Please refresh the page and try again." : "Please sign the service agreement above before paying for this job."); return; }
     if (!(await askConfirm({
       title: "Pay " + "$" + jobTotal(activeJob).toFixed(2) + "?",
       message: "You'll be taken to a secure checkout. Your payment is held safely and only released to the contractor after you confirm the work is done.",
@@ -644,9 +625,14 @@ export default function ClientDashboard() {
             const rm: Record<string,number> = {};
             ((rs ?? []) as any[]).forEach((r: any) => { rm[r.contractor_id] = Number(r.median_minutes); });
             setBidResp(rm);
+            // Smart match: score each bidding pro on rating, jobs done, speed and area fit.
+            const { data: ms } = await supabase.rpc("get_match_scores", { p_request_id: ar.id });
+            const mm: Record<string,any> = {};
+            ((ms ?? []) as any[]).forEach((m: any) => { mm[m.contractor_id] = m; });
+            setBidMatch(mm);
           }
         });
-    } else { setClientBids([]); }
+    } else { setClientBids([]); setBidMatch({}); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeReq?.id, activeReq?.status]);
 
@@ -1024,10 +1010,28 @@ export default function ClientDashboard() {
                     {activeReq.status === "pending" && clientBids.length > 0 && (
                       <div style={{ marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)" }}>
                         <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".6rem" }}>Choose your contractor ({clientBids.length} bid{clientBids.length === 1 ? "" : "s"})</div>
-                        {clientBids.map(b => (
+                        {Object.keys(bidMatch).length > 0 && (
+                          <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .55)", marginBottom:".6rem", display:"flex", alignItems:"center", gap:".35rem" }}>
+                            <Ic name="sparkles" size={12} color="#ea6b14" />Ranked by match quality — rating, jobs done, response speed and area fit.
+                          </div>
+                        )}
+                        {[...clientBids].sort((a, b) => (Number(bidMatch[b.contractor_id]?.score ?? -1)) - (Number(bidMatch[a.contractor_id]?.score ?? -1)) || (Number(a.amount ?? Infinity)) - (Number(b.amount ?? Infinity))).map((b, bi) => (
                           <div key={b.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", padding:".6rem .7rem", marginBottom:".5rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px", flexWrap:"wrap" as const }}>
                             <div style={{ flex:"1 1 160px" }}>
-                              <div style={{ fontSize:".88rem", color:"var(--ff-text)" }}>{bidNames[b.contractor_id] ?? "Contractor"}{b.amount != null ? " — $" + b.amount : ""}</div>
+                              <div style={{ fontSize:".88rem", color:"var(--ff-text)", display:"flex", alignItems:"center", gap:".45rem", flexWrap:"wrap" as const }}>
+                                {bidNames[b.contractor_id] ?? "Contractor"}{b.amount != null ? " — $" + b.amount : ""}
+                                {bi === 0 && clientBids.length > 1 && bidMatch[b.contractor_id] != null && (
+                                  <span style={{ padding:".14rem .5rem", borderRadius:"999px", fontSize:".66rem", fontWeight:700, background:"rgba(234,107,20,.14)", border:"1px solid rgba(234,107,20,.4)", color:"#ea6b14" }}>Best match</span>
+                                )}
+                              </div>
+                              {(() => { const m = bidMatch[b.contractor_id]; if (!m) return null;
+                                const bits: string[] = [];
+                                if (m.rating != null && Number(m.rating_count) > 0) bits.push("\u2b50 " + Number(m.rating).toFixed(1) + "/10 (" + m.rating_count + ")");
+                                if (Number(m.total_jobs) > 0) bits.push(m.total_jobs + " job" + (Number(m.total_jobs) === 1 ? "" : "s") + " done");
+                                if (m.area_match) bits.push("works your area");
+                                if (!bits.length) return null;
+                                return <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .6)", marginTop:".2rem" }}>{bits.join(" \u00b7 ")}</div>;
+                              })()}
                               {bidResp[b.contractor_id] != null && (
                                 <div style={{ display:"inline-block", marginTop:".25rem", padding:".15rem .5rem", borderRadius:"999px", fontSize:".68rem", fontWeight:600, background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.3)", color:"#22c55e" }}>
                                   ⚡ Usually responds in {respText(bidResp[b.contractor_id])}
@@ -1059,12 +1063,8 @@ export default function ClientDashboard() {
                       </div>
                     )}
 
-                    {activeJob && (
-                      <ContractPanel role="client" job={activeJob} />
-                    )}
-
                     {activeJob && activeJob.is_milestone && (
-                      <MilestonePanel role="client" job={activeJob} contractBlocked={contractBlocked} />
+                      <MilestonePanel role="client" job={activeJob} />
                     )}
 
                     {activeJob && activeJob.payment_status === "disputed" && (
@@ -1214,8 +1214,7 @@ export default function ClientDashboard() {
                                   <div style={{ fontSize:".82rem", color:"var(--ff-danger)", marginBottom:".6rem", lineHeight:1.5 }}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />Your last payment didn't go through. No charge was made — please try again below.</div>
                                 )}
                                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".6rem", lineHeight:1.5 }}>Pay now to secure the job. Your money is <strong>held safely</strong> and only released to the contractor after you confirm the work is done. {feeText(activeJob)}</div>
-                                {contractBlocked && <div style={{ fontSize:".82rem", color:"var(--ff-warn)", marginBottom:".6rem", lineHeight:1.5 }}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />{contractCheckError ? "We couldn't verify the service agreement. Please refresh the page and try again." : "Please sign the service agreement above before paying for this job."}</div>}
-                                <button style={s.primaryBtn} disabled={busyPay || contractBlocked} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " (held until you confirm)"}</button>
+                                <button style={s.primaryBtn} disabled={busyPay} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " (held until you confirm)"}</button>
                               </>
                             ) : null}
                           </>
@@ -1240,8 +1239,7 @@ export default function ClientDashboard() {
                             ) : activeJob.amount ? (
                               <>
                                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".6rem", lineHeight:1.5 }}>Pay for the job, then confirm. Your payment is held and only released to the contractor once you confirm. {feeText(activeJob)}</div>
-                                {contractBlocked && <div style={{ fontSize:".82rem", color:"var(--ff-warn)", marginBottom:".6rem", lineHeight:1.5 }}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />{contractCheckError ? "We couldn't verify the service agreement. Please refresh the page and try again." : "Please sign the service agreement above before paying for this job."}</div>}
-                                <button style={s.primaryBtn} disabled={busyPay || contractBlocked} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " now"}</button>
+                                <button style={s.primaryBtn} disabled={busyPay} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " now"}</button>
                               </>
                             ) : (
                               <>
