@@ -14,6 +14,10 @@
 
 export const GA_MEASUREMENT_ID: string = "G-WFMM73FJVL"; // real GA4 ID — analytics ON (set 2026-07-11)
 
+// ── PostHog (product analytics + session replay) ─────────────────────────────
+// Project API key (public by design — it can only ingest events, not read data).
+export const POSTHOG_KEY: string = "phc_xwvezYRnqsiHBtnLKgTjktxYsQqrdsKhEG6wy4kzixW2";
+
 // True only when a real ID has been set (placeholder = disabled).
 export const analyticsEnabled = (): boolean =>
   /^G-[A-Z0-9]{6,}$/.test(GA_MEASUREMENT_ID) && GA_MEASUREMENT_ID !== "G-XXXXXXXXXX";
@@ -49,6 +53,21 @@ export function initAnalytics(): void {
     anonymize_ip: true,
     send_page_view: false,
   });
+
+  // PostHog: load the client, then init. "defaults: 2025-05-24" auto-captures
+  // SPA route changes as pageviews, so we don't fire those manually here.
+  const ph = document.createElement("script");
+  ph.async = true;
+  ph.src = "https://us-assets.i.posthog.com/static/array.js";
+  ph.onload = () => {
+    (window as any).posthog?.init(POSTHOG_KEY, {
+      api_host: "https://us.i.posthog.com",
+      defaults: "2025-05-24",
+      person_profiles: "identified_only",
+      session_recording: { maskAllInputs: true },
+    });
+  };
+  document.head.appendChild(ph);
 }
 
 // Fire a virtual page_view on client-side route changes (SPA navigation).
@@ -66,6 +85,7 @@ export function trackPageView(path: string): void {
 //   trackEvent("post_job_start")          — client started posting a job
 //   trackEvent("sign_up", { method: "contractor" })
 export function trackEvent(name: string, params: Record<string, any> = {}): void {
-  if (!analyticsEnabled() || !window.gtag) return;
-  window.gtag("event", name, params);
+  if (!analyticsEnabled()) return;
+  if (window.gtag) window.gtag("event", name, params);
+  (window as any).posthog?.capture?.(name, params); // mirror to PostHog
 }

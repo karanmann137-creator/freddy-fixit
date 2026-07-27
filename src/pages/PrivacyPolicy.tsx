@@ -127,6 +127,7 @@ export default function PrivacyPolicy() {
               <tr><td>Resend, Inc.</td><td>Transactional email delivery</td><td>United States</td></tr>
               <tr><td>Stripe, Inc.</td><td>Payment processing</td><td>United States</td></tr>
               <tr><td>Google LLC</td><td>Website analytics (Google Analytics 4) and optional "Sign in with Google" authentication</td><td>United States</td></tr>
+              <tr><td>PostHog, Inc.</td><td>Product analytics and session replay (understanding how the Platform is used so we can improve it)</td><td>United States</td></tr>
               <tr><td>Komoot GmbH (Photon)</td><td>Address auto-complete: as you type a service address, the text you type is sent to the Photon geocoding service to suggest matching Calgary-area addresses. No account information is sent with it.</td><td>Germany</td></tr>
             </tbody>
           </table>
@@ -182,6 +183,7 @@ export default function PrivacyPolicy() {
           <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>11. Cookies and Tracking Technologies</h2>
           <p>The Platform uses <strong>essential session cookies</strong> required for user authentication and platform security. These cookies are strictly necessary for the Platform to function and cannot be disabled without affecting your ability to log in.</p>
           <p>We use <strong>Google Analytics 4</strong> to understand how visitors use the Platform (for example, which pages are viewed and how people reach us) so we can improve it. This sets analytics cookies and shares limited usage data with Google LLC. We enable IP-address anonymization, and we do not use advertising cookies or sell your information. You can opt out at any time by installing the <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener noreferrer">Google Analytics Opt-out Browser Add-on</a> or by using your browser&rsquo;s cookie controls. Essential session cookies (described above) cannot be disabled without affecting login.</p>
+          <p>We also use <strong>PostHog</strong> for product analytics and <strong>session replay</strong>. Session replay records how visitors interact with the Platform (pages viewed, clicks, scrolling) so we can find and fix usability problems. Anything you type into form fields is <strong>masked and not recorded</strong>, and we do not use this data for advertising or sell it. This shares limited usage data with PostHog, Inc. (United States). You can opt out by using your browser&rsquo;s cookie controls or a tracker-blocking browser extension.</p>
         </section>
 
         <section style={{ marginBottom:"2.5rem" }}>
