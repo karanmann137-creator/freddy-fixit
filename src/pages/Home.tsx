@@ -419,26 +419,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── Services ── */}
-      <div className="ff-services">
-        <div className="ff-services-inner">
-          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
-            <p className="ff-about-eyebrow" style={{ textAlign:"center" }}>What We Cover</p>
-            <h2 className="ff-about-headline" style={{ textAlign:"center" }}>Every Fix. <span>Every Time.</span></h2>
-          </motion.div>
-          <div className="ff-services-grid">
-            {SERVICES.map((s, i) => (
-              <motion.div key={s.label} className="ff-service-card" onClick={() => window.location.href="/client-onboarding?service=" + encodeURIComponent(s.label)} style={{ cursor:"pointer" }}
-                initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.05 }}>
-                <div className="ff-service-icon"><Ic name={s.iconName as any} size={28} color="#ea6b14" /></div>
-                <div className="ff-service-label">{s.label}</div>
-                <div className="ff-service-desc">{s.desc}</div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* ── How It Works ── */}
       <div className="ff-how">
         <div className="ff-how-inner">
@@ -462,6 +442,47 @@ export default function Home() {
         </div>
       </div>
 
+      {/* ── FAQ ── */}
+      <div style={{ background:"var(--ff-bg)", padding:"6rem 2rem" }}>
+        <style>{"details.ff-faq>summary::-webkit-details-marker{display:none}details.ff-faq>summary{list-style:none}details.ff-faq .ff-faq-icon{transition:transform .2s ease;display:inline-block}details.ff-faq[open] .ff-faq-icon{transform:rotate(45deg)}details.ff-faq[open]{border-color:rgba(234,107,20,.3)}"}</style>
+        <div style={{ maxWidth:"800px", margin:"0 auto" }}>
+          <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" }}>Good to Know</p>
+          <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:".06em", color:"var(--ff-text)", textAlign:"center", marginBottom:"3rem" }}>Frequently Asked <span style={{ color:"#ea6b14" }}>Questions.</span></h2>
+          <div style={{ display:"flex", flexDirection:"column", gap:".75rem" }}>
+            {FAQS.map((f, i) => (
+              <details key={i} className="ff-faq" style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.2rem 1.5rem" }}>
+                <summary style={{ cursor:"pointer", fontSize:".98rem", fontWeight:500, color:"var(--ff-text)", display:"flex", justifyContent:"space-between", alignItems:"center", gap:"1rem" }}>
+                  <span>{f.q}</span>
+                  <span className="ff-faq-icon" style={{ color:"#ea6b14", fontSize:"1.4rem", lineHeight:1, fontWeight:300 }}>+</span>
+                </summary>
+                <p style={{ fontSize:".9rem", color:"rgba(var(--ff-muted), .75)", fontWeight:300, lineHeight:1.7, marginTop:"1rem", marginBottom:0 }}>{f.a}</p>
+              </details>
+            ))}
+          </div>
+          <p style={{ textAlign:"center", marginTop:"2.5rem", fontSize:".9rem", color:"rgba(var(--ff-muted), .6)", fontWeight:300 }}>Still have questions? <a href="mailto:hello@freddyfixit.ca" style={{ color:"#ea6b14", textDecoration:"none" }}>Get in touch.</a></p>
+        </div>
+      </div>
+
+      {/* ── Services ── */}
+      <div className="ff-services">
+        <div className="ff-services-inner">
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
+            <p className="ff-about-eyebrow" style={{ textAlign:"center" }}>What We Cover</p>
+            <h2 className="ff-about-headline" style={{ textAlign:"center" }}>Every Fix. <span>Every Time.</span></h2>
+          </motion.div>
+          <div className="ff-services-grid">
+            {SERVICES.map((s, i) => (
+              <motion.div key={s.label} className="ff-service-card" onClick={() => window.location.href="/client-onboarding?service=" + encodeURIComponent(s.label)} style={{ cursor:"pointer" }}
+                initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.05 }}>
+                <div className="ff-service-icon"><Ic name={s.iconName as any} size={28} color="#ea6b14" /></div>
+                <div className="ff-service-label">{s.label}</div>
+                <div className="ff-service-desc">{s.desc}</div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* ── Freddy Verified ── */}
       <div style={{ background:"var(--ff-surface)", padding:"6rem 2rem", position:"relative" as const, overflow:"hidden" as const }}>
         <div style={{ maxWidth:"960px", margin:"0 auto", position:"relative" as const, zIndex:1 }}>
@@ -472,7 +493,11 @@ export default function Home() {
           </p>
           <div style={{ display:"flex", justifyContent:"center" as const, marginBottom:"3rem" }}>
             <div style={{ display:"inline-flex", alignItems:"center", gap:".7rem", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.4)", borderRadius:"999px", padding:".7rem 1.4rem", boxShadow:"0 0 32px rgba(234,107,20,.18)" }}>
-              <Ic name="user-check" size={22} color="#ea6b14" />
+              <svg width="30" height="30" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink:0 }}>
+                <polygon points="65.9,50.7 50.7,65.9 29.3,65.9 14.1,50.7 14.1,29.3 29.3,14.1 50.7,14.1 65.9,29.3" fill="rgba(234,107,20,0.08)" stroke="#ea6b14" strokeWidth="2"/>
+                <path d="M28 54 L28 38 L40 28 L52 38 L52 54 Z" stroke="var(--ff-text)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                <path d="M36 54 L36 43 L44 43 L44 54" stroke="#ea6b14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              </svg>
               <span style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"1.4rem", letterSpacing:".08em", color:"#ea6b14" }}>Freddy Verified</span>
             </div>
           </div>
@@ -497,27 +522,6 @@ export default function Home() {
           <p style={{ textAlign:"center" as const, marginTop:"2.5rem", fontSize:".9rem", color:"rgba(var(--ff-muted), .6)", fontWeight:300 }}>
             A verified badge means our review process was completed — not a guarantee of outcome. You always pick your own pro.
           </p>
-        </div>
-      </div>
-
-      {/* ── FAQ ── */}
-      <div style={{ background:"var(--ff-bg)", padding:"6rem 2rem" }}>
-        <style>{"details.ff-faq>summary::-webkit-details-marker{display:none}details.ff-faq>summary{list-style:none}details.ff-faq .ff-faq-icon{transition:transform .2s ease;display:inline-block}details.ff-faq[open] .ff-faq-icon{transform:rotate(45deg)}details.ff-faq[open]{border-color:rgba(234,107,20,.3)}"}</style>
-        <div style={{ maxWidth:"800px", margin:"0 auto" }}>
-          <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" }}>Good to Know</p>
-          <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:".06em", color:"var(--ff-text)", textAlign:"center", marginBottom:"3rem" }}>Frequently Asked <span style={{ color:"#ea6b14" }}>Questions.</span></h2>
-          <div style={{ display:"flex", flexDirection:"column", gap:".75rem" }}>
-            {FAQS.map((f, i) => (
-              <details key={i} className="ff-faq" style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.2rem 1.5rem" }}>
-                <summary style={{ cursor:"pointer", fontSize:".98rem", fontWeight:500, color:"var(--ff-text)", display:"flex", justifyContent:"space-between", alignItems:"center", gap:"1rem" }}>
-                  <span>{f.q}</span>
-                  <span className="ff-faq-icon" style={{ color:"#ea6b14", fontSize:"1.4rem", lineHeight:1, fontWeight:300 }}>+</span>
-                </summary>
-                <p style={{ fontSize:".9rem", color:"rgba(var(--ff-muted), .75)", fontWeight:300, lineHeight:1.7, marginTop:"1rem", marginBottom:0 }}>{f.a}</p>
-              </details>
-            ))}
-          </div>
-          <p style={{ textAlign:"center", marginTop:"2.5rem", fontSize:".9rem", color:"rgba(var(--ff-muted), .6)", fontWeight:300 }}>Still have questions? <a href="mailto:hello@freddyfixit.ca" style={{ color:"#ea6b14", textDecoration:"none" }}>Get in touch.</a></p>
         </div>
       </div>
 
