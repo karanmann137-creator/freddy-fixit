@@ -57,6 +57,9 @@ export default function AdminDashboard() {
   const [accountRole, setAccountRole] = useState<"all"|"client"|"contractor"|"admin"|"orphaned">("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [msgRecipients, setMsgRecipients] = useState<MsgRecipient[] | null>(null);
+  const [editEmailId, setEditEmailId] = useState<string|null>(null);
+  const [editEmailVal, setEditEmailVal] = useState("");
+  const [busyEmailEdit, setBusyEmailEdit] = useState<string|null>(null);
   const PAGE_SIZE = 20;
   const [page, setPage] = useState<{ requests: number; jobs: number }>({ requests: 0, jobs: 0 });
   const [counts, setCounts] = useState<{ requests: number; jobs: number }>({ requests: 0, jobs: 0 });
@@ -242,6 +245,28 @@ export default function AdminDashboard() {
     } finally { setBusyNudge(false); }
   };
 
+  // Admin changes an account's login (auth) email and keeps profiles.email in
+  // sync via the admin-update-email edge fn (admin-gated, dup-checked server-side).
+  const saveEmail = async (a: any) => {
+    const next = editEmailVal.trim().toLowerCase();
+    if (!next) { alert("Enter an email address."); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next)) { alert("That doesn't look like a valid email."); return; }
+    if (next === (a.email || "").toLowerCase()) { setEditEmailId(null); return; }
+    setBusyEmailEdit(a.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-update-email", { body: { user_id: a.id, new_email: next } });
+      if (error) throw error;
+      if (data && (data as any).error) throw new Error((data as any).error);
+      setAccounts(prev => prev.map(x => x.id === a.id ? { ...x, email: next } : x));
+      setEditEmailId(null);
+      alert("Login email updated to " + next + ".");
+    } catch (e: any) {
+      let msg = e?.message || String(e);
+      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
+      alert("Couldn't update email: " + msg);
+    } finally { setBusyEmailEdit(null); }
+  };
+
   const markLeadContacted = async (leadId: string) => {
     setBusyLead(leadId);
     const { error } = await supabase.from("quote_leads").update({ status: "contacted" }).eq("id", leadId);
@@ -329,17 +354,19 @@ export default function AdminDashboard() {
     return true;
   });
 
-  // Contractors are eligible email targets (role or profile signals).
+  // Any account with an email on file is an eligible email target (clients + contractors).
   const isContractorAcct = (a: any) =>
     (a.role === "contractor") || !!a.company_name || (a.specialties && a.specialties.length);
+  const isClientAcct = (a: any) => !isContractorAcct(a) && a.role !== "admin";
   const toRecipient = (a: any): MsgRecipient => ({
     id: a.id,
-    name: [a.first_name, a.last_name].filter(Boolean).join(" ") || a.company_name || "contractor",
+    name: [a.first_name, a.last_name].filter(Boolean).join(" ") || a.company_name || a.email || "account",
     email: a.email,
   });
-  const contractorAccts = accounts.filter(isContractorAcct);
+  const contractorAccts = accounts.filter(a => isContractorAcct(a) && a.email);
+  const clientAccts = accounts.filter(a => isClientAcct(a) && a.email);
   const selectedRecipients = () =>
-    contractorAccts.filter(a => selectedIds.has(a.id)).map(toRecipient);
+    accounts.filter(a => selectedIds.has(a.id) && a.email).map(toRecipient);
   const toggleSelect = (id: string) =>
     setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
@@ -432,7 +459,7 @@ export default function AdminDashboard() {
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const, marginBottom:"1rem", padding:".7rem .85rem", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"8px" }}>
               <span style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)", flex:1 }}>
-                Email contractors a custom message{selectedIds.size > 0 ? ` · ${selectedIds.size} selected` : ""}.
+                Email accounts a custom message{selectedIds.size > 0 ? ` · ${selectedIds.size} selected` : ""}.
               </span>
               {selectedIds.size > 0 && (
                 <button style={s.btn} onClick={() => setSelectedIds(new Set())}>Clear</button>
@@ -444,6 +471,10 @@ export default function AdminDashboard() {
               <button style={{ ...s.btn, color:"#ea6b14", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.1)" }}
                 disabled={contractorAccts.length === 0} onClick={() => setMsgRecipients(contractorAccts.map(toRecipient))}>
                 <Ic name="mail" size={13} style={{ marginRight:4 }} />Email all contractors ({contractorAccts.length})
+              </button>
+              <button style={{ ...s.btn, color:"#ea6b14", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.1)" }}
+                disabled={clientAccts.length === 0} onClick={() => setMsgRecipients(clientAccts.map(toRecipient))}>
+                <Ic name="mail" size={13} style={{ marginRight:4 }} />Email all clients ({clientAccts.length})
               </button>
             </div>
             {accounts.some(a => a.orphaned) && (
@@ -465,7 +496,7 @@ export default function AdminDashboard() {
                 <div key={a.id} style={s.card}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const, gap:".5rem" }}>
                     <div style={{ display:"flex", alignItems:"center", gap:".55rem" }}>
-                      {isContractor && (
+                      {a.email && (
                         <input type="checkbox" checked={selectedIds.has(a.id)} onChange={() => toggleSelect(a.id)}
                           title="Select for bulk email" style={{ width:16, height:16, accentColor:"#ea6b14", cursor:"pointer" }} />
                       )}
@@ -481,7 +512,24 @@ export default function AdminDashboard() {
                       {new Date(flagMatches[a.id].date).toLocaleDateString()}{"). Matched on "}{flagMatches[a.id].fields.join(", ")}{"."}
                     </div>
                   )}
-                  <div style={s.meta}>{[a.email, a.phone || a.meta_phone].filter(Boolean).join(" · ") || "—"}</div>
+                  {editEmailId === a.id ? (
+                    <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, alignItems:"center", margin:".3rem 0 .45rem" }}>
+                      <input value={editEmailVal} onChange={e => setEditEmailVal(e.target.value)} type="email" placeholder="new@email.com" autoComplete="off"
+                        style={{ padding:".4rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .18)", borderRadius:"7px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".82rem", minWidth:"210px" }} />
+                      <button style={{ ...s.btn, color:"var(--ff-success)", borderColor:"rgba(34,197,94,.35)" }} disabled={busyEmailEdit === a.id} onClick={() => saveEmail(a)}>
+                        {busyEmailEdit === a.id ? "Saving…" : "Save"}
+                      </button>
+                      <button style={s.btn} disabled={busyEmailEdit === a.id} onClick={() => setEditEmailId(null)}>Cancel</button>
+                    </div>
+                  ) : (
+                    <div style={s.meta}>
+                      {[a.email, a.phone || a.meta_phone].filter(Boolean).join(" · ") || "—"}
+                      <button onClick={() => { setEditEmailId(a.id); setEditEmailVal(a.email || ""); }}
+                        style={{ ...s.btn, fontSize:".72rem", padding:".2rem .55rem", marginLeft:".5rem" }}>
+                        <Ic name="mail" size={11} style={{ marginRight:3 }} />Edit email
+                      </button>
+                    </div>
+                  )}
                   <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .4)" }}>
                     ID {a.id.slice(0,8)} · joined {a.created_at ? new Date(a.created_at).toLocaleDateString() : "—"}
                     {a.last_sign_in_at ? ` · last seen ${new Date(a.last_sign_in_at).toLocaleDateString()}` : " · never signed in"}
@@ -579,9 +627,9 @@ export default function AdminDashboard() {
                     {isContractor && (
                       <button style={s.btn} onClick={() => window.open("/contractors/" + a.id, "_blank")}>View Profile ↗</button>
                     )}
-                    {isContractor && (
+                    {a.email && (
                       <button style={{ ...s.btn, color:"#ea6b14", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.1)" }}
-                        disabled={!a.email} title={a.email ? "" : "No email on file"} onClick={() => setMsgRecipients([toRecipient(a)])}>
+                        onClick={() => setMsgRecipients([toRecipient(a)])}>
                         <Ic name="mail" size={13} style={{ marginRight:4 }} />Email
                       </button>
                     )}
