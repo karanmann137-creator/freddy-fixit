@@ -11,6 +11,7 @@ import { isPerKmService, freqLabel, SLIDER_STOPS, SLIDER_SHORT } from "@/lib/rec
 import NewRequest from "@/components/NewRequest";
 import OAuthButtons from "@/components/OAuthButtons";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
+import ServicePicker from "@/components/ServicePicker";
 import { validateEmail, validatePhone } from "@/lib/emailValidation";
 
 export const SERVICES = [
@@ -37,6 +38,18 @@ export const SERVICES = [
   { iconName: "key", label: "Locksmith" },
   { iconName: "refrigerator", label: "Appliance Repair / Install" },
   { iconName: "sun", label: "Solar" },
+  { iconName: "package", label: "Moving & Storage" },
+  { iconName: "trash", label: "Junk Removal" },
+  { iconName: "sparkles", label: "Pest Control" },
+  { iconName: "wind", label: "Duct Cleaning" },
+  { iconName: "toolbox", label: "Fencing" },
+  { iconName: "hammer", label: "Decks & Patios" },
+  { iconName: "sparkles", label: "Window Cleaning" },
+  { iconName: "home", label: "Home Renovations" },
+  { iconName: "layers", label: "Insulation" },
+  { iconName: "cloud-rain", label: "Eavestrough Cleaning" },
+  { iconName: "droplet", label: "Basement / Waterproofing" },
+  { iconName: "droplet", label: "Pressure Washing" },
   { iconName: "package", label: "Other" },
 ];
 
@@ -97,7 +110,7 @@ export default function ClientOnboarding() {
   }, []);
   const [step, setStep] = useState(1);
   const TOTAL = 3;
-  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", password:"", preferredSchedule:"", location:"", jobDescription:"", businessName:"", businessType:"", locations:"", billingPreference:"" });
+  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", password:"", preferredSchedule:"", location:"", postalCode:"", jobDescription:"", businessName:"", businessType:"", locations:"", billingPreference:"" });
   const [clientType, setClientType] = useState<"individual"|"business">("individual");
   const [recurring, setRecurring] = useState(false);
   const [recurringFrequency, setRecurringFrequency] = useState<string>("");
@@ -171,7 +184,8 @@ export default function ClientOnboarding() {
       if (!form.preferredSchedule) errs.preferredSchedule = "Please select a schedule";
     }
     if (step === 2) {
-      if (!form.location.trim()) errs.location = "Location required";
+      if (!form.location.trim() && !form.postalCode.trim()) errs.location = "Enter your address or postal code";
+      else if (!form.location.trim() && form.postalCode.trim() && !/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(form.postalCode.trim())) errs.location = "Enter a valid postal code (e.g. T2P 1J9) or your address";
       if (form.jobDescription.trim().length < 10) errs.jobDescription = "Min 10 characters";
     }
     if (step === 3) {
@@ -204,7 +218,8 @@ export default function ClientOnboarding() {
         first_name: form.firstName, last_name: form.lastName, phone: form.phone,
         service_needed: selectedServices.join(", "),
         preferred_schedule: form.preferredSchedule,
-        location: form.location,
+        location: form.location.trim() || form.postalCode.trim(),
+        postal_code: form.postalCode.trim(),
         job_description: form.jobDescription,
         client_type: clientType,
         business_name: clientType === "business" ? form.businessName : "",
@@ -448,17 +463,8 @@ export default function ClientOnboarding() {
                 </div>
               </div>
               <p style={s.label}>Services Needed <span style={{ color:"rgba(var(--ff-muted), .4)", textTransform:"none", letterSpacing:0 }}>(select all that apply)</span></p>
-              <div style={{ maxWidth:"100%", overflowX:"hidden", display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:".75rem", marginBottom:"1.5rem" }}>
-                {SERVICES.map(sv => (
-                  <button key={sv.label} style={{ ...s.svcBtn, ...(selectedServices.includes(sv.label) ? s.svcBtnSel : {}) }} onClick={() => toggleService(sv.label)}>
-                    <span style={{ fontSize:"1.2rem", flexShrink:0 }}><Ic name={sv.iconName as any} size={20} color="#ea6b14" style={{ marginRight:8, flexShrink:0 }} /></span>
-                    <span style={{ display:"flex", flexDirection:"column", minWidth:0 }}>
-                      <span>{sv.label}</span>
-                      {fromText(pricing[sv.label]) && <span style={{ fontSize:".68rem", color:"rgba(var(--ff-muted), .55)", marginTop:"1px" }}>{fromText(pricing[sv.label])}</span>}
-                    </span>
-                    {selectedServices.includes(sv.label) && <span style={{ marginLeft:"auto", color:"#ea6b14", fontSize:"1rem" }}>✓</span>}
-                  </button>
-                ))}
+              <div style={{ marginBottom:"1.5rem" }}>
+                <ServicePicker items={SERVICES} selected={selectedServices} onToggle={toggleService} pricing={pricing} />
               </div>
               {errors.serviceNeeded && <p id="co-err-serviceNeeded" style={s.err}>{errors.serviceNeeded}</p>}
               {selectedServices.length > 0 && (
@@ -637,8 +643,14 @@ export default function ClientOnboarding() {
                 </div>
               )}
               <div style={{ marginBottom:"1.2rem" }}>
-                <label style={s.label}>Your Address / Location</label>
+                <label style={s.label}>Where's the job? <span style={{ color:"rgba(var(--ff-muted), .4)", textTransform:"none", letterSpacing:0 }}>(address or postal code — either one)</span></label>
                 <AddressAutocomplete autoComplete="street-address" style={{ ...inp, borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="e.g. 123 Main St NW" value={form.location} onChange={v => set("location", v)} />
+                <div style={{ display:"flex", alignItems:"center", gap:".6rem", margin:".55rem 0" }}>
+                  <div style={{ flex:1, height:1, background:"rgba(var(--ff-fg), .12)" }} />
+                  <span style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .5)" }}>or just a postal code</span>
+                  <div style={{ flex:1, height:1, background:"rgba(var(--ff-fg), .12)" }} />
+                </div>
+                <input autoComplete="postal-code" style={{ ...inp, borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="e.g. T2P 1J9" value={form.postalCode} onChange={e => set("postalCode", e.target.value)} />
                 {errors.location && <p id="co-err-location" style={s.err}>{errors.location}</p>}
               </div>
               <div style={{ marginBottom:"1.2rem" }}>

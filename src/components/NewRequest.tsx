@@ -8,6 +8,7 @@ import { requestGoogleReview } from "@/lib/reviewPrompt";
 import GuideBubble from "@/components/GuideBubble";
 import { SERVICES, SCHEDULES } from "@/pages/ClientOnboarding";
 import { useServicePricing, fromText } from "@/lib/servicePricing";
+import ServicePicker from "@/components/ServicePicker";
 import { isPerKmService, freqLabel, SLIDER_STOPS, SLIDER_SHORT } from "@/lib/recurrence";
 
 // Shown when an already-signed-in client starts another request. Unlike the
@@ -316,17 +317,8 @@ export default function NewRequest() {
 
           {/* Services */}
           <p style={s.label}>What do you need? <span style={{ color:"rgba(var(--ff-muted), .4)", textTransform:"none", letterSpacing:0 }}>(select all that apply)</span></p>
-          <div style={{ maxWidth:"100%", overflowX:"hidden", display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:".75rem", marginBottom:".5rem" }}>
-            {SERVICES.map(sv => (
-              <button key={sv.label} style={{ ...s.svcBtn, ...(selectedServices.includes(sv.label) ? s.svcBtnSel : {}) }} onClick={() => toggleService(sv.label)}>
-                <span style={{ fontSize:"1.2rem", flexShrink:0 }}><Ic name={sv.iconName as any} size={20} color="#ea6b14" style={{ marginRight:8, flexShrink:0 }} /></span>
-                <span style={{ display:"flex", flexDirection:"column", minWidth:0 }}>
-                  <span>{sv.label}</span>
-                  {fromText(pricing[sv.label]) && <span style={{ fontSize:".68rem", color:"rgba(var(--ff-muted), .55)", marginTop:"1px" }}>{fromText(pricing[sv.label])}</span>}
-                </span>
-                {selectedServices.includes(sv.label) && <span style={{ marginLeft:"auto", color:"#ea6b14", fontSize:"1rem" }}>✓</span>}
-              </button>
-            ))}
+          <div style={{ marginBottom:".5rem" }}>
+            <ServicePicker items={SERVICES} selected={selectedServices} onToggle={toggleService} pricing={pricing} />
           </div>
           {errors.services && <p id="nr-err-services" style={s.err}>{errors.services}</p>}
 
