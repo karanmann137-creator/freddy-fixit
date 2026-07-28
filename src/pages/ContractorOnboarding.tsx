@@ -6,6 +6,7 @@ import { AVAIL_DAYS, WEEKDAYS, TIME_OPTIONS, DEFAULT_START, DEFAULT_END } from "
 import { trackEvent } from "@/lib/analytics";
 import OAuthButtons from "@/components/OAuthButtons";
 import GuideBubble from "@/components/GuideBubble";
+import { validateEmail, validatePhone } from "@/lib/emailValidation";
 
 const SPECIALTIES = [
   { iconName: "wrench", label: "General Repairs" },
@@ -202,8 +203,8 @@ export default function ContractorOnboarding() {
     if (step === 1) {
       if (!form.firstName.trim()) errs.firstName = "Required";
       if (!form.lastName.trim())  errs.lastName  = "Required";
-      if (!authedUserId && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = "Valid email required";
-      if (form.phone.trim() && form.phone.replace(/\D/g,"").length < 10) errs.phone = "Enter a 10-digit phone or leave it blank";
+      if (!authedUserId) { const ev = validateEmail(form.email); if (!ev.ok) errs.email = ev.error!; }
+      { const pv = validatePhone(form.phone); if (!pv.ok) errs.phone = pv.error!; }
       if (!authedUserId && form.password.length < 8) errs.password = "Minimum 8 characters";
     }
     if (step === 2 && selectedSpec.length === 0)  errs.spec  = "Select at least one specialty";

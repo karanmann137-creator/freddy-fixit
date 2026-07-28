@@ -11,6 +11,7 @@ import { isPerKmService, freqLabel, SLIDER_STOPS, SLIDER_SHORT } from "@/lib/rec
 import NewRequest from "@/components/NewRequest";
 import OAuthButtons from "@/components/OAuthButtons";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
+import { validateEmail, validatePhone } from "@/lib/emailValidation";
 
 export const SERVICES = [
   { iconName: "wrench", label: "General Handyman" },
@@ -173,8 +174,8 @@ export default function ClientOnboarding() {
     }
     if (step === 3) {
       if (!form.firstName.trim()) errs.firstName = "Required";
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = "Valid email required";
-      if (form.phone.trim() && form.phone.replace(/\D/g,"").length < 10) errs.phone = "Enter a 10-digit phone or leave it blank";
+      { const ev = validateEmail(form.email); if (!ev.ok) errs.email = ev.error!; }
+      { const pv = validatePhone(form.phone); if (!pv.ok) errs.phone = pv.error!; }
       if (form.password.length < 8) errs.password = "Minimum 8 characters";
     }
     setErrors(errs);

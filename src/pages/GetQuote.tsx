@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { trackEvent } from "@/lib/analytics";
 import { SERVICES } from "@/pages/ClientOnboarding";
 import { useServicePricing, rangeText } from "@/lib/servicePricing";
+import { validateEmail, validatePhone } from "@/lib/emailValidation";
 
 // Public, no-signup lead capture. A visitor can request a ballpark quote with
 // just their contact details + what they need — we store it as a quote_lead
@@ -29,8 +30,11 @@ export default function GetQuote() {
   const validate = () => {
     const e: Record<string, string> = {};
     if (name.trim().length < 2) e.name = "Please enter your name";
-    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-    if (!emailOk && phone.trim().length < 7) e.contact = "Add a valid email or phone so we can reach you";
+    const hasEmail = email.trim().length > 0, hasPhone = phone.trim().length > 0;
+    const ev = validateEmail(email), pv = validatePhone(phone);
+    if (!hasEmail && !hasPhone) e.contact = "Add a valid email or phone so we can reach you";
+    else if (hasEmail && !ev.ok) e.contact = ev.error!;
+    else if (!hasEmail && hasPhone && !pv.ok) e.contact = pv.error!;
     if (!service) e.service = "Pick the service you need";
     if (details.trim().length < 10) e.details = "Tell us a little more (min 10 characters)";
     setErrors(e);
