@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "../lib/supabase";
+import { validateEmail } from "@/lib/emailValidation";
 
 function NewsletterSignup() {
   const [email, setEmail] = useState("");
@@ -13,7 +14,7 @@ function NewsletterSignup() {
 
   const submit = async () => {
     const e = email.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) { setState("err"); return; }
+    if (!validateEmail(e).ok) { setState("err"); return; }
     setState("busy");
     try {
       const { error } = await supabase.rpc("newsletter_subscribe", {

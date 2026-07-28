@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Ic } from "@/components/Ic";
+import { validatePhone } from "@/lib/emailValidation";
 
 // Trade options must match the contractor onboarding list (ContractorOnboarding.tsx).
 const WORK_TYPES = [
@@ -64,8 +65,8 @@ export default function ProfileBar({ role, onSaved }: { role: Role; onSaved?: ()
     if (!userId) return;
     if (!form.firstName.trim()) { setError("First name is required."); return; }
     // Phone is optional — only validate when something was entered.
-    const phoneDigits = form.phone.replace(/\D/g, "");
-    if (phoneDigits.length > 0 && phoneDigits.length < 10) { setError("Enter a valid 10-digit phone number (or leave it blank)."); return; }
+    const pv = validatePhone(form.phone);
+    if (!pv.ok) { setError(pv.error + " (or leave it blank)."); return; }
     setSaving(true); setError(""); setSaved(false);
     try {
       const { error: pErr } = await supabase.from("profiles")

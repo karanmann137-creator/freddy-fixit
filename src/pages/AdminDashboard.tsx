@@ -2,6 +2,7 @@ import { Ic } from "@/components/Ic";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { validateEmail } from "@/lib/emailValidation";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import ProfileBar from "@/components/ProfileBar";
 import MilestonePanel from "@/components/MilestonePanel";
@@ -250,7 +251,7 @@ export default function AdminDashboard() {
   const saveEmail = async (a: any) => {
     const next = editEmailVal.trim().toLowerCase();
     if (!next) { alert("Enter an email address."); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next)) { alert("That doesn't look like a valid email."); return; }
+    { const ev = validateEmail(next); if (!ev.ok && !window.confirm(ev.error + "\n\nUse this email anyway?")) return; }
     if (next === (a.email || "").toLowerCase()) { setEditEmailId(null); return; }
     setBusyEmailEdit(a.id);
     try {
