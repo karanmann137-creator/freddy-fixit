@@ -155,6 +155,7 @@ export default function ContractorDashboard() {
   const [busyPricing, setBusyPricing] = useState(false);
   const [hiding, setHiding]           = useState<string|null>(null);
   const [busyBid, setBusyBid]         = useState<string|null>(null);
+  const [bidOpen, setBidOpen]         = useState<Record<string,boolean>>({});
   const [busyStripe, setBusyStripe]   = useState(false);
   const [myReviews, setMyReviews]     = useState<any[]>([]);
   const [disputes, setDisputes]       = useState<Record<string, any>>({});
@@ -522,6 +523,8 @@ export default function ContractorDashboard() {
     setAvailableJobs(prev => prev.map(x => x.id === r.id
       ? { ...x, my_amount: total, my_message: msg || null, my_walkthrough: wt, bid_count: hadBid ? x.bid_count : (x.bid_count ?? 0) + 1 }
       : x));
+    setBidOpen(prev => ({ ...prev, [r.id]: false }));
+    notify(hadBid ? "Your bid has been updated." : "Your bid has been placed.", "ok");
   };
 
   const setBid = (id: string, patch: any) => setBidForm(p => ({ ...p, [id]: { ...{ amount:"", message:"" }, ...(p[id] ?? {}), ...patch } }));
@@ -776,7 +779,7 @@ export default function ContractorDashboard() {
       <div style={{ height: "3.75rem" }} />
       <div style={{ display:"flex", alignItems:"flex-start" as const }}>
         <DashboardSidebar
-          items={CONTRACTOR_NAV}
+          items={CONTRACTOR_NAV.map(it => (it.key === "available" && contractor?.status === "active" && availableJobs.length > 0) ? { ...it, badge: availableJobs.length } : it)}
           active={activeTab}
           onSelect={(k) => setActiveTab(k as any)}
           title="Dashboard"
@@ -1281,6 +1284,17 @@ export default function ContractorDashboard() {
 
         {activeTab === "available" && (
           <div>
+            {contractor?.status !== "active" ? (
+              <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
+                <div style={{ marginBottom:"1rem" }}><Ic name="clock" size={48} color="#ea6b14" /></div>
+                <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".03em", lineHeight:1.1, marginBottom:".5rem" }}>Your Profile Is Under Review</h2>
+                <p style={{ color:"rgba(var(--ff-muted), .55)", maxWidth:"420px", margin:"0 auto", lineHeight:1.6 }}>
+                  Available jobs open up once our team approves your account. Make sure your profile and documents are complete so we can review you faster — you'll get an email the moment you're approved.
+                </p>
+                <button onClick={() => setActiveTab("profile")} style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", marginTop:"1.25rem" }}>Complete my profile</button>
+              </div>
+            ) : (
+            <>
             <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .45)", marginBottom:"1rem" }}>Open jobs that match your trades — lowest-competition first.</p>
             {availableJobs.length === 0 ? (
               <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
@@ -1291,6 +1305,11 @@ export default function ContractorDashboard() {
               </div>
             ) : availableJobs.map(r => (
               <div key={r.id} style={s.jobCard}>
+                {r.my_amount == null && !r.my_walkthrough && (
+                  <div style={{ display:"inline-flex", alignItems:"center", gap:".3rem", padding:".22rem .55rem", borderRadius:"99px", background:"rgba(234,107,20,.16)", color:"#ea6b14", fontSize:".68rem", fontWeight:800, letterSpacing:".04em", textTransform:"uppercase" as const, marginBottom:".6rem", marginRight:".4rem" }}>
+                    <Ic name="star" size={11} />New
+                  </div>
+                )}
                 {r.is_preferred && (
                   <div style={{ display:"inline-flex", alignItems:"center", gap:".35rem", padding:".25rem .6rem", borderRadius:"99px", background:"rgba(234,107,20,.16)", color:"#ea6b14", fontSize:".72rem", fontWeight:700, marginBottom:".6rem" }}>
                     <Ic name="star" size={12} />This client requested you — reserved for 48h
@@ -1319,10 +1338,30 @@ export default function ContractorDashboard() {
                     <span style={{ fontSize:".75rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .5)" }}>Bids</span>
                     <span style={{ fontSize:".78rem", fontWeight:600, color: (r.bid_count ?? 0) >= 7 ? "#f59e0b" : "var(--ff-success)" }}>{r.bid_count ?? 0}/7</span>
                   </div>
-                  {r.my_walkthrough && <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".5rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />You offered to walk through the space first. You can update your bid below.</div>}
-                  {!r.my_walkthrough && r.my_amount != null && <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".5rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />You bid {"$" + r.my_amount}. You can update it below.</div>}
-                  {r.my_amount == null && !r.my_walkthrough && (r.bid_count ?? 0) >= 7 && <div style={{ fontSize:".82rem", color:"var(--ff-warn)" }}>This job already has 7 bids.</div>}
-                  {(r.my_amount != null || r.my_walkthrough || (r.bid_count ?? 0) < 7) && (() => {
+                  {(() => {
+                    const hasBid = r.my_amount != null || r.my_walkthrough;
+                    const full = (r.bid_count ?? 0) >= 7;
+                    const isOpen = bidOpen[r.id] ?? false;
+                    if (hasBid && !isOpen) {
+                      return (
+                        <div style={{ display:"flex", alignItems:"flex-start", gap:".55rem", padding:".6rem .7rem", borderRadius:"10px", background:"rgba(34,197,94,.10)", border:"1px solid rgba(34,197,94,.3)" }}>
+                          <Ic name="check-circle" size={16} color="#22c55e" style={{ marginTop:1, flexShrink:0 }} />
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:".85rem", fontWeight:600, color:"var(--ff-text)" }}>Your bid has been placed</div>
+                            <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .7)", marginTop:"1px" }}>Waiting on client confirmation · {r.my_walkthrough ? "Walkthrough-first offer" : ("$" + r.my_amount)}</div>
+                          </div>
+                          <button onClick={() => setBidOpen(pp => ({ ...pp, [r.id]: true }))} style={{ background:"none", border:"1px solid rgba(var(--ff-fg), .18)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".78rem", fontWeight:600, cursor:"pointer", padding:".35rem .7rem", flexShrink:0 }}>Edit bid</button>
+                        </div>
+                      );
+                    }
+                    if (!hasBid && !isOpen && full) {
+                      return <div style={{ fontSize:".82rem", color:"var(--ff-warn)" }}>This job already has 7 bids.</div>;
+                    }
+                    if (!hasBid && !isOpen) {
+                      return (
+                        <button onClick={() => setBidOpen(pp => ({ ...pp, [r.id]: true }))} style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", width:"100%", justifyContent:"center" }}>Place a bid</button>
+                      );
+                    }
                     const wtOn = bidForm[r.id]?.walkthrough ?? !!r.my_walkthrough;
                     return (
                     <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center" }}>
@@ -1344,6 +1383,7 @@ export default function ContractorDashboard() {
                       <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyBid === r.id} onClick={() => placeBid(r)}>{busyBid === r.id ? "…" : ((r.my_amount != null || r.my_walkthrough) ? "Update bid" : "Place bid")}</button>
                       {!wtOn && <QuoteBreakdown v={bidForm[r.id] ?? {}} on={patch => setBid(r.id, patch)} calloutHint={contractor?.min_callout ?? null} price={priceFor(r.service_needed)} />}
                       <input placeholder="Assumptions (optional, e.g. price assumes parts are accessible)" value={bidForm[r.id]?.assumptions ?? ""} onChange={e => setBid(r.id, { assumptions: e.target.value })} style={{ ...ffInp, flexBasis:"100%" }} />
+                      <button type="button" onClick={() => setBidOpen(pp => ({ ...pp, [r.id]: false }))} style={{ background:"none", border:"none", color:"rgba(var(--ff-muted), .6)", fontFamily:"inherit", fontSize:".78rem", cursor:"pointer", padding:0, flexBasis:"100%", textAlign:"left" as const }}>Cancel</button>
                     </div>
                     );
                   })()}
@@ -1353,6 +1393,8 @@ export default function ContractorDashboard() {
                 </button>
               </div>
             ))}
+            </>
+            )}
           </div>
         )}
 
