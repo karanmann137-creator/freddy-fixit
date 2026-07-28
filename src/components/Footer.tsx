@@ -112,11 +112,16 @@ export default function Footer() {
     <div style={bar}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       {!onOnboarding && <NewsletterSignup />}
-      <div style={{ fontSize: "1rem", fontWeight: 500, color: "rgba(var(--ff-muted), 0.6)", marginBottom: "0.75rem" }}>
-        Contact us: <a href="mailto:hello@freddyfixit.ca" style={{ color: "#ea6b14", textDecoration: "none" }}>hello@freddyfixit.ca</a>
-        <span style={{ color: "rgba(var(--ff-muted), 0.35)", margin: "0 .5rem" }}>·</span>
+      <div style={{ fontSize: "1rem", fontWeight: 500, color: "rgba(var(--ff-muted), 0.6)", marginBottom: "0.5rem", display: "flex", flexWrap: "wrap", gap: ".2rem .55rem", justifyContent: "center", alignItems: "center" }}>
+        <a href="tel:+18255618331" style={{ color: "#ea6b14", textDecoration: "none" }}>Call (825) 561-8331</a>
+        <span style={{ color: "rgba(var(--ff-muted), 0.35)" }}>·</span>
+        <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("ff:open-chat"))} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#ea6b14", fontFamily: "inherit", fontSize: "1rem", fontWeight: 500 }}>Chat with us</button>
+        <span style={{ color: "rgba(var(--ff-muted), 0.35)" }}>·</span>
+        <a href="mailto:hello@freddyfixit.ca" style={{ color: "#ea6b14", textDecoration: "none" }}>hello@freddyfixit.ca</a>
+        <span style={{ color: "rgba(var(--ff-muted), 0.35)" }}>·</span>
         <a href={"mailto:hello@freddyfixit.ca?subject=" + encodeURIComponent("🐞 Bug report — Freddy Fix It")} style={{ color: "#ea6b14", textDecoration: "none" }}>Report a bug</a>
       </div>
+      <div style={{ fontSize: ".72rem", color: "rgba(var(--ff-muted), 0.4)", marginBottom: "0.75rem" }}>Questions before you book? Call, chat or email — no signup needed.</div>
       <div>Home Repairs · Vehicle Maintenance · Trusted Tradespeople</div>
       {!onOnboarding && <div style={{ marginTop: "0.85rem", fontSize: "0.72rem", maxWidth: "760px", margin: "0.85rem auto 0", lineHeight: 1.9 }}>
         {[
@@ -130,7 +135,7 @@ export default function Footer() {
             <a href={"/services/" + slug} style={link}>{label} Calgary</a>
           </span>
         ))}
-        {" · "}<a href="/services" style={link}>All services</a>{" · "}<a href="/for-contractors" style={link}>For Contractors</a>{" · "}<a href="/blog" style={link}>Blog</a>
+        {" · "}<a href="/services" style={link}>All services</a>{" · "}<a href="/areas" style={link}>Service areas</a>{" · "}<a href="/for-contractors" style={link}>For Contractors</a>{" · "}<a href="/blog" style={link}>Blog</a>
       </div>}
       <div style={{ marginTop: "0.75rem", fontSize: "0.65rem", color: "rgba(var(--ff-muted), 0.2)", maxWidth: "700px", margin: "0.75rem auto 0", lineHeight: 1.6 }}>
         Freddy Fix It is a platform that connects clients with independent contractors. We are not liable for any damages, defects, injury, or loss arising from services booked through this platform. All contractors are independent professionals. Use of this platform constitutes acceptance of our{" "}

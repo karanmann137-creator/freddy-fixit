@@ -34,6 +34,8 @@ const GetQuote             = lazy(() => import("@/pages/GetQuote"));
 const ServicesIndex        = lazy(() => import("@/pages/ServicesIndex"));
 const ServiceLanding       = lazy(() => import("@/pages/ServiceLanding"));
 const ForContractors       = lazy(() => import("@/pages/ForContractors"));
+const AreasIndex           = lazy(() => import("@/pages/AreaLanding").then(m => ({ default: m.AreasIndex })));
+const AreaLanding          = lazy(() => import("@/pages/AreaLanding"));
 
 // Shown briefly while a lazily-loaded page chunk downloads.
 function PageLoader() {
@@ -186,6 +188,8 @@ export default function App() {
       <Route path="/services" component={ServicesIndex} />
       <Route path="/services/:slug" component={ServiceLanding} />
       <Route path="/for-contractors" component={ForContractors} />
+      <Route path="/areas" component={AreasIndex} />
+      <Route path="/areas/:slug" component={AreaLanding} />
 
       {/* Protected */}
       <Route path="/client-dashboard">

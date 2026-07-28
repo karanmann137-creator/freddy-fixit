@@ -154,6 +154,8 @@ export default function ClientOnboarding() {
   const [verifyEmail, setVerifyEmail] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoWarn, setPhotoWarn] = useState(false); // photo failed to upload at submit
+  const [referral, setReferral] = useState<{ code:string } | null>(null);
+  const [refCopied, setRefCopied] = useState(false);
 
   const set = (key: string, val: string) => { setForm(f => ({ ...f, [key]: val })); setErrors(e => ({ ...e, [key]: "" })); };
 
@@ -261,10 +263,20 @@ export default function ClientOnboarding() {
         if (ref) { await supabase.rpc("apply_referral_code", { p_code: ref }); localStorage.removeItem("ff_ref_code"); }
       } catch {}
       trackEvent("sign_up", { method: "client" }); trackEvent("post_job"); requestGoogleReview("signup"); requestGoogleReview("job_posted");
+      try { const { data: refData } = await supabase.rpc("get_my_referral"); const rc = Array.isArray(refData) ? refData[0]?.code : (refData as any)?.code; if (rc) setReferral({ code: rc }); } catch {}
       setSuccess(true); window.scrollTo(0,0);
     } catch (err: any) {
       setSubmitError(err.message?.includes("already registered") ? "An account with this email already exists. Please sign in instead." : err.message ?? "Something went wrong.");
     } finally { setLoading(false); }
+  };
+
+  const copyReferral = async () => {
+    const code = referral?.code;
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(`Get your first Freddy Fix It service fee waived with my code ${code}: https://freddyfixit.ca/?ref=${code}`);
+      setRefCopied(true); setTimeout(() => setRefCopied(false), 2000);
+    } catch {}
   };
 
   const inp = { width:"100%", padding:".75rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".95rem", outline:"none", boxSizing:"border-box" as const };
@@ -319,6 +331,16 @@ export default function ClientOnboarding() {
           <p style={{ background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.45)", borderRadius:"10px", padding:".85rem 1rem", color:"var(--ff-text)", fontSize:".88rem", lineHeight:1.55, marginBottom:"2rem", textAlign:"left" }}>
             Heads up — your photo didn't upload. Your request went through fine; you can add the photo again from your dashboard.
           </p>
+        )}
+        {referral?.code && (
+          <div style={{ background:"linear-gradient(135deg, rgba(234,107,20,.10), rgba(var(--ff-fg),.03))", border:"1px solid rgba(234,107,20,.28)", borderRadius:"12px", padding:"1.25rem", marginBottom:"2rem", textAlign:"left" }}>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.3rem", letterSpacing:".04em", marginBottom:".35rem" }}>Invite a friend, they save</div>
+            <div style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.5, marginBottom:".9rem" }}>Friends who join with your code get the <strong>3% service fee waived on their first job</strong>.</div>
+            <div style={{ display:"flex", gap:".6rem", alignItems:"center", flexWrap:"wrap" as const }}>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.6rem", letterSpacing:".12em", color:"#ea6b14", border:"1px dashed rgba(234,107,20,.5)", borderRadius:"10px", padding:".3rem .85rem" }}>{referral.code}</div>
+              <button style={{ ...s.navBtn, fontSize:".82rem", padding:".55rem 1rem", ...(refCopied ? { color:"#22c55e", borderColor:"rgba(34,197,94,.4)", background:"rgba(34,197,94,.1)" } : { background:"rgba(var(--ff-fg), .06)", color:"var(--ff-text)", border:"1px solid rgba(var(--ff-fg), .12)" }) }} onClick={copyReferral}>{refCopied ? "Copied ✓" : "Copy invite link"}</button>
+            </div>
+          </div>
         )}
         <div style={{ display:"flex", gap:".75rem", justifyContent:"center" }}>
           <button style={{ ...s.navBtn, background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"1px solid rgba(var(--ff-fg), .1)" }} onClick={() => setLocation("/")}>← Home</button>

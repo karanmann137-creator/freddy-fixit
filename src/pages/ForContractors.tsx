@@ -98,6 +98,35 @@ export default function ForContractors() {
         <p style={{ fontSize: ".82rem", color: "rgba(var(--ff-muted), .55)", marginTop: ".9rem" }}>Free to join · No monthly cost · No lead fees</p>
       </section>
 
+      <section style={{ maxWidth: "980px", margin: "0 auto", padding: "1rem 1.5rem 2rem" }}>
+        <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.3)", borderRadius: "16px", padding: "2rem 1.75rem" }}>
+          <h2 className="fc-h" style={{ fontSize: "1.7rem", textAlign: "center", color: "var(--ff-text)", marginBottom: ".5rem" }}>Tired of paying for leads that go nowhere?</h2>
+          <p className="fc-p" style={{ fontSize: ".95rem", textAlign: "center", maxWidth: "620px", margin: "0 auto 1.75rem" }}>
+            Most platforms sell the same lead to a handful of pros and charge you whether or not you win. Freddy works the opposite way.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1rem" }}>
+            <div style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .1)", borderRadius: "12px", padding: "1.25rem 1.4rem" }}>
+              <div style={{ fontSize: ".78rem", textTransform: "uppercase", letterSpacing: ".12em", color: "rgba(var(--ff-muted), .55)", marginBottom: ".85rem" }}>Pay-to-play directories</div>
+              {["Monthly subscription just to appear", "Pay per lead — even ones you never win", "Same lead sold to several contractors", "Charged before you earn a dollar"].map((x) => (
+                <div key={x} style={{ display: "flex", gap: ".55rem", alignItems: "flex-start", marginBottom: ".55rem" }}>
+                  <Ic name="x-circle" size={17} color="rgba(var(--ff-muted), .5)" style={{ flexShrink: 0, marginTop: "1px" }} />
+                  <span className="fc-p" style={{ fontSize: ".88rem" }}>{x}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ background: "rgba(234,107,20,.06)", border: "1px solid rgba(234,107,20,.35)", borderRadius: "12px", padding: "1.25rem 1.4rem" }}>
+              <div style={{ fontSize: ".78rem", textTransform: "uppercase", letterSpacing: ".12em", color: "#ea6b14", marginBottom: ".85rem" }}>Freddy Fix It</div>
+              {["Free to join — no monthly fee", "No lead fees, ever", "You only pay a small fee on completed jobs", "Paid securely once the work's done"].map((x) => (
+                <div key={x} style={{ display: "flex", gap: ".55rem", alignItems: "flex-start", marginBottom: ".55rem" }}>
+                  <Ic name="check-circle" size={17} color="#ea6b14" style={{ flexShrink: 0, marginTop: "1px" }} />
+                  <span className="fc-p" style={{ fontSize: ".88rem", color: "var(--ff-text)" }}>{x}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section style={{ maxWidth: "980px", margin: "0 auto", padding: "2rem 1.5rem" }}>
         <h2 className="fc-h" style={{ fontSize: "2rem", textAlign: "center", color: "var(--ff-text)", marginBottom: "2rem" }}>Why join Freddy Fix It?</h2>
         <div className="fc-grid">

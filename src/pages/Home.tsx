@@ -351,9 +351,13 @@ export default function Home() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.4 }}
             style={{ display:"flex", justifyContent:"center", marginBottom:"1.4rem" }}>
             <span style={{ display:"inline-flex", alignItems:"center", gap:".45rem", fontSize:"1rem", fontWeight:500, color:"rgba(var(--ff-fg), .9)" }}>
-              <Ic name="user-check" size={17} color="#ea6b14" />Vetted Handymen & Trades — On Demand
+              <Ic name="user-check" size={17} color="#ea6b14" />Calgary's Vetted Pros, On Demand
             </span>
           </motion.div>
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.42 }}
+            style={{ textAlign:"center", fontSize:".9rem", color:"rgba(var(--ff-muted), .72)", maxWidth:"460px", margin:"-.5rem auto 1.3rem", lineHeight:1.6 }}>
+            We're not a directory that sells your details to the highest bidder. We match you with vetted local pros — and your payment's held until you approve the work.
+          </motion.p>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.45 }}
             style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:".9rem" }}>
             <button className="ff-cta-main" onClick={() => setLocation("/client-onboarding")}>
@@ -388,6 +392,23 @@ export default function Home() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
+        </div>
+      </div>
+
+      {/* ── Trust proof bar ── */}
+      <div style={{ background:"rgba(var(--ff-fg), .03)", borderTop:"1px solid rgba(var(--ff-fg), .07)", borderBottom:"1px solid rgba(var(--ff-fg), .07)", padding:"1.4rem 1rem" }}>
+        <div style={{ maxWidth:"1000px", margin:"0 auto", display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))", gap:"1rem" }}>
+          {[
+            { icon:"user-check", label:"Licensed, insured & WCB-verified" },
+            { icon:"dollar", label:"Payment held until you approve" },
+            { icon:"map-pin", label:"Calgary local — zones & nearby towns" },
+            { icon:"sparkles", label:"Free estimates, no signup" },
+          ].map((t) => (
+            <div key={t.label} style={{ display:"flex", alignItems:"center", gap:".55rem", justifyContent:"center", textAlign:"center" as const }}>
+              <Ic name={t.icon as any} size={19} color="#ea6b14" />
+              <span style={{ fontSize:".85rem", fontWeight:500, color:"rgba(var(--ff-fg), .82)" }}>{t.label}</span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -444,6 +465,44 @@ export default function Home() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* ── Freddy Verified ── */}
+      <div style={{ background:"var(--ff-surface)", padding:"6rem 2rem", position:"relative" as const, overflow:"hidden" as const }}>
+        <div style={{ maxWidth:"960px", margin:"0 auto", position:"relative" as const, zIndex:1 }}>
+          <p style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" as const }}>Our Vetting Standard</p>
+          <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:".06em", color:"var(--ff-text)", textAlign:"center" as const, marginBottom:"1rem" }}>The Freddy <span style={{ color:"#ea6b14" }}>Verified</span> Promise.</h2>
+          <p style={{ textAlign:"center" as const, fontSize:"1rem", color:"rgba(var(--ff-muted), .7)", fontWeight:300, maxWidth:"620px", margin:"0 auto 3rem", lineHeight:1.7 }}>
+            Anyone can call themselves a handyman. Before a pro can take a single job on Freddy, they clear our verification checklist — and every job is payment-protected on top of it.
+          </p>
+          <div style={{ display:"flex", justifyContent:"center" as const, marginBottom:"3rem" }}>
+            <div style={{ display:"inline-flex", alignItems:"center", gap:".7rem", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.4)", borderRadius:"999px", padding:".7rem 1.4rem", boxShadow:"0 0 32px rgba(234,107,20,.18)" }}>
+              <Ic name="user-check" size={22} color="#ea6b14" />
+              <span style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"1.4rem", letterSpacing:".08em", color:"#ea6b14" }}>Freddy Verified</span>
+            </div>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(250px, 1fr))", gap:"1rem", maxWidth:"820px", margin:"0 auto" }}>
+            {[
+              { t:"Licence & trade certification", d:"We confirm the right trade licence or certification for the work they do." },
+              { t:"Liability insurance", d:"Active coverage on file, so you're protected if something goes wrong." },
+              { t:"WCB coverage", d:"Workers' Compensation on file — no liability landing on you." },
+              { t:"Reference & work history checks", d:"We review past work and references before approving a pro." },
+              { t:"Admin background review", d:"A real person on our team reviews and approves every contractor." },
+              { t:"Payment held until you approve", d:"Your money stays protected and is only released once you're happy." },
+            ].map((it) => (
+              <div key={it.t} style={{ display:"flex", gap:".85rem", alignItems:"flex-start" as const, background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.15rem 1.3rem" }}>
+                <span style={{ flexShrink:0, marginTop:"1px" }}><Ic name="check-circle" size={22} color="#ea6b14" /></span>
+                <div>
+                  <div style={{ fontSize:".96rem", fontWeight:500, color:"var(--ff-text)", marginBottom:".25rem" }}>{it.t}</div>
+                  <div style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .65)", fontWeight:300, lineHeight:1.55 }}>{it.d}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p style={{ textAlign:"center" as const, marginTop:"2.5rem", fontSize:".9rem", color:"rgba(var(--ff-muted), .6)", fontWeight:300 }}>
+            A verified badge means our review process was completed — not a guarantee of outcome. You always pick your own pro.
+          </p>
         </div>
       </div>
 
