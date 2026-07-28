@@ -354,10 +354,6 @@ export default function Home() {
               <Ic name="user-check" size={17} color="#ea6b14" />Calgary's Vetted Pros, On Demand
             </span>
           </motion.div>
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.42 }}
-            style={{ textAlign:"center", fontSize:".9rem", color:"rgba(var(--ff-muted), .72)", maxWidth:"460px", margin:"-.5rem auto 1.3rem", lineHeight:1.6 }}>
-            We're not a directory that sells your details to the highest bidder. We match you with vetted local pros — and your payment's held until you approve the work.
-          </motion.p>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.45 }}
             style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:".9rem" }}>
             <button className="ff-cta-main" onClick={() => setLocation("/client-onboarding")}>
@@ -366,11 +362,6 @@ export default function Home() {
             <button className="ff-cta-sub" onClick={() => setLocation("/contractor-onboarding")}>
               <Ic name="wrench" size={13} color="#ea6b14" style={{ marginRight:6, verticalAlign:"-2px" }} />Join Freddy's Team
             </button>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", flexWrap:"wrap" as const, gap:".4rem", fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", textAlign:"center" as const }}>
-              <Ic name="user-check" size={13} color="#ea6b14" /> Licensed &amp; insured
-              <span style={{ opacity:.5 }}>·</span> WCB covered
-              <span style={{ opacity:.5 }}>·</span> Payment held until you approve
-            </div>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:".4rem", fontSize:".82rem", color:"rgba(var(--ff-fg), .85)", fontWeight:500 }}>
               <Ic name="sparkles" size={14} color="#ea6b14" /> Have AI match you to your ideal contractor
             </div>
@@ -410,6 +401,9 @@ export default function Home() {
             </div>
           ))}
         </div>
+        <p style={{ maxWidth:"620px", margin:"1.15rem auto 0", textAlign:"center" as const, fontSize:".88rem", lineHeight:1.6, color:"rgba(var(--ff-muted), .7)" }}>
+          We're not a directory that sells your details to the highest bidder. We match you with vetted local pros — and your payment's held until you approve the work.
+        </p>
       </div>
 
       {/* ── Before / After ── */}
