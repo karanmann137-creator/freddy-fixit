@@ -89,6 +89,19 @@ function fmtPhone(v: string) {
   return d.slice(0,3) + "-" + d.slice(3,6) + "-" + d.slice(6);
 }
 
+// Derive a display name from the email local-part so clients don't have to type
+// their name (reduces last-step drop-off). "alex.johnson@x.com" -> Alex / Johnson.
+function namesFromEmail(email: string): { first: string; last: string } {
+  const localRaw = (email.split("@")[0] || "");
+  const local = localRaw.replace(/\d+/g, "");
+  const parts = local.split(/[._\-+]+/).filter(pt => pt.length > 1);
+  const cap = (w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+  let first = parts[0] ? cap(parts[0]) : "";
+  const last = parts[1] ? cap(parts[1]) : "";
+  if (!first) { const fallback = (localRaw.replace(/[^A-Za-z]/g, "") || localRaw); first = fallback ? cap(fallback) : ""; }
+  return { first, last };
+}
+
 export default function ClientOnboarding() {
   const [, setLocation] = useLocation();
   // A signed-in user starting a new request gets the streamlined returning-user
@@ -110,7 +123,7 @@ export default function ClientOnboarding() {
   }, []);
   const [step, setStep] = useState(1);
   const TOTAL = 3;
-  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", password:"", preferredSchedule:"", location:"", postalCode:"", jobDescription:"", businessName:"", businessType:"", locations:"", billingPreference:"" });
+  const [form, setForm] = useState({ email:"", phone:"", password:"", preferredSchedule:"", location:"", postalCode:"", jobDescription:"", businessName:"", businessType:"", locations:"", billingPreference:"" });
   const [clientType, setClientType] = useState<"individual"|"business">("individual");
   const [recurring, setRecurring] = useState(false);
   const [recurringFrequency, setRecurringFrequency] = useState<string>("");
@@ -189,14 +202,13 @@ export default function ClientOnboarding() {
       if (form.jobDescription.trim().length < 10) errs.jobDescription = "Min 10 characters";
     }
     if (step === 3) {
-      if (!form.firstName.trim()) errs.firstName = "Required";
       { const ev = validateEmail(form.email); if (!ev.ok) errs.email = ev.error!; }
       { const pv = validatePhone(form.phone); if (!pv.ok) errs.phone = pv.error!; }
       if (form.password.length < 8) errs.password = "Minimum 8 characters";
     }
     setErrors(errs);
     // On a long step the errored field can sit below the fold — scroll it into view.
-    const order = ["serviceNeeded","preferredSchedule","location","jobDescription","firstName","email","phone","password"];
+    const order = ["serviceNeeded","preferredSchedule","location","jobDescription","email","phone","password"];
     const first = order.find(k => errs[k]);
     if (first) setTimeout(() => { document.getElementById("co-err-" + first)?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 60);
     return Object.keys(errs).length === 0;
@@ -209,13 +221,15 @@ export default function ClientOnboarding() {
     if (!validate()) return;
     if (!agreedToTerms) { setSubmitError("Please agree to the User Agreement and Privacy Policy to continue."); window.scrollTo(0,0); return; }
     setLoading(true); setSubmitError("");
+    // Name isn't collected any more — derive it from the email address.
+    const derivedName = namesFromEmail(form.email);
     try {
       // Pass the whole request as signup metadata so a DB trigger creates the
       // profile + client_request even when email confirmation is on (no session
       // is returned until the email is verified).
       const metadata: Record<string, any> = {
         role: "client",
-        first_name: form.firstName, last_name: form.lastName, phone: form.phone,
+        first_name: derivedName.first, last_name: derivedName.last, phone: form.phone,
         service_needed: selectedServices.join(", "),
         preferred_schedule: form.preferredSchedule,
         location: form.location.trim() || form.postalCode.trim(),
@@ -253,7 +267,7 @@ export default function ClientOnboarding() {
       if (((authData.user.identities?.length) ?? 0) === 0) { setSubmitError("An account with this email already exists. Please sign in instead."); window.scrollTo(0,0); setLoading(false); return; }
       // Weekly-tips opt-in (CASL express consent — checkbox is never pre-checked).
       if (newsletterOptIn) {
-        try { await supabase.rpc("newsletter_subscribe", { p_email: form.email, p_audience: "client", p_name: form.firstName, p_source: "signup_checkbox" }); } catch {}
+        try { await supabase.rpc("newsletter_subscribe", { p_email: form.email, p_audience: "client", p_name: derivedName.first, p_source: "signup_checkbox" }); } catch {}
       }
       const userId = authData.user.id;
       // No session => email confirmation required. The trigger saved their
@@ -388,17 +402,6 @@ export default function ClientOnboarding() {
         <div style={s.card}>
           {step === 3 && (
             <div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
-                <div style={{ marginBottom:"1.2rem" }}>
-                  <label style={s.label}>First Name</label>
-                  <input autoComplete="given-name" style={{ ...inp, borderColor: errors.firstName ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="Alex" value={form.firstName} onChange={e => set("firstName",e.target.value)} />
-                  {errors.firstName && <p id="co-err-firstName" style={s.err}>{errors.firstName}</p>}
-                </div>
-                <div style={{ marginBottom:"1.2rem" }}>
-                  <label style={s.label}>Last Name <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
-                  <input autoComplete="family-name" style={inp} placeholder="Johnson" value={form.lastName} onChange={e => set("lastName",e.target.value)} />
-                </div>
-              </div>
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Email</label>
                 <input autoComplete="email" style={{ ...inp, borderColor: errors.email ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="email" placeholder="alex@email.com" value={form.email} onChange={e => set("email",e.target.value)} />

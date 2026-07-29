@@ -48,19 +48,22 @@ export default function ServicePicker({
   return (
     <div>
       <div style={{ position: "relative", marginBottom: ".75rem" }}>
-        <span style={{ position: "absolute", left: ".8rem", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", display: "flex" }}>
-          <Ic name="search" size={16} color="rgba(var(--ff-muted), .6)" />
+        <span style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", display: "flex" }}>
+          <Ic name="search" size={18} color="#ea6b14" />
         </span>
         <input
           value={q}
           onChange={e => setQ(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter" && canAddCustom) { e.preventDefault(); addCustom(); } }}
+          onFocus={e => { e.currentTarget.style.borderColor = "#ea6b14"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(234,107,20,.15)"; }}
+          onBlur={e => { e.currentTarget.style.borderColor = "rgba(234,107,20,.45)"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,.06)"; }}
           placeholder="Search a service (e.g. plumbing, moving, junk removal)…"
           aria-label="Search services"
           style={{
-            width: "100%", boxSizing: "border-box", padding: ".7rem .8rem .7rem 2.2rem", borderRadius: "10px",
-            background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .12)", color: "var(--ff-text)",
-            fontFamily: "inherit", fontSize: ".9rem", outline: "none",
+            width: "100%", boxSizing: "border-box", padding: ".95rem 1rem .95rem 2.6rem", borderRadius: "12px",
+            background: "rgba(var(--ff-fg), .06)", border: "1.5px solid rgba(234,107,20,.45)", color: "var(--ff-text)",
+            fontFamily: "inherit", fontSize: "1rem", fontWeight: 500, outline: "none",
+            boxShadow: "0 1px 3px rgba(0,0,0,.06)", transition: "border-color .15s, box-shadow .15s",
           }} />
       </div>
 
