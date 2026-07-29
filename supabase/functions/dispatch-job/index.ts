@@ -22,6 +22,24 @@ function extractZones(location: string): string[] {
   return zones;
 }
 
+// Mask the client's address for the dispatch email — contractors only get the
+// full street address after they WIN the job (RLS-gated). Mirrors the
+// public.mask_location() SQL helper: "T2P 0R5 · NW Calgary".
+function maskLocation(loc: string): string {
+  const raw = loc ?? "";
+  let pc: string | null = null;
+  const pcm = raw.match(/([A-Za-z][0-9][A-Za-z]\s*[0-9][A-Za-z][0-9])/);
+  if (pcm) { const z = pcm[1].replace(/\s/g, "").toUpperCase(); pc = z.slice(0, 3) + " " + z.slice(3, 6); }
+  let zone: string | null = null;
+  const town = raw.match(/(Airdrie|Cochrane|Chestermere|Okotoks|Strathmore)/i);
+  const q = raw.match(/\b(NW|NE|SW|SE)\b/i);
+  if (town) zone = town[1].charAt(0).toUpperCase() + town[1].slice(1).toLowerCase();
+  else if (q) zone = q[1].toUpperCase() + " Calgary";
+  else if (/downtown|beltline/i.test(raw)) zone = "Downtown / Beltline";
+  const parts = [pc, zone].filter(Boolean);
+  return parts.length ? parts.join(" \u00b7 ") : "Calgary area";
+}
+
 const TRADE_MAP: Record<string, string[]> = {
   plumbing:    ["plumbing","pipe","drain","water","leak","faucet","toilet"],
   electrical:  ["electrical","electric","wiring","outlet","breaker","light"],
@@ -134,7 +152,7 @@ serve(async (req) => {
         <p>Hi ${name}, there's a new job that matches your skills. Jobs close after 3 bids — first come, first served.</p>
         <table style="width:100%;border-collapse:collapse;margin:1rem 0;">
           <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;width:120px;">SERVICE</td><td style="padding:.5rem 0;font-weight:500;">${request.service_needed}</td></tr>
-          <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;">LOCATION</td><td style="padding:.5rem 0;">${request.location}</td></tr>
+          <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;">LOCATION</td><td style="padding:.5rem 0;">${maskLocation(request.location ?? "")}</td></tr>
           <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;">TIMING</td><td style="padding:.5rem 0;">${request.preferred_schedule}</td></tr>
           <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;">DETAILS</td><td style="padding:.5rem 0;font-size:.9rem;">${request.job_description ?? "—"}</td></tr>
         </table>
@@ -148,7 +166,7 @@ serve(async (req) => {
         body: JSON.stringify({
           from: `Freddy Fix It <${FROM_EMAIL}>`,
           to: email,
-          subject: `New ${request.service_needed} job in ${(request.location ?? "").split(",")[0]}`,
+          subject: `New ${request.service_needed} job in ${maskLocation(request.location ?? "")}`,
           html,
         }),
       });

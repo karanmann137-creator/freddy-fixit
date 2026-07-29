@@ -37,6 +37,7 @@ export default function ContractorProfileCompletion({
   const [insuranceProvider, setInsuranceProvider] = useState<string>(contractor?.insurance_provider ?? "");
   const [insuranceExpiry, setInsuranceExpiry] = useState<string>(contractor?.insurance_expiry ?? "");
   const [hasWcb, setHasWcb] = useState<boolean>(!!contractor?.has_wcb);
+  const [operatesAlone, setOperatesAlone] = useState<boolean>(!!contractor?.operates_alone);
   const [workReferences, setWorkReferences] = useState<string>(contractor?.work_references ?? "");
   const [docFiles, setDocFiles] = useState<Record<DocKey, File | null>>({ insurance: null, wcb: null, certification: null, gov_id: null });
   const [busy, setBusy] = useState(false);
@@ -84,7 +85,8 @@ export default function ContractorProfileCompletion({
         has_liability_insurance: hasInsurance,
         insurance_provider: insuranceProvider || null,
         insurance_expiry: insuranceExpiry || null,
-        has_wcb: hasWcb,
+        has_wcb: operatesAlone ? false : hasWcb,
+        operates_alone: operatesAlone,
         work_references: workReferences || null,
         doc_urls: docUrls,
       };
@@ -156,7 +158,10 @@ export default function ContractorProfileCompletion({
             <input style={{ ...inp, flex: "1 1 130px" }} type="date" value={insuranceExpiry} onChange={e => setInsuranceExpiry(e.target.value)} />
           </div>
         )}
-        {checkRow(hasWcb, setHasWcb, "I have WCB coverage")}
+        {checkRow(operatesAlone, (v) => { setOperatesAlone(v); if (v) setHasWcb(false); }, "I operate alone (no employees) — WCB not required")}
+        {operatesAlone
+          ? <p style={{ fontSize: ".74rem", color: "rgba(var(--ff-muted), .55)", margin: "-.2rem 0 .2rem 1.6rem", lineHeight: 1.5 }}>Solo operators with no workers are WCB-exempt in Alberta.</p>
+          : checkRow(hasWcb, setHasWcb, "I have WCB coverage")}
       </div>
 
       {/* References */}

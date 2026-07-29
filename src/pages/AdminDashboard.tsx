@@ -553,7 +553,7 @@ export default function AdminDashboard() {
                       <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .55)" }}>
                         {"Licensed: "}{a.licensed === true ? ("Yes" + (a.license_number ? " (#" + a.license_number + ")" : "")) : a.licensed === false ? "No" : "—"}
                         {"  ·  Insurance: "}{a.has_liability_insurance === true ? ("Yes" + (a.insurance_provider ? " (" + a.insurance_provider + (a.insurance_expiry ? ", exp " + a.insurance_expiry : "") + ")" : "")) : a.has_liability_insurance === false ? "No" : "—"}
-                        {"  ·  WCB: "}{a.has_wcb === true ? "Yes" : a.has_wcb === false ? "No" : "—"}
+                        {"  ·  WCB: "}{a.operates_alone === true ? "Exempt (operates alone)" : a.has_wcb === true ? "Yes" : a.has_wcb === false ? "No" : "—"}
                       </div>
                       <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .55)" }}>
                         {"Rating: "}{a.rating ? Number(a.rating).toFixed(1) + "/10 (" + (a.rating_count ?? 0) + " review" + ((a.rating_count ?? 0) === 1 ? "" : "s") + ")" : "no reviews yet"}

@@ -202,7 +202,7 @@ export default function ContractorProfile() {
                 <div style={{ color:"rgba(var(--ff-muted), .75)" }}>
                   Licensed: {admin.licensed ? "Yes" + (admin.license_number ? " (#" + admin.license_number + ")" : "") : "No"}<br />
                   Insurance: {admin.has_liability_insurance ? "Yes" + (admin.insurance_provider ? " — " + admin.insurance_provider : "") + (admin.insurance_expiry ? ", expires " + admin.insurance_expiry : "") : "No"}<br />
-                  WCB: {admin.has_wcb ? "Yes" : "No"}
+                  WCB: {admin.operates_alone ? "Exempt (operates alone)" : admin.has_wcb ? "Yes" : "No"}
                 </div>
               </div>
               <div>

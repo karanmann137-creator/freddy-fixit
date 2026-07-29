@@ -105,7 +105,7 @@ export default function ContractorOnboarding() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
   const TOTAL = 8;
-  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", companyName:"", password:"", yearsOfExperience:"", photoUrl:"", workType:"", licensed:false, licenseNumber:"", hasInsurance:false, insuranceProvider:"", insuranceExpiry:"", hasWcb:false, workReferences:"" });
+  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", companyName:"", password:"", yearsOfExperience:"", photoUrl:"", workType:"", licensed:false, licenseNumber:"", hasInsurance:false, insuranceProvider:"", insuranceExpiry:"", hasWcb:false, operatesAlone:false, workReferences:"" });
   const [selectedSpec,  setSelectedSpec]  = useState<string[]>([]);
   const [selectedArea,  setSelectedArea]  = useState<string[]>([]);
   const [availDays, setAvailDays] = useState<string[]>([...WEEKDAYS]);
@@ -242,7 +242,8 @@ export default function ContractorOnboarding() {
         years_of_experience: form.yearsOfExperience,
         licensed: form.licensed, license_number: form.licenseNumber,
         has_liability_insurance: form.hasInsurance, insurance_provider: form.insuranceProvider,
-        insurance_expiry: form.insuranceExpiry, has_wcb: form.hasWcb,
+        insurance_expiry: form.insuranceExpiry, has_wcb: form.operatesAlone ? false : form.hasWcb,
+        operates_alone: form.operatesAlone,
         work_references: form.workReferences,
       };
 
@@ -310,7 +311,7 @@ export default function ContractorOnboarding() {
       }
       if (failedUploads.length) setUploadWarn(failedUploads.join(", "));
 
-      const { error: conErr } = await supabase.from("contractors").upsert({ id: userId, company_name: form.companyName || null, specialties: selectedSpec, years_of_experience: form.yearsOfExperience === "" ? null : Number(form.yearsOfExperience), service_area: selectedArea, availability: { days: availDays, start: availStart, end: availEnd }, work_type: form.workType || null, photo_url: photoPublicUrl, licensed: form.licensed, license_number: form.licenseNumber || null, has_liability_insurance: form.hasInsurance, insurance_provider: form.insuranceProvider || null, insurance_expiry: form.insuranceExpiry || null, has_wcb: form.hasWcb, work_references: form.workReferences || null, status: "pending", doc_urls: docUrls });
+      const { error: conErr } = await supabase.from("contractors").upsert({ id: userId, company_name: form.companyName || null, specialties: selectedSpec, years_of_experience: form.yearsOfExperience === "" ? null : Number(form.yearsOfExperience), service_area: selectedArea, availability: { days: availDays, start: availStart, end: availEnd }, work_type: form.workType || null, photo_url: photoPublicUrl, licensed: form.licensed, license_number: form.licenseNumber || null, has_liability_insurance: form.hasInsurance, insurance_provider: form.insuranceProvider || null, insurance_expiry: form.insuranceExpiry || null, has_wcb: form.operatesAlone ? false : form.hasWcb, operates_alone: form.operatesAlone, work_references: form.workReferences || null, status: "pending", doc_urls: docUrls });
       if (conErr) throw conErr;
 
       // Trigger automated document review (non-blocking)
@@ -650,9 +651,20 @@ export default function ContractorOnboarding() {
                 </>
               )}
               <label style={{ display:"flex", alignItems:"center", gap:".6rem", cursor:"pointer", fontSize:".9rem", color:"rgba(var(--ff-muted), .85)", marginTop:".9rem" }}>
-                <input type="checkbox" checked={form.hasWcb} onChange={e=>setFB("hasWcb",e.target.checked)} style={{ width:"18px", height:"18px", accentColor:"#ea6b14", cursor:"pointer", flexShrink:0 }} />
-                <span>I have WCB / WorkSafe coverage</span>
+                <input type="checkbox" checked={form.operatesAlone} onChange={e=>setForm(f=>({ ...f, operatesAlone:e.target.checked, hasWcb: e.target.checked ? false : f.hasWcb }))} style={{ width:"18px", height:"18px", accentColor:"#ea6b14", cursor:"pointer", flexShrink:0 }} />
+                <span>I operate alone (no employees) &mdash; WCB not required</span>
               </label>
+              {form.operatesAlone && (
+                <p style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .5)", marginTop:".4rem", marginLeft:"1.6rem", lineHeight:1.5 }}>
+                  Solo operators with no workers are exempt from WCB in Alberta. You&rsquo;ll still need your licence (if your trade requires one) and liability insurance.
+                </p>
+              )}
+              {!form.operatesAlone && (
+                <label style={{ display:"flex", alignItems:"center", gap:".6rem", cursor:"pointer", fontSize:".9rem", color:"rgba(var(--ff-muted), .85)", marginTop:".9rem" }}>
+                  <input type="checkbox" checked={form.hasWcb} onChange={e=>setFB("hasWcb",e.target.checked)} style={{ width:"18px", height:"18px", accentColor:"#ea6b14", cursor:"pointer", flexShrink:0 }} />
+                  <span>I have WCB / WorkSafe coverage</span>
+                </label>
+              )}
               <div style={{ marginTop:"1rem" }}>
                 <label style={s.label}>References or past-work links <span style={{ color:"rgba(var(--ff-muted), .45)", fontWeight:300 }}>(optional)</span></label>
                 <textarea style={{ ...inp, minHeight:"70px", resize:"vertical", fontFamily:"inherit" }} placeholder="Links to past work, or names/numbers of references" value={form.workReferences} onChange={e=>setF("workReferences",e.target.value)} />
@@ -668,7 +680,7 @@ export default function ContractorOnboarding() {
               </p>
               {([
                 { key:"insurance",    label:"Liability Insurance Certificate", required:insuranceRequired,  hint:"Certificate of Insurance showing min. $1M coverage in Alberta" },
-                { key:"wcb",          label:"WCB / Workers Comp Certificate",  required:insuranceRequired,  hint:"WCB clearance letter issued within the last 90 days" },
+                { key:"wcb",          label:"WCB / Workers Comp Certificate",  required:insuranceRequired && !form.operatesAlone,  hint: form.operatesAlone ? "Not required — you operate alone (WCB exempt)" : "WCB clearance letter issued within the last 90 days" },
                 { key:"certification",label:"Trade Certification",             required: wt?.licence === "required", hint:"Red Seal, provincial licence, or other trade credential" },
                 { key:"gov_id",       label:"Government-Issued Photo ID",      required:true,  hint:"Driver's licence or passport — name must be clearly visible" },
               ] as Array<{ key: keyof DocFiles; label: string; required: boolean; hint: string }>).map(doc => (

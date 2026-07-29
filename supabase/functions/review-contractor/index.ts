@@ -1,9 +1,9 @@
-// review-contractor v11 (2026-07-17): ADVISORY-ONLY + locked down.
+// review-contractor v12 (2026-07-29): solo-operator WCB-exempt review.
 // - Never changes contractors.status — the AI verdict is saved for the admin,
 //   who approves/deactivates manually (profile-page Admin Review panel).
 // - verify_jwt=true + in-code gate: only the contractor themselves (after a doc
-//   upload) or an admin can trigger a review. Previously anyone with a
-//   contractor_id could invoke it AND a pass auto-activated the account.
+//   upload) or an admin can trigger a review.
+// - operates_alone contractors are WCB-exempt: WCB is not required or reviewed.
 // - On pass: contractor gets a "docs passed initial checks, final review
 //   underway" email (NOT "you're approved"). On fail: action-needed email.
 // - Admin (hello@) gets a verdict email either way with a profile-page link.
@@ -69,12 +69,14 @@ serve(async (req) => {
       if (me?.role !== "admin") return json({ error: "Not authorized" }, 403);
     }
 
-    const { data: contractor, error: conErr } = await admin.from("contractors").select("doc_urls").eq("id", contractor_id).single();
+    const { data: contractor, error: conErr } = await admin.from("contractors").select("doc_urls, operates_alone").eq("id", contractor_id).single();
     if (conErr || !contractor) return json({ error: "Contractor not found" }, 404);
     const { data: profile } = await admin.from("profiles").select("first_name, last_name, email").eq("id", contractor_id).maybeSingle();
 
     const docUrls: Record<string, string> = contractor.doc_urls || {};
-    const DOC_KEYS = ["insurance", "wcb", "certification", "gov_id"];
+    // Solo operators (no employees) are WCB-exempt in Alberta — don't require or review WCB.
+    const soloExempt = !!contractor.operates_alone;
+    const DOC_KEYS = soloExempt ? ["insurance", "certification", "gov_id"] : ["insurance", "wcb", "certification", "gov_id"];
     const DOC_LABELS: Record<string, string> = { insurance: "Liability Insurance Certificate", wcb: "WCB Certificate", certification: "Trade Certification", gov_id: "Government-Issued Photo ID" };
     const contentBlocks: any[] = [];
     const uploaded: string[] = [];
@@ -94,7 +96,15 @@ serve(async (req) => {
       return json({ status: "no_docs" });
     }
 
-    contentBlocks.push({ type: "text", text: `Review these contractor documents for Freddy Fix It (Calgary home repair platform). Uploaded: ${uploaded.map(k => DOC_LABELS[k]).join(", ")}. Check: insurance=valid CoI, not expired, covers Alberta, min $1M; wcb=valid clearance, issued within 90 days; certification=valid trade cert or Red Seal; gov_id=government photo ID with visible name. Be lenient - pass if clearly legitimate. Return ONLY JSON:\n{"results":{"insurance":{"uploaded":bool,"pass":bool,"reason":"..."},"wcb":{"uploaded":bool,"pass":bool,"reason":"..."},"certification":{"uploaded":bool,"pass":bool,"reason":"..."},"gov_id":{"uploaded":bool,"pass":bool,"reason":"..."}},"overall":"approved" or "rejected","summary":"one sentence for contractor"}` });
+    const CHECKS: Record<string, string> = {
+      insurance: "insurance=valid CoI, not expired, covers Alberta, min $1M",
+      wcb: "wcb=valid clearance, issued within 90 days",
+      certification: "certification=valid trade cert or Red Seal",
+      gov_id: "gov_id=government photo ID with visible name",
+    };
+    const checkClause = DOC_KEYS.map(k => CHECKS[k]).join("; ");
+    const schemaInner = DOC_KEYS.map(k => `"${k}":{"uploaded":bool,"pass":bool,"reason":"..."}`).join(",");
+    contentBlocks.push({ type: "text", text: `Review these contractor documents for Freddy Fix It (Calgary home repair platform). Uploaded: ${uploaded.map(k => DOC_LABELS[k]).join(", ")}. Check: ${checkClause}. Be lenient - pass if clearly legitimate.${soloExempt ? " This contractor operates alone with no employees, so WCB coverage is NOT required \u2014 do not consider or mention it." : ""} Return ONLY JSON:\n{"results":{${schemaInner}},"overall":"approved" or "rejected","summary":"one sentence for contractor"}` });
 
     const hdrs: Record<string, string> = { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" };
     if (hasPdf.length > 0) hdrs["anthropic-beta"] = "pdfs-2024-09-25";
