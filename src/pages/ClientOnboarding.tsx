@@ -62,6 +62,8 @@ export const SCHEDULES = [
 
 const STEP_TITLES = ["What Do You Need?", "Job Details", "Almost Done"];
 const STEP_SUBS   = ["Choose your service and preferred timing", "Where and what needs fixing?", "Create a free account to track your request"];
+// Stable machine names for the drop-off funnel in PostHog (do not rename — insights key off these).
+const STEP_NAMES  = ["service", "details", "account"];
 // Plain-language "Freddy walks you through it" copy, one per step (see GuideBubble).
 const CLIENT_GUIDE: { message: string; why?: string; tip?: string }[] = [
   { message: "Hi, I'm Freddy. Tell me what needs fixing and I'll help you get free estimates from vetted Calgary pros. First, pick your service and when you'd like it done.",
@@ -169,6 +171,15 @@ export default function ClientOnboarding() {
       setRecurringFrequency(SLIDER_STOPS[sliderIdx]);
     }
   }, [form.preferredSchedule]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Onboarding drop-off funnel: fire a step-view event each time a logged-out
+  // visitor lands on / advances through a signup step. Lets PostHog pinpoint
+  // exactly which internal step people abandon (steps live on one URL, so
+  // $pageview alone can't see them). Named steps: service -> details -> account.
+  useEffect(() => {
+    if (mode !== "signup") return;
+    trackEvent("onboarding_step_view", { flow: "client", step, step_name: STEP_NAMES[step-1] || String(step) });
+  }, [step, mode]); // eslint-disable-line react-hooks/exhaustive-deps
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const pricing = useServicePricing();
   const [errors, setErrors] = useState<Record<string,string>>({});
