@@ -248,7 +248,7 @@ export default function ClientDashboard() {
         activeReq.assigned_contractor_id
           ? supabase.rpc("get_contractor_profile", { p_id: activeReq.assigned_contractor_id }).maybeSingle()
           : Promise.resolve({ data: null }),
-        supabase.from("jobs").select("*").eq("request_id", activeReq.id).maybeSingle(),
+        supabase.from("jobs").select("*").eq("request_id", activeReq.id).neq("status", "cancelled").order("created_at", { ascending: false }).limit(1).maybeSingle(),
       ]);
       if (cancelled) return;
       setContractor(con ?? null);
@@ -594,6 +594,25 @@ export default function ClientDashboard() {
     setActiveJob((j: any) => j ? { ...j, price_change_pending: null } : j);
   };
 
+  // Pre-work price hike: the client declines the higher price and re-opens the
+  // request to the other pros who bid, so they can re-pick without starting over.
+  const declineReopen = async () => {
+    if (!activeJob) return;
+    if (!(await askConfirm({
+      title: "Decline & re-open to other pros?",
+      message: "This cancels this contractor's job and re-opens your request. You'll be able to choose from the other pros who bid. This can't be undone.",
+      confirmLabel: "Decline & re-open", danger: true,
+    }))) return;
+    setBusyReq(true);
+    const { error } = await supabase.rpc("decline_price_reopen", { p_job_id: activeJob.id });
+    setBusyReq(false);
+    if (error) { notify("Couldn't re-open the job: " + error.message); return; }
+    notify("Re-opened. Choose from the other pros below.", "ok");
+    setActiveJob(null);
+    setContractor(null);
+    if (activeReq) setRequests(prev => prev.map(r => r.id === activeReq.id ? { ...r, status: "pending", assigned_contractor_id: null, preferred_contractor_id: null } : r));
+  };
+
   useEffect(() => {
     if (activeJob?.completion_photo_path) {
       supabase.storage.from("completion-photos").createSignedUrl(activeJob.completion_photo_path, 3600)
@@ -813,6 +832,7 @@ export default function ClientDashboard() {
           // "Needs your attention" — surfaces the next action on the selected request.
           const attn: { key: string; text: string; cta: string }[] = [];
           if (activeJob?.price_change_pending) attn.push({ key: "price", text: "Your pro proposed a new price — review and approve or decline.", cta: "Review price" });
+          if (activeJob?.status === "assigned" && activeJob?.price_hike_from != null && Number(activeJob.amount ?? 0) > Number(activeJob.price_hike_from) + 0.005) attn.push({ key: "hike", text: "Your pro raised the price after you picked them — approve it or re-open to other pros.", cta: "Review price" });
           else if (activeJob?.status === "pending_confirmation" && !activeJob?.is_milestone) attn.push({ key: "confirm", text: "Your pro marked the job complete — confirm the work to release payment.", cta: "Confirm now" });
           if (activeJob?.status === "assigned" && activeJob?.schedule_proposed_at && !activeJob?.client_approved_at && !(activeJob?.client_rescheduled_at && !activeJob?.reschedule_accepted_at)) attn.push({ key: "sched", text: "Your pro proposed a time and price — approve it to book the visit.", cta: "Review proposal" });
           if (activeJob?.status === "assigned" && activeJob?.walkthrough_proposed_at && !activeJob?.walkthrough_approved_at) attn.push({ key: "walkthrough", text: "Your pro wants to do a free walkthrough before pricing — confirm the visit time.", cta: "Review time" });
@@ -1100,6 +1120,19 @@ export default function ClientDashboard() {
                         )}
                         {activeJob.status === "assigned" && activeJob.schedule_proposed_at && !activeJob.client_approved_at && !(activeJob.client_rescheduled_at && !activeJob.reschedule_accepted_at) && (
                           <>
+                            {activeJob.price_hike_from != null && Number(activeJob.amount ?? 0) > Number(activeJob.price_hike_from) + 0.005 && (
+                              <div style={{ marginBottom:"1rem", padding:".9rem", borderRadius:"10px", background:"rgba(239,68,68,.09)", border:"1px solid rgba(239,68,68,.4)" }}>
+                                <div style={{ fontSize:".9rem", fontWeight:700, color:"#ef4444", marginBottom:".4rem" }}><Ic name="alert-triangle" size={14} style={{ marginRight:5 }} />Your pro raised the price</div>
+                                <div style={{ fontSize:".85rem", color:"var(--ff-text)", lineHeight:1.5, marginBottom:".45rem" }}>
+                                  You picked this contractor at <strong>{"$" + Number(activeJob.price_hike_from).toFixed(2)}</strong>. They now want <strong>{"$" + Number(activeJob.amount ?? 0).toFixed(2)}</strong> — that's <strong>{"$" + (Number(activeJob.amount ?? 0) - Number(activeJob.price_hike_from)).toFixed(2)}</strong> more.
+                                </div>
+                                {activeJob.price_hike_reason && (
+                                  <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.45, marginBottom:".7rem", fontStyle:"italic" as const }}>{"\u201c" + activeJob.price_hike_reason + "\u201d"}</div>
+                                )}
+                                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5, marginBottom:".7rem" }}>You don't have to accept it. Approve the new price below, or decline and let the other pros who bid win your job.</div>
+                                <button style={{ ...s.primaryBtn, background:"#ef4444", color:"#fff" }} disabled={busyReq} onClick={declineReopen}>{busyReq ? "\u2026" : "Decline & re-open to other pros"}</button>
+                              </div>
+                            )}
                             <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}>Your contractor proposed a time &amp; price</div>
                             <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .8)", marginBottom:".5rem" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />{activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "—"}{activeJob.amount ? " · $" + activeJob.amount : ""}</div>
                             <QuoteBreakdownView row={activeJob} assumptionsKey="quote_assumptions" />
