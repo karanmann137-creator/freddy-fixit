@@ -19,6 +19,8 @@ import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 import FreddyRewind from "@/components/FreddyRewind";
 import { freqLabel } from "@/lib/recurrence";
 import { respText } from "@/lib/respTime";
+import PriceGrade from "@/components/PriceGrade";
+import type { Grade } from "@/lib/servicePricing";
 import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/components/DashboardSidebar";
 import NotificationBell from "@/components/NotificationBell";
 import { SettingsPanel } from "@/components/SettingsModal";
@@ -118,6 +120,7 @@ export default function ClientDashboard() {
   const [bidNames, setBidNames] = useState<Record<string,string>>({});
   const [bidResp, setBidResp] = useState<Record<string,number>>({}); // contractor_id -> median first-response minutes
   const [bidMatch, setBidMatch] = useState<Record<string,any>>({}); // contractor_id -> smart-match score + signals
+  const [bidGrade, setBidGrade] = useState<Record<string,string>>({}); // contractor_id -> A+/A/A- price grade
   const [busyPick, setBusyPick] = useState<string|null>(null);
   const [busyPay, setBusyPay] = useState(false);
   const [feeRate, setFeeRate] = useState(0.03); // base service-fee rate; loaded from platform_fee_rate() so it matches what Stripe charges
@@ -635,10 +638,15 @@ export default function ClientDashboard() {
           setClientBids(data ?? []);
           const ids = Array.from(new Set((data ?? []).map((b: any) => b.contractor_id)));
           if (ids.length) {
-            const { data: dir } = await supabase.rpc("get_contractor_directory").select("id, first_name, last_name").in("id", ids);
+            const { data: dir } = await supabase.rpc("get_contractor_directory").select("id, first_name, last_name, price_grade").in("id", ids);
             const m: Record<string,string> = {};
-            ((dir ?? []) as any[]).forEach((c: any) => { m[c.id] = ((c.first_name ?? "") + " " + (c.last_name ? c.last_name[0] + "." : "")).trim() || "Contractor"; });
+            const g: Record<string,string> = {};
+            ((dir ?? []) as any[]).forEach((c: any) => {
+              m[c.id] = ((c.first_name ?? "") + " " + (c.last_name ? c.last_name[0] + "." : "")).trim() || "Contractor";
+              if (c.price_grade) g[c.id] = c.price_grade;
+            });
             setBidNames(m);
+            setBidGrade(g);
             // Speed-to-lead: median first-response time per bidding pro (badge on the bid card).
             const { data: rs } = await supabase.rpc("contractor_response_stats", { p_ids: ids });
             const rm: Record<string,number> = {};
@@ -1043,6 +1051,8 @@ export default function ClientDashboard() {
                                 {bi === 0 && clientBids.length > 1 && bidMatch[b.contractor_id] != null && (
                                   <span style={{ padding:".14rem .5rem", borderRadius:"999px", fontSize:".66rem", fontWeight:700, background:"rgba(234,107,20,.14)", border:"1px solid rgba(234,107,20,.4)", color:"#ea6b14" }}>Best match</span>
                                 )}
+                                {/* How this pro's prices sit against the category average. Price only — quality is the star rating. */}
+                                <PriceGrade grade={bidGrade[b.contractor_id] as Grade} kind="pro" size="sm" />
                               </div>
                               {(() => { const m = bidMatch[b.contractor_id]; if (!m) return null;
                                 const bits: string[] = [];

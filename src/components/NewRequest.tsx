@@ -9,6 +9,7 @@ import GuideBubble from "@/components/GuideBubble";
 import { SERVICES, SCHEDULES } from "@/pages/ClientOnboarding";
 import { useServicePricing, fromText } from "@/lib/servicePricing";
 import ServicePicker from "@/components/ServicePicker";
+import BudgetPicker from "@/components/BudgetPicker";
 import { isPerKmService, freqLabel, SLIDER_STOPS, SLIDER_SHORT } from "@/lib/recurrence";
 
 // Shown when an already-signed-in client starts another request. Unlike the
@@ -38,6 +39,9 @@ export default function NewRequest() {
   const [vehModel, setVehModel] = useState("");
   const [saveNewVehicle, setSaveNewVehicle] = useState(true);
   const [description, setDescription] = useState("");
+  const [budgetMin, setBudgetMin]           = useState("");
+  const [budgetMax, setBudgetMax]           = useState("");
+  const [budgetFlexible, setBudgetFlexible] = useState(false);
   const [recurring, setRecurring] = useState(false);
   const [recurringFrequency, setRecurringFrequency] = useState<string>("");
   const [sliderIdx, setSliderIdx]                   = useState(3);
@@ -161,10 +165,20 @@ export default function NewRequest() {
     const loc = resolveLocation();
     if (!loc) e.location = addrChoice === "new" ? "Address required" : "No address on file — please enter one";
     if (description.trim().length < 10) e.description = "Please add a few more details (min 10 characters)";
+    // Budget is optional, but if given it has to make sense.
+    if (!budgetFlexible) {
+      const bLo = budgetMin.trim() === "" ? null : Number(budgetMin);
+      const bHi = budgetMax.trim() === "" ? null : Number(budgetMax);
+      if ((bLo != null && (!isFinite(bLo) || bLo < 0)) || (bHi != null && (!isFinite(bHi) || bHi < 0))) {
+        e.budget = "Budget must be a positive number";
+      } else if (bLo != null && bHi != null && bHi < bLo) {
+        e.budget = "Budget maximum must be at least the minimum";
+      }
+    }
     setErrors(e);
     // Scroll the first problem into view — on a long form the submit button is
     // at the bottom and an error near the top is otherwise invisible.
-    const first = ["services", "schedule", "location", "description"].find(k => e[k]);
+    const first = ["services", "budget", "schedule", "location", "description"].find(k => e[k]);
     if (first) {
       setTimeout(() => {
         document.getElementById("nr-err-" + first)?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -224,6 +238,9 @@ export default function NewRequest() {
         job_description: description.trim(),
         photo_path: photoPath,
         status: "pending",
+        budget_flexible: budgetFlexible,
+        budget_min: budgetFlexible || budgetMin.trim() === "" ? null : Number(budgetMin),
+        budget_max: budgetFlexible || budgetMax.trim() === "" ? null : Number(budgetMax),
         client_type: lastReq?.client_type ?? "individual",
         business_name: isBusiness ? (lastReq?.business_name ?? null) : null,
         business_type: isBusiness ? (lastReq?.business_type ?? null) : null,
@@ -321,6 +338,20 @@ export default function NewRequest() {
             <ServicePicker items={SERVICES} selected={selectedServices} onToggle={toggleService} pricing={pricing} />
           </div>
           {errors.services && <p id="nr-err-services" style={s.err}>{errors.services}</p>}
+
+          {/* Budget — anchored to the category average so the number is informed. */}
+          <BudgetPicker
+            services={selectedServices}
+            pricing={pricing}
+            min={budgetMin}
+            max={budgetMax}
+            flexible={budgetFlexible}
+            onMin={v => { setBudgetMin(v); setErrors(e => ({ ...e, budget: "" })); }}
+            onMax={v => { setBudgetMax(v); setErrors(e => ({ ...e, budget: "" })); }}
+            onFlexible={v => { setBudgetFlexible(v); setErrors(e => ({ ...e, budget: "" })); }}
+            error={errors.budget}
+            errorId="nr-err-budget"
+          />
 
           {/* Schedule */}
           <p style={{ ...s.label, marginTop:"1.75rem" }}>When do you need it?</p>

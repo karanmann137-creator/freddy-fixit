@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { Ic } from "@/components/Ic";
+import PriceGrade from "@/components/PriceGrade";
+import type { Grade } from "@/lib/servicePricing";
 
 export default function ContractorProfile() {
   const [, params]    = useRoute("/contractors/:id");
@@ -11,6 +13,9 @@ export default function ContractorProfile() {
   const [contractor, setContractor] = useState<any>(null);
   const [portfolio,  setPortfolio]  = useState<any[]>([]);
   const [reviews,    setReviews]    = useState<any[]>([]);
+  // How this pro's prices sit against the category average. Price only — the
+  // star rating carries quality. Null until there are enough jobs/bids to judge.
+  const [priceGrade, setPriceGrade] = useState<Grade | null>(null);
   const [loading,    setLoading]    = useState(true);
   const [myRole,     setMyRole]     = useState<string | null>(null);
   const [admin,      setAdmin]      = useState<any>(null); // full detail, admin viewers only
@@ -63,6 +68,14 @@ export default function ContractorProfile() {
       const { data: revs } = await supabase
         .rpc("get_contractor_reviews", { p_id: id });
       setReviews(revs ?? []);
+
+      // Standalone RPC rather than folding this into get_contractor_profile —
+      // smaller blast radius, and it's granted to anon so logged-out visitors
+      // comparing pros see the same badge a signed-in client does.
+      const { data: pg } = await supabase
+        .rpc("contractor_price_grade", { p_contractor: id })
+        .maybeSingle();
+      setPriceGrade(((pg as any)?.grade ?? null) as Grade | null);
       } catch (e) {
         console.error("ContractorProfile load failed", e);
       } finally {
@@ -290,6 +303,7 @@ export default function ContractorProfile() {
               {reviews.length > 0 && (
                 <span><Ic name="message-square" size={13} style={{ marginRight:4 }} />{reviews.length} review{reviews.length !== 1 ? "s" : ""}</span>
               )}
+              <PriceGrade grade={priceGrade} kind="pro" size="sm" />
             </div>
             {(contractor.specialties?.length ?? 0) > 0 && (
               <div style={{ marginBottom:".75rem" }}>

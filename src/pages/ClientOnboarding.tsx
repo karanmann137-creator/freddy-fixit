@@ -12,6 +12,7 @@ import NewRequest from "@/components/NewRequest";
 import OAuthButtons from "@/components/OAuthButtons";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import ServicePicker from "@/components/ServicePicker";
+import BudgetPicker from "@/components/BudgetPicker";
 import { validateEmail, validatePhone } from "@/lib/emailValidation";
 
 export const SERVICES = [
@@ -182,6 +183,9 @@ export default function ClientOnboarding() {
   }, [step, mode]); // eslint-disable-line react-hooks/exhaustive-deps
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const pricing = useServicePricing();
+  const [budgetMin, setBudgetMin]           = useState("");
+  const [budgetMax, setBudgetMax]           = useState("");
+  const [budgetFlexible, setBudgetFlexible] = useState(false);
   const [errors, setErrors] = useState<Record<string,string>>({});
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -206,6 +210,16 @@ export default function ClientOnboarding() {
     if (step === 1) {
       if (selectedServices.length === 0) errs.serviceNeeded = "Please select at least one service";
       if (!form.preferredSchedule) errs.preferredSchedule = "Please select a schedule";
+      // Budget is optional, but if given it has to make sense.
+      if (!budgetFlexible) {
+        const bLo = budgetMin.trim() === "" ? null : Number(budgetMin);
+        const bHi = budgetMax.trim() === "" ? null : Number(budgetMax);
+        if ((bLo != null && (!isFinite(bLo) || bLo < 0)) || (bHi != null && (!isFinite(bHi) || bHi < 0))) {
+          errs.budget = "Budget must be a positive number";
+        } else if (bLo != null && bHi != null && bHi < bLo) {
+          errs.budget = "Budget maximum must be at least the minimum";
+        }
+      }
     }
     if (step === 2) {
       if (!form.location.trim() && !form.postalCode.trim()) errs.location = "Enter your address or postal code";
@@ -219,7 +233,7 @@ export default function ClientOnboarding() {
     }
     setErrors(errs);
     // On a long step the errored field can sit below the fold — scroll it into view.
-    const order = ["serviceNeeded","preferredSchedule","location","jobDescription","email","phone","password"];
+    const order = ["serviceNeeded","budget","preferredSchedule","location","jobDescription","email","phone","password"];
     const first = order.find(k => errs[k]);
     if (first) setTimeout(() => { document.getElementById("co-err-" + first)?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 60);
     return Object.keys(errs).length === 0;
@@ -242,6 +256,9 @@ export default function ClientOnboarding() {
         role: "client",
         first_name: derivedName.first, last_name: derivedName.last, phone: form.phone,
         service_needed: selectedServices.join(", "),
+        budget_flexible: budgetFlexible,
+        budget_min: budgetFlexible || budgetMin.trim() === "" ? "" : String(Number(budgetMin)),
+        budget_max: budgetFlexible || budgetMax.trim() === "" ? "" : String(Number(budgetMax)),
         preferred_schedule: form.preferredSchedule,
         location: form.location.trim() || form.postalCode.trim(),
         postal_code: form.postalCode.trim(),
@@ -484,6 +501,20 @@ export default function ClientOnboarding() {
               {selectedServices.length > 0 && (
                 <p style={{ fontSize:".78rem", color:"#ea6b14", marginBottom:"1.5rem" }}>✓ {selectedServices.length} service{selectedServices.length > 1 ? "s" : ""} selected</p>
               )}
+              {/* Budget — anchored to the category average so the number is informed. */}
+              <BudgetPicker
+                services={selectedServices}
+                pricing={pricing}
+                min={budgetMin}
+                max={budgetMax}
+                flexible={budgetFlexible}
+                onMin={v => { setBudgetMin(v); setErrors(e => ({ ...e, budget: "" })); }}
+                onMax={v => { setBudgetMax(v); setErrors(e => ({ ...e, budget: "" })); }}
+                onFlexible={v => { setBudgetFlexible(v); setErrors(e => ({ ...e, budget: "" })); }}
+                error={errors.budget}
+                errorId="co-err-budget"
+              />
+
               <p style={{ ...s.label, marginTop:"1.5rem" }}>When Do You Need It?</p>
               {SCHEDULES.map(sc => (
                 <button key={sc.label} style={{ ...s.schedBtn, ...(form.preferredSchedule===sc.label ? s.schedBtnSel : {}) }} onClick={() => set("preferredSchedule",sc.label)}>

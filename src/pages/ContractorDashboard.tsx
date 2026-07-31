@@ -61,7 +61,8 @@ const contractorMissing = (c: any): string[] => {
 };
 import FreddyRewind from "@/components/FreddyRewind";
 import MilestonePanel from "@/components/MilestonePanel";
-import { useServicePricing, rangeText, money, type ServicePrice } from "@/lib/servicePricing";
+import { useServicePricing, rangeText, money, benchmarkFor, type ServicePrice, type Grade } from "@/lib/servicePricing";
+import PriceGrade from "@/components/PriceGrade";
 import { freqLabel } from "@/lib/recurrence";
 import { respShort } from "@/lib/respTime";
 
@@ -230,7 +231,7 @@ export default function ContractorDashboard() {
         supabase.from("contractors").select("*").eq("id", user.id).maybeSingle(),
         supabase.from("portfolio_items").select("*").eq("contractor_id", user.id).order("created_at", { ascending: false }),
         supabase.from("jobs")
-          .select("*, request:client_requests!jobs_request_id_fkey(service_needed, job_description, preferred_schedule, location, photo_path, estimated_quote, quote_notes, vehicle_details, recurring, recurring_frequency), client:profiles!jobs_client_id_fkey(first_name)")
+          .select("*, request:client_requests!jobs_request_id_fkey(service_needed, job_description, preferred_schedule, location, photo_path, estimated_quote, quote_notes, vehicle_details, recurring, recurring_frequency, budget_min, budget_max, budget_flexible), client:profiles!jobs_client_id_fkey(first_name)")
           .eq("contractor_id", user.id).order("created_at", { ascending: false }),
         supabase.rpc("list_open_jobs"),
         supabase.from("reviews")
@@ -1331,6 +1332,54 @@ export default function ContractorDashboard() {
                   <div style={{ fontSize:".78rem", color:"#ea6b14" }}><Ic name="timer" size={12} style={{ marginRight:4 }} />{r.preferred_schedule}</div>
                 </div>
                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .55)", marginBottom:".6rem" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{r.location}</div>
+
+                {/* Client budget vs the category average. The A+/A/A- grade says
+                    how this job's money compares to what the category usually
+                    pays, so a good-paying job is obvious without doing math. */}
+                {(() => {
+                  // Server values come from list_open_jobs(); fall back to the
+                  // client-side price book if this build is ahead of the RPC.
+                  const local = benchmarkFor(r.service_needed, pricing);
+                  const bench = r.benchmark != null ? Number(r.benchmark) : (local?.benchmark ?? null);
+                  const bLo = r.budget_min != null ? Number(r.budget_min) : null;
+                  const bHi = r.budget_max != null ? Number(r.budget_max) : null;
+                  const grade = (r.budget_grade ?? null) as Grade | null;
+                  const hasBudget = !r.budget_flexible && (bLo != null || bHi != null);
+                  if (!hasBudget && !r.budget_flexible && bench == null) return null;
+
+                  const budgetText = bLo != null && bHi != null && bLo !== bHi
+                    ? money(bLo) + "–" + money(bHi)
+                    : money(bLo ?? bHi);
+
+                  return (
+                    <div style={{
+                      display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".5rem",
+                      padding:".55rem .7rem", marginBottom:".6rem", borderRadius:"10px",
+                      background: hasBudget ? "rgba(234,107,20,.08)" : "rgba(var(--ff-fg), .04)",
+                      border: hasBudget ? "1px solid rgba(234,107,20,.24)" : "1px solid rgba(var(--ff-fg), .08)",
+                    }}>
+                      <Ic name="dollar" size={14} color="#ea6b14" style={{ flexShrink:0 }} />
+                      {hasBudget ? (
+                        <span style={{ fontSize:".85rem", color:"var(--ff-text)" }}>
+                          <span style={{ color:"rgba(var(--ff-muted), .6)" }}>Client budget </span>
+                          <strong>{budgetText}</strong>
+                        </span>
+                      ) : (
+                        <span style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .65)" }}>
+                          {r.budget_flexible ? "Client is flexible — send your quote" : "No budget set"}
+                        </span>
+                      )}
+                      {grade && <PriceGrade grade={grade} kind="budget" />}
+                      {bench != null && (
+                        <span style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .5)", flexBasis:"100%" }}>
+                          Category average {money(Math.round(bench))}
+                          {r.benchmark_source === "jobs" ? " (from completed jobs)" : " (Calgary price guide)"}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .65)", marginBottom:"1rem", lineHeight:1.5 }}>{r.job_description}</div>
                 <RequestPhotoQuote requestId={r.id} photoPath={r.photo_path} estimatedQuote={r.estimated_quote} quoteNotes={r.quote_notes} />
                 <div style={{ margin:".75rem 0", padding:".75rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)" }}>
