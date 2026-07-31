@@ -25,9 +25,18 @@ const DOC_LABELS: Record<string, string> = {
 
 type DocKey = "insurance" | "wcb" | "certification" | "gov_id";
 
+// Anchor ids for the sections a contractor can still be missing. The dashboard
+// scrolls to one of these and passes it as `highlight` so the section pulses.
+export const GAP_ANCHORS = {
+  area: "cpc-area",
+  work_type: "cpc-worktype",
+  credentials: "cpc-credentials",
+  docs: "cpc-docs",
+} as const;
+
 export default function ContractorProfileCompletion({
-  profile, contractor, onSaved,
-}: { profile: any; contractor: any; onSaved: (patch: any) => void }) {
+  profile, contractor, onSaved, highlight,
+}: { profile: any; contractor: any; onSaved: (patch: any) => void; highlight?: string | null }) {
   const [area, setArea] = useState<string[]>(contractor?.service_area ?? []);
   const [companyName, setCompanyName] = useState<string>(contractor?.company_name ?? "");
   const [workType, setWorkType] = useState<string>(contractor?.work_type ?? "");
@@ -44,6 +53,14 @@ export default function ContractorProfileCompletion({
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   const existingDocs: Record<string, string> = contractor?.doc_urls ?? {};
+
+  // Section wrapper props: a scroll anchor, plus the pulse ring when the
+  // dashboard is pointing the contractor at this particular gap.
+  const sect = (anchor: string) => ({
+    id: anchor,
+    className: highlight === anchor ? "ff-pulse" : undefined,
+    style: { marginBottom: "1.5rem", borderRadius: "10px", scrollMarginTop: "5.5rem" } as React.CSSProperties,
+  });
 
   const toggleArea = (z: string) => setArea(prev => prev.includes(z) ? prev.filter(x => x !== z) : [...prev, z]);
 
@@ -117,7 +134,7 @@ export default function ContractorProfileCompletion({
   return (
     <div>
       {/* Service area */}
-      <div style={{ marginBottom: "1.5rem" }}>
+      <div {...sect(GAP_ANCHORS.area)}>
         <span style={lbl}>Service area — which parts of Calgary do you cover?</span>
         <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
           {AREAS.map(z => <button key={z} type="button" onClick={() => toggleArea(z)} style={chip(area.includes(z))}>{z}</button>)}
@@ -131,7 +148,7 @@ export default function ContractorProfileCompletion({
       </div>
 
       {/* Work type */}
-      <div style={{ marginBottom: "1.5rem" }}>
+      <div {...sect(GAP_ANCHORS.work_type)}>
         <span style={lbl}>What best describes your work?</span>
         <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
           {WORK_TYPES.map(w => (
@@ -147,7 +164,7 @@ export default function ContractorProfileCompletion({
       </div>
 
       {/* Credentials */}
-      <div style={{ marginBottom: "1.5rem" }}>
+      <div {...sect(GAP_ANCHORS.credentials)}>
         <span style={lbl}>Licensing & insurance</span>
         {checkRow(licensed, setLicensed, "I hold a provincial trade licence")}
         {licensed && <input style={{ ...inp, marginBottom: ".8rem" }} placeholder="Licence number" value={licenseNumber} onChange={e => setLicenseNumber(e.target.value)} />}
@@ -171,7 +188,7 @@ export default function ContractorProfileCompletion({
       </div>
 
       {/* Documents */}
-      <div style={{ marginBottom: "1.5rem" }}>
+      <div {...sect(GAP_ANCHORS.docs)}>
         <span style={lbl}>Verification documents (JPG/PNG/PDF, under 10MB each)</span>
         <div style={{ display: "flex", flexDirection: "column", gap: ".6rem" }}>
           {(Object.keys(DOC_LABELS) as DocKey[]).map(key => (

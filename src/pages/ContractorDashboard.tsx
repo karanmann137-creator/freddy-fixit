@@ -12,7 +12,7 @@ import { AVAIL_DAYS, WEEKDAYS, TIME_OPTIONS, readAvailability } from "@/lib/avai
 import RespondToClaim from "@/components/RespondToClaim";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
-import ContractorProfileCompletion from "@/components/ContractorProfileCompletion";
+import ContractorProfileCompletion, { GAP_ANCHORS } from "@/components/ContractorProfileCompletion";
 import ProfileCompleteCelebration from "@/components/ProfileCompleteCelebration";
 import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/components/DashboardSidebar";
 import NotificationBell from "@/components/NotificationBell";
@@ -49,16 +49,25 @@ const STAGE_LABEL: Record<string, string> = {
   payment: "awaiting payment",
 };
 
-// Which required pieces of a contractor profile are still missing. Shared by the
-// "finish setting up" nudge and the profile-complete celebration trigger.
-const contractorMissing = (c: any): string[] => {
-  const m: string[] = [];
-  if (!(c?.service_area?.length)) m.push("service area");
-  if (!c?.work_type) m.push("your trade");
-  if (!c?.has_liability_insurance && !c?.licensed) m.push("licence or insurance");
-  if (!(c?.doc_urls && Object.keys(c.doc_urls).length)) m.push("verification documents");
-  return m;
+// Which required pieces of a contractor profile are still missing, and where in
+// the profile editor each one lives so we can scroll the contractor straight to it.
+type ProfileGap = { key: string; label: string; anchor: string };
+const contractorGaps = (c: any): ProfileGap[] => {
+  const g: ProfileGap[] = [];
+  if (!(c?.service_area?.length))                        g.push({ key: "area",        label: "service area",           anchor: GAP_ANCHORS.area });
+  if (!c?.work_type)                                     g.push({ key: "work_type",   label: "your trade",             anchor: GAP_ANCHORS.work_type });
+  if (!c?.has_liability_insurance && !c?.licensed)       g.push({ key: "credentials", label: "licence or insurance",   anchor: GAP_ANCHORS.credentials });
+  if (!(c?.doc_urls && Object.keys(c.doc_urls).length))  g.push({ key: "docs",        label: "verification documents", anchor: GAP_ANCHORS.docs });
+  return g;
 };
+// Label-only view, kept for the existing callers (nudge copy + the
+// profile-complete celebration trigger).
+const contractorMissing = (c: any): string[] => contractorGaps(c).map(g => g.label);
+
+// The contractor can dismiss the profile nudge if they believe they're done.
+// The token records WHICH gaps were dismissed, so if the set later changes
+// (e.g. insurance lapses) the nudge comes back rather than staying silent.
+const nudgeToken = (gaps: ProfileGap[]) => "profile_nudge:" + gaps.map(g => g.key).sort().join(",");
 import FreddyRewind from "@/components/FreddyRewind";
 import MilestonePanel from "@/components/MilestonePanel";
 import { useServicePricing, rangeText, money, benchmarkFor, type ServicePrice, type Grade } from "@/lib/servicePricing";
@@ -179,6 +188,24 @@ export default function ContractorDashboard() {
 
   const askConfirm = (o: Omit<ConfirmState, "resolve">) =>
     new Promise<boolean>(resolve => setConfirmState({ ...o, resolve }));
+
+  // Point the contractor at the exact section of their profile that's still
+  // missing: jump to the Profile tab, scroll it into view, and ring it for ~4.5s.
+  const [pulseAnchor, setPulseAnchor] = useState<string | null>(null);
+  const pulseTimer = useRef<number | null>(null);
+  const focusProfileGap = (anchor: string) => {
+    setActiveTab("profile");
+    setPulseAnchor(anchor);
+    if (pulseTimer.current) window.clearTimeout(pulseTimer.current);
+    pulseTimer.current = window.setTimeout(() => setPulseAnchor(null), 4500);
+    // Wait for the Profile tab to paint before measuring the target.
+    requestAnimationFrame(() => window.setTimeout(() => {
+      const el = document.getElementById(anchor);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      else window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 60));
+  };
+  useEffect(() => () => { if (pulseTimer.current) window.clearTimeout(pulseTimer.current); }, []);
 
   // Export the job/payout history as a CSV the contractor can open in Excel
   // (handy at tax time). Built entirely in-browser — no server round-trip.
@@ -772,7 +799,10 @@ export default function ContractorDashboard() {
 
   return (
     <div style={s.wrap} className="ffdash">
-      <style>{".ffdash button{transition:filter .12s ease, transform .08s ease, opacity .12s ease} .ffdash button:hover:not(:disabled){filter:brightness(1.09)} .ffdash button:active:not(:disabled){transform:translateY(1px)} .ffdash button:disabled{opacity:.55; cursor:not-allowed}"}</style>
+      <style>{".ffdash button{transition:filter .12s ease, transform .08s ease, opacity .12s ease} .ffdash button:hover:not(:disabled){filter:brightness(1.09)} .ffdash button:active:not(:disabled){transform:translateY(1px)} .ffdash button:disabled{opacity:.55; cursor:not-allowed}"
+        + " @keyframes ff-pulse-ring{0%{box-shadow:0 0 0 0 rgba(234,107,20,.55); background:rgba(234,107,20,.14)}70%{box-shadow:0 0 0 12px rgba(234,107,20,0); background:rgba(234,107,20,.05)}100%{box-shadow:0 0 0 0 rgba(234,107,20,0); background:rgba(234,107,20,0)}}"
+        + " .ffdash .ff-pulse{outline:2px solid rgba(234,107,20,.75); outline-offset:6px; border-radius:10px; animation:ff-pulse-ring 1.5s ease-out 3}"
+        + " @media (prefers-reduced-motion: reduce){.ffdash .ff-pulse{animation:none; background:rgba(234,107,20,.12)}}"}</style>
       {toast && (
         <div onClick={() => setToast(null)} style={{ position:"fixed", left:"50%", bottom:"1.5rem", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
       )}
@@ -833,21 +863,42 @@ export default function ContractorDashboard() {
           </div>
         )}
 
-        {contractor && contractorMissing(contractor).length > 0 && (
-          <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.45)", display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".75rem", justifyContent:"space-between" }}>
-            <div style={{ flex:"1 1 260px" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".85rem", fontWeight:600, color:"#ea6b14", marginBottom:".3rem" }}>
-                <Ic name="alert-triangle" size={14} />Finish setting up your profile
+        {contractor && (() => {
+          const gaps = contractorGaps(contractor);
+          if (!gaps.length) return null;
+          // Dismissed only for this exact set of gaps — if the set changes later
+          // (e.g. insurance lapses) the reminder comes back on its own.
+          if ((contractor.setup_skipped ?? []).includes(nudgeToken(gaps))) return null;
+          return (
+            <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.45)", display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".75rem", justifyContent:"space-between" }}>
+              <div style={{ flex:"1 1 260px" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".85rem", fontWeight:600, color:"#ea6b14", marginBottom:".3rem" }}>
+                  <Ic name="alert-triangle" size={14} />Finish setting up your profile
+                </div>
+                <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5, marginBottom:".55rem" }}>
+                  Still needed before you can take jobs — tap one to jump straight to it:
+                </div>
+                <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const }}>
+                  {gaps.map(g => (
+                    <button key={g.key} onClick={() => focusProfileGap(g.anchor)}
+                      style={{ padding:".3rem .65rem", borderRadius:"99px", border:"1px solid rgba(234,107,20,.45)", background:"rgba(234,107,20,.12)", color:"#ea6b14", fontFamily:"inherit", fontSize:".76rem", fontWeight:600, cursor:"pointer" }}>
+                      {g.label} →
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
-                Still needed before you can take jobs: {contractorMissing(contractor).join(", ")}.
+              <div style={{ display:"flex", flexDirection:"column" as const, alignItems:"stretch", gap:".4rem" }}>
+                <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", whiteSpace:"nowrap" as const }} onClick={() => focusProfileGap(gaps[0].anchor)}>
+                  Complete profile
+                </button>
+                <button onClick={() => skipSetupStep(nudgeToken(gaps))}
+                  style={{ background:"none", border:"none", color:"rgba(var(--ff-muted), .65)", fontFamily:"inherit", fontSize:".74rem", cursor:"pointer", textDecoration:"underline", padding:0 }}>
+                  Ignore — my profile is complete
+                </button>
               </div>
             </div>
-            <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", whiteSpace:"nowrap" as const }} onClick={() => { setActiveTab("profile"); window.scrollTo({ top:0, behavior:"smooth" }); }}>
-              Complete profile
-            </button>
-          </div>
-        )}
+          );
+        })()}
 
         {(activeTab === "jobs" || activeTab === "available" || activeTab === "calendar") && (() => {
           // Jobber-style workflow pipeline strip: where every job sits, at a glance.
@@ -957,10 +1008,11 @@ export default function ContractorDashboard() {
               const steps = [
                 { key: "profile", label: "Complete your profile", done: contractorMissing(contractor).length === 0,
                   sub: contractorMissing(contractor).length > 0 ? "Missing: " + contractorMissing(contractor).join(", ") : "Done — clients can see your credentials.",
-                  onClick: () => setActiveTab("profile"), skippable: false },
+                  onClick: () => { const g = contractorGaps(contractor); g.length ? focusProfileGap(g[0].anchor) : setActiveTab("profile"); }, skippable: false },
                 { key: "payouts", label: "Set up payouts", done: !!contractor.stripe_payouts_enabled,
                   sub: contractor.stripe_payouts_enabled ? "Connected — you're ready to get paid." : "Connect a bank account so you can be paid.",
-                  onClick: setupPayouts, skippable: true },
+                  // Not skippable: without a payout account we cannot pay them at all.
+                  onClick: setupPayouts, skippable: false },
                 { key: "availability", label: "Set your working days & hours", done: avail.days.length > 0,
                   sub: avail.days.length > 0 ? "Done — clients see when you work." : "Tell clients when you're available to work.",
                   onClick: () => setActiveTab("profile"), skippable: true },
@@ -968,7 +1020,9 @@ export default function ContractorDashboard() {
                   sub: availableJobs.length > 0 ? availableJobs.length + " open job" + (availableJobs.length === 1 ? "" : "s") + " match your trades right now — fewer bids = easier to win." : "New jobs matching your trades show up in Available Jobs.",
                   onClick: () => setActiveTab("available"), skippable: true },
               ];
-              const remaining = steps.filter(st => !st.done && !skipped.includes(st.key));
+              // A skip only counts on a step that's allowed to be skipped, so a
+              // historic "payouts" skip can't keep that step hidden any more.
+              const remaining = steps.filter(st => !st.done && !(st.skippable && skipped.includes(st.key)));
               if (remaining.length === 0) return null;
               const settled = steps.length - remaining.length;
               return (
@@ -981,7 +1035,7 @@ export default function ContractorDashboard() {
                     <div style={{ height:"100%", width:(settled / steps.length) * 100 + "%", background:"#ea6b14", borderRadius:"99px", transition:"width .25s ease" }} />
                   </div>
                   {steps.map((step, i) => {
-                    const isSkipped = skipped.includes(step.key);
+                    const isSkipped = step.skippable && skipped.includes(step.key);
                     return (
                       <div key={step.key} style={{ display:"flex", gap:".7rem", alignItems:"flex-start", padding:".7rem .1rem", borderTop: i === 0 ? "none" : "1px solid rgba(var(--ff-fg), .06)", opacity: isSkipped && !step.done ? .55 : 1 }}>
                         <div style={{ width:"22px", height:"22px", borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background: step.done ? "rgba(34,197,94,.15)" : "rgba(234,107,20,.12)", border:"1px solid " + (step.done ? "rgba(34,197,94,.4)" : "rgba(234,107,20,.35)"), color: step.done ? "#22c55e" : "#ea6b14", fontSize:".72rem", fontWeight:700 }}>{step.done ? <Ic name="check" size={12} color="#22c55e" /> : i + 1}</div>
@@ -1464,6 +1518,7 @@ export default function ContractorDashboard() {
                   <ContractorProfileCompletion
                     profile={profile}
                     contractor={contractor}
+                    highlight={pulseAnchor}
                     onSaved={(patch: any) => {
                       const merged = { ...contractor, ...patch };
                       if (contractorMissing(contractor).length > 0 && contractorMissing(merged).length === 0) setShowProfileCongrats(true);
