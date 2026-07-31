@@ -6,6 +6,9 @@ const SUPABASE_URL   = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const FROM_EMAIL     = "noreply@freddyfixit.ca";
 
+// Keep in step with place_bid()'s v_cap and the /7 counters on the dashboards.
+const BID_CAP = 7;
+
 const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 const cors  = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
 
@@ -149,7 +152,7 @@ serve(async (req) => {
       const name = c.profile?.first_name ?? "there";
       const html = `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#1a2236;color:#f0f4ff;padding:2rem;border-radius:12px;">
         <h2 style="color:#ea6b14;">New job request 🔧</h2>
-        <p>Hi ${name}, there's a new job that matches your skills. Jobs close after 3 bids — first come, first served.</p>
+        <p>Hi ${name}, there's a new job that matches your skills. Jobs close after ${BID_CAP} bids — first come, first served.</p>
         <table style="width:100%;border-collapse:collapse;margin:1rem 0;">
           <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;width:120px;">SERVICE</td><td style="padding:.5rem 0;font-weight:500;">${request.service_needed}</td></tr>
           <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;">LOCATION</td><td style="padding:.5rem 0;">${maskLocation(request.location ?? "")}</td></tr>
