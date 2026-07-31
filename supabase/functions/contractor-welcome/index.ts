@@ -1,8 +1,9 @@
 // Supabase Edge Function: contractor-welcome
 // Sends a warm welcome email to a contractor right after they finish signing up.
-// CAMPAIGN WINDOW: the DB trigger that fires this (contractor_welcome_email on
-// public.contractors) auto-expires at midnight Sept 11→12, 2026 (Calgary) — two
-// months from launch. The function itself stays deployed but stops being called.
+// v2 (2026-07-30): the two-month campaign window was removed — every new
+// contractor gets this email from now on, and it now points them at the
+// contractor guide (/contractor-guide), which is the single place that explains
+// bidding, payment and the client-confirmation step that releases their money.
 // Fired fire-and-forget from a Postgres AFTER INSERT trigger via net.http_post
 // (anon bearer). verify_jwt = false (called by the DB, not an end user); it only
 // reads via service role and emails the contractor's own signup address.
@@ -39,9 +40,16 @@ function welcomeHtml(firstName: string) {
     <p style="font-size:15px;line-height:1.6;margin:.5rem 0;">We're excited you've decided to join Freddy Fix It and work with us. You're now part of Calgary's vetted network of trades and handymen.</p>
     <p style="font-size:15px;line-height:1.6;margin:.75rem 0;"><strong>What happens next:</strong> we're actively bringing clients onto the platform, and we expect jobs to start coming in consistently over the next 3–5 weeks.</p>
     <p style="font-size:15px;line-height:1.6;margin:.75rem 0;">Whenever a client posts a job that matches your trade and service area, we'll email you right away so you can get your bid in early — no lead fees, ever.</p>
+
+    <div style="margin:1.5rem 0;padding:1rem 1.1rem;background:rgba(234,107,20,.12);border:1px solid rgba(234,107,20,.4);border-radius:10px;">
+      <p style="font-size:15px;line-height:1.6;margin:0 0 .6rem;"><strong style="color:#ea6b14;">Read this first: the contractor guide.</strong> Five minutes, and it covers how bidding works, how and when you get paid, and the one step most new pros miss — <strong>your money is only released once the client confirms the work is done</strong>, so ask them to confirm while you're still on site.</p>
+      <a href="${SITE}/contractor-guide" style="display:inline-block;margin-top:.35rem;padding:.7rem 1.35rem;background:#ea6b14;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">Read the contractor guide</a>
+    </div>
+
     <p style="font-size:15px;line-height:1.6;margin:.75rem 0;">In the meantime, the best thing you can do is finish your profile and set up payouts — pros with complete profiles get approved and hired faster.</p>
-    <a href="${SITE}/contractor-dashboard" style="display:inline-block;margin-top:1rem;padding:.75rem 1.5rem;background:#ea6b14;color:#fff;text-decoration:none;border-radius:8px;font-weight:500;">Open your dashboard</a>
-    <p style="font-size:15px;line-height:1.6;margin:1.25rem 0 0;">Thanks again — we look forward to working with you.<br>— The Freddy Fix It team</p>
+    <a href="${SITE}/contractor-dashboard" style="display:inline-block;margin-top:.5rem;padding:.75rem 1.5rem;background:rgba(240,244,255,.1);border:1px solid rgba(240,244,255,.25);color:#f0f4ff;text-decoration:none;border-radius:8px;font-weight:500;">Open your dashboard</a>
+    <p style="font-size:15px;line-height:1.6;margin:1.25rem 0 0;">One more thing: every <strong>Tuesday morning</strong> we send a short Pro Tips email with pricing benchmarks and practical ways to win more of the jobs you bid on.</p>
+    <p style="font-size:15px;line-height:1.6;margin:1rem 0 0;">Thanks again — we look forward to working with you.<br>— The Freddy Fix It team</p>
     <p style="margin-top:1.5rem;font-size:12px;color:#9aa4bf;">You're receiving this because you created a contractor account at freddyfixit.ca.<br>${esc(MAILING_ADDRESS)}</p>
   </div>`;
 }

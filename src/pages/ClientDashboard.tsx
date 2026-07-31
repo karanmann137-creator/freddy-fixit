@@ -19,6 +19,7 @@ import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 import FreddyRewind from "@/components/FreddyRewind";
 import { freqLabel } from "@/lib/recurrence";
 import { respText } from "@/lib/respTime";
+import { DASH_NAV_EVENT, readDashNavFromUrl, clearDashNavFromUrl, type DashNavDetail } from "@/lib/notificationRoutes";
 import PriceGrade from "@/components/PriceGrade";
 import type { Grade } from "@/lib/servicePricing";
 import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/components/DashboardSidebar";
@@ -240,6 +241,34 @@ export default function ClientDashboard() {
   const activeReq =
     (selectedReqId && requests.find(r => r.id === selectedReqId)) ||
     openReqs[0] || requests[0];
+
+  // ── Notification deep links ─────────────────────────────────────────────────
+  // Tapping a 🔔 lands here two ways: from another page it navigates with
+  // ?tab=&job=, and from this page (where the bell lives) wouter treats the same
+  // path as a no-op, so the bell fires ff:dash-nav instead.
+  const applyDashNav = (d: DashNavDetail) => {
+    if (d.tab && CLIENT_NAV.some(i => i.key === d.tab)) setActiveTab(d.tab as ClientTab);
+    if (d.jobId) {
+      // Notifications carry a job id; this page is organised by request, so look
+      // up the job's request and select it. Failing is harmless — the tab still
+      // changed, which is where the notification was pointing anyway.
+      (async () => {
+        try {
+          const { data } = await supabase.from("jobs").select("request_id").eq("id", d.jobId).maybeSingle();
+          if (data?.request_id) setSelectedReqId(data.request_id as string);
+        } catch { /* the tab switch already landed them close enough */ }
+      })();
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  useEffect(() => {
+    const first = readDashNavFromUrl();
+    if (first.tab || first.jobId) { applyDashNav(first); clearDashNavFromUrl(); }
+    const onNav = (e: Event) => applyDashNav((e as CustomEvent<DashNavDetail>).detail ?? {});
+    window.addEventListener(DASH_NAV_EVENT, onNav);
+    return () => window.removeEventListener(DASH_NAV_EVENT, onNav);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Load the assigned contractor + job whenever the active request changes
   // (mount, or the client switching between open requests).

@@ -1,6 +1,18 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
+// v14 (2026-07-30): the new-job email now leads with urgency — bidding is
+// first-come, first-served and jobs close at the bid cap, so the subject says
+// so outright. When the request is reserved for a specific pro (rehire flow)
+// the copy switches to "a past client requested you" instead, because that
+// pro's in-app `rehire_request` bell no longer sends its own email
+// (send-notification suppresses it) — this is now their only email.
+//
+// ONE email per contractor per job is guaranteed by two independent guards:
+// `dispatched_to` (nobody already in the array is emailed again, so
+// re-invoking this function is idempotent) and send-notification's
+// EMAIL_HANDLED_ELSEWHERE suppression of `job_in_field` + `rehire_request`.
+
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const SUPABASE_URL   = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -14,7 +26,7 @@ const cors  = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Header
 
 const RESERVE_MS = 48 * 60 * 60 * 1000; // preferred-pro reservation window
 
-// ── Calgary geography (email ranking only) ───────────────────────────────────
+// ── Calgary geography (email ranking only) ─────────────────────────────────
 function extractZones(location: string): string[] {
   const loc = location.toUpperCase();
   const zones: string[] = [];
@@ -40,7 +52,7 @@ function maskLocation(loc: string): string {
   else if (q) zone = q[1].toUpperCase() + " Calgary";
   else if (/downtown|beltline/i.test(raw)) zone = "Downtown / Beltline";
   const parts = [pc, zone].filter(Boolean);
-  return parts.length ? parts.join(" \u00b7 ") : "Calgary area";
+  return parts.length ? parts.join(" · ") : "Calgary area";
 }
 
 const TRADE_MAP: Record<string, string[]> = {
@@ -81,7 +93,7 @@ function score(c: any, request: any): number {
   return s;
 }
 
-// ── Main ─────────────────────────────────────────────────────────────────────
+// ── Main ─────────────────────────────────────────────────────
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
@@ -144,23 +156,40 @@ serve(async (req) => {
       return new Response(JSON.stringify({ status: "no_match" }), { headers: { ...cors, "Content-Type": "application/json" } });
 
     const notifiedIds: string[] = [];
+    const area = maskLocation(request.location ?? "");
+
+    // A reserved job is a rehire: the client asked for this pro by name, so the
+    // copy leads with that rather than with the open-bidding race.
+    const kicker  = reserved ? "A past client requested you" : "Urgent — bid now";
+    const heading = reserved
+      ? `${request.service_needed} job in ${area} — reserved for you 🔧`
+      : `New ${request.service_needed} job in ${area} 🔧`;
+    const subject = reserved
+      ? `A past client requested you — ${request.service_needed} job in ${area}`
+      : `URGENT — new ${request.service_needed} job in ${area}, bid now`;
 
     for (const c of matched) {
       const email = c.profile?.email;
       if (!email) continue;
 
-      const name = c.profile?.first_name ?? "there";
+      const name  = c.profile?.first_name ?? "there";
+      const intro = reserved
+        ? `Hi ${name}, a client you've worked with asked for you by name. This job is held for you for 48 hours before it opens to other pros — send your estimate to lock it in.`
+        : `Hi ${name}, a job in your trade was just posted. Bidding is first come, first served and the job closes once it has ${BID_CAP} bids — get your estimate in early.`;
+
       const html = `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#1a2236;color:#f0f4ff;padding:2rem;border-radius:12px;">
-        <h2 style="color:#ea6b14;">New job request 🔧</h2>
-        <p>Hi ${name}, there's a new job that matches your skills. Jobs close after ${BID_CAP} bids — first come, first served.</p>
+        <p style="margin:0 0 .4rem;color:#ea6b14;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;">${kicker}</p>
+        <h2 style="color:#ea6b14;margin:0 0 .6rem;">${heading}</h2>
+        <p>${intro}</p>
         <table style="width:100%;border-collapse:collapse;margin:1rem 0;">
           <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;width:120px;">SERVICE</td><td style="padding:.5rem 0;font-weight:500;">${request.service_needed}</td></tr>
-          <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;">LOCATION</td><td style="padding:.5rem 0;">${maskLocation(request.location ?? "")}</td></tr>
+          <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;">LOCATION</td><td style="padding:.5rem 0;">${area}</td></tr>
           <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;">TIMING</td><td style="padding:.5rem 0;">${request.preferred_schedule}</td></tr>
           <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;">DETAILS</td><td style="padding:.5rem 0;font-size:.9rem;">${request.job_description ?? "—"}</td></tr>
         </table>
-        <a href="https://freddyfixit.ca/contractor-dashboard" style="display:inline-block;margin-top:.5rem;padding:.75rem 1.5rem;background:#ea6b14;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">View &amp; Bid on Job →</a>
-        <p style="margin-top:1.5rem;font-size:.78rem;color:rgba(190,205,235,.35);">You're receiving this because you're an active Freddy Fix It contractor. Questions? hello@freddyfixit.ca</p>
+        <a href="https://freddyfixit.ca/contractor-dashboard" style="display:inline-block;margin-top:.5rem;padding:.75rem 1.5rem;background:#ea6b14;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Go bid on this job →</a>
+        <p style="margin-top:1.5rem;font-size:.82rem;color:rgba(190,205,235,.55);">New to bidding? The <a href="https://freddyfixit.ca/contractor-guide" style="color:#ea6b14;">contractor guide</a> walks through how bidding and payment work.</p>
+        <p style="margin-top:1rem;font-size:.78rem;color:rgba(190,205,235,.35);">You're receiving this because you're an active Freddy Fix It contractor. Questions? hello@freddyfixit.ca</p>
       </div>`;
 
       const res = await fetch("https://api.resend.com/emails", {
@@ -169,7 +198,7 @@ serve(async (req) => {
         body: JSON.stringify({
           from: `Freddy Fix It <${FROM_EMAIL}>`,
           to: email,
-          subject: `New ${request.service_needed} job in ${maskLocation(request.location ?? "")}`,
+          subject,
           html,
         }),
       });

@@ -11,6 +11,7 @@ import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/compon
 import NotificationBell from "@/components/NotificationBell";
 import AdminMessageModal, { type MsgRecipient } from "@/components/AdminMessageModal";
 import { jobCode } from "@/lib/jobCode";
+import { DASH_NAV_EVENT, readDashNavFromUrl, clearDashNavFromUrl, type DashNavDetail } from "@/lib/notificationRoutes";
 
 // Re-signup flagging is computed server-side by admin_resignup_matches().
 // The Accounts tab lists every auth user (via admin_list_accounts) so the admin
@@ -67,6 +68,22 @@ export default function AdminDashboard() {
   const [me, setMe] = useState<{ id: string; first_name?: string } | null>(null);
 
   const handleSignOut = async () => { await supabase.auth.signOut(); setLocation("/"); };
+
+  // ── Notification deep links ─────────────────────────────────────────────────
+  // Tapping a 🔔 lands here two ways: from another page it navigates with ?tab=,
+  // and from this page (where the bell lives) wouter treats the same path as a
+  // no-op, so the bell fires ff:dash-nav instead.
+  useEffect(() => {
+    const apply = (d: DashNavDetail) => {
+      if (d.tab && ADMIN_NAV.some(i => i.key === d.tab)) setTab(d.tab as any);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+    const first = readDashNavFromUrl();
+    if (first.tab || first.jobId) { apply(first); clearDashNavFromUrl(); }
+    const onNav = (e: Event) => apply((e as CustomEvent<DashNavDetail>).detail ?? {});
+    window.addEventListener(DASH_NAV_EVENT, onNav);
+    return () => window.removeEventListener(DASH_NAV_EVENT, onNav);
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {

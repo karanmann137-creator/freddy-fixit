@@ -50,6 +50,24 @@ export function SettingsPanel({ role }: { role: Role }) {
 
   return (
     <>
+      {/* Contractor guide — how bidding and getting paid works. A plain link
+          (not SPA navigation) so the settings modal can't be left open behind
+          the page the contractor lands on. */}
+      {role === "contractor" && (
+        <div style={{ ...card, background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)" }}>
+          <p style={sectionTitle}>Contractor guide</p>
+          <p style={{ fontSize:".88rem", color:"rgb(var(--ff-muted))", margin:"0 0 .8rem", lineHeight:1.5 }}>
+            How bidding works, how and when you get paid, and the one step that releases your money. Worth five minutes.
+          </p>
+          <a
+            href="/contractor-guide"
+            style={{ display:"block", textAlign:"center", padding:".75rem 1rem", background:"#ea6b14", color:"#fff", borderRadius:"10px", fontFamily:"inherit", fontWeight:700, fontSize:".9rem", textDecoration:"none" }}
+          >
+            Read the contractor guide
+          </a>
+        </div>
+      )}
+
       {/* Appearance */}
       <div style={card}>
         <p style={sectionTitle}>Appearance</p>

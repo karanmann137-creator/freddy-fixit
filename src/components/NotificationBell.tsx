@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import {
+  noteTarget, targetToUrl, DASH_NAV_EVENT, type DashNavDetail,
+} from "@/lib/notificationRoutes";
 
 type Note = {
   id: string;
@@ -70,7 +73,20 @@ export default function NotificationBell({ userId, dashboardPath }: { userId: st
       await supabase.from("notifications").update({ read_at: now }).eq("id", n.id);
     }
     setOpen(false);
-    setLocation(dashboardPath);
+
+    // Where this notification actually lives — usually a tab (and sometimes a
+    // specific job) on the viewer's dashboard, occasionally a dedicated page.
+    const target = noteTarget(n.type, n.job_id, dashboardPath);
+
+    // Wouter treats navigating to the path you're already on as a no-op, and the
+    // bell usually sits on the very dashboard the notification points at. So when
+    // we're already there, tell the page directly instead of navigating.
+    if (window.location.pathname === target.path && (target.tab || target.jobId)) {
+      const detail: DashNavDetail = { tab: target.tab, jobId: target.jobId };
+      window.dispatchEvent(new CustomEvent(DASH_NAV_EVENT, { detail }));
+      return;
+    }
+    setLocation(targetToUrl(target));
   };
 
   const timeAgo = (iso: string) => {

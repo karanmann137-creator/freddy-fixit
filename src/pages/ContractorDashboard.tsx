@@ -74,6 +74,7 @@ import { useServicePricing, rangeText, money, benchmarkFor, type ServicePrice, t
 import PriceGrade from "@/components/PriceGrade";
 import { freqLabel } from "@/lib/recurrence";
 import { respShort } from "@/lib/respTime";
+import { DASH_NAV_EVENT, readDashNavFromUrl, clearDashNavFromUrl, type DashNavDetail } from "@/lib/notificationRoutes";
 
 const ffInp = { width:"100%", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const };
 const ffLbl = { fontSize:".66rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .45)", marginBottom:".2rem" };
@@ -148,8 +149,18 @@ export default function ContractorDashboard() {
   const [loading, setLoading]         = useState(true);
   const [activeTab, setActiveTab]     = useState<"jobs"|"available"|"calendar"|"profile"|"earnings"|"reviews">("jobs");
   const [jobFilter, setJobFilter]     = useState<string|null>(null); // pipeline-strip stage filter for the My Jobs list
+  const [pendingJobId, setPendingJobId] = useState<string|null>(null); // job a notification pointed at, waiting for the list to load
   const [bidsCount, setBidsCount]     = useState(0); // lifetime bids — drives the "place your first bid" setup step
   const [showProfileCongrats, setShowProfileCongrats] = useState(false);
+  // Contractor guide card — shown until they open it or dismiss it. Local only;
+  // it's a nudge, not something worth a database column.
+  const [guideSeen, setGuideSeen] = useState<boolean>(() => {
+    try { return localStorage.getItem("ff_seen_contractor_guide") === "1"; } catch { return false; }
+  });
+  const dismissGuide = () => {
+    try { localStorage.setItem("ff_seen_contractor_guide", "1"); } catch {}
+    setGuideSeen(true);
+  };
   const [showCustomAvail, setShowCustomAvail] = useState(false);
   const [proposeForm, setProposeForm] = useState<{ when:string; amount:string; notes:string; labour:string; parts:string; callout:string; subject:boolean; price_low:string; price_high:string; used_base_price:boolean; items:{label:string;amount:string}[] }>({ when:"", amount:"", notes:"", labour:"", parts:"", callout:"", subject:false, price_low:"", price_high:"", used_base_price:false, items:[] });
   const [photoFile, setPhotoFile]     = useState<File | null>(null);
@@ -384,6 +395,39 @@ export default function ContractorDashboard() {
     setWtForm({ when: job.walkthrough_at ? toLocalInput(job.walkthrough_at) : "", note: job.walkthrough_note ?? "" });
     setWtOpen(false);
   };
+
+  // ── Notification deep links ─────────────────────────────────────────────────
+  // Tapping a 🔔 lands here two ways: from another page it navigates with
+  // ?tab=&job=, and from this page (where the bell usually lives) wouter would
+  // treat the same path as a no-op, so the bell fires ff:dash-nav instead.
+  const applyDashNav = (d: DashNavDetail) => {
+    if (d.tab && CONTRACTOR_NAV.some(i => i.key === d.tab)) {
+      setActiveTab(d.tab as any);
+      setJobFilter(null); // a stage filter could otherwise hide the job we're opening
+    }
+    if (d.jobId) setPendingJobId(d.jobId);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  useEffect(() => {
+    const first = readDashNavFromUrl();
+    if (first.tab || first.jobId) { applyDashNav(first); clearDashNavFromUrl(); }
+    const onNav = (e: Event) => applyDashNav((e as CustomEvent<DashNavDetail>).detail ?? {});
+    window.addEventListener(DASH_NAV_EVENT, onNav);
+    return () => window.removeEventListener(DASH_NAV_EVENT, onNav);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Once the jobs are in, expand the one the notification named and scroll to it.
+  useEffect(() => {
+    if (!pendingJobId || !myJobs.length) return;
+    const job = myJobs.find(j => j.id === pendingJobId);
+    setPendingJobId(null);
+    if (!job) return; // not one of theirs (or already gone) — the tab switch stands
+    if (activeJobId !== job.id) openJob(job);
+    setTimeout(() => {
+      document.getElementById("job-" + job.id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingJobId, myJobs]);
   const proposeWalkthrough = async (job: any) => {
     if (!wtForm.when) { notify("Pick a date and time for the walkthrough."); return; }
     setBusyJobId(job.id);
@@ -900,6 +944,32 @@ export default function ContractorDashboard() {
           );
         })()}
 
+        {/* The contractor guide — how bidding and getting paid actually work.
+            A plain link (not SPA navigation) so a full page loads cleanly, and
+            dismissible so it doesn't nag a pro who has already read it. */}
+        {!guideSeen && (
+          <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.25)", display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".75rem", justifyContent:"space-between" }}>
+            <div style={{ flex:"1 1 260px" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".85rem", fontWeight:600, color:"#ea6b14", marginBottom:".3rem" }}>
+                <Ic name="star" size={14} />Read this first — the contractor guide
+              </div>
+              <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
+                How bidding works, how and when you get paid, and the one step that releases your money. About five minutes, and it saves a lot of guessing.
+              </div>
+            </div>
+            <div style={{ display:"flex", flexDirection:"column" as const, alignItems:"stretch", gap:".4rem" }}>
+              <a href="/contractor-guide" onClick={dismissGuide}
+                style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", whiteSpace:"nowrap" as const, textAlign:"center" as const, textDecoration:"none" }}>
+                Read the guide
+              </a>
+              <button onClick={dismissGuide}
+                style={{ background:"none", border:"none", color:"rgba(var(--ff-muted), .65)", fontFamily:"inherit", fontSize:".74rem", cursor:"pointer", textDecoration:"underline", padding:0 }}>
+                Not now
+              </button>
+            </div>
+          </div>
+        )}
+
         {(activeTab === "jobs" || activeTab === "available" || activeTab === "calendar") && (() => {
           // Jobber-style workflow pipeline strip: where every job sits, at a glance.
           // Clicking a stage jumps to the right tab (and filters My Jobs by stage).
@@ -1064,7 +1134,7 @@ export default function ContractorDashboard() {
                 <div style={{ fontSize:".85rem" }}>Jobs you win show up here. Check <button onClick={() => setActiveTab("available")} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".85rem", fontWeight:600, cursor:"pointer", padding:0 }}>Available Jobs</button> for open work matching your trades.</div>
               </div>
             ) : shown.map(job => (
-              <div key={job.id} style={s.jobCard} onClick={() => openJob(job)}>
+              <div key={job.id} id={"job-" + job.id} style={{ ...s.jobCard, scrollMarginTop: "5.5rem" }} onClick={() => openJob(job)}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:".75rem" }}>
                   <div>
                     <div style={{ fontSize:"1rem", fontWeight:500, marginBottom:".2rem" }}>{job.request?.service_needed ?? "Job"}</div>

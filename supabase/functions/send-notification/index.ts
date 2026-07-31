@@ -1,4 +1,4 @@
-// Supabase Edge Function: send-notification  (v11)
+// Supabase Edge Function: send-notification  (v13)
 //
 // Fired by the `send-notification-email` Database Webhook on every
 // public.notifications INSERT. Turns an in-app bell into an email.
@@ -13,6 +13,18 @@
 // client_requests.dispatched_to + contractors.jobs_dispatched, so it wins.
 // The in-app 🔔 is unaffected — the row is still written, we just don't email
 // a second time. Every other notification type still emails exactly as before.
+//
+// WHAT CHANGED IN v12 — `contractor_guide` added to the same suppression set.
+// The contractor onboarding guide is delivered as a dashboard notification now
+// and as the Tue Aug 4 Pro Tips email later (via newsletter-send). Without this
+// entry, inserting the bell rows would have emailed every contractor instantly.
+//
+// WHAT CHANGED IN v13 — `rehire_request` added too, same reason as job_in_field.
+// `notify_preferred_contractor()` fires on the SAME client_requests insert that
+// triggers dispatch-job, and inside the 48h reservation window dispatch-job
+// emails that same pro — so a rehire produced two emails. dispatch-job v14
+// detects the reservation and switches its copy to "a past client requested
+// you", so the one remaining email says everything the suppressed one did.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
@@ -24,10 +36,13 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const FROM_EMAIL = "noreply@freddyfixit.ca";
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-// Notification types that another function already emails about. The bell row
-// is still created; we just don't send a second, thinner copy.
+// Notification types that another function already emails about, or that are
+// deliberately in-app only. The bell row is still created; we just don't send
+// a second, thinner copy.
 const EMAIL_HANDLED_ELSEWHERE = new Set([
-  "job_in_field", // dispatch-job sends the full new-job email
+  "job_in_field",     // dispatch-job sends the full new-job email
+  "rehire_request",   // dispatch-job emails the reserved pro on the same insert
+  "contractor_guide", // dashboard-only; the emailed copy goes out with Pro Tips
 ]);
 
 const wrap = (inner: string) => `
