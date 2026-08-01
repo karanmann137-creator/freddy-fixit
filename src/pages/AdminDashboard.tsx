@@ -23,6 +23,7 @@ const ADMIN_NAV: SidebarItem[] = [
   { key: "health",   label: "Health",   icon: "check" },
   { key: "requests", label: "Requests", icon: "clipboard-list" },
   { key: "jobs",     label: "Jobs",     icon: "briefcase" },
+  { key: "picks",    label: "Picks",    icon: "star" },
   { key: "accounts", label: "Accounts", icon: "user" },
   { key: "disputes", label: "Disputes", icon: "alert-triangle" },
   { key: "prepaid",  label: "Prepaid",  icon: "dollar" },
@@ -34,7 +35,7 @@ export default function AdminDashboard() {
   const [requests, setRequests] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
-  const [tab, setTab] = useState<"health"|"requests"|"jobs"|"accounts"|"disputes"|"prepaid"|"leads">("requests");
+  const [tab, setTab] = useState<"health"|"requests"|"jobs"|"picks"|"accounts"|"disputes"|"prepaid"|"leads">("requests");
   const [prepays, setPrepays] = useState<any[]>([]);
   const [busyRefund, setBusyRefund] = useState<string|null>(null);
   const [disputes, setDisputes] = useState<any[]>([]);
@@ -60,6 +61,9 @@ export default function AdminDashboard() {
   const [busyPayoutCheck, setBusyPayoutCheck] = useState<string|null>(null);
   const [busyJob, setBusyJob] = useState<string|null>(null);
   const [bidsBy, setBidsBy] = useState<Record<string, any[]>>({});
+  // Who got picked for what, newest first. Built from jobs (not bids) so it also
+  // covers rehires and admin assignments, where no bid was ever accepted.
+  const [picks, setPicks] = useState<any[]>([]);
   const [flagMatches, setFlagMatches] = useState<Record<string, { fields: string[]; avg: number; count: number; date: string }>>({});
   const [accountQ, setAccountQ] = useState("");
   const [accountRole, setAccountRole] = useState<"all"|"client"|"contractor"|"admin"|"orphaned">("all");
@@ -111,9 +115,12 @@ export default function AdminDashboard() {
     const jRange: [number, number] = [page.jobs * PAGE_SIZE, page.jobs * PAGE_SIZE + PAGE_SIZE - 1];
     const results = await Promise.all([
       supabase.from("client_requests").select("*", { count: "exact" }).order("created_at", { ascending: false }).range(rRange[0], rRange[1]),
-      supabase.from("jobs").select("*", { count: "exact" }).order("created_at", { ascending: false }).range(jRange[0], jRange[1]),
+      // Embed the request + both parties so a job card reads without cross-referencing.
+      supabase.from("jobs").select("*, request:client_requests!jobs_request_id_fkey(service_needed, location), client:profiles!jobs_client_id_fkey(first_name, last_name), pro:profiles!jobs_contractor_id_fkey(first_name, last_name)", { count: "exact" }).order("created_at", { ascending: false }).range(jRange[0], jRange[1]),
       supabase.rpc("admin_list_accounts"),
-      supabase.from("bids").select("*").eq("status", "pending").order("amount", { ascending: true }),
+      // ALL bids, not just pending — otherwise the winning bid vanishes the moment
+      // the client picks it and the request card can only say "Assigned".
+      supabase.from("bids").select("*").order("amount", { ascending: true }),
       supabase.rpc("admin_resignup_matches"),
       supabase.from("disputes").select("*, job:jobs(id, amount, total_charged, contractor_payout, status, payment_status, stripe_payment_intent_id)").order("created_at", { ascending: false }),
       supabase.from("quote_leads").select("*").order("created_at", { ascending: false }).limit(100),
@@ -137,6 +144,12 @@ export default function AdminDashboard() {
         .order("created_at", { ascending: false });
       setPrepays(pp ?? []);
     } catch { setPrepays([]); }
+    // Picks feed. Its own try/catch so an older DB without the RPC still loads
+    // every other tab instead of failing the whole dashboard.
+    try {
+      const { data: pk } = await supabase.rpc("admin_list_picks", { p_limit: 200 });
+      setPicks((pk as any[]) ?? []);
+    } catch { setPicks([]); }
     // Resolve signed URLs for all dispute photos (problem-photos is private). Both
     // the claim photos and the contractor-response photos are signed in a single
     // parallel pass instead of two sequential per-dispute loops.
@@ -189,6 +202,10 @@ export default function AdminDashboard() {
     if (!a) return "Contractor";
     return ((a.first_name ?? "") + " " + (a.last_name ? a.last_name[0] + "." : "")).trim() || a.company_name || "Contractor";
   };
+
+  /** Name off an embedded profiles row (jobs query joins client + pro). */
+  const pname = (p: any, fallback: string) =>
+    (((p?.first_name ?? "") + " " + (p?.last_name ? p.last_name[0] + "." : "")).trim()) || fallback;
 
   const deleteRequest = async (r: any) => {
     if (!window.confirm("Delete this request permanently? This also removes any assigned job and its messages.")) return;
@@ -381,6 +398,7 @@ export default function AdminDashboard() {
     badge: it.key === "health"   ? (healthAlerts || undefined)
          : it.key === "requests" ? (counts.requests || undefined)
          : it.key === "jobs"     ? (counts.jobs || undefined)
+         : it.key === "picks"    ? (picks.length || undefined)
          : it.key === "accounts" ? (accounts.length || undefined)
          : it.key === "disputes" ? (openDisputes || undefined)
          : it.key === "prepaid"  ? (prepays.length || undefined)
@@ -464,20 +482,48 @@ export default function AdminDashboard() {
                 <div style={s.meta}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{r.location} · <Ic name="timer" size={13} style={{ marginRight:4, marginLeft:4 }} />{r.preferred_schedule}</div>
                 <div style={s.meta}>{r.job_description}</div>
                 <div style={{ ...s.badge, marginTop:".5rem" }}>● {r.status}</div>
-                {r.status === "pending" && (bidsBy[r.id]?.length ?? 0) > 0 && (
-                  <div style={{ marginTop:".75rem" }}>
-                    <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)", marginBottom:".4rem" }}>Bids ({bidsBy[r.id].length}/7)</div>
-                    {bidsBy[r.id].map((b: any) => (
-                      <div key={b.id} style={{ padding:".5rem .6rem", marginBottom:".4rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
-                        <div style={{ fontSize:".85rem", color:"var(--ff-text)" }}>{nameFor(b.contractor_id)}{b.amount != null ? " — $" + b.amount : ""}</div>
-                        {b.message && <div style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .6)" }}>{b.message}</div>}
+                {/* Bid history stays visible AFTER the pick — the winner is marked and the
+                    others are dimmed, so it's obvious who the client chose and who they passed on. */}
+                {(bidsBy[r.id]?.length ?? 0) > 0 && (() => {
+                  const bids = bidsBy[r.id];
+                  const picked = bids.find((b: any) => b.status === "accepted");
+                  return (
+                    <div style={{ marginTop:".75rem" }}>
+                      <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)", marginBottom:".4rem" }}>
+                        {r.status === "pending" ? `Bids (${bids.length}/7)` : `Bids (${bids.length})`}
                       </div>
-                    ))}
-                    <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .4)" }}>The client picks a bid from their dashboard.</div>
-                  </div>
-                )}
+                      {bids.map((b: any) => {
+                        const won  = b.status === "accepted";
+                        const lost = b.status === "declined";
+                        return (
+                          <div key={b.id} style={{
+                            padding:".5rem .6rem", marginBottom:".4rem", borderRadius:"8px",
+                            background: won ? "rgba(34,197,94,.08)" : "rgba(var(--ff-fg), .04)",
+                            border: won ? "1px solid rgba(34,197,94,.4)" : "1px solid rgba(var(--ff-fg), .08)",
+                            opacity: lost ? .55 : 1,
+                          }}>
+                            <div style={{ fontSize:".85rem", color:"var(--ff-text)", display:"flex", alignItems:"center", gap:".4rem", flexWrap:"wrap" as const }}>
+                              <span>{nameFor(b.contractor_id)}{b.amount != null ? " — $" + b.amount : (b.walkthrough_requested ? " — walkthrough first" : "")}</span>
+                              {won && <span style={{ fontSize:".65rem", background:"rgba(34,197,94,.18)", color:"var(--ff-success)", border:"1px solid rgba(34,197,94,.4)", borderRadius:"4px", padding:".1rem .4rem", letterSpacing:".04em" }}>✓ PICKED</span>}
+                              {lost && <span style={{ fontSize:".65rem", color:"rgba(var(--ff-muted), .5)", letterSpacing:".04em" }}>not picked</span>}
+                            </div>
+                            {b.message && <div style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .6)" }}>{b.message}</div>}
+                          </div>
+                        );
+                      })}
+                      {r.status === "pending"
+                        ? <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .4)" }}>The client picks a bid from their dashboard.</div>
+                        : picked
+                          ? <div style={{ fontSize:".72rem", color:"var(--ff-success)" }}>The client picked {nameFor(picked.contractor_id)}{picked.amount != null ? " at $" + picked.amount : ""}.</div>
+                          : null}
+                    </div>
+                  );
+                })()}
                 {r.status !== "pending" && r.assigned_contractor_id && (
-                  <div style={{ ...s.meta, marginTop:".5rem", color:"var(--ff-success)" }}>Assigned ✓</div>
+                  <div style={{ ...s.meta, marginTop:".5rem", color:"var(--ff-success)" }}>
+                    Assigned to {nameFor(r.assigned_contractor_id)} ✓
+                    {(bidsBy[r.id]?.length ?? 0) === 0 ? " (no bids — assigned directly)" : ""}
+                  </div>
                 )}
                 <RequestPhotoQuote requestId={r.id} photoPath={r.photo_path} estimatedQuote={r.estimated_quote} quoteNotes={r.quote_notes} canQuote />
                 <div style={{ marginTop:".75rem" }}>
@@ -739,7 +785,16 @@ export default function AdminDashboard() {
             {jobs.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No jobs yet.</p>}
             {jobs.map(j => (
               <div key={j.id} style={s.card}>
-                <div style={s.title}>Job <span style={{ fontFamily:"monospace", color:"#ea6b14" }}>{jobCode(j.id)}</span></div>
+                <div style={s.title}>
+                  {j.request?.service_needed || "Job"} <span style={{ fontFamily:"monospace", color:"#ea6b14", fontSize:".8em" }}>{jobCode(j.id)}</span>
+                </div>
+                <div style={s.meta}>
+                  <Ic name="user" size={13} style={{ marginRight:4 }} />{pname(j.client, "Client")}
+                  {" → "}
+                  <Ic name="briefcase" size={13} style={{ marginRight:4, marginLeft:4 }} />
+                  <span style={{ color:"var(--ff-success)" }}>{pname(j.pro, "Contractor")}</span>
+                </div>
+                {j.request?.location && <div style={s.meta}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{j.request.location}</div>}
                 <div style={s.meta}>Status: {j.status}</div>
                 {j.amount && <div style={s.meta}>Amount: ${j.amount}</div>}
                 {j.scheduled_at && <div style={s.meta}>Date: {new Date(j.scheduled_at).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" })}</div>}
@@ -751,6 +806,45 @@ export default function AdminDashboard() {
               </div>
             ))}
             {pager("jobs")}
+          </div>
+        )}
+
+        {tab === "picks" && (
+          <div>
+            <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".82rem", marginBottom:"1rem", lineHeight:1.5 }}>
+              Every contractor a client has been matched with, newest first — who won, at what price, and how many bids they beat.
+            </p>
+            {picks.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No picks yet. This fills in as clients choose contractors.</p>}
+            {picks.map((p: any) => {
+              const how = p.how === "client_pick" ? { label:"Client picked", color:"#22c55e" }
+                        : p.how === "rehire"      ? { label:"Rehired their pro", color:"#ea6b14" }
+                        :                            { label:"Assigned by admin", color:"rgba(var(--ff-muted), .6)" };
+              const price = p.winning_amount ?? p.amount;
+              return (
+                <div key={p.job_id} style={s.card}>
+                  <div style={{ display:"flex", alignItems:"baseline", gap:".5rem", flexWrap:"wrap" as const }}>
+                    <div style={s.title}>{p.service || "Job"}</div>
+                    <span style={{ fontFamily:"monospace", color:"#ea6b14", fontSize:".75rem" }}>{jobCode(p.job_id)}</span>
+                    <span style={{ fontSize:".65rem", color:how.color, border:"1px solid currentColor", borderRadius:"4px", padding:".1rem .4rem", letterSpacing:".04em", opacity:.9 }}>{how.label}</span>
+                  </div>
+                  <div style={s.meta}>
+                    <Ic name="user" size={13} style={{ marginRight:4 }} />{p.client_name || "Client"}
+                    {" chose "}
+                    <span style={{ color:"var(--ff-success)" }}>{p.contractor_name || p.company_name || "a contractor"}</span>
+                    {p.company_name && p.contractor_name ? " (" + p.company_name + ")" : ""}
+                  </div>
+                  <div style={s.meta}>
+                    {price != null ? "$" + price : "Price not set yet"}
+                    {p.bid_count > 0 ? " · from " + p.bid_count + (p.bid_count === 1 ? " bid" : " bids") : " · no bids"}
+                    {" · "}{p.job_status}
+                  </div>
+                  {p.location && <div style={s.meta}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{p.location}</div>}
+                  <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .45)" }}>
+                    {new Date(p.picked_at).toLocaleString("en-CA", { dateStyle:"medium", timeStyle:"short" })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
