@@ -12,6 +12,7 @@ import NotificationBell from "@/components/NotificationBell";
 import AdminMessageModal, { type MsgRecipient } from "@/components/AdminMessageModal";
 import { jobCode } from "@/lib/jobCode";
 import { DASH_NAV_EVENT, readDashNavFromUrl, clearDashNavFromUrl, type DashNavDetail } from "@/lib/notificationRoutes";
+import { needsFor, pendingText, disabledText } from "@/lib/stripeRequirements";
 
 // Re-signup flagging is computed server-side by admin_resignup_matches().
 // The Accounts tab lists every auth user (via admin_list_accounts) so the admin
@@ -52,6 +53,11 @@ export default function AdminDashboard() {
   const [busyDelete, setBusyDelete] = useState(false);
   const [busyDeleteAccount, setBusyDeleteAccount] = useState<string|null>(null);
   const [busyNudge, setBusyNudge] = useState(false);
+  // Live Stripe payout diagnosis, keyed by contractor id. Fetched on demand
+  // (one Stripe API call each) so the owner can see exactly what a stuck
+  // contractor still owes Stripe without asking them.
+  const [payoutCheck, setPayoutCheck] = useState<Record<string, { needs: string[]; pending: string[]; disabled: string|null; error?: string }>>({});
+  const [busyPayoutCheck, setBusyPayoutCheck] = useState<string|null>(null);
   const [busyJob, setBusyJob] = useState<string|null>(null);
   const [bidsBy, setBidsBy] = useState<Record<string, any[]>>({});
   const [flagMatches, setFlagMatches] = useState<Record<string, { fields: string[]; avg: number; count: number; date: string }>>({});
@@ -261,6 +267,29 @@ export default function AdminDashboard() {
       try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
       alert("Couldn't send reminders: " + msg);
     } finally { setBusyNudge(false); }
+  };
+
+  // Ask Stripe (live) what this contractor still owes before payouts can start.
+  // refresh-connect-status accepts { contractor_id } for admins only.
+  const checkPayout = async (id: string) => {
+    setBusyPayoutCheck(id);
+    try {
+      const { data, error } = await supabase.functions.invoke("refresh-connect-status", { body: { contractor_id: id } });
+      if (error) throw error;
+      if (data && (data as any).error) throw new Error((data as any).error);
+      const d = data as any;
+      setPayoutCheck(p => ({ ...p, [id]: {
+        needs: Array.isArray(d.requirements) ? d.requirements : [],
+        pending: Array.isArray(d.pending_verification) ? d.pending_verification : [],
+        disabled: d.disabled_reason ?? null,
+      }}));
+      // Keep the roster row honest if Stripe says they're actually done now.
+      if (d.payouts_enabled) setAccounts(as => as.map(a => a.id === id ? { ...a, stripe_payouts_enabled: true } : a));
+    } catch (e: any) {
+      let msg = e?.message || String(e);
+      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
+      setPayoutCheck(p => ({ ...p, [id]: { needs: [], pending: [], disabled: null, error: msg } }));
+    } finally { setBusyPayoutCheck(null); }
   };
 
   // Admin changes an account's login (auth) email and keeps profiles.email in
@@ -578,6 +607,37 @@ export default function AdminDashboard() {
                         {"  ·  Earned: $"}{Number(a.total_earned ?? 0).toLocaleString()}
                         {"  ·  Payouts: "}{a.stripe_payouts_enabled ? "set up ✓" : "not set up"}
                       </div>
+                      {!a.stripe_payouts_enabled && (() => {
+                        const chk = payoutCheck[a.id];
+                        const steps = chk ? needsFor(chk.needs) : [];
+                        return (
+                          <div style={{ marginTop:".35rem" }}>
+                            {!chk ? (
+                              <button style={{ ...s.btn, fontSize:".72rem", padding:".25rem .6rem", color:"#ea6b14", borderColor:"rgba(234,107,20,.35)", background:"rgba(234,107,20,.08)" }}
+                                disabled={busyPayoutCheck === a.id} onClick={() => checkPayout(a.id)}>
+                                {busyPayoutCheck === a.id ? "Checking Stripe…" : "What's blocking their payouts?"}
+                              </button>
+                            ) : chk.error ? (
+                              <div style={{ ...s.meta, color:"#ef4444" }}>Couldn't check Stripe: {chk.error}</div>
+                            ) : (
+                              <div style={{ padding:".55rem .7rem", borderRadius:"8px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.18)" }}>
+                                {steps.length > 0 ? (
+                                  <>
+                                    <div style={{ fontSize:".74rem", fontWeight:600, color:"#ea6b14", marginBottom:".25rem" }}>Stripe is still waiting on:</div>
+                                    <ul style={{ margin:0, paddingLeft:"1.1rem", fontSize:".76rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.5 }}>
+                                      {steps.map((n, i) => <li key={i}>{n.label}</li>)}
+                                    </ul>
+                                  </>
+                                ) : (
+                                  <div style={{ ...s.meta, marginTop:0 }}>Stripe lists nothing outstanding — they may just need to reopen the setup link and finish.</div>
+                                )}
+                                {pendingText(chk.pending) ? <div style={{ ...s.meta, marginTop:".3rem" }}>{pendingText(chk.pending)}</div> : null}
+                                {disabledText(chk.disabled) ? <div style={{ ...s.meta, marginTop:".3rem" }}>{disabledText(chk.disabled)}</div> : null}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                       {(a.hourly_rate || a.min_callout) ? (
                         <div style={s.meta}>
                           {"Pricing: "}

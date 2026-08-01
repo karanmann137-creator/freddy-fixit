@@ -75,6 +75,7 @@ import PriceGrade from "@/components/PriceGrade";
 import { freqLabel } from "@/lib/recurrence";
 import { respShort } from "@/lib/respTime";
 import { DASH_NAV_EVENT, readDashNavFromUrl, clearDashNavFromUrl, type DashNavDetail } from "@/lib/notificationRoutes";
+import { needsFor, pendingText, disabledText } from "@/lib/stripeRequirements";
 
 const ffInp = { width:"100%", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const };
 const ffLbl = { fontSize:".66rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .45)", marginBottom:".2rem" };
@@ -178,6 +179,11 @@ export default function ContractorDashboard() {
   const [busyBid, setBusyBid]         = useState<string|null>(null);
   const [bidOpen, setBidOpen]         = useState<Record<string,boolean>>({});
   const [busyStripe, setBusyStripe]   = useState(false);
+  // What Stripe is still waiting on, straight from refresh-connect-status (v11).
+  // Empty until that call returns; the banner falls back to generic copy.
+  const [stripeNeeds, setStripeNeeds] = useState<{ requirements: string[]; pending: string[]; disabled_reason: string | null }>(
+    { requirements: [], pending: [], disabled_reason: null },
+  );
   const [myReviews, setMyReviews]     = useState<any[]>([]);
   const [disputes, setDisputes]       = useState<Record<string, any>>({});
   const [claimPhotos, setClaimPhotos] = useState<Record<string, string>>({});
@@ -314,12 +320,19 @@ export default function ContractorDashboard() {
         .then(({ data }: any) => setExpenses((data ?? []) as JobExpense[]));
       setGoalInput(earnStats?.weekly_goal ? String(earnStats.weekly_goal) : "");
       setGoogleUrl(con2?.google_reviews_url ?? "");
-      // Sync live Stripe payout status (no account.updated webhook needed)
+      // Sync live Stripe payout status (no account.updated webhook needed) and
+      // capture what Stripe is still waiting on, so the banner can name the
+      // actual missing step instead of a vague "setup isn't finished".
       if (con2?.stripe_account_id && !con2?.stripe_payouts_enabled) {
         supabase.functions.invoke("refresh-connect-status", { body: {} })
           .then(({ data }: any) => {
             if (data && (data.payouts_enabled != null)) {
               setContractor((c: any) => c ? { ...c, stripe_charges_enabled: !!data.charges_enabled, stripe_payouts_enabled: !!data.payouts_enabled } : c);
+              setStripeNeeds({
+                requirements: Array.isArray(data.requirements) ? data.requirements : [],
+                pending: Array.isArray(data.pending_verification) ? data.pending_verification : [],
+                disabled_reason: data.disabled_reason ?? null,
+              });
             }
           })
           .catch(() => {});
@@ -889,23 +902,55 @@ export default function ContractorDashboard() {
       <div style={s.content}>
         <ProfileCompletionModal role="contractor" profile={profile} contractor={contractor} onSetupPayouts={setupPayouts} />
 
-        {contractor && !contractor.stripe_payouts_enabled && (
+        {contractor && !contractor.stripe_payouts_enabled && (() => {
+          const steps   = needsFor(stripeNeeds.requirements);
+          const waiting = pendingText(stripeNeeds.pending);
+          const blocked = disabledText(stripeNeeds.disabled_reason);
+          // Nothing outstanding and Stripe is reviewing => reassure, don't nag.
+          const onlyWaiting = steps.length === 0 && !!waiting;
+          return (
           <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.45)", display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".75rem", justifyContent:"space-between" }}>
             <div style={{ flex:"1 1 260px" }}>
               <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".85rem", fontWeight:600, color:"#ea6b14", marginBottom:".3rem" }}>
-                <Ic name="alert-triangle" size={14} />Finish payout setup to get paid
+                <Ic name="alert-triangle" size={14} />{onlyWaiting ? "Payout setup is being reviewed" : "Finish payout setup to get paid"}
               </div>
               <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
-                {contractor.stripe_account_id
-                  ? "Your bank connection isn't finished yet. Until it is, money for completed jobs can't be sent to you."
-                  : "You haven't connected a bank account. Until you do, you won't be paid for completed jobs — clients can still book and pay, but your payout stays on hold."}
+                {onlyWaiting
+                  ? waiting
+                  : (contractor.stripe_account_id
+                      ? (steps.length > 0
+                          ? "You're almost there — Stripe still needs " + (steps.length === 1 ? "one thing" : steps.length + " things") + " before money for completed jobs can reach you:"
+                          : "Your bank connection isn't finished yet. Until it is, money for completed jobs can't be sent to you.")
+                      : "You haven't connected a bank account. Until you do, you won't be paid for completed jobs — clients can still book and pay, but your payout stays on hold.")}
               </div>
+              {!onlyWaiting && steps.length > 0 && (
+                <ul style={{ margin:".55rem 0 0", padding:0, listStyle:"none", display:"flex", flexDirection:"column" as const, gap:".45rem" }}>
+                  {steps.map((n, i) => (
+                    <li key={i} style={{ display:"flex", gap:".45rem", alignItems:"flex-start" }}>
+                      <span style={{ flex:"0 0 auto", marginTop:".15rem" }}><Ic name="alert-triangle" size={12} color="#ea6b14" /></span>
+                      <span>
+                        <span style={{ display:"block", fontSize:".8rem", fontWeight:600, color:"var(--ff-text)" }}>{n.label}</span>
+                        <span style={{ display:"block", fontSize:".76rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.45 }}>{n.detail}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {!onlyWaiting && waiting && (
+                <div style={{ marginTop:".5rem", fontSize:".76rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.45 }}>{waiting}</div>
+              )}
+              {blocked && (
+                <div style={{ marginTop:".5rem", fontSize:".76rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.45 }}>{blocked}</div>
+              )}
             </div>
-            <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", whiteSpace:"nowrap" as const }} disabled={busyStripe} onClick={setupPayouts}>
-              {busyStripe ? "Opening Stripe…" : (contractor.stripe_account_id ? "Finish setup" : "Set up payouts")}
-            </button>
+            {!onlyWaiting && (
+              <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", whiteSpace:"nowrap" as const }} disabled={busyStripe} onClick={setupPayouts}>
+                {busyStripe ? "Opening Stripe…" : (contractor.stripe_account_id ? "Finish setup" : "Set up payouts")}
+              </button>
+            )}
           </div>
-        )}
+          );
+        })()}
 
         {contractor && (() => {
           const gaps = contractorGaps(contractor);
@@ -1890,6 +1935,25 @@ export default function ContractorDashboard() {
                       ? "Your payout account needs a few more details before you can be paid. Finish setup with Stripe below."
                       : "Connect a bank account through Stripe to get paid for completed jobs. Funds for each job are released to you after the client confirms the work is done."}
                   </p>
+                  {needsFor(stripeNeeds.requirements).length > 0 && (
+                    <div style={{ margin:"0 0 .9rem", padding:".75rem .85rem", borderRadius:"10px", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.18)" }}>
+                      <div style={{ fontSize:".78rem", fontWeight:600, color:"#ea6b14", marginBottom:".45rem" }}>Stripe still needs:</div>
+                      <ul style={{ margin:0, padding:0, listStyle:"none", display:"flex", flexDirection:"column" as const, gap:".45rem" }}>
+                        {needsFor(stripeNeeds.requirements).map((n, i) => (
+                          <li key={i}>
+                            <span style={{ display:"block", fontSize:".82rem", fontWeight:600, color:"var(--ff-text)" }}>{n.label}</span>
+                            <span style={{ display:"block", fontSize:".78rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.45 }}>{n.detail}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {pendingText(stripeNeeds.pending) && (
+                    <p style={{ color:"rgba(var(--ff-muted), .7)", fontSize:".82rem", marginBottom:".9rem", lineHeight:1.5 }}>{pendingText(stripeNeeds.pending)}</p>
+                  )}
+                  {disabledText(stripeNeeds.disabled_reason) && (
+                    <p style={{ color:"rgba(var(--ff-muted), .7)", fontSize:".82rem", marginBottom:".9rem", lineHeight:1.5 }}>{disabledText(stripeNeeds.disabled_reason)}</p>
+                  )}
                   <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyStripe} onClick={setupPayouts}>
                     {busyStripe ? "Opening Stripe…" : (contractor?.stripe_account_id ? "Finish payout setup" : "Set up payouts")}
                   </button>
