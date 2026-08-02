@@ -10,6 +10,7 @@ import ContractPanel from "@/components/ContractPanel";
 import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/components/DashboardSidebar";
 import NotificationBell from "@/components/NotificationBell";
 import AdminMessageModal, { type MsgRecipient } from "@/components/AdminMessageModal";
+import JobChat from "@/components/JobChat";
 import { jobCode } from "@/lib/jobCode";
 import { DASH_NAV_EVENT, readDashNavFromUrl, clearDashNavFromUrl, type DashNavDetail } from "@/lib/notificationRoutes";
 import { needsFor, pendingText, disabledText } from "@/lib/stripeRequirements";
@@ -61,6 +62,10 @@ export default function AdminDashboard() {
   const [payoutCheck, setPayoutCheck] = useState<Record<string, { needs: string[]; pending: string[]; disabled: string|null; error?: string }>>({});
   const [busyPayoutCheck, setBusyPayoutCheck] = useState<string|null>(null);
   const [busyJob, setBusyJob] = useState<string|null>(null);
+  // Read any job's chat. RLS already grants an admin full access to messages; the
+  // drawer is opened with role="admin", which makes it read-only and — crucially —
+  // stops it clearing the real recipient's unread badge.
+  const [chatJob, setChatJob] = useState<any>(null);
   const [bidsBy, setBidsBy] = useState<Record<string, any[]>>({});
   // Who got picked for what, newest first. Built from jobs (not bids) so it also
   // covers rehires and admin assignments, where no bid was ever accepted.
@@ -810,7 +815,8 @@ export default function AdminDashboard() {
                 {j.scheduled_at && <div style={s.meta}>Date: {new Date(j.scheduled_at).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" })}</div>}
                 <ContractPanel role="admin" job={j} />
                 {j.is_milestone && <MilestonePanel role="admin" job={j} />}
-                <div style={{ marginTop:".75rem" }}>
+                <div style={{ marginTop:".75rem", display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
+                  <button style={s.btn} onClick={() => setChatJob(j)}><Ic name="message-square" size={13} style={{ marginRight:4 }} />Read chat</button>
                   <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJob === j.id} onClick={() => deleteJob(j)}><Ic name="trash" size={13} style={{ marginRight:4 }} />{busyJob === j.id ? "Deleting…" : "Delete job"}</button>
                 </div>
               </div>
@@ -1120,6 +1126,18 @@ export default function AdminDashboard() {
       </div>
       {msgRecipients && (
         <AdminMessageModal recipients={msgRecipients} onClose={() => setMsgRecipients(null)} />
+      )}
+      {chatJob && me && (
+        <JobChat
+          jobId={chatJob.id}
+          meId={me.id}
+          title={"Chat · " + jobCode(chatJob.id)}
+          job={chatJob}
+          role="admin"
+          readOnly
+          closedReason="You're reading this as an admin — you can see everything, including messages the chat guard blocked, but you can't post."
+          onClose={() => setChatJob(null)}
+        />
       )}
     </div>
   );

@@ -29,11 +29,14 @@ import type { Grade } from "@/lib/servicePricing";
 import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/components/DashboardSidebar";
 import NotificationBell from "@/components/NotificationBell";
 import { SettingsPanel } from "@/components/SettingsModal";
+import MessagesInbox, { partyName } from "@/components/MessagesInbox";
+import { useConversations, chatReadOnly, chatClosedReason, type Conversation } from "@/lib/chatUnread";
 
-type ClientTab = "requests" | "pros" | "recurring" | "history" | "profile" | "settings";
+type ClientTab = "requests" | "messages" | "pros" | "recurring" | "history" | "profile" | "settings";
 
 const CLIENT_NAV: SidebarItem[] = [
   { key: "requests",  label: "My Requests",    icon: "clipboard-list" },
+  { key: "messages",  label: "Messages",       icon: "message-square" },
   { key: "pros",      label: "My Pros",        icon: "user-check" },
   { key: "recurring", label: "Recurring Plans", icon: "refresh" },
   { key: "history",   label: "History",        icon: "clock" },
@@ -111,7 +114,9 @@ export default function ClientDashboard() {
   const [requests, setRequests]     = useState<any[]>([]);
   const [contractor, setContractor] = useState<any>(null);
   const [activeJob, setActiveJob]   = useState<any>(null);
-  const [chatOpen, setChatOpen]     = useState(false);
+  // The job whose chat drawer is open. An object, not a boolean, because the
+  // Messages tab can open a conversation on a job that isn't the active one.
+  const [chatJob, setChatJob]       = useState<any>(null);
   // Jobs whose chat-suggested time this client tapped "Decide later" on. Only
   // hides the modal — the attention row stays so a time can never be lost.
   const [timeDismissed, setTimeDismissed] = useState<Set<string>>(new Set());
@@ -161,6 +166,25 @@ export default function ClientDashboard() {
   const [claimOpen, setClaimOpen]   = useState(false);
   const [claimJobs, setClaimJobs]   = useState<ClaimJob[]>([]);
   const [bugOpen, setBugOpen]       = useState(false);
+
+  // One hook feeds the Messages tab, the sidebar badge and every unread pill —
+  // so a badge can never disagree with the list it links to.
+  const {
+    conversations, totalUnread, unreadFor,
+    loading: convLoading, error: convError,
+    refresh: refreshConvs, markRead: markConvRead,
+  } = useConversations(profile?.id);
+
+  // The inbox can name a job the Requests tab hasn't loaded (a finished job, or
+  // one on an older request). Prefer the real row; otherwise a stub is enough —
+  // the drawer reads its own messages, the stub only fills the context strip.
+  const openConversation = (c: Conversation) => {
+    setChatJob(activeJob?.id === c.job_id ? activeJob : {
+      id: c.job_id, status: c.job_status, scheduled_at: c.scheduled_at, amount: c.amount,
+      request: { service_needed: c.service_needed, location: c.location },
+    });
+    if (c.unread > 0) void markConvRead(c.job_id);
+  };
 
   // "File a claim" (sidebar footer): load every job tied to this client's
   // requests so they can pick which one the claim is about, then hand off to
@@ -871,7 +895,7 @@ export default function ClientDashboard() {
       <div style={{ height: "3.75rem" }} />
       <div style={{ display:"flex", alignItems:"flex-start" as const }}>
         <DashboardSidebar
-          items={CLIENT_NAV}
+          items={CLIENT_NAV.map(it => (it.key === "messages" && totalUnread > 0 ? { ...it, badge: totalUnread } : it))}
           active={activeTab}
           onSelect={(k) => setActiveTab(k as ClientTab)}
           title="Dashboard"
@@ -933,6 +957,16 @@ export default function ClientDashboard() {
             // Un-dismiss so "Decide later" can never lose a suggested time.
             onClick: () => setTimeDismissed(prev => { const n = new Set(prev); n.delete(chatTimeJob.id); return n; }),
           });
+          // Unread messages, capped at 2 so they can't bury the rows that gate money.
+          // The row's button jumps to Requests first, so onClick corrects the tab.
+          for (const c of conversations.filter(c => c.unread > 0).slice(0, 2)) {
+            attn.push({
+              key: "msg-" + c.job_id,
+              text: partyName(c) + " sent you " + (c.unread === 1 ? "a message" : c.unread + " messages") + " about “" + (c.service_needed ?? "your job") + "”.",
+              cta: "Read it",
+              onClick: () => { setActiveTab("messages"); openConversation(c); },
+            });
+          }
           if (activeJob?.price_change_pending) attn.push({ key: "price", text: "Your pro proposed a new price — review and approve or decline.", cta: "Review price" });
           if (activeJob?.status === "assigned" && activeJob?.price_hike_from != null && Number(activeJob.amount ?? 0) > Number(activeJob.price_hike_from) + 0.005) attn.push({ key: "hike", text: "Your pro raised the price after you picked them — approve it or re-open to other pros.", cta: "Review price" });
           else if (activeJob?.status === "pending_confirmation" && !activeJob?.is_milestone) attn.push({ key: "confirm", text: "Your pro marked the job complete — confirm the work to release payment.", cta: "Confirm now" });
@@ -963,6 +997,17 @@ export default function ClientDashboard() {
             </div>
           );
         })()}
+
+        {activeTab === "messages" && (
+          <MessagesInbox
+            conversations={conversations}
+            loading={convLoading}
+            error={convError}
+            meId={profile?.id}
+            onOpen={openConversation}
+            onRetry={() => void refreshConvs()}
+          />
+        )}
 
         {activeTab === "profile" && (
           <>
@@ -1478,9 +1523,14 @@ export default function ClientDashboard() {
                         <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .5)" }}>{contractor.specialties?.[0] ?? "Your contractor"}</div>
                       </div>
                       {activeJob && (
-                        <button style={{ ...s.btn, marginLeft:"auto", color:"var(--ff-text)", borderColor:"rgba(234,107,20,.35)", background:"rgba(234,107,20,.12)", display:"flex", alignItems:"center", gap:".4rem" }} onClick={() => setChatOpen(true)}>
+                        <button style={{ ...s.btn, marginLeft:"auto", color:"var(--ff-text)", borderColor:"rgba(234,107,20,.35)", background:"rgba(234,107,20,.12)", display:"flex", alignItems:"center", gap:".4rem" }} onClick={() => { setChatJob(activeJob); if (unreadFor(activeJob.id) > 0) void markConvRead(activeJob.id); }}>
                           <Ic name="message-square" size={14} />
-                          {activeJob.status === "completed" ? "View chat" : "Message " + contractor.first_name}
+                          {chatReadOnly(activeJob) ? "View chat" : "Message " + contractor.first_name}
+                          {unreadFor(activeJob.id) > 0 && (
+                            <span style={{ minWidth:18, height:18, padding:"0 .3rem", borderRadius:999, background:"#ea6b14", color:"#fff", fontSize:".68rem", fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                              {unreadFor(activeJob.id) > 9 ? "9+" : unreadFor(activeJob.id)}
+                            </span>
+                          )}
                         </button>
                       )}
                     </div>
@@ -1552,12 +1602,12 @@ export default function ClientDashboard() {
         </div>
       </div>
 
-      {timePromptJob && profile && !chatOpen && (
+      {timePromptJob && profile && !chatJob && (
         <ChatTimePrompt
           job={timePromptJob}
           title={requests.find((r: any) => r.id === timePromptJob.request_id)?.service_needed ?? "This job"}
           onClose={() => setTimeDismissed(prev => new Set(prev).add(timePromptJob.id))}
-          onSuggest={() => setChatOpen(true)}
+          onSuggest={() => setChatJob(timePromptJob)}
           onResolved={(outcome) => {
             const now = new Date().toISOString();
             setActiveJob((j: any) => j && j.id === timePromptJob.id ? {
@@ -1573,13 +1623,23 @@ export default function ClientDashboard() {
         />
       )}
 
-      {chatOpen && activeJob && profile && (
+      {chatJob && profile && (
         <JobChat
-          jobId={activeJob.id}
+          jobId={chatJob.id}
           meId={profile.id}
-          title={"Chat with " + (contractor?.first_name ?? "your contractor")}
-          readOnly={activeJob.status === "completed"}
-          onClose={() => setChatOpen(false)}
+          title={"Chat with " + (chatJob.id === activeJob?.id ? (contractor?.first_name ?? "your contractor") : "your contractor")}
+          job={chatJob}
+          role="client"
+          readOnly={chatReadOnly(chatJob)}
+          closedReason={chatClosedReason(chatJob)}
+          // Only offer the jump when the drawer is on the request we're showing —
+          // otherwise "Open the job" would land them on someone else's card.
+          onJump={chatJob.id === activeJob?.id ? () => { setActiveTab("requests"); setChatJob(null); window.scrollTo({ top: 0, behavior: "smooth" }); } : undefined}
+          onJobPatch={(patch) => {
+            setChatJob((j: any) => (j ? { ...j, ...patch } : j));
+            setActiveJob((j: any) => (j && j.id === chatJob.id ? { ...j, ...patch } : j));
+          }}
+          onClose={() => { setChatJob(null); void refreshConvs(); }}
         />
       )}
       {reportOpen && activeJob && profile && (

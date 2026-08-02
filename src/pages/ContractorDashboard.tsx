@@ -8,6 +8,8 @@ import ProfileBar from "@/components/ProfileBar";
 import ScheduleField from "@/components/ScheduleField";
 import JobChat from "@/components/JobChat";
 import ChatTimePrompt from "@/components/ChatTimePrompt";
+import MessagesInbox, { partyName } from "@/components/MessagesInbox";
+import { useConversations, chatReadOnly, chatClosedReason, type Conversation } from "@/lib/chatUnread";
 import { formatWhen } from "@/lib/chatParse";
 import JobTimeline from "@/components/JobTimeline";
 import { AVAIL_DAYS, WEEKDAYS, TIME_OPTIONS, readAvailability } from "@/lib/availability";
@@ -30,6 +32,7 @@ import ContractPanel from "@/components/ContractPanel";
 const CONTRACTOR_NAV: SidebarItem[] = [
   { key: "jobs",      label: "My Jobs",        icon: "briefcase" },
   { key: "available", label: "Available Jobs", icon: "search" },
+  { key: "messages",  label: "Messages",       icon: "message-square" },
   { key: "calendar",  label: "Calendar",       icon: "calendar" },
   { key: "earnings",  label: "Earnings",       icon: "dollar" },
   { key: "reviews",   label: "Reviews",        icon: "star" },
@@ -156,7 +159,7 @@ export default function ContractorDashboard() {
   const [timeDismissed, setTimeDismissed] = useState<Set<string>>(new Set());
   const [confirmState, setConfirmState] = useState<ConfirmState|null>(null);
   const [loading, setLoading]         = useState(true);
-  const [activeTab, setActiveTab]     = useState<"jobs"|"available"|"calendar"|"profile"|"earnings"|"reviews">("jobs");
+  const [activeTab, setActiveTab]     = useState<"jobs"|"available"|"messages"|"calendar"|"profile"|"earnings"|"reviews">("jobs");
   const [jobFilter, setJobFilter]     = useState<string|null>(null); // pipeline-strip stage filter for the My Jobs list
   const [pendingJobId, setPendingJobId] = useState<string|null>(null); // job a notification pointed at, waiting for the list to load
   const [bidsCount, setBidsCount]     = useState(0); // lifetime bids — drives the "place your first bid" setup step
@@ -170,6 +173,13 @@ export default function ContractorDashboard() {
     try { localStorage.setItem("ff_seen_contractor_guide", "1"); } catch {}
     setGuideSeen(true);
   };
+  // One payload behind the Messages tab, the sidebar badge and every per-job
+  // unread dot — they read the same array, so a badge can't outlive its list.
+  const {
+    conversations, totalUnread, unreadFor,
+    loading: convLoading, error: convError,
+    refresh: refreshConvs, markRead: markConvRead,
+  } = useConversations(profile?.id);
   const [showCustomAvail, setShowCustomAvail] = useState(false);
   const [proposeForm, setProposeForm] = useState<{ when:string; amount:string; notes:string; labour:string; parts:string; callout:string; subject:boolean; price_low:string; price_high:string; used_base_price:boolean; items:{label:string;amount:string}[] }>({ when:"", amount:"", notes:"", labour:"", parts:"", callout:"", subject:false, price_low:"", price_high:"", used_base_price:false, items:[] });
   const [busyJobId, setBusyJobId]     = useState<string | null>(null); // per-job busy flag — only the job being acted on shows a spinner/disables
@@ -430,6 +440,27 @@ export default function ContractorDashboard() {
     });
     setWtForm({ when: job.walkthrough_at ? toLocalInput(job.walkthrough_at) : "", note: job.walkthrough_note ?? "" });
     setWtOpen(false);
+  };
+
+  /**
+   * Open a conversation from the inbox. The real job row is preferred so the
+   * chat's context strip and quick actions have everything, but the inbox can
+   * legitimately list a job this tab hasn't loaded (a finished one, say) — in
+   * that case a stub built from the conversation row is enough for the drawer,
+   * which reads its own messages regardless.
+   */
+  const openConversation = (c: Conversation) => {
+    const real = myJobs.find(j => j.id === c.job_id);
+    setChatJob(real ?? {
+      id: c.job_id,
+      status: c.job_status,
+      scheduled_at: c.scheduled_at,
+      amount: c.amount,
+      client: { first_name: c.other_name?.split(" ")[0] ?? null },
+      request: { service_needed: c.service_needed, location: c.location },
+    });
+    // Optimistic — the badge clears now, the server catches up.
+    if (c.unread > 0) void markConvRead(c.job_id);
   };
 
   // ── Notification deep links ─────────────────────────────────────────────────
@@ -905,7 +936,11 @@ export default function ContractorDashboard() {
       <div style={{ height: "3.75rem" }} />
       <div style={{ display:"flex", alignItems:"flex-start" as const }}>
         <DashboardSidebar
-          items={CONTRACTOR_NAV.map(it => (it.key === "available" && contractor?.status === "active" && availableJobs.length > 0) ? { ...it, badge: availableJobs.length } : it)}
+          items={CONTRACTOR_NAV.map(it => {
+            if (it.key === "available" && contractor?.status === "active" && availableJobs.length > 0) return { ...it, badge: availableJobs.length };
+            if (it.key === "messages" && totalUnread > 0) return { ...it, badge: totalUnread };
+            return it;
+          })}
           active={activeTab}
           onSelect={(k) => setActiveTab(k as any)}
           title="Dashboard"
@@ -1105,6 +1140,16 @@ export default function ContractorDashboard() {
               text: (job.client?.first_name || "Your client") + " suggested " + formatWhen(job.chat_time_at) + " for “" + (job.request?.service_needed ?? "a job") + "”.",
               cta: "Accept or change",
               onClick: () => setTimeDismissed(prev => { const n = new Set(prev); n.delete(job.id); return n; }),
+            });
+          }
+          // Unread messages. Capped at 3 so a chatty week can't bury the rows
+          // that gate money (claims, agreements, photos).
+          for (const c of conversations.filter(c => c.unread > 0).slice(0, 3)) {
+            attn.push({
+              key: "msg-" + c.job_id,
+              text: partyName(c) + " sent you " + (c.unread === 1 ? "a message" : c.unread + " messages") + " about “" + (c.service_needed ?? "a job") + "”.",
+              cta: "Read it",
+              onClick: () => { setActiveTab("messages"); openConversation(c); window.scrollTo({ top: 0, behavior: "smooth" }); },
             });
           }
           for (const job of myJobs) {
@@ -1495,12 +1540,17 @@ export default function ContractorDashboard() {
                     </div>
 
                     <button
-                      onClick={() => setChatJob(job)}
+                      onClick={() => { setChatJob(job); if (unreadFor(job.id) > 0) void markConvRead(job.id); }}
                       style={{ display:"flex", alignItems:"center", gap:".5rem", width:"100%", justifyContent:"center", padding:".7rem 1rem", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.3)", borderRadius:"10px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".88rem", fontWeight:500, cursor:"pointer" }}>
                       <Ic name="message-square" size={15} />
                       {job.status === "completed"
                         ? `View chat with ${job.client?.first_name || "your client"}`
                         : `Message ${job.client?.first_name || "your client"}`}
+                      {unreadFor(job.id) > 0 && (
+                        <span style={{ minWidth:18, height:18, padding:"0 .3rem", borderRadius:999, background:"#ea6b14", color:"#fff", fontSize:".68rem", fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          {unreadFor(job.id) > 9 ? "9+" : unreadFor(job.id)}
+                        </span>
+                      )}
                     </button>
                   </div>
                 )}
@@ -1509,6 +1559,17 @@ export default function ContractorDashboard() {
           </div>
           );
         })()}
+
+        {activeTab === "messages" && (
+          <MessagesInbox
+            conversations={conversations}
+            loading={convLoading}
+            error={convError}
+            meId={profile?.id}
+            onOpen={openConversation}
+            onRetry={refreshConvs}
+          />
+        )}
 
         {activeTab === "calendar" && (
           <JobsCalendar
@@ -2129,8 +2190,19 @@ export default function ContractorDashboard() {
           jobId={chatJob.id}
           meId={profile.id}
           title={`Chat with ${chatJob.client?.first_name || "your client"}`}
-          readOnly={chatJob.status === "cancelled"}
-          onClose={() => setChatJob(null)}
+          job={chatJob}
+          role="contractor"
+          // Stays open right through the claim window — a client needs to reach
+          // their pro while deciding, and for the 3 days they have to raise a
+          // problem afterwards. chatReadOnly is the single rule for that.
+          readOnly={chatReadOnly(chatJob)}
+          closedReason={chatClosedReason(chatJob)}
+          onJump={() => { setActiveTab("jobs"); setJobFilter(null); if (activeJobId !== chatJob.id) openJob(chatJob); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+          onJobPatch={(patch) => {
+            setMyJobs(prev => prev.map(j => (j.id === chatJob.id ? { ...j, ...patch } : j)));
+            setChatJob((j: any) => (j ? { ...j, ...patch } : j));
+          }}
+          onClose={() => { setChatJob(null); void refreshConvs(); }}
         />
       )}
       {claimToAnswer && profile && (
