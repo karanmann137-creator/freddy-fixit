@@ -1,4 +1,4 @@
-// Supabase Edge Function: send-notification  (v13)
+// Supabase Edge Function: send-notification  (v14)
 //
 // Fired by the `send-notification-email` Database Webhook on every
 // public.notifications INSERT. Turns an in-app bell into an email.
@@ -25,6 +25,12 @@
 // emails that same pro — so a rehire produced two emails. dispatch-job v14
 // detects the reservation and switches its copy to "a past client requested
 // you", so the one remaining email says everything the suppressed one did.
+//
+// WHAT CHANGED IN v14 — the chat-scheduling and T-1h visit-reminder types are
+// suppressed too. `chat_time_proposed` / `chat_time_agreed` are dashboard
+// prompts, not something worth an email. `visit_reminder`'s email is built in
+// the `visit-reminder` function and is gated behind visit_reminder_enabled(),
+// which currently returns false — so nothing goes out until the owner flips it.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
@@ -43,6 +49,11 @@ const EMAIL_HANDLED_ELSEWHERE = new Set([
   "job_in_field",     // dispatch-job sends the full new-job email
   "rehire_request",   // dispatch-job emails the reserved pro on the same insert
   "contractor_guide", // dashboard-only; the emailed copy goes out with Pro Tips
+  // Chat scheduling + the T-1h visit reminder are in-app only for now. The
+  // reminder's email lives in visit-reminder, behind visit_reminder_enabled().
+  "chat_time_proposed",
+  "chat_time_agreed",
+  "visit_reminder",
 ]);
 
 const wrap = (inner: string) => `

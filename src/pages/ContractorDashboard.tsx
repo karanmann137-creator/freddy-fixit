@@ -7,6 +7,8 @@ import DeleteAccount from "@/components/DeleteAccount";
 import ProfileBar from "@/components/ProfileBar";
 import ScheduleField from "@/components/ScheduleField";
 import JobChat from "@/components/JobChat";
+import ChatTimePrompt from "@/components/ChatTimePrompt";
+import { formatWhen } from "@/lib/chatParse";
 import JobTimeline from "@/components/JobTimeline";
 import { AVAIL_DAYS, WEEKDAYS, TIME_OPTIONS, readAvailability } from "@/lib/availability";
 import RespondToClaim from "@/components/RespondToClaim";
@@ -146,6 +148,7 @@ export default function ContractorDashboard() {
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
   const [activeJobId, setActiveJobId] = useState<string|null>(null);
   const [chatJob, setChatJob]         = useState<any|null>(null);
+  const [timeDismissed, setTimeDismissed] = useState<Set<string>>(new Set());
   const [confirmState, setConfirmState] = useState<ConfirmState|null>(null);
   const [loading, setLoading]         = useState(true);
   const [activeTab, setActiveTab]     = useState<"jobs"|"available"|"calendar"|"profile"|"earnings"|"reviews">("jobs");
@@ -839,6 +842,15 @@ export default function ContractorDashboard() {
   // Signed in but signup was never finished (e.g. Google one-tap creates the login
   // instantly, but the contractor record only exists after "Complete Registration").
   // Without this, the dashboard rendered as a blank page + footer.
+  // A time the CLIENT named in the chat, waiting on this pro to accept or counter.
+  // `chat_time_by` is whoever typed it, so this never prompts the person who
+  // suggested it. Dismissing only hides the modal — the attention row stays.
+  const chatTimeJobs = myJobs.filter((j: any) =>
+    j.chat_time_at && !j.chat_time_resolved_at && j.chat_time_by && j.chat_time_by !== profile?.id
+    && j.status !== "cancelled" && j.status !== "completed"
+    && new Date(j.chat_time_at).getTime() > Date.now());
+  const timePromptJob = chatTimeJobs.find((j: any) => !timeDismissed.has(j.id)) ?? null;
+
   if (!profile || !contractor) return (
     <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
@@ -1060,6 +1072,15 @@ export default function ContractorDashboard() {
           // "Needs your attention" — the one place that answers "what should I do next?"
           const attn: { key: string; text: string; cta: string; onClick: () => void; danger?: boolean }[] = [];
           const goJob = (job: any) => { setActiveTab("jobs"); setJobFilter(null); if (activeJobId !== job.id) openJob(job); window.scrollTo({ top: 0, behavior: "smooth" }); };
+          for (const job of chatTimeJobs) {
+            // Stays put after "Decide later" so a suggested time can't be lost.
+            attn.push({
+              key: "chattime-" + job.id,
+              text: (job.client?.first_name || "Your client") + " suggested " + formatWhen(job.chat_time_at) + " for “" + (job.request?.service_needed ?? "a job") + "”.",
+              cta: "Accept or change",
+              onClick: () => setTimeDismissed(prev => { const n = new Set(prev); n.delete(job.id); return n; }),
+            });
+          }
           for (const job of myJobs) {
             const d = disputes[job.id];
             const svc = job.request?.service_needed ?? "a job";
@@ -2035,6 +2056,25 @@ export default function ContractorDashboard() {
         </div>
       </div>
 
+      {timePromptJob && profile && !chatJob && (
+        <ChatTimePrompt
+          job={timePromptJob}
+          title={timePromptJob.request?.service_needed ?? "This job"}
+          onClose={() => setTimeDismissed(prev => new Set(prev).add(timePromptJob.id))}
+          onSuggest={() => setChatJob(timePromptJob)}
+          onResolved={(outcome) => {
+            const now = new Date().toISOString();
+            setMyJobs(prev => prev.map(j => j.id === timePromptJob.id
+              ? { ...j, chat_time_resolved_at: now,
+                  ...(outcome === "scheduled" || outcome === "penciled" || outcome === "proposal_updated"
+                    ? { scheduled_at: timePromptJob.chat_time_at } : {}),
+                  ...(outcome === "scheduled" ? { status: "scheduled" } : {}) }
+              : j));
+            if (outcome === "declined") setTimeDismissed(prev => new Set(prev).add(timePromptJob.id));
+            else notify(outcome === "ignored" ? "Nothing to update on that job." : "Time saved — it's on your calendar.", outcome === "ignored" ? "err" : "ok");
+          }}
+        />
+      )}
       {chatJob && profile && (
         <JobChat
           jobId={chatJob.id}

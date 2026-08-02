@@ -25,6 +25,7 @@ const ADMIN_NAV: SidebarItem[] = [
   { key: "jobs",     label: "Jobs",     icon: "briefcase" },
   { key: "picks",    label: "Picks",    icon: "star" },
   { key: "accounts", label: "Accounts", icon: "user" },
+  { key: "flagged",  label: "Flagged chat", icon: "message-square" },
   { key: "disputes", label: "Disputes", icon: "alert-triangle" },
   { key: "prepaid",  label: "Prepaid",  icon: "dollar" },
   { key: "leads",    label: "Leads",    icon: "user-check" },
@@ -35,7 +36,7 @@ export default function AdminDashboard() {
   const [requests, setRequests] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
-  const [tab, setTab] = useState<"health"|"requests"|"jobs"|"picks"|"accounts"|"disputes"|"prepaid"|"leads">("requests");
+  const [tab, setTab] = useState<"health"|"requests"|"jobs"|"picks"|"accounts"|"flagged"|"disputes"|"prepaid"|"leads">("requests");
   const [prepays, setPrepays] = useState<any[]>([]);
   const [busyRefund, setBusyRefund] = useState<string|null>(null);
   const [disputes, setDisputes] = useState<any[]>([]);
@@ -64,6 +65,9 @@ export default function AdminDashboard() {
   // Who got picked for what, newest first. Built from jobs (not bids) so it also
   // covers rehires and admin assignments, where no bid was ever accepted.
   const [picks, setPicks] = useState<any[]>([]);
+  // Messages the chat guard refused to deliver. The row still exists (that's the
+  // evidence); RLS keeps it hidden from everyone but the sender and an admin.
+  const [chatFlags, setChatFlags] = useState<any[]>([]);
   const [flagMatches, setFlagMatches] = useState<Record<string, { fields: string[]; avg: number; count: number; date: string }>>({});
   const [accountQ, setAccountQ] = useState("");
   const [accountRole, setAccountRole] = useState<"all"|"client"|"contractor"|"admin"|"orphaned">("all");
@@ -150,6 +154,11 @@ export default function AdminDashboard() {
       const { data: pk } = await supabase.rpc("admin_list_picks", { p_limit: 200 });
       setPicks((pk as any[]) ?? []);
     } catch { setPicks([]); }
+    // Blocked chat messages, same defensive pattern.
+    try {
+      const { data: cf } = await supabase.rpc("admin_list_chat_flags", { p_limit: 200 });
+      setChatFlags((cf as any[]) ?? []);
+    } catch { setChatFlags([]); }
     // Resolve signed URLs for all dispute photos (problem-photos is private). Both
     // the claim photos and the contractor-response photos are signed in a single
     // parallel pass instead of two sequential per-dispute loops.
@@ -399,6 +408,7 @@ export default function AdminDashboard() {
          : it.key === "requests" ? (counts.requests || undefined)
          : it.key === "jobs"     ? (counts.jobs || undefined)
          : it.key === "picks"    ? (picks.length || undefined)
+         : it.key === "flagged"  ? (chatFlags.length || undefined)
          : it.key === "accounts" ? (accounts.length || undefined)
          : it.key === "disputes" ? (openDisputes || undefined)
          : it.key === "prepaid"  ? (prepays.length || undefined)
@@ -845,6 +855,55 @@ export default function AdminDashboard() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {tab === "flagged" && (
+          <div>
+            <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.6, margin:"0 0 1rem", maxWidth:640 }}>
+              Messages the chat guard stopped before they reached the other person. The
+              sender saw a note explaining why and could rewrite it. Nothing here was
+              delivered — this is the record, kept so you can spot anyone who keeps trying
+              to take a job off the platform.
+            </p>
+            {chatFlags.length === 0 && (
+              <p style={{ color:"rgba(var(--ff-muted), .45)" }}>Nothing has been blocked. 🎉</p>
+            )}
+            {chatFlags.map(f => (
+              <div key={f.message_id} style={{ ...s.card, borderColor:"rgba(239,68,68,.3)" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", gap:".75rem", flexWrap:"wrap", alignItems:"baseline" }}>
+                  <div style={{ fontWeight:600, color:"var(--ff-text)" }}>
+                    {f.sender_name || "Someone"}
+                    <span style={{ fontSize:".72rem", fontWeight:600, color:"rgba(var(--ff-muted), .55)", marginLeft:".45rem", textTransform:"capitalize" as const }}>
+                      {f.sender_role || "user"}
+                    </span>
+                  </div>
+                  <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .45)" }}>
+                    {new Date(f.created_at).toLocaleString("en-CA", { dateStyle:"medium", timeStyle:"short" })}
+                  </div>
+                </div>
+                <div style={{ display:"flex", gap:".35rem", flexWrap:"wrap", margin:".5rem 0" }}>
+                  {(f.flag_reasons ?? []).map((r: string) => (
+                    <span key={r} style={{
+                      fontSize:".68rem", fontWeight:700, letterSpacing:".4px", textTransform:"uppercase" as const,
+                      padding:".18rem .5rem", borderRadius:999,
+                      color:"#fca5a5", background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.28)",
+                    }}>{String(r).replace(/_/g, " ")}</span>
+                  ))}
+                </div>
+                <div style={{
+                  fontSize:".85rem", lineHeight:1.6, color:"var(--ff-text)", whiteSpace:"pre-wrap",
+                  background:"rgba(var(--ff-fg), .05)", borderLeft:"3px solid rgba(239,68,68,.5)",
+                  borderRadius:6, padding:".6rem .75rem",
+                }}>{f.content}</div>
+                <div style={{ ...s.meta, marginTop:".55rem" }}>
+                  {f.service || "Job"}
+                  {f.client_name ? " · client " + f.client_name : ""}
+                  {f.contractor_name ? " · pro " + f.contractor_name : ""}
+                  {f.job_id ? " · " + jobCode(f.job_id) : ""}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

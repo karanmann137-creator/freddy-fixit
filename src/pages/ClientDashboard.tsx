@@ -6,6 +6,8 @@ import { requestGoogleReview } from "@/lib/reviewPrompt";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import ProfileBar from "@/components/ProfileBar";
 import JobChat from "@/components/JobChat";
+import ChatTimePrompt from "@/components/ChatTimePrompt";
+import { formatWhen } from "@/lib/chatParse";
 import JobTimeline from "@/components/JobTimeline";
 import MilestonePanel from "@/components/MilestonePanel";
 import JobTimer from "@/components/JobTimer";
@@ -108,6 +110,9 @@ export default function ClientDashboard() {
   const [contractor, setContractor] = useState<any>(null);
   const [activeJob, setActiveJob]   = useState<any>(null);
   const [chatOpen, setChatOpen]     = useState(false);
+  // Jobs whose chat-suggested time this client tapped "Decide later" on. Only
+  // hides the modal — the attention row stays so a time can never be lost.
+  const [timeDismissed, setTimeDismissed] = useState<Set<string>>(new Set());
   const [reportOpen, setReportOpen] = useState(false);
   const [confirmState, setConfirmState] = useState<ConfirmState|null>(null);
   const [loading, setLoading]       = useState(true);
@@ -768,6 +773,20 @@ export default function ClientDashboard() {
     activeTab: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.4)", color:"var(--ff-text)" },
   };
 
+  // A time the CONTRACTOR named in the chat, waiting on this client to accept or
+  // counter. `chat_time_by` is whoever typed it, so this never prompts the person
+  // who suggested it. Realtime merges UPDATEs into activeJob, so an accepted time
+  // clears the prompt on both sides without a reload.
+  const chatTimeJob = (activeJob
+    && activeJob.chat_time_at
+    && !activeJob.chat_time_resolved_at
+    && activeJob.chat_time_by
+    && activeJob.chat_time_by !== profile?.id
+    && activeJob.status !== "cancelled"
+    && activeJob.status !== "completed"
+    && new Date(activeJob.chat_time_at).getTime() > Date.now()) ? activeJob : null;
+  const timePromptJob = (chatTimeJob && !timeDismissed.has(chatTimeJob.id)) ? chatTimeJob : null;
+
   if (loading) return (
     <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ textAlign:"center", color:"rgba(var(--ff-muted), .5)" }}>
@@ -867,7 +886,16 @@ export default function ClientDashboard() {
 
         {(() => {
           // "Needs your attention" — surfaces the next action on the selected request.
-          const attn: { key: string; text: string; cta: string }[] = [];
+          // `onClick` is optional — rows without one just jump to Requests, which
+          // is where every other action lives.
+          const attn: { key: string; text: string; cta: string; onClick?: () => void }[] = [];
+          if (chatTimeJob) attn.push({
+            key: "chattime",
+            text: (contractor?.first_name || "Your pro") + " suggested " + formatWhen(chatTimeJob.chat_time_at) + " in the chat.",
+            cta: "Accept or change",
+            // Un-dismiss so "Decide later" can never lose a suggested time.
+            onClick: () => setTimeDismissed(prev => { const n = new Set(prev); n.delete(chatTimeJob.id); return n; }),
+          });
           if (activeJob?.price_change_pending) attn.push({ key: "price", text: "Your pro proposed a new price — review and approve or decline.", cta: "Review price" });
           if (activeJob?.status === "assigned" && activeJob?.price_hike_from != null && Number(activeJob.amount ?? 0) > Number(activeJob.price_hike_from) + 0.005) attn.push({ key: "hike", text: "Your pro raised the price after you picked them — approve it or re-open to other pros.", cta: "Review price" });
           else if (activeJob?.status === "pending_confirmation" && !activeJob?.is_milestone) attn.push({ key: "confirm", text: "Your pro marked the job complete — confirm the work to release payment.", cta: "Confirm now" });
@@ -883,7 +911,7 @@ export default function ClientDashboard() {
               {attn.slice(0, 3).map((a, i) => (
                 <div key={a.key} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".75rem", padding:".6rem 0", borderTop: i === 0 ? "none" : "1px solid rgba(var(--ff-fg), .06)", marginTop: i === 0 ? ".5rem" : 0 }}>
                   <div style={{ fontSize:".85rem", color:"var(--ff-text)", lineHeight:1.45 }}>{a.text}</div>
-                  <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", whiteSpace:"nowrap" as const, flexShrink:0 }} onClick={() => { setActiveTab("requests"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>{a.cta}</button>
+                  <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", whiteSpace:"nowrap" as const, flexShrink:0 }} onClick={() => { setActiveTab("requests"); window.scrollTo({ top: 0, behavior: "smooth" }); a.onClick?.(); }}>{a.cta}</button>
                 </div>
               ))}
             </div>
@@ -1457,6 +1485,27 @@ export default function ClientDashboard() {
       </div>
         </div>
       </div>
+
+      {timePromptJob && profile && !chatOpen && (
+        <ChatTimePrompt
+          job={timePromptJob}
+          title={requests.find((r: any) => r.id === timePromptJob.request_id)?.service_needed ?? "This job"}
+          onClose={() => setTimeDismissed(prev => new Set(prev).add(timePromptJob.id))}
+          onSuggest={() => setChatOpen(true)}
+          onResolved={(outcome) => {
+            const now = new Date().toISOString();
+            setActiveJob((j: any) => j && j.id === timePromptJob.id ? {
+              ...j,
+              chat_time_resolved_at: now,
+              ...(outcome === "scheduled" || outcome === "penciled" || outcome === "proposal_updated"
+                ? { scheduled_at: timePromptJob.chat_time_at } : {}),
+              ...(outcome === "scheduled" ? { status: "scheduled" } : {}),
+            } : j);
+            if (outcome === "declined") setTimeDismissed(prev => new Set(prev).add(timePromptJob.id));
+            else notify(outcome === "ignored" ? "Nothing to update on that job." : "Time saved — your pro has been told.", outcome === "ignored" ? "err" : "ok");
+          }}
+        />
+      )}
 
       {chatOpen && activeJob && profile && (
         <JobChat

@@ -1,9 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
+import { blockedReason, BLOCKED_HELP, detectDateTime, formatWhen } from "@/lib/chatParse";
 
 type Msg = {
   id: string; job_id: string; sender_id: string; content: string; created_at: string;
   attachment_path?: string | null; attachment_type?: string | null;
+  // Written by the `messages_chat_guard` trigger. RLS only ever shows a
+  // blocked row back to the person who sent it — the other side never sees it.
+  blocked?: boolean | null; flag_reasons?: string[] | null;
 };
 
 // Client-side upload guardrails ("check them before they hit backend").
@@ -25,6 +29,7 @@ export default function JobChat({
   const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
   const [pending, setPending] = useState<{ file: File; kind: "image" | "video"; preview: string } | null>(null);
   const [err, setErr] = useState("");
+  const [notice, setNotice] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -100,6 +105,7 @@ export default function JobChat({
     if (!content && !pending) return;
     setSending(true);
     setErr("");
+    setNotice("");
     let attachment_path: string | null = null;
     let attachment_type: string | null = null;
     try {
@@ -113,12 +119,40 @@ export default function JobChat({
         attachment_path = path;
         attachment_type = pending.kind;
       }
-      const { error: insErr } = await supabase.from("messages").insert({
+      // Select the row back so we can see what the `messages_chat_guard`
+      // trigger decided. A blocked row still inserts (that's the copy the
+      // admin reviews) but RLS hides it from the other party.
+      const { data: row, error: insErr } = await supabase.from("messages").insert({
         job_id: jobId, sender_id: meId, content, attachment_path, attachment_type,
-      });
+      }).select("*").single();
       if (insErr) { setErr("Could not send — please try again."); setSending(false); return; }
-      setInput("");
+
+      const saved = row as Msg;
+      setMessages(prev => prev.some(x => x.id === saved.id) ? prev : [...prev, saved]);
       clearPending();
+
+      if (saved.blocked) {
+        // Leave the text in the box so they can edit it out and resend.
+        setErr(blockedReason(saved.flag_reasons) + " " + BLOCKED_HELP);
+        return;
+      }
+
+      setInput("");
+      setNotice("");
+
+      // A concrete day + time in the message becomes an appointment the other
+      // side can accept in one tap. Fire-and-forget — the RPC quietly ignores
+      // finished jobs, past times and a repeat of the same suggestion.
+      const parsed = detectDateTime(content);
+      if (parsed) {
+        supabase.rpc("chat_propose_time", {
+          p_job_id: jobId,
+          p_at: parsed.at.toISOString(),
+          p_snippet: content.slice(0, 200),
+        }).then(({ data }: any) => {
+          if (data === "proposed") setNotice("Asked them to confirm " + formatWhen(parsed.at) + ".");
+        });
+      }
     } finally {
       setSending(false);
     }
@@ -180,14 +214,24 @@ export default function JobChat({
           {messages.map(m => {
             const mine = m.sender_id === meId;
             const url = m.attachment_path ? mediaUrls[m.attachment_path] : undefined;
+            // A blocked row only ever comes back to the person who sent it —
+            // RLS never shows it to the other side. Show it struck through so
+            // they can see exactly what didn't land and edit it.
+            const blocked = !!m.blocked;
             return (
-              <div key={m.id} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start" }}>
+              <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start" }}>
                 <div style={{
                   maxWidth: "78%", padding: m.attachment_path && !m.content ? ".35rem" : ".6rem .9rem",
                   borderRadius: mine ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
-                  background: mine ? "linear-gradient(135deg,#ea6b14,#f09020)" : "rgba(var(--ff-fg), .07)",
-                  border: mine ? "none" : "1px solid rgba(var(--ff-fg), .08)",
+                  background: blocked
+                    ? "rgba(239,68,68,.1)"
+                    : mine ? "linear-gradient(135deg,#ea6b14,#f09020)" : "rgba(var(--ff-fg), .07)",
+                  border: blocked
+                    ? "1px dashed rgba(239,68,68,.45)"
+                    : mine ? "none" : "1px solid rgba(var(--ff-fg), .08)",
                   color: "var(--ff-text)", fontSize: ".88rem", lineHeight: 1.5, whiteSpace: "pre-wrap",
+                  opacity: blocked ? .75 : 1,
+                  textDecoration: blocked ? "line-through" : "none",
                 }}>
                   {m.attachment_path && (
                     <div style={{ marginBottom: m.content ? ".4rem" : 0 }}>
@@ -210,6 +254,15 @@ export default function JobChat({
                   )}
                   {m.content}
                 </div>
+                {blocked && (
+                  <div style={{
+                    maxWidth: "78%", marginTop: ".3rem",
+                    fontSize: ".73rem", lineHeight: 1.5, color: "#fca5a5",
+                    textAlign: mine ? "right" : "left",
+                  }}>
+                    {blockedReason(m.flag_reasons)} Only you can see this message.
+                  </div>
+                )}
               </div>
             );
           })}
@@ -229,8 +282,14 @@ export default function JobChat({
             {err && (
               <div style={{
                 padding: ".55rem 1rem", fontSize: ".78rem", color: "#fca5a5",
-                background: "rgba(239,68,68,.08)",
+                background: "rgba(239,68,68,.08)", lineHeight: 1.55,
               }}>{err}</div>
+            )}
+            {notice && (
+              <div style={{
+                padding: ".55rem 1rem", fontSize: ".78rem", color: "var(--ff-success)",
+                background: "rgba(34,197,94,.08)", lineHeight: 1.55,
+              }}>{notice}</div>
             )}
             {pending && (
               <div style={{
