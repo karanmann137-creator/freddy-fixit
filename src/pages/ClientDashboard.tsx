@@ -12,6 +12,7 @@ import JobTimeline from "@/components/JobTimeline";
 import MilestonePanel from "@/components/MilestonePanel";
 import JobTimer from "@/components/JobTimer";
 import JobChecklist from "@/components/JobChecklist";
+import JobPhotos from "@/components/JobPhotos";
 import ReportProblem from "@/components/ReportProblem";
 import FileClaimModal, { type ClaimJob } from "@/components/FileClaimModal";
 import RequestHelpModal from "@/components/RequestHelpModal";
@@ -119,7 +120,6 @@ export default function ClientDashboard() {
   const [editingId, setEditingId]   = useState<string|null>(null);
   const [editForm, setEditForm]     = useState({ service:"", schedule:"", location:"", description:"" });
   const [busyReq, setBusyReq]       = useState(false);
-  const [completionPhotoUrl, setCompletionPhotoUrl] = useState<string|null>(null);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [ratingForm, setRatingForm] = useState<{ price:number; experience:number; result:number; comment:string }>({ price:8, experience:8, result:8, comment:"" });
   const [clientBids, setClientBids] = useState<any[]>([]);
@@ -649,13 +649,6 @@ export default function ClientDashboard() {
     setContractor(null);
     if (activeReq) setRequests(prev => prev.map(r => r.id === activeReq.id ? { ...r, status: "pending", assigned_contractor_id: null, preferred_contractor_id: null } : r));
   };
-
-  useEffect(() => {
-    if (activeJob?.completion_photo_path) {
-      supabase.storage.from("completion-photos").createSignedUrl(activeJob.completion_photo_path, 3600)
-        .then(({ data }) => setCompletionPhotoUrl(data?.signedUrl ?? null));
-    } else { setCompletionPhotoUrl(null); }
-  }, [activeJob?.completion_photo_path]);
 
   useEffect(() => {
     if (activeJob?.status === "completed") {
@@ -1304,6 +1297,7 @@ export default function ClientDashboard() {
                             <div style={{ display:"grid", gap:".6rem", margin:".25rem 0 .9rem" }}>
                               <JobTimer job={activeJob} role="client" />
                               <JobChecklist job={activeJob} role="client" />
+                              <JobPhotos job={activeJob} role="client" />
                             </div>
                             {(activeJob.payment_status === "held" || activeJob.payment_status === "released") ? (
                               <>
@@ -1324,8 +1318,8 @@ export default function ClientDashboard() {
                         {activeJob.status === "pending_confirmation" && !activeJob.is_milestone && (
                           <>
                             <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}>Your contractor marked this complete</div>
-                            {completionPhotoUrl && <img src={completionPhotoUrl} alt="Completed work" style={{ width:"100%", maxWidth:"320px", borderRadius:"10px", margin:".5rem 0", display:"block" }} />}
                             <div style={{ display:"grid", gap:".6rem", margin:".25rem 0 .75rem" }}>
+                              <JobPhotos job={activeJob} role="client" />
                               <JobTimer job={activeJob} role="client" />
                               <JobChecklist job={activeJob} role="client" />
                             </div>

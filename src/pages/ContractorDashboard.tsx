@@ -23,6 +23,7 @@ import { jobCode } from "@/lib/jobCode";
 import JobsCalendar from "@/components/JobsCalendar";
 import JobTimer from "@/components/JobTimer";
 import JobChecklist from "@/components/JobChecklist";
+import JobPhotos, { photosMissing } from "@/components/JobPhotos";
 import JobExpenses, { type JobExpense } from "@/components/JobExpenses";
 
 const CONTRACTOR_NAV: SidebarItem[] = [
@@ -167,7 +168,6 @@ export default function ContractorDashboard() {
   };
   const [showCustomAvail, setShowCustomAvail] = useState(false);
   const [proposeForm, setProposeForm] = useState<{ when:string; amount:string; notes:string; labour:string; parts:string; callout:string; subject:boolean; price_low:string; price_high:string; used_base_price:boolean; items:{label:string;amount:string}[] }>({ when:"", amount:"", notes:"", labour:"", parts:"", callout:"", subject:false, price_low:"", price_high:"", used_base_price:false, items:[] });
-  const [photoFile, setPhotoFile]     = useState<File | null>(null);
   const [busyJobId, setBusyJobId]     = useState<string | null>(null); // per-job busy flag — only the job being acted on shows a spinner/disables
   const [portfolio, setPortfolio]     = useState<any[]>([]);
   const [pfForm, setPfForm]           = useState<{ title:string; description:string; file:File|null }>({ title:"", description:"", file:null });
@@ -394,7 +394,6 @@ export default function ContractorDashboard() {
   const openJob = (job: any) => {
     if (activeJobId === job.id) { setActiveJobId(null); return; }
     setActiveJobId(job.id);
-    setPhotoFile(null);
     setProposeForm({
       when: job.scheduled_at ? toLocalInput(job.scheduled_at) : "",
       amount: job.amount != null ? String(job.amount) : "",
@@ -509,7 +508,20 @@ export default function ContractorDashboard() {
     setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: "scheduled", client_approved_at: new Date().toISOString(), reschedule_accepted_at: new Date().toISOString(), client_rescheduled_at: null } : j));
     notify("New time accepted — the client's been notified.", "ok");
   };
+  // JobPhotos writes to the DB itself; mirror it locally so the "still needs a
+  // photo" prompts clear immediately instead of waiting for a reload.
+  const patchJobPhoto = (jobId: string, kind: "before" | "after", path: string) => {
+    const col = kind === "before" ? "before_photo_path" : "completion_photo_path";
+    setMyJobs(prev => prev.map(j => j.id === jobId ? { ...j, [col]: path } : j));
+  };
   const markComplete = async (job: any) => {
+    // Photos are saved as they're taken, so by here they're already on the job.
+    // Check first for a friendly nudge — mark_job_complete enforces it anyway.
+    const miss = photosMissing(job);
+    if (miss.length) {
+      notify("Add " + miss.join(" and ") + " first — the client can't confirm and release your payment without it.");
+      return;
+    }
     if (!(await askConfirm({
       title: "Mark job complete?",
       message: "The client will be asked to confirm the work and release your payment. Make sure the job is fully done before marking it complete.",
@@ -517,19 +529,10 @@ export default function ContractorDashboard() {
       danger: false,
     }))) return;
     setBusyJobId(job.id);
-    let photoPath: string | null = null;
     try {
-      if (photoFile) {
-        const ext = (photoFile.name.split(".").pop() || "jpg").toLowerCase();
-        const path = job.id + "/" + crypto.randomUUID() + "." + ext;
-        const { error: upErr } = await supabase.storage.from("completion-photos").upload(path, photoFile);
-        if (upErr) throw upErr;
-        photoPath = path;
-      }
-      const { error } = await supabase.rpc("mark_job_complete", { p_job_id: job.id, p_photo_path: photoPath });
+      const { error } = await supabase.rpc("mark_job_complete", { p_job_id: job.id, p_photo_path: null });
       if (error) throw error;
-      setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: "pending_confirmation", contractor_completed_at: new Date().toISOString(), completion_photo_path: photoPath ?? j.completion_photo_path } : j));
-      setPhotoFile(null);
+      setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: "pending_confirmation", contractor_completed_at: new Date().toISOString() } : j));
     } catch (e: any) {
       notify("Couldn't mark complete: " + (e.message || e));
     } finally {
@@ -1100,6 +1103,11 @@ export default function ContractorDashboard() {
               const dt = new Date(job.scheduled_at).getTime() - Date.now();
               if (dt > 0 && dt < 24 * 3600 * 1000) attn.push({ key: "soon-" + job.id, text: "“" + svc + "” is booked for " + new Date(job.scheduled_at).toLocaleString() + ".", cta: "View job", onClick: () => goJob(job) });
             }
+            // Photos are what unlock payment, so chase them once work is under way.
+            if (job.status === "in_progress" || (job.status === "scheduled" && job.on_my_way_at)) {
+              const miss = photosMissing(job);
+              if (miss.length) attn.push({ key: "photo-" + job.id, text: "“" + svc + "” still needs " + miss.join(" and ") + " — you can't mark it complete without them.", cta: "Add photos", onClick: () => goJob(job) });
+            }
           }
           const reserved = availableJobs.filter((r: any) => r.is_preferred);
           if (reserved.length > 0) {
@@ -1419,22 +1427,24 @@ export default function ContractorDashboard() {
                               </button>
                             )}
                           </div>
-                          {!job.is_milestone && (
-                          <div>
-                            <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".25rem" }}>Completion photo (optional)</div>
-                            <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; setPhotoFile(f); }} style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)" }} />
-                          </div>
-                          )}
+                          <JobPhotos job={job} role="contractor" onError={m => notify(m)} onSaved={(kind, path) => patchJobPhoto(job.id, kind, path)} />
                           <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
-                            {!job.is_milestone && <button style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none", fontWeight:600 }} disabled={busyJobId === job.id} onClick={() => markComplete(job)}>{busyJobId === job.id ?"Working…" : "✓ Mark complete"}</button>}
+                            {!job.is_milestone && <button style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none", fontWeight:600, opacity: photosMissing(job).length ? .55 : 1 }} disabled={busyJobId === job.id} onClick={() => markComplete(job)}>{busyJobId === job.id ?"Working…" : "✓ Mark complete"}</button>}
                             <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJobId === job.id} onClick={() => withdrawJob(job)}>Withdraw</button>
                           </div>
+                          {!job.is_milestone && photosMissing(job).length > 0 && (
+                            <div style={{ fontSize:".78rem", color:"#ea6b14", display:"flex", alignItems:"center", gap:".35rem" }}>
+                              <Ic name="camera" size={13} color="#ea6b14" style={{ flexShrink:0 }} />
+                              Add {photosMissing(job).join(" and ")} to mark this job complete.
+                            </div>
+                          )}
                           {renderPriceChange(job)}
                         </>
                       )}
                       {job.status === "pending_confirmation" && (
                         <>
                           <div style={{ fontSize:".85rem", color:"var(--ff-warn)" }}><Ic name="clock" size={13} style={{ marginRight:4 }} />You marked this complete — waiting for the client to confirm.</div>
+                          <JobPhotos job={job} role="contractor" onError={m => notify(m)} onSaved={(kind, path) => patchJobPhoto(job.id, kind, path)} />
                           <JobTimer job={job} role="contractor" hourlyRate={contractor?.hourly_rate ?? null} onError={m => notify(m)}
                             onBill={(_h, amt, reason) => {
                               setRequoteForm(o => ({ ...o, [job.id]: { ...(o[job.id] ?? { amount:"", reason:"", labour:"", parts:"", callout:"", subject:false }), amount: amt != null ? String(amt) : (o[job.id]?.amount ?? ""), labour:"", parts:"", callout:"", reason } }));

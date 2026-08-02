@@ -145,6 +145,11 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
   const complete = (m: Milestone) => run(async () => {
     let path: string | null = null;
     const file = photoFor[m.id];
+    // Mirrors the complete_milestone guard, so the pro gets the nudge before the
+    // round-trip rather than a rejected RPC.
+    if (!file && !m.completion_photo_path) {
+      throw new Error("Add a photo of this stage's finished work first — the client can't release payment without it.");
+    }
     if (file) {
       const p = job.id + "/milestone-" + m.id + "-" + Date.now() + "." + (file.name.split(".").pop() || "jpg");
       const { error: upErr } = await supabase.storage.from("completion-photos").upload(p, file);
@@ -333,8 +338,14 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
                 <>
                   {m.status === "funded" && (
                     <div style={{ marginTop: ".5rem", display: "flex", flexDirection: "column", gap: ".4rem" }}>
+                      <div style={{ fontSize: ".76rem", fontWeight: 700, color: "#ea6b14" }}>
+                        Photo of this stage's finished work — required
+                      </div>
                       <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; setPhotoFor(p => ({ ...p, [m.id]: f })); }} style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .7)" }} />
-                      <button style={{ ...btnGreen, alignSelf: "flex-start", opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => complete(m)}>{busy ? "…" : "✓ Mark stage complete"}</button>
+                      <div style={{ fontSize: ".72rem", color: "rgba(var(--ff-muted), .6)", lineHeight: 1.4 }}>
+                        The client can't release payment for this stage without it. Your job-level "before" photo is also needed.
+                      </div>
+                      <button style={{ ...btnGreen, alignSelf: "flex-start", opacity: busy || !(photoFor[m.id] || m.completion_photo_path) ? .6 : 1 }} disabled={busy} onClick={() => complete(m)}>{busy ? "…" : "✓ Mark stage complete"}</button>
                     </div>
                   )}
                   {m.status === "pending" && <div style={{ fontSize: ".76rem", color: "rgba(var(--ff-muted), .55)", marginTop: ".3rem" }}>Waiting for the client to fund this stage.</div>}
