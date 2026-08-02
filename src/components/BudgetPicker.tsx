@@ -47,8 +47,10 @@ export default function BudgetPicker({
     fontSize: ".75rem", textTransform: "uppercase", letterSpacing: ".1em",
     color: "rgba(var(--ff-muted), .5)", marginBottom: ".5rem", fontWeight: 600,
   };
+  // Two 120px inputs + a "to" + the grade chip overflowed the ~276px dashboard
+  // column on a phone; let them share the row instead of forcing a width.
   const inp: React.CSSProperties = {
-    width: "120px", padding: ".6rem .7rem", background: "rgba(var(--ff-fg), .06)",
+    flex: "1 1 90px", minWidth: 0, maxWidth: "140px", padding: ".6rem .7rem", background: "rgba(var(--ff-fg), .06)",
     border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: "8px",
     color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".9rem",
     outline: "none", boxSizing: "border-box",

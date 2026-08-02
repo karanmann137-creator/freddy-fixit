@@ -763,8 +763,10 @@ export default function ClientDashboard() {
     wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
     header: { background:"rgba(var(--ff-fg), .03)", borderBottom:"1px solid rgba(var(--ff-fg), .07)", padding:".75rem 1.5rem", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const, gap:".75rem" },
     logo: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.4rem", letterSpacing:".1em" },
-    content: { maxWidth:"800px", margin:"0 auto", padding:"1.5rem" },
-    card: { background:"rgba(var(--ff-fg), .055)", border:"1px solid rgba(var(--ff-fg), .05)", borderRadius:"14px", padding:"1.5rem", marginBottom:"1.5rem" },
+    // Fluid padding: a flat 1.5rem on each side ate ~24% of the usable width
+    // once the sidebar rail is subtracted on a phone.
+    content: { maxWidth:"800px", margin:"0 auto", padding:"clamp(1rem, 4vw, 1.5rem)" },
+    card: { background:"rgba(var(--ff-fg), .055)", border:"1px solid rgba(var(--ff-fg), .05)", borderRadius:"14px", padding:"clamp(1rem, 4vw, 1.5rem)", marginBottom:"1.5rem" },
     cardTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", lineHeight:1.1, color:"#ea6b14", marginBottom:"1.25rem" },
     btn: { padding:".5rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"6px", color:"rgba(var(--ff-muted), .7)", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer" },
     primaryBtn: { padding:".75rem 1.5rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer" },
@@ -1066,7 +1068,7 @@ export default function ClientDashboard() {
                       <div style={s.cardTitle}>Current Request</div>
                       {activeJob?.id && <div style={{ fontSize:".72rem", fontFamily:"monospace", color:"#ea6b14" }} title="Quote this Job ID when filing a claim">{jobCode(activeJob.id)}</div>}
                     </div>
-                    <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:".75rem 1.5rem", marginBottom:"1.25rem" }}>
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:".75rem 1.5rem", marginBottom:"1.25rem" }}>
                       {[["Service", activeReq.service_needed], ["Location", activeReq.location], ["Schedule", activeReq.preferred_schedule], ["Submitted", new Date(activeReq.created_at).toLocaleDateString()]].map(([l,v]) => (
                         <div key={l}>
                           <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)" }}>{l}</div>

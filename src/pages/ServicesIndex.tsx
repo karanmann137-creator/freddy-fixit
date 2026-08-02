@@ -30,13 +30,13 @@ export default function ServicesIndex() {
   }, []);
 
   return (
-    <div style={{ fontFamily: "'DM Sans',sans-serif", background: "var(--ff-bg)", color: "var(--ff-text)", minHeight: "100vh", padding: "6rem 1.5rem 5rem" }}>
+    <div style={{ fontFamily: "'DM Sans',sans-serif", background: "var(--ff-bg)", color: "var(--ff-text)", minHeight: "100vh", padding: "6rem clamp(1rem, 4vw, 1.5rem) 5rem" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
       <style>{"h1,h2{font-family:'Bebas Neue',sans-serif;letter-spacing:.05em} .si-card{background:var(--ff-surface);border:1px solid rgba(var(--ff-fg), .07);border-radius:12px;padding:1.1rem;cursor:pointer;transition:transform .15s,border-color .15s;text-decoration:none;display:block} .si-card:hover{transform:translateY(-2px);border-color:rgba(234,107,20,.45)}"}</style>
       <div style={{ maxWidth: 980, margin: "0 auto" }}>
         <h1 style={{ fontSize: "2.6rem", marginBottom: ".4rem" }}>Services in Calgary</h1>
         <p style={{ color: "rgba(var(--ff-muted), .82)", fontWeight: 300, fontSize: "1.05rem", marginBottom: "2.4rem", maxWidth: 640 }}>Vetted, licensed and insured local pros for home repairs and vehicle maintenance. Pick a service to learn more, or post a job and get up to 5 fixed-price estimates.</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: "1rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(240px, 100%), 1fr))", gap: "1rem" }}>
           {SERVICE_SLUGS.map((slug) => {
             const s = SERVICES[slug];
             return (

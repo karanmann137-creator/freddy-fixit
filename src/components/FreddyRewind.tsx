@@ -141,7 +141,7 @@ export default function FreddyRewind({ mode, onClose }: { mode: Mode; onClose: (
               <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.4rem", lineHeight:1.05, marginTop:".4rem", marginBottom:"1.1rem" }}>
                 {name}{String(name).endsWith("s") ? "'" : "'s"} year in fixes
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem 1.25rem" }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:"1rem 1.25rem" }}>
                 {stats.map((st, i) => (
                   <div key={i}>
                     <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"#ea6b14", lineHeight:1 }}>{st[0]}</div>

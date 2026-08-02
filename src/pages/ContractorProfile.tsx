@@ -192,7 +192,7 @@ export default function ContractorProfile() {
             </div>
             {adminMsg && <div style={{ fontSize:".85rem", color:"#ea6b14", marginBottom:".9rem" }}>{adminMsg}</div>}
 
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:".9rem", fontSize:".85rem", lineHeight:1.65 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(min(240px, 100%), 1fr))", gap:".9rem", fontSize:".85rem", lineHeight:1.65 }}>
               <div>
                 <div style={{ fontWeight:600, marginBottom:".2rem" }}>Contact</div>
                 <div style={{ color:"rgba(var(--ff-muted), .75)" }}>
@@ -331,7 +331,7 @@ export default function ContractorProfile() {
 
         {/* Review scores */}
         {reviews.length > 0 && (
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))", gap:"1rem", marginBottom:"1.5rem" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(min(100px, 100%), 1fr))", gap:"1rem", marginBottom:"1.5rem" }}>
             {[["Price", "price_score"], ["Experience", "experience_score"], ["Results", "result_score"]].map(([label, key]) => {
               const avg = avgScore(key);
               return avg ? (
@@ -350,7 +350,7 @@ export default function ContractorProfile() {
         {portfolio.length > 0 && (
           <div style={s.card}>
             <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", color:"#ea6b14", marginBottom:"1.25rem" }}>Past Work</div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap:".75rem" }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(min(140px, 100%), 1fr))", gap:".75rem" }}>
               {portfolio.map((item: any) => (
                 <div key={item.id} style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"10px", overflow:"hidden" }}>
                   {item.photo_path && <img src={pfUrl(item.photo_path)} alt={item.title || "Past job"} style={{ width:"100%", height:"110px", objectFit:"cover" as const, display:"block" }} />}

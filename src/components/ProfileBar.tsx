@@ -124,7 +124,7 @@ export default function ProfileBar({ role, onSaved }: { role: Role; onSaved?: ()
 
       {open && (
         <div style={{ marginTop: "1.1rem", borderTop: "1px solid rgba(var(--ff-fg), .07)", paddingTop: "1.1rem" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".9rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: ".9rem" }}>
             <div>
               <label style={lbl}>First name</label>
               <input style={inp} value={form.firstName} onChange={e => setF("firstName", e.target.value)} placeholder="First name" />

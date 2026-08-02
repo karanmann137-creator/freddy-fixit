@@ -22,7 +22,7 @@ export default function ContractorGuide() {
   }, []);
 
   return (
-    <div style={{ fontFamily: "'DM Sans',sans-serif", background: "var(--ff-bg)", color: "var(--ff-text)", minHeight: "100vh", padding: "6rem 1.5rem 4rem" }}>
+    <div style={{ fontFamily: "'DM Sans',sans-serif", background: "var(--ff-bg)", color: "var(--ff-text)", minHeight: "100vh", padding: "6rem clamp(1rem, 4vw, 1.5rem) 4rem" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
       <style>{"h1,h2{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em} .ffguide h2{color:#ea6b14;font-size:1.5rem;margin-top:2.6rem;margin-bottom:.7rem} .ffguide p,.ffguide li{line-height:1.85;color:rgba(var(--ff-muted), .85);font-weight:300} .ffguide p{margin-bottom:1rem} .ffguide strong{color:var(--ff-text);font-weight:500} .ffguide a{color:#ea6b14} .ffguide ul,.ffguide ol{padding-left:1.5rem;margin:.6rem 0 1.2rem} .ffguide li{margin:.45rem 0}"}</style>
 

@@ -224,7 +224,7 @@ export default function Home() {
         .ff-tagline { font-size: 1rem; font-weight: 300; color: rgba(var(--ff-muted), 0.75); text-align: center; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 1.5rem; }
         .ff-divider { width: 48px; height: 2px; background: linear-gradient(90deg, transparent, #ea6b14, transparent); margin: 0 auto 1.5rem; }
         /* Hero CTAs: one big client button, one much smaller contractor button below. */
-        .ff-cta-main { display: block; width: 100%; max-width: 420px; padding: 1.15rem 2rem; background: #ea6b14; color: #fff;
+        .ff-cta-main { display: block; width: 100%; max-width: 420px; padding: 1.15rem clamp(1rem, 4vw, 2rem); background: #ea6b14; color: #fff;
           border: none; border-radius: 14px; font-family: 'Bebas Neue', sans-serif; font-size: 1.65rem; letter-spacing: 0.07em;
           cursor: pointer; transition: all 0.25s ease; box-shadow: 0 0 0 1px rgba(234,107,20,0.35), 0 10px 36px rgba(234,107,20,0.3); }
         .ff-cta-main:hover { background: #f07a28; transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(234,107,20,0.5), 0 14px 44px rgba(234,107,20,0.4); }
@@ -246,10 +246,10 @@ export default function Home() {
             repeating-linear-gradient(45deg, transparent 0 28px, rgba(var(--ff-fg), 0.02) 28px, rgba(var(--ff-fg), 0.02) 29px),
             repeating-linear-gradient(-45deg, transparent 0 28px, rgba(var(--ff-fg), 0.016) 28px, rgba(var(--ff-fg), 0.016) 29px);
         }
-        .ff-services-inner { max-width: 1000px; margin: 0 auto; padding: 6rem 2rem; position: relative; z-index: 1; }
-        .ff-services-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-top: 3rem; }
-        @media (max-width: 900px) { .ff-services-grid { grid-template-columns: repeat(3, 1fr); } }
-        @media (max-width: 500px) { .ff-services-grid { grid-template-columns: repeat(2, 1fr); } }
+        .ff-services-inner { max-width: 1000px; margin: 0 auto; padding: clamp(3rem, 9vw, 6rem) clamp(1rem, 4vw, 2rem); position: relative; z-index: 1; }
+        .ff-services-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; margin-top: 3rem; }
+        @media (max-width: 900px) { .ff-services-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+        @media (max-width: 500px) { .ff-services-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
         .ff-service-card { background: rgba(var(--ff-fg), 0.04); border: 1px solid rgba(var(--ff-fg), 0.08); border-radius: 12px; padding: 1.5rem 1rem; text-align: center; transition: all 0.25s; width: 100%; }
         .ff-service-card:hover { border-color: rgba(234,107,20,0.4); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
         .ff-service-icon { font-size: 2rem; margin-bottom: 0.75rem; }
@@ -259,9 +259,9 @@ export default function Home() {
         /* ── How it works ── */
         .ff-how { background: var(--ff-bg); position: relative; overflow: hidden; }
         .ff-how::before { content: ''; position: absolute; inset: 0; background-image: repeating-linear-gradient(0deg, transparent, transparent 60px, rgba(var(--ff-fg), 0.01) 60px, rgba(var(--ff-fg), 0.01) 61px), repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(var(--ff-fg), 0.01) 60px, rgba(var(--ff-fg), 0.01) 61px); pointer-events: none; }
-        .ff-how-inner { max-width: 1000px; margin: 0 auto; padding: 4rem 2rem; position: relative; z-index: 1; }
-        .ff-how-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 3rem; }
-        @media (max-width: 700px) { .ff-how-grid { grid-template-columns: 1fr; } }
+        .ff-how-inner { max-width: 1000px; margin: 0 auto; padding: clamp(2.5rem, 7vw, 4rem) clamp(1rem, 4vw, 2rem); position: relative; z-index: 1; }
+        .ff-how-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2rem; margin-top: 3rem; }
+        @media (max-width: 700px) { .ff-how-grid { grid-template-columns: minmax(0, 1fr); } }
         .ff-how-card { background: rgba(var(--ff-fg), 0.03); border: 1px solid rgba(var(--ff-fg), 0.07); border-radius: 14px; padding: 1.25rem 1.5rem; position: relative; }
         .ff-how-step { font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem; letter-spacing: 0.06em; color: rgba(234,107,20,0.2); line-height: 1; margin-bottom: 0.5rem; }
         .ff-how-icon { font-size: 1.6rem; margin-bottom: 0.5rem; }
@@ -279,15 +279,15 @@ export default function Home() {
             repeating-linear-gradient(45deg, transparent 0 28px, rgba(var(--ff-fg), 0.022) 28px, rgba(var(--ff-fg), 0.022) 29px),
             repeating-linear-gradient(-45deg, transparent 0 28px, rgba(var(--ff-fg), 0.018) 28px, rgba(var(--ff-fg), 0.018) 29px);
         }
-        .ff-about-inner { max-width: 900px; margin: 0 auto; padding: 6rem 2rem; position: relative; z-index: 1; }
+        .ff-about-inner { max-width: 900px; margin: 0 auto; padding: clamp(3rem, 9vw, 6rem) clamp(1rem, 4vw, 2rem); position: relative; z-index: 1; }
         .ff-about-eyebrow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.2em; color: #ea6b14; margin-bottom: 1.5rem; }
         .ff-about-headline { font-family: 'Bebas Neue', sans-serif; font-size: clamp(2.8rem, 7vw, 5rem); letter-spacing: 0.06em; line-height: 1; color: var(--ff-text); margin-bottom: 2rem; }
         .ff-about-headline span { color: #ea6b14; }
         .ff-about-body { font-size: 1.1rem; color: rgba(var(--ff-muted), 0.7); font-weight: 300; line-height: 1.8; max-width: 680px; margin-bottom: 3rem; }
         .ff-about-body strong { color: var(--ff-text); font-weight: 500; }
         .ff-about-tagline { font-family: 'Bebas Neue', sans-serif; font-size: clamp(1.4rem, 4vw, 2rem); letter-spacing: 0.06em; color: rgba(234,107,20,0.85); border-left: 3px solid #ea6b14; padding-left: 1.25rem; line-height: 1.3; margin-bottom: 4rem; }
-        .ff-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
-        @media (max-width: 600px) { .ff-stats { grid-template-columns: 1fr; } }
+        .ff-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; }
+        @media (max-width: 600px) { .ff-stats { grid-template-columns: minmax(0, 1fr); } }
         .ff-stat { background: rgba(var(--ff-fg), 0.03); border: 1px solid rgba(var(--ff-fg), 0.07); border-radius: 12px; padding: 1.75rem; }
         .ff-stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; letter-spacing: 0.06em; color: #ea6b14; line-height: 1; margin-bottom: 0.4rem; }
         .ff-stat-label { font-size: 0.82rem; color: rgba(var(--ff-muted), 0.5); font-weight: 300; line-height: 1.4; }
@@ -388,7 +388,7 @@ export default function Home() {
 
       {/* ── Trust proof bar ── */}
       <div style={{ background:"rgba(var(--ff-fg), .03)", borderTop:"1px solid rgba(var(--ff-fg), .07)", borderBottom:"1px solid rgba(var(--ff-fg), .07)", padding:"1.4rem 1rem" }}>
-        <div style={{ maxWidth:"1000px", margin:"0 auto", display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))", gap:"1rem" }}>
+        <div style={{ maxWidth:"1000px", margin:"0 auto", display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(min(200px, 100%), 1fr))", gap:"1rem" }}>
           {[
             { icon:"user-check", label:"Licensed, insured & WCB-verified" },
             { icon:"dollar", label:"Payment held until you approve" },
@@ -501,7 +501,7 @@ export default function Home() {
               <span style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"1.4rem", letterSpacing:".08em", color:"#ea6b14" }}>Freddy Verified</span>
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(250px, 1fr))", gap:"1rem", maxWidth:"820px", margin:"0 auto" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(min(250px, 100%), 1fr))", gap:"1rem", maxWidth:"820px", margin:"0 auto" }}>
             {[
               { t:"Licence & trade certification", d:"We confirm the right trade licence or certification for the work they do." },
               { t:"Liability insurance", d:"Active coverage on file, so you're protected if something goes wrong." },

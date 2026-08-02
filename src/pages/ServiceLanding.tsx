@@ -559,7 +559,7 @@ export default function ServiceLanding() {
   const book = () => { window.location.href = "/client-onboarding?service=" + encodeURIComponent(svc.name); };
 
   return (
-    <div style={{ fontFamily: "'DM Sans',sans-serif", background: NAVY, color: TEXT, minHeight: "100vh", padding: "6rem 1.5rem 5rem" }}>
+    <div style={{ fontFamily: "'DM Sans',sans-serif", background: NAVY, color: TEXT, minHeight: "100vh", padding: "6rem clamp(1rem, 4vw, 1.5rem) 5rem" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
       <style>{"h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.05em} .sl-btn{background:#ea6b14;color:#fff;border:none;padding:.85rem 1.6rem;border-radius:8px;font-size:1.02rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:transform .15s,box-shadow .15s} .sl-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(234,107,20,.32)} .sl-link{color:#ea6b14;text-decoration:none} .sl-link:hover{text-decoration:underline} .sl-card{background:var(--ff-surface);border:1px solid rgba(var(--ff-fg), .07);border-radius:12px;padding:1.1rem 1.2rem}"}</style>
 
@@ -594,7 +594,7 @@ export default function ServiceLanding() {
         </div>
 
         <h2 style={{ color: ORANGE, fontSize: "1.5rem", marginBottom: "1rem" }}>What we cover</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: ".7rem", marginBottom: "2.6rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(240px, 100%), 1fr))", gap: ".7rem", marginBottom: "2.6rem" }}>
           {svc.cover.map((c) => (
             <div key={c} style={{ display: "flex", alignItems: "flex-start", gap: ".5rem", color: MUTED, fontSize: ".98rem" }}>
               <span style={{ marginTop: 2 }}><Ic name="check-circle" size={16} color={ORANGE} /></span>{c}
@@ -603,7 +603,7 @@ export default function ServiceLanding() {
         </div>
 
         <h2 style={{ color: ORANGE, fontSize: "1.5rem", marginBottom: "1rem" }}>How it works</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: ".8rem", marginBottom: "2.6rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(160px, 100%), 1fr))", gap: ".8rem", marginBottom: "2.6rem" }}>
           {[
             { n: "1", t: "Post your job", d: "Tell us what you need — it takes a couple of minutes." },
             { n: "2", t: "Compare estimates", d: "Get up to 5 fixed-price estimates from vetted local pros." },

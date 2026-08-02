@@ -84,17 +84,21 @@ export default function JobsCalendar({ jobs, statusColors, onOpen }: {
         </div>
       )}
 
-      {/* Weekday header */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "4px", marginBottom: "4px" }}>
+      {/* Weekday header.
+          minmax(0, 1fr) — NOT plain 1fr. A bare `1fr` is minmax(auto, 1fr), so a
+          grid item is never allowed to shrink below its content's min width; the
+          nowrap job chips below then pushed all 7 columns wider than the screen
+          and the whole calendar hung off the right edge on a phone. */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: "4px", marginBottom: "4px" }}>
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (
-          <div key={d} style={{ textAlign: "center" as const, fontSize: ".68rem", textTransform: "uppercase" as const, letterSpacing: ".08em", color: "rgba(var(--ff-muted), .45)", padding: ".25rem 0" }}>{d}</div>
+          <div key={d} style={{ minWidth: 0, overflow: "hidden", textAlign: "center" as const, fontSize: "clamp(.58rem, 2.2vw, .68rem)", textTransform: "uppercase" as const, letterSpacing: ".06em", color: "rgba(var(--ff-muted), .45)", padding: ".25rem 0" }}>{d}</div>
         ))}
       </div>
 
       {/* Month grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "4px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: "4px" }}>
         {cells.map((d, i) => {
-          if (!d) return <div key={"e" + i} style={{ minHeight: "68px", borderRadius: "10px", background: "rgba(var(--ff-fg), .015)" }} />;
+          if (!d) return <div key={"e" + i} style={{ minWidth: 0, minHeight: "68px", borderRadius: "10px", background: "rgba(var(--ff-fg), .015)" }} />;
           const k = dayKey(d);
           const dj = byDay[k] ?? [];
           const isToday = k === todayKey;
@@ -104,7 +108,7 @@ export default function JobsCalendar({ jobs, statusColors, onOpen }: {
               key={k}
               onClick={() => setSelected(k)}
               style={{
-                minHeight: "68px", padding: "4px", textAlign: "left" as const, display: "flex", flexDirection: "column" as const, gap: "2px",
+                minWidth: 0, minHeight: "68px", padding: "4px", textAlign: "left" as const, display: "flex", flexDirection: "column" as const, gap: "2px",
                 borderRadius: "10px", cursor: "pointer", fontFamily: "inherit", overflow: "hidden",
                 background: isSel ? "rgba(234,107,20,.1)" : "rgba(var(--ff-fg), .035)",
                 border: isToday ? "1px solid #ea6b14" : isSel ? "1px solid rgba(234,107,20,.5)" : "1px solid rgba(var(--ff-fg), .05)",

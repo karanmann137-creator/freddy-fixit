@@ -148,7 +148,7 @@ export default function ReportProblem({
               {REMEDIES.map(r => <option key={r} value={r} style={{ background: "var(--ff-bg)" }}>{r}</option>)}
             </select>
           </div>
-          <div style={{ width: "130px" }}>
+          <div style={{ flex: "1 1 110px", minWidth: 0, maxWidth: "130px" }}>
             <label style={label}>Amount ($)</label>
             <input type="number" min="0" step="0.01" value={amount} placeholder="Optional" onChange={e => setAmount(e.target.value)} style={field} />
           </div>
@@ -161,7 +161,7 @@ export default function ReportProblem({
             <div style={{ display: "flex", flexWrap: "wrap", gap: ".4rem", marginTop: ".6rem" }}>
               {files.map((f, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: ".4rem", padding: ".3rem .6rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .1)", borderRadius: "6px", fontSize: ".76rem" }}>
-                  <span style={{ maxWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                  <span style={{ maxWidth: "min(120px, 55vw)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
                   <button onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "rgba(var(--ff-muted), .6)", cursor: "pointer", fontSize: ".9rem", lineHeight: 1, padding: 0 }}>✕</button>
                 </div>
               ))}

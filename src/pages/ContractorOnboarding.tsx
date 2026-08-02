@@ -422,7 +422,7 @@ export default function ContractorOnboarding() {
                   <p style={{ textAlign:"center", fontSize:".78rem", color:"rgba(var(--ff-muted), .4)", margin:"1.25rem 0" }}>or with your email</p>
                 </>
               )}
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:"1rem" }}>
                 <div style={{ marginBottom:"1.2rem" }}>
                   <label style={s.label}>First Name</label>
                   <input autoComplete="given-name" style={{ ...inp, borderColor: errors.firstName ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="Mike" value={form.firstName} onChange={e => setF("firstName",e.target.value)} />
@@ -457,7 +457,7 @@ export default function ContractorOnboarding() {
                   {errors.password && <p style={s.err}>{errors.password}</p>}
                 </div>
               )}
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:"1rem" }}>
                 <div style={{ marginBottom:"1.2rem" }}>
                   <label style={s.label}>Years of Experience <span style={{ color:"rgba(var(--ff-muted), .45)", fontWeight:300 }}>(optional)</span></label>
                   <input style={inp} type="number" min={0} max={50} value={form.yearsOfExperience} placeholder="e.g. 5" onChange={e => setF("yearsOfExperience", e.target.value)} />
@@ -475,7 +475,7 @@ export default function ContractorOnboarding() {
           {step === 2 && (
             <div>
               <p style={s.label}>Select All That Apply</p>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".7rem" }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:".7rem" }}>
                 {SPECIALTIES.map(sp => (
                   <button key={sp.label} style={{ ...s.chip, ...(selectedSpec.includes(sp.label) ? s.chipSel : {}) }} onClick={() => toggleSpec(sp.label)}>
                     <span style={{ fontSize:"1.1rem", flexShrink:0 }}><Ic name={sp.iconName as any} size={18} color="#ea6b14" style={{ marginRight:6, flexShrink:0 }} /></span>
@@ -494,7 +494,7 @@ export default function ContractorOnboarding() {
           {step === 3 && (
             <div>
               <p style={s.label}>Zones You Serve</p>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".7rem" }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:".7rem" }}>
                 {AREAS.map(z => (
                   <button key={z} style={{ ...s.chip, ...(selectedArea.includes(z) ? s.chipSel : {}) }} onClick={() => toggleArea(z)}>
                     <span><Ic name="map-pin" size={14} color="#ea6b14" /></span><span>{z}</span>
@@ -613,7 +613,7 @@ export default function ContractorOnboarding() {
               </label>
               {form.hasInsurance && (
                 <>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".75rem", marginTop:".5rem" }}>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:".75rem", marginTop:".5rem" }}>
                     <input style={inp} placeholder="Insurance provider" value={form.insuranceProvider} onChange={e=>setF("insuranceProvider",e.target.value)} />
                     <input style={inp} placeholder="Expiry (e.g. 2026-12)" value={form.insuranceExpiry} onChange={e=>setF("insuranceExpiry",e.target.value)} />
                   </div>

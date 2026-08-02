@@ -90,9 +90,9 @@ export default function ScheduleField({ value, onChange }: Props) {
             ))}
           </select>
           <input type="number" value={y} min={now.getFullYear()} onChange={e => changeYear(e.target.value)}
-            style={{ width: "84px", padding: ".5rem .6rem", background: fieldBg, border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".85rem", boxSizing: "border-box" }} />
+            style={{ flex: "0 1 84px", minWidth: "68px", padding: ".5rem .6rem", background: fieldBg, border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".85rem", boxSizing: "border-box" }} />
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: "3px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: "3px" }}>
           {DOW.map((dn, i) => (
             <div key={i} style={{ textAlign: "center", fontSize: ".62rem", color: "rgba(var(--ff-muted), .4)", padding: ".2rem 0" }}>{dn}</div>
           ))}

@@ -810,10 +810,12 @@ export default function ContractorDashboard() {
     tabsInner: { maxWidth:"900px", margin:"0 auto", display:"flex", gap:".25rem" },
     tab: { padding:".85rem 1.25rem", background:"none", border:"none", borderBottom:"2px solid transparent", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", whiteSpace:"nowrap" as const },
     activeTab: { color:"#ea6b14", borderBottomColor:"#ea6b14" },
-    content: { maxWidth:"900px", margin:"0 auto", padding:"2rem 1.5rem" },
-    card: { background:"rgba(var(--ff-fg), .055)", border:"1px solid rgba(var(--ff-fg), .05)", borderRadius:"14px", padding:"1.75rem", marginBottom:"1.5rem" },
+    // Fluid padding: on a ~276px-wide phone column a flat 1.5rem/1.75rem ate
+    // ~20% of the usable width before any content was drawn.
+    content: { maxWidth:"900px", margin:"0 auto", padding:"clamp(1rem, 4vw, 2rem) clamp(.75rem, 3vw, 1.5rem)" },
+    card: { background:"rgba(var(--ff-fg), .055)", border:"1px solid rgba(var(--ff-fg), .05)", borderRadius:"14px", padding:"clamp(1rem, 4vw, 1.75rem)", marginBottom:"1.5rem" },
     cardTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", lineHeight:1.1, color:"#ea6b14", marginBottom:"1.25rem" },
-    jobCard: { background:"rgba(var(--ff-fg), .055)", border:"1px solid rgba(var(--ff-fg), .05)", borderRadius:"12px", padding:"1.5rem", marginBottom:"1rem", cursor:"pointer" },
+    jobCard: { background:"rgba(var(--ff-fg), .055)", border:"1px solid rgba(var(--ff-fg), .05)", borderRadius:"12px", padding:"clamp(.9rem, 3.5vw, 1.5rem)", marginBottom:"1rem", cursor:"pointer" },
     btn: { padding:".5rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"6px", color:"rgba(var(--ff-muted), .7)", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer" },
     earnCard: { background:"rgba(var(--ff-fg), .055)", border:"1px solid rgba(var(--ff-fg), .05)", borderRadius:"12px", padding:"1.25rem", textAlign:"center" as const },
     chip: { padding:".3rem .75rem", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.18)", borderRadius:"99px", fontSize:".78rem", color:"rgba(var(--ff-muted), .8)", display:"inline-block", margin:".2rem" },
@@ -1612,8 +1614,10 @@ export default function ContractorDashboard() {
                       </label>
                       {wtOn ? (
                         <>
-                          <input type="number" min="0" placeholder="Ballpark low $ (optional)" value={bidForm[r.id]?.price_low ?? ""} onChange={e => setBid(r.id, { price_low: e.target.value })} style={{ width:"170px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
-                          <input type="number" min="0" placeholder="Ballpark high $ (optional)" value={bidForm[r.id]?.price_high ?? ""} onChange={e => setBid(r.id, { price_high: e.target.value })} style={{ width:"170px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
+                          {/* flex-basis, not a fixed 170px each: two 170px inputs
+                              exceed the ~276px content column on a phone. */}
+                          <input type="number" min="0" placeholder="Ballpark low $ (optional)" value={bidForm[r.id]?.price_low ?? ""} onChange={e => setBid(r.id, { price_low: e.target.value })} style={{ flex:"1 1 130px", minWidth:0, maxWidth:"170px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
+                          <input type="number" min="0" placeholder="Ballpark high $ (optional)" value={bidForm[r.id]?.price_high ?? ""} onChange={e => setBid(r.id, { price_high: e.target.value })} style={{ flex:"1 1 130px", minWidth:0, maxWidth:"170px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
                         </>
                       ) : (
                         <input type="number" min="0" placeholder="Price $" value={bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "")} onChange={e => setBid(r.id, { amount: e.target.value, message: bidForm[r.id]?.message ?? (r.my_message ?? ""), used_base_price:false })} style={{ width:"100px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
@@ -1666,11 +1670,13 @@ export default function ContractorDashboard() {
             })()}
             <div style={s.card}>
               <div style={s.cardTitle}>Your Profile</div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:".75rem", marginBottom:"1.25rem" }}>
+              {/* auto-fit + min(): collapses to one column on a phone instead of
+                  forcing two columns that an email address then overflows. */}
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(min(180px, 100%), 1fr))", gap:".75rem", marginBottom:"1.25rem" }}>
                 {[["Name", `${profile?.first_name} ${profile?.last_name}`], ["Email", profile?.email], ["Phone", profile?.phone], ["Experience", `${contractor?.years_of_experience ?? 0} years`], ["Rating", contractor?.rating ? `⭐ ${contractor.rating}` : "No ratings"], ["Status", contractor?.status]].map(([l,v]) => (
-                  <div key={l}>
+                  <div key={l} style={{ minWidth:0 }}>
                     <div style={{ fontSize:".7rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)" }}>{l}</div>
-                    <div style={{ fontSize:".9rem", color:"var(--ff-text)" }}>{v}</div>
+                    <div style={{ fontSize:".9rem", color:"var(--ff-text)", overflowWrap:"anywhere" as const }}>{v}</div>
                   </div>
                 ))}
               </div>
@@ -1716,7 +1722,7 @@ export default function ContractorDashboard() {
               <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".35rem" }}>Past work photos</div>
               {portfolio.length === 0 && <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .45)", marginBottom:".75rem" }}>No portfolio items yet. Add your best past jobs below.</p>}
               {portfolio.length > 0 && (
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap:".75rem", marginBottom:"1rem" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(min(140px, 100%), 1fr))", gap:".75rem", marginBottom:"1rem" }}>
                   {portfolio.map(item => (
                     <div key={item.id} style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"10px", overflow:"hidden" }}>
                       {item.photo_path && <img src={pfUrl(item.photo_path)} alt={item.title || "Past job"} style={{ width:"100%", height:"100px", objectFit:"cover" as const, display:"block" }} />}
@@ -1907,7 +1913,7 @@ export default function ContractorDashboard() {
                 </div>
               );
             })()}
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))", gap:"1rem", marginBottom:"1.5rem" }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(min(130px, 100%), 1fr))", gap:"1rem", marginBottom:"1.5rem" }}>
               {[["$" + totalEarned.toFixed(2), "Total Earned"], [contractor?.total_jobs ?? 0, "Jobs Completed"], [myJobs.filter(j=>j.status==="assigned"||j.status==="in_progress").length, "Active Jobs"], [contractor?.rating ? `⭐ ${contractor.rating}` : "—", "Avg Rating"], [streak > 0 ? "🔥 " + streak : "—", "Reliability Streak"], [respMins != null ? "⚡ " + respShort(respMins) : "—", "Response Time"]].map(([v,l]) => (
                 <div key={String(l)} style={s.earnCard} title={l === "Reliability Streak" ? "Jobs in a row completed and confirmed with no claims — clients see pros they can count on." : l === "Response Time" ? "Your typical time from a job being posted to your bid (last 120 days). Clients see a 'usually responds in' badge on your bids — faster responses win more jobs." : undefined}>
                   <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(1.4rem,5vw,1.7rem)", letterSpacing:".04em", lineHeight:1.1, color:"#ea6b14", marginBottom:".25rem" }}>{v}</div>
@@ -2021,7 +2027,7 @@ export default function ContractorDashboard() {
               </div>
             ) : (
               <>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))", gap:"1rem", marginBottom:"1.5rem" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(min(130px, 100%), 1fr))", gap:"1rem", marginBottom:"1.5rem" }}>
                   {[
                     ["Price", myReviews.reduce((a,r)=>a+(r.price_score??0),0)/myReviews.length || 0],
                     ["Experience", myReviews.reduce((a,r)=>a+(r.experience_score??0),0)/myReviews.length || 0],

@@ -44,6 +44,14 @@ style.textContent = `
   *, *::before, *::after { box-sizing: border-box; }
   html { font-size: calc(100% * var(--ff-font-scale, 1)); }
   html, body { margin: 0; padding: 0; background: var(--ff-bg); }
+  /* Responsive safety net. Inline styles beat this stylesheet, so a fixed inline
+     width still applies — these only bite when the container is genuinely
+     narrower than the element, i.e. the phone case. Deliberately NOT
+     overflow-x:hidden on html/body: that breaks position:sticky (the dashboard
+     sidebar relies on it) and would hide the bug rather than fix it. svg is left
+     out on purpose — Ic renders sized icons that must not shrink in flex rows. */
+  img, video, canvas { max-width: 100%; }
+  input, select, textarea { max-width: 100%; }
 `;
 document.head.appendChild(style);
 

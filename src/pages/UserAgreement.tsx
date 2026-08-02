@@ -1,6 +1,6 @@
 export default function UserAgreement() {
   return (
-    <div style={{ fontFamily:"'DM Sans',sans-serif", background:"var(--ff-bg)", color:"var(--ff-text)", minHeight:"100vh", padding:"6rem 1.5rem 4rem" }}>
+    <div style={{ fontFamily:"'DM Sans',sans-serif", background:"var(--ff-bg)", color:"var(--ff-text)", minHeight:"100vh", padding:"6rem clamp(1rem, 4vw, 1.5rem) 4rem" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
       <style>{"h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em} h2{color:#ea6b14} h3{color:var(--ff-text);font-size:1.05rem;margin-top:1.4rem;margin-bottom:.4rem} p,li{line-height:1.8;color:rgba(var(--ff-muted), .85);font-weight:300} strong{color:var(--ff-text);font-weight:500} a{color:#ea6b14} ul,ol{padding-left:1.5rem;margin:.5rem 0} li{margin:.3rem 0} .divider{border:none;border-top:1px solid rgba(var(--ff-fg), .08);margin:3rem 0}"}</style>
       <div style={{ maxWidth:"800px", margin:"0 auto" }}>

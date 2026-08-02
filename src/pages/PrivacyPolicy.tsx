@@ -1,8 +1,10 @@
 export default function PrivacyPolicy() {
   return (
-    <div style={{ fontFamily:"'DM Sans',sans-serif", background:"var(--ff-bg)", color:"var(--ff-text)", minHeight:"100vh", padding:"6rem 1.5rem 4rem" }}>
+    <div style={{ fontFamily:"'DM Sans',sans-serif", background:"var(--ff-bg)", color:"var(--ff-text)", minHeight:"100vh", padding:"6rem clamp(1rem, 4vw, 1.5rem) 4rem" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-      <style>{"h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em} h2{color:#ea6b14} p,li{line-height:1.8;color:rgba(var(--ff-muted), .85);font-weight:300} strong{color:var(--ff-text);font-weight:500} a{color:#ea6b14} ul,ol{padding-left:1.5rem;margin:.5rem 0} li{margin:.3rem 0} table{width:100%;border-collapse:collapse;margin:1rem 0} td,th{padding:.6rem 1rem;border:1px solid rgba(var(--ff-fg), .1);font-size:.85rem;color:rgba(var(--ff-muted), .8);text-align:left} th{color:var(--ff-text);background:rgba(var(--ff-fg), .04)}"}</style>
+      {/* table cells: overflow-wrap + tighter padding on a phone, so the 3-column
+          service-provider table stays readable instead of pushing the page wide. */}
+      <style>{"h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em} h2{color:#ea6b14} p,li{line-height:1.8;color:rgba(var(--ff-muted), .85);font-weight:300} strong{color:var(--ff-text);font-weight:500} a{color:#ea6b14;overflow-wrap:anywhere} ul,ol{padding-left:1.5rem;margin:.5rem 0} li{margin:.3rem 0} table{width:100%;max-width:100%;border-collapse:collapse;margin:1rem 0;table-layout:fixed} td,th{padding:.6rem 1rem;border:1px solid rgba(var(--ff-fg), .1);font-size:.85rem;color:rgba(var(--ff-muted), .8);text-align:left;overflow-wrap:anywhere} th{color:var(--ff-text);background:rgba(var(--ff-fg), .04)} @media(max-width:600px){td,th{padding:.45rem .5rem;font-size:.78rem}}"}</style>
       <div style={{ maxWidth:"800px", margin:"0 auto" }}>
 
         <h1 style={{ fontSize:"clamp(2.5rem,6vw,4rem)", color:"var(--ff-text)", marginBottom:".5rem" }}>Privacy Policy</h1>

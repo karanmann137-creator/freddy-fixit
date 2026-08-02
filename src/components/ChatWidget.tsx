@@ -84,7 +84,8 @@ export default function ChatWidget() {
       {open && (
         <div style={{
           position: "fixed", bottom: "5.5rem", right: "1.5rem",
-          width: "360px", maxHeight: "520px",
+          // 360px + the 1.5rem right offset overflowed a 360px-wide phone.
+          width: "min(360px, calc(100vw - 3rem))", maxHeight: "min(520px, calc(100vh - 9rem))",
           background: "var(--ff-bg)", border: "1px solid rgba(var(--ff-fg), .12)",
           borderRadius: "16px", display: "flex", flexDirection: "column",
           boxShadow: "0 20px 60px rgba(0,0,0,.6)", zIndex: 9999,

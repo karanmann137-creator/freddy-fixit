@@ -185,7 +185,7 @@ export default function DashboardSidebar({
       {expanded && (
         <>
           <div onClick={() => setExpanded(false)} style={{ position:"fixed", inset:0, top:"3.75rem", background:"rgba(8,12,22,.5)", zIndex:900 }} />
-          <div style={{ position:"fixed", top:"3.75rem", left:0, bottom:0, width:"216px", zIndex:901, background:"var(--ff-surface)", borderRight:"1px solid rgba(var(--ff-fg), .12)", overflowY:"auto" as const, padding:"1.1rem .7rem", boxShadow:"6px 0 28px rgba(0,0,0,.35)" }}>
+          <div style={{ position:"fixed", top:"3.75rem", left:0, bottom:0, width:"min(216px, 80vw)", zIndex:901, background:"var(--ff-surface)", borderRight:"1px solid rgba(var(--ff-fg), .12)", overflowY:"auto" as const, padding:"1.1rem .7rem", boxShadow:"6px 0 28px rgba(0,0,0,.35)" }}>
             {renderNav(true)}
           </div>
         </>
