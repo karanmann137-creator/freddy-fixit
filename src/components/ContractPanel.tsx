@@ -1,5 +1,7 @@
-// ContractPanel — service-agreement e-signature surface for jobs that require a
-// signed contract (milestone / recurring / agreed price > $2,000). Two-party:
+// ContractPanel — service-agreement e-signature surface. EVERY job needs one:
+// contract_required() returns true for all jobs, and the payment edge functions
+// fail closed with HTTP 428 until contract_signed() is true, so if this panel
+// isn't mounted on a dashboard that job can never be paid for. Two-party:
 //   contractor: reviews the auto-generated agreement, adds optional custom
 //               clauses OR uploads their own document (with a liability
 //               acknowledgment), then types their legal name to sign & send.

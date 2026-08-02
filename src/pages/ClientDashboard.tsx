@@ -10,6 +10,7 @@ import ChatTimePrompt from "@/components/ChatTimePrompt";
 import { formatWhen } from "@/lib/chatParse";
 import JobTimeline from "@/components/JobTimeline";
 import MilestonePanel from "@/components/MilestonePanel";
+import ContractPanel from "@/components/ContractPanel";
 import JobTimer from "@/components/JobTimer";
 import JobChecklist from "@/components/JobChecklist";
 import JobPhotos from "@/components/JobPhotos";
@@ -129,6 +130,9 @@ export default function ClientDashboard() {
   const [bidGrade, setBidGrade] = useState<Record<string,string>>({}); // contractor_id -> A+/A/A- price grade
   const [busyPick, setBusyPick] = useState<string|null>(null);
   const [busyPay, setBusyPay] = useState(false);
+  const [contractBlocked, setContractBlocked] = useState(false);      // agreement not signed yet → payment blocked
+  const [contractCheckError, setContractCheckError] = useState(false); // couldn't verify → fail closed, ask to refresh
+  const [contractStatus, setContractStatus] = useState<string|null>(null); // draft|sent|signed|void — drives the attention row wording only
   const [feeRate, setFeeRate] = useState(0.03); // base service-fee rate; loaded from platform_fee_rate() so it matches what Stripe charges
   const [waivedForJob, setWaivedForJob] = useState<string|null>(null); // job whose 3% fee a referral waives
   const [loadError, setLoadError] = useState(false);
@@ -291,6 +295,24 @@ export default function ClientDashboard() {
       setContractor(con ?? null);
       setActiveJob(job ?? null);
       setSelAddons([]); // fresh add-on selection per job
+      // Contract gate: every job needs a service agreement signed by both parties
+      // before any payment. Fail CLOSED — if we can't confirm it's signed, stay
+      // blocked and ask the client to refresh rather than let an unsigned job pay.
+      // (The edge function enforces this too and returns 428; this just means the
+      // client sees a clear reason instead of a rejected checkout.)
+      if (job) {
+        setContractBlocked(true); // assume blocked until we confirm otherwise
+        setContractCheckError(false);
+        supabase.rpc("contract_signed", { p_job_id: job.id }).then(({ data, error }) => {
+          if (cancelled) return;
+          if (error) { setContractBlocked(true); setContractCheckError(true); }
+          else { setContractBlocked(data !== true); setContractCheckError(false); }
+        }, () => { if (!cancelled) { setContractBlocked(true); setContractCheckError(true); } });
+        // Status is only used to word the attention row ("sign it" vs "waiting on
+        // your pro"). The gate above stays the source of truth for payment.
+        supabase.from("job_contracts").select("status").eq("job_id", job.id).maybeSingle()
+          .then(({ data: c }) => { if (!cancelled) setContractStatus((c as any)?.status ?? null); });
+      } else if (!cancelled) { setContractBlocked(false); setContractCheckError(false); setContractStatus(null); }
       // Referral perk: the 3% service fee is waived on a referred client's first
       // job. Check the specific job so the displayed total matches what Stripe charges.
       if (job && job.payment_status !== "released" && job.total_charged == null) {
@@ -303,6 +325,18 @@ export default function ClientDashboard() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeReq?.id, activeReq?.assigned_contractor_id]);
+
+  // Re-check the gate the moment the client signs, so the pay button unlocks
+  // without a page refresh. Fails closed for the same reason as the load check.
+  const refreshContractGate = async () => {
+    if (!activeJob) return;
+    const { data, error } = await supabase.rpc("contract_signed", { p_job_id: activeJob.id });
+    if (error) { setContractBlocked(true); setContractCheckError(true); return; }
+    setContractBlocked(data !== true);
+    setContractCheckError(false);
+    const { data: c } = await supabase.from("job_contracts").select("status").eq("job_id", activeJob.id).maybeSingle();
+    setContractStatus((c as any)?.status ?? null);
+  };
 
   // Realtime: keep the active job's status/payment live as the contractor acts
   // (proposes a time, marks on-the-way, completes) without a manual refresh.
@@ -535,6 +569,14 @@ export default function ClientDashboard() {
   }
   const payForJob = async () => {
     if (!activeJob) return;
+    // Fail closed — the edge function returns 428 for an unsigned agreement, so
+    // stop here and say why rather than sending them to a checkout that rejects.
+    if (contractBlocked) {
+      notify(contractCheckError
+        ? "We couldn't verify the service agreement. Please refresh the page and try again."
+        : "Please sign the service agreement above before paying for this job.");
+      return;
+    }
     if (!(await askConfirm({
       title: "Pay " + "$" + jobTotal(activeJob).toFixed(2) + "?",
       message: "You'll be taken to a secure checkout. Your payment is held safely and only released to the contractor after you confirm the work is done.",
@@ -897,6 +939,15 @@ export default function ClientDashboard() {
           if (activeJob?.status === "assigned" && activeJob?.schedule_proposed_at && !activeJob?.client_approved_at && !(activeJob?.client_rescheduled_at && !activeJob?.reschedule_accepted_at)) attn.push({ key: "sched", text: "Your pro proposed a time and price — approve it to book the visit.", cta: "Review proposal" });
           if (activeJob?.status === "assigned" && activeJob?.walkthrough_proposed_at && !activeJob?.walkthrough_approved_at) attn.push({ key: "walkthrough", text: "Your pro wants to do a free walkthrough before pricing — confirm the visit time.", cta: "Review time" });
           if (!activeJob && clientBids.length > 0) attn.push({ key: "bids", text: clientBids.length + " pro" + (clientBids.length === 1 ? " has" : "s have") + " bid on your request — pick the one you like.", cta: "See bids" });
+          // No signed agreement means the client physically can't pay, which means
+          // the pro is never dispatched — so this belongs near the top.
+          if (activeJob && contractBlocked && !contractCheckError
+              && ["assigned", "scheduled", "in_progress", "pending_confirmation"].includes(activeJob.status)
+              && activeJob.payment_status !== "held" && activeJob.payment_status !== "released") {
+            attn.push(contractStatus === "sent"
+              ? { key: "contract", text: "Your pro sent the service agreement — sign it so you can pay and lock in your visit.", cta: "Review & sign" }
+              : { key: "contract", text: "Waiting on your pro to send the service agreement. You'll be able to pay and book once it's signed by both of you.", cta: "See job" });
+          }
           if (attn.length === 0) return null;
           return (
             <div style={{ ...s.card, padding:"1.1rem 1.25rem", marginBottom:"1.25rem", border:"1px solid rgba(234,107,20,.3)" }}>
@@ -1145,8 +1196,14 @@ export default function ClientDashboard() {
                       </div>
                     )}
 
+                    {/* Every job needs a service agreement signed by both sides before
+                        any money moves, so this sits above the payment block. */}
+                    {activeJob && (
+                      <ContractPanel role="client" job={activeJob} onUpdated={refreshContractGate} />
+                    )}
+
                     {activeJob && activeJob.is_milestone && (
-                      <MilestonePanel role="client" job={activeJob} />
+                      <MilestonePanel role="client" job={activeJob} contractBlocked={contractBlocked} />
                     )}
 
                     {activeJob && activeJob.payment_status === "disputed" && (
@@ -1310,7 +1367,15 @@ export default function ClientDashboard() {
                                   <div style={{ fontSize:".82rem", color:"var(--ff-danger)", marginBottom:".6rem", lineHeight:1.5 }}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />Your last payment didn't go through. No charge was made — please try again below.</div>
                                 )}
                                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".6rem", lineHeight:1.5 }}>Pay now to secure the job. Your money is <strong>held safely</strong> and only released to the contractor after you confirm the work is done. {feeText(activeJob)}</div>
-                                <button style={s.primaryBtn} disabled={busyPay} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " (held until you confirm)"}</button>
+                                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".6rem", lineHeight:1.5, padding:".6rem .75rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .09)" }}>
+                                  <Ic name="bell" size={13} color="#ea6b14" style={{ marginRight:5 }} /><strong>Your pro isn't dispatched until this is paid.</strong> Paying is what books them in and sends them the job — until then the visit isn't locked. Nothing to worry about: we <strong>hold your money</strong> the whole time and only release it to the contractor once you've confirmed the work is done.
+                                </div>
+                                {contractBlocked && (
+                                  <div style={{ fontSize:".82rem", color:"var(--ff-warn)", marginBottom:".6rem", lineHeight:1.5 }}>
+                                    <Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />{contractCheckError ? "We couldn't verify the service agreement. Please refresh the page and try again." : "Please sign the service agreement above before paying for this job."}
+                                  </div>
+                                )}
+                                <button style={s.primaryBtn} disabled={busyPay || contractBlocked} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " (held until you confirm)"}</button>
                               </>
                             ) : null}
                           </>
@@ -1335,7 +1400,12 @@ export default function ClientDashboard() {
                             ) : activeJob.amount ? (
                               <>
                                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".6rem", lineHeight:1.5 }}>Pay for the job, then confirm. Your payment is held and only released to the contractor once you confirm. {feeText(activeJob)}</div>
-                                <button style={s.primaryBtn} disabled={busyPay} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " now"}</button>
+                                {contractBlocked && (
+                                  <div style={{ fontSize:".82rem", color:"var(--ff-warn)", marginBottom:".6rem", lineHeight:1.5 }}>
+                                    <Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />{contractCheckError ? "We couldn't verify the service agreement. Please refresh the page and try again." : "Please sign the service agreement above before paying for this job."}
+                                  </div>
+                                )}
+                                <button style={s.primaryBtn} disabled={busyPay || contractBlocked} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " now"}</button>
                               </>
                             ) : (
                               <>

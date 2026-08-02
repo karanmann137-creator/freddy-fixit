@@ -25,6 +25,7 @@ import JobTimer from "@/components/JobTimer";
 import JobChecklist from "@/components/JobChecklist";
 import JobPhotos, { photosMissing } from "@/components/JobPhotos";
 import JobExpenses, { type JobExpense } from "@/components/JobExpenses";
+import ContractPanel from "@/components/ContractPanel";
 
 const CONTRACTOR_NAV: SidebarItem[] = [
   { key: "jobs",      label: "My Jobs",        icon: "briefcase" },
@@ -147,6 +148,9 @@ export default function ContractorDashboard() {
   const [contractor, setContractor]   = useState<any>(null);
   const [myJobs, setMyJobs]           = useState<any[]>([]);
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
+  // job_id -> service-agreement status. The client can't pay until this is
+  // "signed", so it drives the "send your agreement" attention row.
+  const [contracts, setContracts]     = useState<Record<string, string>>({});
   const [activeJobId, setActiveJobId] = useState<string|null>(null);
   const [chatJob, setChatJob]         = useState<any|null>(null);
   const [timeDismissed, setTimeDismissed] = useState<Set<string>>(new Set());
@@ -255,6 +259,22 @@ export default function ContractorDashboard() {
     });
   }, []);
 
+  // Pull the service-agreement status for a set of jobs. Called on load for every
+  // job, and again after ContractPanel signs so the attention row clears without
+  // a refresh. A failure just leaves the map untouched — the panel itself is the
+  // source of truth on screen, this only drives the nudge.
+  const loadContracts = async (jobIds: string[]) => {
+    if (!jobIds.length) return;
+    const { data, error } = await supabase.from("job_contracts").select("job_id, status").in("job_id", jobIds);
+    if (error || !data) return;
+    setContracts(prev => {
+      const next = { ...prev };
+      for (const id of jobIds) delete next[id]; // a job with no row is "not started"
+      for (const c of data as any[]) next[c.job_id] = c.status;
+      return next;
+    });
+  };
+
   useEffect(() => {
     const load = async () => {
       setLoadError(false);
@@ -343,6 +363,7 @@ export default function ContractorDashboard() {
       setPortfolio(pf ?? []);
       const enriched = jobs ?? [];
       setMyJobs(enriched);
+      loadContracts(enriched.map((j: any) => j.id));
       if (enriched.length > 0) setActiveJobId(enriched[0].id);
       setAvailableJobs(open ?? []);
       setMyReviews(revs ?? []);
@@ -1103,6 +1124,14 @@ export default function ContractorDashboard() {
               const dt = new Date(job.scheduled_at).getTime() - Date.now();
               if (dt > 0 && dt < 24 * 3600 * 1000) attn.push({ key: "soon-" + job.id, text: "“" + svc + "” is booked for " + new Date(job.scheduled_at).toLocaleString() + ".", cta: "View job", onClick: () => goJob(job) });
             }
+            // No signed agreement = the client physically cannot pay, so this
+            // outranks everything else on a live job. Only prompt when it's the
+            // contractor's move (nothing sent yet); once it's with the client the
+            // panel on the job already says who we're waiting on.
+            if (["assigned", "scheduled", "in_progress", "pending_confirmation"].includes(job.status)
+                && !["signed", "sent"].includes(contracts[job.id] ?? "")) {
+              attn.push({ key: "contract-" + job.id, text: "“" + svc + "” needs a signed service agreement — your client can't pay until you send it.", cta: "Send agreement", onClick: () => goJob(job) });
+            }
             // Photos are what unlock payment, so chase them once work is under way.
             if (job.status === "in_progress" || (job.status === "scheduled" && job.on_my_way_at)) {
               const miss = photosMissing(job);
@@ -1231,6 +1260,10 @@ export default function ContractorDashboard() {
                 {activeJobId === job.id && (
                   <div onClick={e => e.stopPropagation()} style={{ marginTop:"1rem", borderTop:"1px solid rgba(var(--ff-fg), .07)", paddingTop:"1rem" }}>
                     <RequestPhotoQuote requestId={job.request_id} photoPath={job.request?.photo_path} estimatedQuote={job.request?.estimated_quote} quoteNotes={job.request?.quote_notes} canQuote />
+
+                    {/* Every job needs a signed service agreement before the client can pay,
+                        so this sits above the pricing/scheduling work — it's the first move. */}
+                    <ContractPanel role="contractor" job={job} onUpdated={() => loadContracts([job.id])} />
 
                     {Number(job.amount) > 2000 && <MilestonePanel role="contractor" job={job} />}
 
