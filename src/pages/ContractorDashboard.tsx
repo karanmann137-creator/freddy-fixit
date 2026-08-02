@@ -27,7 +27,7 @@ import JobTimer from "@/components/JobTimer";
 import JobChecklist from "@/components/JobChecklist";
 import JobPhotos, { photosMissing } from "@/components/JobPhotos";
 import JobExpenses, { type JobExpense } from "@/components/JobExpenses";
-import ContractPanel from "@/components/ContractPanel";
+import ContractPanel, { CONTRACT_ANCHOR } from "@/components/ContractPanel";
 
 const CONTRACTOR_NAV: SidebarItem[] = [
   { key: "jobs",      label: "My Jobs",        icon: "briefcase" },
@@ -240,6 +240,23 @@ export default function ContractorDashboard() {
     }, 60));
   };
   useEffect(() => () => { if (pulseTimer.current) window.clearTimeout(pulseTimer.current); }, []);
+
+  // Same treatment for "Send agreement": expanding the job card isn't enough,
+  // because the panel can still be below the fold on a long card. Only the
+  // expanded job renders a ContractPanel, so the anchor id is unique.
+  const focusContractJob = (job: any) => {
+    setActiveTab("jobs");
+    setJobFilter(null);
+    if (activeJobId !== job.id) openJob(job);
+    setPulseAnchor(CONTRACT_ANCHOR);
+    if (pulseTimer.current) window.clearTimeout(pulseTimer.current);
+    pulseTimer.current = window.setTimeout(() => setPulseAnchor(null), 4500);
+    requestAnimationFrame(() => window.setTimeout(() => {
+      const el = document.getElementById(CONTRACT_ANCHOR);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      else window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 80));
+  };
 
   // Export the job/payout history as a CSV the contractor can open in Excel
   // (handy at tax time). Built entirely in-browser — no server round-trip.
@@ -1175,7 +1192,7 @@ export default function ContractorDashboard() {
             // panel on the job already says who we're waiting on.
             if (["assigned", "scheduled", "in_progress", "pending_confirmation"].includes(job.status)
                 && !["signed", "sent"].includes(contracts[job.id] ?? "")) {
-              attn.push({ key: "contract-" + job.id, text: "“" + svc + "” needs a signed service agreement — your client can't pay until you send it.", cta: "Send agreement", onClick: () => goJob(job) });
+              attn.push({ key: "contract-" + job.id, text: "“" + svc + "” needs a signed service agreement — your client can't pay until you send it.", cta: "Send agreement", onClick: () => focusContractJob(job) });
             }
             // Photos are what unlock payment, so chase them once work is under way.
             if (job.status === "in_progress" || (job.status === "scheduled" && job.on_my_way_at)) {
@@ -1308,7 +1325,7 @@ export default function ContractorDashboard() {
 
                     {/* Every job needs a signed service agreement before the client can pay,
                         so this sits above the pricing/scheduling work — it's the first move. */}
-                    <ContractPanel role="contractor" job={job} onUpdated={() => loadContracts([job.id])} />
+                    <ContractPanel role="contractor" job={job} onUpdated={() => loadContracts([job.id])} highlight={pulseAnchor === CONTRACT_ANCHOR} />
 
                     {Number(job.amount) > 2000 && <MilestonePanel role="contractor" job={job} />}
 

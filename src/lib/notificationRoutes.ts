@@ -63,6 +63,7 @@ const CONTRACTOR_TAB: Record<string, string> = {
   milestone_completed:   "jobs",
   milestone_disputed:    "jobs",
   milestone_schedule_approved: "jobs",
+  contract_signature:    "jobs",
 
   // Money and reputation.
   job_confirmed:   "earnings",
@@ -91,6 +92,8 @@ const CLIENT_TAB: Record<string, string> = {
   milestone_disputed:  "requests",
   dispute_response:    "requests",
   dispute_opened:      "requests",
+  // The agreement lives on the job card, and the card lives under Requests.
+  contract_signature:  "requests",
   seasonal:            "requests",
   recurring_due:       "requests",
 

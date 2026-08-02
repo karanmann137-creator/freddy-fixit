@@ -69,12 +69,23 @@ function renderMd(md: string) {
   return out;
 }
 
-const card: React.CSSProperties = { margin: "1rem 0 1.25rem", padding: "1.1rem 1.2rem", borderRadius: "12px", background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)" };
+// scrollMarginTop keeps the panel clear of the fixed top nav when a dashboard
+// scrolls it into view (see CONTRACT_ANCHOR below).
+const cardBase: React.CSSProperties = { margin: "1rem 0 1.25rem", padding: "1.1rem 1.2rem", borderRadius: "12px", background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", scrollMarginTop: "5.5rem" };
 const label: React.CSSProperties = { fontSize: ".72rem", textTransform: "uppercase" as const, letterSpacing: ".1em", color: "rgba(var(--ff-muted), .5)", marginBottom: ".6rem", display: "flex", alignItems: "center", gap: 6 };
 const btn: React.CSSProperties = { padding: ".55rem 1.1rem", borderRadius: "9px", border: "none", fontFamily: "inherit", fontSize: ".85rem", fontWeight: 600, cursor: "pointer" };
 const input: React.CSSProperties = { width: "100%", padding: ".55rem .7rem", borderRadius: "8px", border: "1px solid rgba(var(--ff-fg), .18)", background: "rgba(var(--ff-fg), .03)", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".9rem", boxSizing: "border-box" };
 
-export default function ContractPanel({ job, role, onUpdated }: { job: any; role: Role; onUpdated?: () => void }) {
+// The dashboards scroll to and ring this panel when a client taps "Review &
+// sign" in Needs-your-attention, so the id has to be stable and has to exist on
+// EVERY branch below — including the loading one, since the click usually lands
+// before the agreement has finished fetching.
+export const CONTRACT_ANCHOR = "ff-contract-panel";
+
+export default function ContractPanel({ job, role, onUpdated, highlight }: { job: any; role: Role; onUpdated?: () => void; highlight?: boolean }) {
+  // Applied to whichever root div renders. .ff-pulse is defined in each
+  // dashboard's scoped .ffdash <style> block (inline styles can't do keyframes).
+  const anchor = { id: CONTRACT_ANCHOR, className: highlight ? "ff-pulse" : undefined };
   const [contract, setContract] = useState<Contract | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -192,7 +203,7 @@ export default function ContractPanel({ job, role, onUpdated }: { job: any; role
     window.open(data.signedUrl, "_blank");
   };
 
-  if (loading) return <div style={{ ...card, fontSize: ".85rem", color: "rgba(var(--ff-muted), .7)" }}>Loading the agreement…</div>;
+  if (loading) return <div {...anchor} style={{ ...cardBase, fontSize: ".85rem", color: "rgba(var(--ff-muted), .7)" }}>Loading the agreement…</div>;
 
   const status = contract?.status ?? null;
   const bodyForView = contract?.body_md || preview;
@@ -200,7 +211,7 @@ export default function ContractPanel({ job, role, onUpdated }: { job: any; role
   // ---------- SIGNED (everyone) ----------
   if (status === "signed") {
     return (
-      <div style={{ ...card, borderColor: "rgba(34,197,94,.35)", background: "rgba(34,197,94,.06)" }}>
+      <div {...anchor} style={{ ...cardBase, borderColor: "rgba(34,197,94,.35)", background: "rgba(34,197,94,.06)" }}>
         <div style={label}><Ic name="check-circle" size={14} color="#22c55e" />Service agreement — signed</div>
         <div style={{ fontSize: ".85rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .9)", marginBottom: ".7rem" }}>
           Signed by both parties{contract?.signed_at ? ` on ${fmt(contract.signed_at)}` : ""}. This agreement is now in effect.
@@ -219,7 +230,7 @@ export default function ContractPanel({ job, role, onUpdated }: { job: any; role
   if (role === "contractor") {
     if (status === "sent") {
       return (
-        <div style={{ ...card, borderColor: "rgba(59,130,246,.3)" }}>
+        <div {...anchor} style={{ ...cardBase, borderColor: "rgba(59,130,246,.3)" }}>
           <div style={label}><Ic name="clock" size={14} color="#3b82f6" />Agreement sent — waiting for your client</div>
           <div style={{ fontSize: ".85rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .9)" }}>
             You signed on {fmt(contract?.contractor_signed_at)}. Your client has been emailed to review and sign. Payment can't be collected until they do.
@@ -229,7 +240,7 @@ export default function ContractPanel({ job, role, onUpdated }: { job: any; role
     }
     // draft / none → compose
     return (
-      <div style={card}>
+      <div {...anchor} style={cardBase}>
         <div style={label}><Ic name="clipboard-list" size={14} color="#ea6b14" />Service agreement — required before payment</div>
         <div style={{ fontSize: ".82rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .85)", marginBottom: ".9rem" }}>
           This job needs a signed agreement before any money is collected. Review the agreement below, add anything you like, then sign to send it to your client for their signature.
@@ -287,7 +298,7 @@ export default function ContractPanel({ job, role, onUpdated }: { job: any; role
   if (role === "client") {
     if (status !== "sent") {
       return (
-        <div style={card}>
+        <div {...anchor} style={cardBase}>
           <div style={label}><Ic name="clipboard-list" size={14} color="#ea6b14" />Service agreement</div>
           <div style={{ fontSize: ".85rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .9)" }}>
             Your contractor is preparing the agreement for this job. You'll be asked to review and sign it here before any payment is collected — we'll email you when it's ready.
@@ -296,7 +307,7 @@ export default function ContractPanel({ job, role, onUpdated }: { job: any; role
       );
     }
     return (
-      <div style={{ ...card, borderColor: "rgba(234,107,20,.35)" }}>
+      <div {...anchor} style={{ ...cardBase, borderColor: "rgba(234,107,20,.35)" }}>
         <div style={label}><Ic name="clipboard-list" size={14} color="#ea6b14" />Review & sign your agreement</div>
         <div style={{ fontSize: ".82rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .85)", marginBottom: ".8rem" }}>
           Your contractor signed on {fmt(contract?.contractor_signed_at)}. Please read the agreement, then add your signature. This is required before any payment.
@@ -335,7 +346,7 @@ export default function ContractPanel({ job, role, onUpdated }: { job: any; role
 
   // ---------- ADMIN (read-only) ----------
   return (
-    <div style={card}>
+    <div {...anchor} style={cardBase}>
       <div style={label}><Ic name="clipboard-list" size={14} color="#ea6b14" />Service agreement — {status ?? "not started"}</div>
       {!contract && <div style={{ fontSize: ".85rem", color: "rgba(var(--ff-muted), .8)" }}>No agreement prepared yet.</div>}
       {contract && (

@@ -10,7 +10,7 @@ import ChatTimePrompt from "@/components/ChatTimePrompt";
 import { formatWhen } from "@/lib/chatParse";
 import JobTimeline from "@/components/JobTimeline";
 import MilestonePanel from "@/components/MilestonePanel";
-import ContractPanel from "@/components/ContractPanel";
+import ContractPanel, { CONTRACT_ANCHOR } from "@/components/ContractPanel";
 import JobTimer from "@/components/JobTimer";
 import JobChecklist from "@/components/JobChecklist";
 import JobPhotos from "@/components/JobPhotos";
@@ -361,6 +361,25 @@ export default function ClientDashboard() {
     const { data: c } = await supabase.from("job_contracts").select("status").eq("job_id", activeJob.id).maybeSingle();
     setContractStatus((c as any)?.status ?? null);
   };
+
+  // "Review & sign" used to only switch tabs, which on a long request page left
+  // the agreement well below the fold — people tapped it and nothing visibly
+  // happened. Jump to Requests, scroll the panel into view, and ring it for
+  // ~4.5s so it's obvious what they were sent to.
+  const [pulseContract, setPulseContract] = useState(false);
+  const pulseTimer = useRef<number | null>(null);
+  const focusContract = () => {
+    setActiveTab("requests");
+    setPulseContract(true);
+    if (pulseTimer.current) window.clearTimeout(pulseTimer.current);
+    pulseTimer.current = window.setTimeout(() => setPulseContract(false), 4500);
+    // Wait for the Requests tab to paint before measuring the target.
+    requestAnimationFrame(() => window.setTimeout(() => {
+      const el = document.getElementById(CONTRACT_ANCHOR);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 60));
+  };
+  useEffect(() => () => { if (pulseTimer.current) window.clearTimeout(pulseTimer.current); }, []);
 
   // Realtime: keep the active job's status/payment live as the contractor acts
   // (proposes a time, marks on-the-way, completes) without a manual refresh.
@@ -886,7 +905,10 @@ export default function ClientDashboard() {
 
   return (
     <div style={s.wrap} className="ffdash">
-      <style>{".ffdash button{transition:filter .12s ease, transform .08s ease, opacity .12s ease} .ffdash button:hover:not(:disabled){filter:brightness(1.09)} .ffdash button:active:not(:disabled){transform:translateY(1px)} .ffdash button:disabled{opacity:.55; cursor:not-allowed}"}</style>
+      <style>{".ffdash button{transition:filter .12s ease, transform .08s ease, opacity .12s ease} .ffdash button:hover:not(:disabled){filter:brightness(1.09)} .ffdash button:active:not(:disabled){transform:translateY(1px)} .ffdash button:disabled{opacity:.55; cursor:not-allowed}"
+        + " @keyframes ff-pulse-ring{0%{box-shadow:0 0 0 0 rgba(234,107,20,.55); background:rgba(234,107,20,.14)}70%{box-shadow:0 0 0 12px rgba(234,107,20,0); background:rgba(234,107,20,.05)}100%{box-shadow:0 0 0 0 rgba(234,107,20,0); background:rgba(234,107,20,0)}}"
+        + " .ffdash .ff-pulse{outline:2px solid rgba(234,107,20,.75); outline-offset:6px; border-radius:12px; animation:ff-pulse-ring 1.5s ease-out 3}"
+        + " @media (prefers-reduced-motion: reduce){.ffdash .ff-pulse{animation:none; background:rgba(234,107,20,.12)}}"}</style>
       {toast && (
         <div onClick={() => setToast(null)} style={{ position:"fixed", left:"50%", bottom:"1.5rem", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
       )}
@@ -949,7 +971,10 @@ export default function ClientDashboard() {
           // "Needs your attention" — surfaces the next action on the selected request.
           // `onClick` is optional — rows without one just jump to Requests, which
           // is where every other action lives.
-          const attn: { key: string; text: string; cta: string; onClick?: () => void }[] = [];
+          // ownsScroll: the row's own handler scrolls somewhere specific, so the
+          // shared button must NOT also fire its scroll-to-top (two smooth
+          // scrolls on the same box fight, and the top one usually wins).
+          const attn: { key: string; text: string; cta: string; onClick?: () => void; ownsScroll?: boolean }[] = [];
           if (chatTimeJob) attn.push({
             key: "chattime",
             text: (contractor?.first_name || "Your pro") + " suggested " + formatWhen(chatTimeJob.chat_time_at) + " in the chat.",
@@ -979,8 +1004,8 @@ export default function ClientDashboard() {
               && ["assigned", "scheduled", "in_progress", "pending_confirmation"].includes(activeJob.status)
               && activeJob.payment_status !== "held" && activeJob.payment_status !== "released") {
             attn.push(contractStatus === "sent"
-              ? { key: "contract", text: "Your pro sent the service agreement — sign it so you can pay and lock in your visit.", cta: "Review & sign" }
-              : { key: "contract", text: "Waiting on your pro to send the service agreement. You'll be able to pay and book once it's signed by both of you.", cta: "See job" });
+              ? { key: "contract", text: "Your pro sent the service agreement — sign it so you can pay and lock in your visit.", cta: "Review & sign", onClick: focusContract, ownsScroll: true }
+              : { key: "contract", text: "Waiting on your pro to send the service agreement. You'll be able to pay and book once it's signed by both of you.", cta: "See job", onClick: focusContract, ownsScroll: true });
           }
           if (attn.length === 0) return null;
           return (
@@ -991,7 +1016,7 @@ export default function ClientDashboard() {
               {attn.slice(0, 3).map((a, i) => (
                 <div key={a.key} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".75rem", padding:".6rem 0", borderTop: i === 0 ? "none" : "1px solid rgba(var(--ff-fg), .06)", marginTop: i === 0 ? ".5rem" : 0 }}>
                   <div style={{ fontSize:".85rem", color:"var(--ff-text)", lineHeight:1.45 }}>{a.text}</div>
-                  <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", whiteSpace:"nowrap" as const, flexShrink:0 }} onClick={() => { setActiveTab("requests"); window.scrollTo({ top: 0, behavior: "smooth" }); a.onClick?.(); }}>{a.cta}</button>
+                  <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", whiteSpace:"nowrap" as const, flexShrink:0 }} onClick={() => { setActiveTab("requests"); if (!a.ownsScroll) window.scrollTo({ top: 0, behavior: "smooth" }); a.onClick?.(); }}>{a.cta}</button>
                 </div>
               ))}
             </div>
@@ -1244,7 +1269,7 @@ export default function ClientDashboard() {
                     {/* Every job needs a service agreement signed by both sides before
                         any money moves, so this sits above the payment block. */}
                     {activeJob && (
-                      <ContractPanel role="client" job={activeJob} onUpdated={refreshContractGate} />
+                      <ContractPanel role="client" job={activeJob} onUpdated={refreshContractGate} highlight={pulseContract} />
                     )}
 
                     {activeJob && activeJob.is_milestone && (
