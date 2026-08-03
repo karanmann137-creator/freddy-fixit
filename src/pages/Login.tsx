@@ -80,6 +80,9 @@ export default function Login() {
     err: { background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"var(--ff-danger)", marginBottom:"1rem" },
     btn: { width:"100%", padding:".9rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"8px", fontFamily:"inherit", fontSize:".95rem", fontWeight:500, cursor:"pointer", transition:"all .2s", boxSizing:"border-box" as const },
     textBtn: { background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem", color:"#ea6b14", padding:0 },
+    // This page is outside the dashboards' scoped `.ffdash` stylesheet, so
+    // :disabled styling has to be applied inline or a busy button looks live.
+    dim: (on: boolean) => ({ opacity: on ? .6 : 1, cursor: on ? "not-allowed" : "pointer" }),
     footer: { textAlign:"center" as const, marginTop:"1.5rem", fontSize:".83rem", color:"rgba(var(--ff-muted), .45)" },
   };
 
@@ -109,7 +112,7 @@ export default function Login() {
               {needsConfirm && (
                 <div style={{ marginBottom:"1rem" }}>
                   <button type="button" onClick={resendConfirmation} disabled={loading}
-                    style={{ ...s.btn, background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.4)", color:"#ea6b14" }}>
+                    style={{ ...s.btn, background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.4)", color:"#ea6b14", ...s.dim(loading) }}>
                     {loading ? "Sending…" : "Resend confirmation email"}
                   </button>
                   {resendNote && <p style={{ fontSize:".8rem", color:"#22c55e", marginTop:".5rem", textAlign:"center" }}>{resendNote}</p>}
@@ -129,7 +132,7 @@ export default function Login() {
                     Forgot password?
                   </button>
                 </div>
-                <button style={s.btn} type="submit" disabled={loading}>
+                <button style={{ ...s.btn, ...s.dim(loading) }} type="submit" disabled={loading}>
                   {loading ? "Signing in…" : "Sign In →"}
                 </button>
               </form>
@@ -153,7 +156,7 @@ export default function Login() {
                   <label style={s.label}>Email</label>
                   <input style={inp} type="email" placeholder="your@email.com" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
                 </div>
-                <button style={s.btn} type="submit" disabled={loading}>
+                <button style={{ ...s.btn, ...s.dim(loading) }} type="submit" disabled={loading}>
                   {loading ? "Sending…" : "Send Reset Link →"}
                 </button>
               </form>

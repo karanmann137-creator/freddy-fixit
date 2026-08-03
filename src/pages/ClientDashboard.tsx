@@ -366,19 +366,28 @@ export default function ClientDashboard() {
   // the agreement well below the fold — people tapped it and nothing visibly
   // happened. Jump to Requests, scroll the panel into view, and ring it for
   // ~4.5s so it's obvious what they were sent to.
-  const [pulseContract, setPulseContract] = useState(false);
+  // Every "Needs your attention" row now uses this: jump to Requests, scroll the
+  // relevant card into view, and ring it for ~4.5s. Rows that don't scroll
+  // somewhere specific are the exception, not the rule.
+  const [pulseAnchor, setPulseAnchor] = useState<string | null>(null);
   const pulseTimer = useRef<number | null>(null);
-  const focusContract = () => {
+  const focusAnchor = (anchorId: string) => {
     setActiveTab("requests");
-    setPulseContract(true);
+    setPulseAnchor(anchorId);
     if (pulseTimer.current) window.clearTimeout(pulseTimer.current);
-    pulseTimer.current = window.setTimeout(() => setPulseContract(false), 4500);
+    pulseTimer.current = window.setTimeout(() => setPulseAnchor(null), 4500);
     // Wait for the Requests tab to paint before measuring the target.
     requestAnimationFrame(() => window.setTimeout(() => {
-      const el = document.getElementById(CONTRACT_ANCHOR);
+      const el = document.getElementById(anchorId);
       if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      else window.scrollTo({ top: 0, behavior: "smooth" });
     }, 60));
   };
+  const focusContract = () => focusAnchor(CONTRACT_ANCHOR);
+  // Spreads an id + the pulse ring onto whichever card an attention row targets.
+  // scrollMarginTop clears the fixed top nav so the card isn't tucked under it.
+  const anchor = (id: string) => ({ id, className: pulseAnchor === id ? "ff-pulse" : undefined });
+  const anchorPad = { scrollMarginTop: "5.5rem" } as const;
   useEffect(() => () => { if (pulseTimer.current) window.clearTimeout(pulseTimer.current); }, []);
 
   // Realtime: keep the active job's status/payment live as the contractor acts
@@ -439,10 +448,17 @@ export default function ClientDashboard() {
   };
   const removeRequest = async (r: any) => {
     const assigned = !!r.assigned_contractor_id;
-    const ok = window.confirm(assigned
-      ? "A contractor is attached to this request, so it will be cancelled (kept in your history). Continue?"
-      : "Delete this request permanently? This can't be undone.");
-    if (!ok) return;
+    // A job you've already paid for can't be removed here — the money is being
+    // held and needs a person to release or refund it, so say so up front
+    // rather than letting the server refuse after the fact.
+    if (!(await askConfirm({
+      title: assigned ? "Cancel this request?" : "Delete this request?",
+      message: assigned
+        ? "A contractor is attached, so the request is cancelled and kept in your history. If you've already paid, this won't work — your money is being held safely; message your pro or email hello@freddyfixit.ca and we'll sort out the refund."
+        : "This deletes the request permanently, along with any estimates on it. This can't be undone.",
+      confirmLabel: assigned ? "Yes, cancel it" : "Yes, delete it",
+      danger: true,
+    }))) return;
     setBusyReq(true);
     const { data, error } = await supabase.rpc("remove_client_request", { p_request_id: r.id });
     setBusyReq(false);
@@ -992,14 +1008,9 @@ export default function ClientDashboard() {
               onClick: () => { setActiveTab("messages"); openConversation(c); },
             });
           }
-          if (activeJob?.price_change_pending) attn.push({ key: "price", text: "Your pro proposed a new price — review and approve or decline.", cta: "Review price" });
-          if (activeJob?.status === "assigned" && activeJob?.price_hike_from != null && Number(activeJob.amount ?? 0) > Number(activeJob.price_hike_from) + 0.005) attn.push({ key: "hike", text: "Your pro raised the price after you picked them — approve it or re-open to other pros.", cta: "Review price" });
-          else if (activeJob?.status === "pending_confirmation" && !activeJob?.is_milestone) attn.push({ key: "confirm", text: "Your pro marked the job complete — confirm the work to release payment.", cta: "Confirm now" });
-          if (activeJob?.status === "assigned" && activeJob?.schedule_proposed_at && !activeJob?.client_approved_at && !(activeJob?.client_rescheduled_at && !activeJob?.reschedule_accepted_at)) attn.push({ key: "sched", text: "Your pro proposed a time and price — approve it to book the visit.", cta: "Review proposal" });
-          if (activeJob?.status === "assigned" && activeJob?.walkthrough_proposed_at && !activeJob?.walkthrough_approved_at) attn.push({ key: "walkthrough", text: "Your pro wants to do a free walkthrough before pricing — confirm the visit time.", cta: "Review time" });
-          if (!activeJob && clientBids.length > 0) attn.push({ key: "bids", text: clientBids.length + " pro" + (clientBids.length === 1 ? " has" : "s have") + " bid on your request — pick the one you like.", cta: "See bids" });
           // No signed agreement means the client physically can't pay, which means
-          // the pro is never dispatched — so this belongs near the top.
+          // the pro is never dispatched — so this is pushed BEFORE the rest, since
+          // only the first three rows are shown.
           if (activeJob && contractBlocked && !contractCheckError
               && ["assigned", "scheduled", "in_progress", "pending_confirmation"].includes(activeJob.status)
               && activeJob.payment_status !== "held" && activeJob.payment_status !== "released") {
@@ -1007,6 +1018,12 @@ export default function ClientDashboard() {
               ? { key: "contract", text: "Your pro sent the service agreement — sign it so you can pay and lock in your visit.", cta: "Review & sign", onClick: focusContract, ownsScroll: true }
               : { key: "contract", text: "Waiting on your pro to send the service agreement. You'll be able to pay and book once it's signed by both of you.", cta: "See job", onClick: focusContract, ownsScroll: true });
           }
+          if (activeJob?.price_change_pending) attn.push({ key: "price", text: "Your pro proposed a new price — review and approve or decline.", cta: "Review price", onClick: () => focusAnchor("ffc-price"), ownsScroll: true });
+          if (activeJob?.status === "assigned" && activeJob?.price_hike_from != null && Number(activeJob.amount ?? 0) > Number(activeJob.price_hike_from) + 0.005) attn.push({ key: "hike", text: "Your pro raised the price after you picked them — approve it or re-open to other pros.", cta: "Review price", onClick: () => focusAnchor("ffc-hike"), ownsScroll: true });
+          else if (activeJob?.status === "pending_confirmation" && !activeJob?.is_milestone) attn.push({ key: "confirm", text: "Your pro marked the job complete — confirm the work to release payment.", cta: "Confirm now", onClick: () => focusAnchor("ffc-confirm"), ownsScroll: true });
+          if (activeJob?.status === "assigned" && activeJob?.schedule_proposed_at && !activeJob?.client_approved_at && !(activeJob?.client_rescheduled_at && !activeJob?.reschedule_accepted_at)) attn.push({ key: "sched", text: "Your pro proposed a time and price — approve it to book the visit.", cta: "Review proposal", onClick: () => focusAnchor("ffc-sched"), ownsScroll: true });
+          if (activeJob?.status === "assigned" && activeJob?.walkthrough_proposed_at && !activeJob?.walkthrough_approved_at) attn.push({ key: "walkthrough", text: "Your pro wants to do a free walkthrough before pricing — confirm the visit time.", cta: "Review time", onClick: () => focusAnchor("ffc-walkthrough"), ownsScroll: true });
+          if (!activeJob && clientBids.length > 0) attn.push({ key: "bids", text: clientBids.length + " pro" + (clientBids.length === 1 ? " has" : "s have") + " bid on your request — pick the one you like.", cta: "See bids", onClick: () => focusAnchor("ffc-bids"), ownsScroll: true });
           if (attn.length === 0) return null;
           return (
             <div style={{ ...s.card, padding:"1.1rem 1.25rem", marginBottom:"1.25rem", border:"1px solid rgba(234,107,20,.3)" }}>
@@ -1209,7 +1226,7 @@ export default function ClientDashboard() {
                     </div>
 
                     {activeReq.status === "pending" && clientBids.length > 0 && (
-                      <div style={{ marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)" }}>
+                      <div {...anchor("ffc-bids")} style={{ ...anchorPad, marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)" }}>
                         <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".6rem" }}>Choose your contractor ({clientBids.length} bid{clientBids.length === 1 ? "" : "s"})</div>
                         {Object.keys(bidMatch).length > 0 && (
                           <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .55)", marginBottom:".6rem", display:"flex", alignItems:"center", gap:".35rem" }}>
@@ -1259,7 +1276,7 @@ export default function ClientDashboard() {
                       </div>
                     )}
 
-                    {activeJob && (activeJob.client_approved_at || activeJob.status === "scheduled" || activeJob.status === "pending_confirmation" || activeJob.status === "completed") && (
+                    {activeJob && (activeJob.client_approved_at || activeJob.status === "scheduled" || activeJob.status === "in_progress" || activeJob.status === "pending_confirmation" || activeJob.status === "completed") && (
                       <div style={{ marginTop:"1rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .07)" }}>
                         <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)", marginBottom:".75rem" }}>Job progress</div>
                         <JobTimeline job={activeJob} />
@@ -1269,7 +1286,7 @@ export default function ClientDashboard() {
                     {/* Every job needs a service agreement signed by both sides before
                         any money moves, so this sits above the payment block. */}
                     {activeJob && (
-                      <ContractPanel role="client" job={activeJob} onUpdated={refreshContractGate} highlight={pulseContract} />
+                      <ContractPanel role="client" job={activeJob} onUpdated={refreshContractGate} highlight={pulseAnchor === CONTRACT_ANCHOR} />
                     )}
 
                     {activeJob && activeJob.is_milestone && (
@@ -1286,7 +1303,7 @@ export default function ClientDashboard() {
                     {activeJob && activeJob.payment_status !== "disputed" && (
                       <div style={{ marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)" }}>
                         {activeJob.price_change_pending && (
-                          <div style={{ marginBottom:"1rem", padding:".9rem", borderRadius:"10px", background:"rgba(251,191,36,.08)", border:"1px solid rgba(251,191,36,.35)" }}>
+                          <div {...anchor("ffc-price")} style={{ ...anchorPad, marginBottom:"1rem", padding:".9rem", borderRadius:"10px", background:"rgba(251,191,36,.08)", border:"1px solid rgba(251,191,36,.35)" }}>
                             <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}><Ic name="alert-triangle" size={14} style={{ marginRight:4 }} />Your pro proposed a new price</div>
                             <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .85)", lineHeight:1.5, marginBottom:".5rem" }}>
                               {"Current: $" + Number(activeJob.amount ?? 0).toFixed(2) + "  \u2192  New: $" + Number(activeJob.price_change_pending.amount).toFixed(2)}
@@ -1308,9 +1325,9 @@ export default function ClientDashboard() {
                           </div>
                         )}
                         {activeJob.status === "assigned" && activeJob.schedule_proposed_at && !activeJob.client_approved_at && !(activeJob.client_rescheduled_at && !activeJob.reschedule_accepted_at) && (
-                          <>
+                          <div {...anchor("ffc-sched")} style={anchorPad}>
                             {activeJob.price_hike_from != null && Number(activeJob.amount ?? 0) > Number(activeJob.price_hike_from) + 0.005 && (
-                              <div style={{ marginBottom:"1rem", padding:".9rem", borderRadius:"10px", background:"rgba(239,68,68,.09)", border:"1px solid rgba(239,68,68,.4)" }}>
+                              <div {...anchor("ffc-hike")} style={{ ...anchorPad, marginBottom:"1rem", padding:".9rem", borderRadius:"10px", background:"rgba(239,68,68,.09)", border:"1px solid rgba(239,68,68,.4)" }}>
                                 <div style={{ fontSize:".9rem", fontWeight:700, color:"#ef4444", marginBottom:".4rem" }}><Ic name="alert-triangle" size={14} style={{ marginRight:5 }} />Your pro raised the price</div>
                                 <div style={{ fontSize:".85rem", color:"var(--ff-text)", lineHeight:1.5, marginBottom:".45rem" }}>
                                   You picked this contractor at <strong>{"$" + Number(activeJob.price_hike_from).toFixed(2)}</strong>. They now want <strong>{"$" + Number(activeJob.amount ?? 0).toFixed(2)}</strong> — that's <strong>{"$" + (Number(activeJob.amount ?? 0) - Number(activeJob.price_hike_from)).toFixed(2)}</strong> more.
@@ -1365,10 +1382,10 @@ export default function ClientDashboard() {
                                 </div>
                               </div>
                             )}
-                          </>
+                          </div>
                         )}
                         {activeJob.status === "assigned" && activeJob.walkthrough_proposed_at && !activeJob.walkthrough_approved_at && (
-                          <div style={{ marginBottom: activeJob.schedule_proposed_at ? "1rem" : 0 }}>
+                          <div {...anchor("ffc-walkthrough")} style={{ ...anchorPad, marginBottom: activeJob.schedule_proposed_at ? "1rem" : 0 }}>
                             <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}><Ic name="search" size={14} style={{ marginRight:5 }} />Your pro wants to do a quick walkthrough first</div>
                             <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5, marginBottom:".5rem" }}>
                               They'd like to see the space before giving you a firm price. Proposed visit: <strong style={{ color:"var(--ff-text)" }}>{activeJob.walkthrough_at ? new Date(activeJob.walkthrough_at).toLocaleString() : "—"}</strong>. The visit is free — nothing is charged. After it, they'll send your estimate to approve.
@@ -1390,12 +1407,31 @@ export default function ClientDashboard() {
                             <Ic name="check-circle" size={14} style={{ marginRight:4 }} />Walkthrough done — your pro is putting your estimate together. You'll get a notification when it lands.
                           </div>
                         )}
-                        {activeJob.status === "assigned" && !activeJob.schedule_proposed_at && !activeJob.walkthrough_proposed_at && (
+                        {/* The slot was freed because the agreement wasn't signed and paid
+                            before the visit. Nothing was cancelled — say so plainly, or a
+                            client reads "waiting for a time" as their job falling apart. */}
+                        {activeJob.status === "assigned" && activeJob.slot_released_at && !activeJob.schedule_proposed_at && (
+                          <div style={{ marginBottom:".75rem", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(251,191,36,.08)", border:"1px solid rgba(251,191,36,.35)" }}>
+                            <div style={{ fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.55 }}>
+                              <Ic name="clock" size={13} color="#f59e0b" style={{ marginRight:5 }} />
+                              <strong>Your booked time was released.</strong>{activeJob.slot_released_from ? " " + new Date(activeJob.slot_released_from).toLocaleString() + " arrived without the service agreement being signed and paid, so we freed the slot rather than have your pro hold it." : " The service agreement wasn't signed and paid in time, so we freed the slot rather than have your pro hold it."} <strong>Nothing was cancelled</strong> — you still have the same contractor and the same price. They'll propose a new time, and you can approve it as usual. You haven't been charged anything.
+                            </div>
+                          </div>
+                        )}
+                        {activeJob.status === "assigned" && !activeJob.schedule_proposed_at && !activeJob.walkthrough_proposed_at && !activeJob.slot_released_at && (
                           <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .75)" }}><Ic name="check-circle" size={14} style={{ marginRight:4 }} />Matched! Waiting for your contractor to propose a time and price.</div>
                         )}
-                        {activeJob.status === "scheduled" && !activeJob.is_milestone && (
+                        {/* in_progress is the same screen as scheduled — the client still
+                            needs the payment block, the photos and the timer. Without it
+                            the card went blank the moment the pro tapped "Start work". */}
+                        {(activeJob.status === "scheduled" || activeJob.status === "in_progress") && !activeJob.is_milestone && (
                           <>
-                            <div style={{ fontSize:".85rem", color:"var(--ff-success)", marginBottom: (activeJob.payment_status === "held" || activeJob.payment_status === "released") ? 0 : ".75rem" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Scheduled for {activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "the agreed time"}{activeJob.amount ? " · $" + activeJob.amount : ""}.</div>
+                            {activeJob.status === "in_progress" ? (
+                              <div style={{ fontSize:".85rem", color:"var(--ff-success)", marginBottom: (activeJob.payment_status === "held" || activeJob.payment_status === "released") ? 0 : ".75rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Your pro has started the work{activeJob.amount ? " · $" + activeJob.amount : ""}. You'll be asked to confirm once they're finished.</div>
+                            ) : (
+                              <div style={{ fontSize:".85rem", color:"var(--ff-success)", marginBottom: (activeJob.payment_status === "held" || activeJob.payment_status === "released") ? 0 : ".75rem" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Scheduled for {activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "the agreed time"}{activeJob.amount ? " · $" + activeJob.amount : ""}.</div>
+                            )}
+                            {activeJob.status === "scheduled" && (
                             <div style={{ margin:".25rem 0 .9rem", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .1)" }}>
                               {activeJob.client_confirmed_visit_at ? (
                                 <div style={{ fontSize:".82rem", color:"var(--ff-success)", lineHeight:1.5 }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />You confirmed this visit. Need to change it? <button onClick={() => setShowChangeTime(v => !v)} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer", padding:0, textDecoration:"underline" }}>Change the time</button></div>
@@ -1416,6 +1452,7 @@ export default function ClientDashboard() {
                                 </div>
                               )}
                             </div>
+                            )}
                             {Array.isArray(activeJob.quote_items) && activeJob.quote_items.some((i: any) => i.accepted) && (
                               <div style={{ margin:".25rem 0 .9rem", padding:".6rem .8rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .1)", fontSize:".8rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.5 }}>
                                 <Ic name="sparkles" size={12} color="#ea6b14" style={{ marginRight:4 }} />Add-ons included: {activeJob.quote_items.filter((i: any) => i.accepted).map((i: any) => i.label + " (+$" + Number(i.amount).toFixed(2) + ")").join(", ")}
@@ -1451,7 +1488,7 @@ export default function ClientDashboard() {
                           </>
                         )}
                         {activeJob.status === "pending_confirmation" && !activeJob.is_milestone && (
-                          <>
+                          <div {...anchor("ffc-confirm")} style={anchorPad}>
                             <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}>Your contractor marked this complete</div>
                             <div style={{ display:"grid", gap:".6rem", margin:".25rem 0 .75rem" }}>
                               <JobPhotos job={activeJob} role="client" />
@@ -1483,7 +1520,7 @@ export default function ClientDashboard() {
                                 <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq || !!activeJob.price_change_pending} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm completion"}</button>
                               </>
                             )}
-                          </>
+                          </div>
                         )}
                         {activeJob.status === "completed" && (
                           hasReviewed ? (

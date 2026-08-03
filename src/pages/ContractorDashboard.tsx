@@ -611,7 +611,7 @@ export default function ContractorDashboard() {
   const withdrawJob = async (job: any) => {
     if (!(await askConfirm({
       title: "Withdraw from this job?",
-      message: "The job goes back to the open pool and your chat history with this client is permanently removed.",
+      message: "The job goes back to the open pool. Everything attached to it is permanently removed — your chat history, the service agreement, any photos, logged costs and tracked time. If the client has already paid, you can't withdraw: message them to sort it out, or email hello@freddyfixit.ca.",
       confirmLabel: "Yes, withdraw",
       danger: true,
     }))) return;
@@ -1180,6 +1180,8 @@ export default function ContractorDashboard() {
               attn.push({ key: "wt-" + job.id, text: "Walkthrough confirmed for “" + svc + "”" + (job.walkthrough_at ? " — " + new Date(job.walkthrough_at).toLocaleString() : "") + ". After the visit, mark it done and send your estimate.", cta: "View job", onClick: () => goJob(job) });
             } else if (job.status === "assigned" && job.walkthrough_done_at && !job.schedule_proposed_at) {
               attn.push({ key: "wtdone-" + job.id, text: "You finished the walkthrough on “" + svc + "” — the client is waiting for your estimate.", cta: "Send estimate", onClick: () => goJob(job) });
+            } else if (job.status === "assigned" && job.slot_released_at && !job.schedule_proposed_at) {
+              attn.push({ key: "slot-" + job.id, text: "The booked time on “" + svc + "” was released — it wasn't signed and paid in time. You still have the job; propose a new time.", cta: "Propose new time", onClick: () => goJob(job) });
             } else if (job.status === "assigned" && !job.schedule_proposed_at && !job.walkthrough_proposed_at) {
               attn.push({ key: "propose-" + job.id, text: "“" + svc + "” is waiting for your time and price.", cta: "Propose now", onClick: () => goJob(job) });
             } else if (job.status === "scheduled" && job.scheduled_at) {
@@ -1403,6 +1405,17 @@ export default function ContractorDashboard() {
                       )}
                       {job.status === "assigned" && (
                         <>
+                          {/* The booked time was released because the agreement wasn't
+                              signed and paid in time. The job, the estimate and you are
+                              all still on it — only the time slot went back. */}
+                          {job.slot_released_at && !job.schedule_proposed_at && (
+                            <div style={{ padding:".7rem .8rem", borderRadius:"10px", background:"rgba(251,191,36,.08)", border:"1px solid rgba(251,191,36,.35)" }}>
+                              <div style={{ fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.55 }}>
+                                <Ic name="clock" size={13} color="#f59e0b" style={{ marginRight:5 }} />
+                                <strong>The booked time was released.</strong>{job.slot_released_from ? " " + new Date(job.slot_released_from).toLocaleString() + " came round without the agreement being signed and paid, so we freed the slot rather than hold it." : " The agreement wasn't signed and paid in time, so we freed the slot rather than hold it."} You still have this job — propose a new time below and your client can approve it as usual.
+                              </div>
+                            </div>
+                          )}
                           {/* Walkthrough-first: a free site visit before the priced estimate. */}
                           {job.walkthrough_done_at ? (
                             <div style={{ fontSize:".82rem", color:"var(--ff-success)" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Walkthrough done — send your estimate below while it's fresh.</div>
@@ -1524,7 +1537,9 @@ export default function ContractorDashboard() {
                           </div>
                           <JobPhotos job={job} role="contractor" onError={m => notify(m)} onSaved={(kind, path) => patchJobPhoto(job.id, kind, path)} />
                           <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
-                            {!job.is_milestone && <button style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none", fontWeight:600, opacity: photosMissing(job).length ? .55 : 1 }} disabled={busyJobId === job.id} onClick={() => markComplete(job)}>{busyJobId === job.id ?"Working…" : "✓ Mark complete"}</button>}
+                            {/* Dimmed AND actually disabled while photos are outstanding —
+                                the reason is spelled out directly underneath. */}
+                            {!job.is_milestone && <button title={photosMissing(job).length ? "Add " + photosMissing(job).join(" and ") + " first." : undefined} style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none", fontWeight:600, opacity: photosMissing(job).length ? .55 : 1, cursor: photosMissing(job).length ? "not-allowed" : "pointer" }} disabled={busyJobId === job.id || photosMissing(job).length > 0} onClick={() => markComplete(job)}>{busyJobId === job.id ?"Working…" : "✓ Mark complete"}</button>}
                             <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJobId === job.id} onClick={() => withdrawJob(job)}>Withdraw</button>
                           </div>
                           {!job.is_milestone && photosMissing(job).length > 0 && (

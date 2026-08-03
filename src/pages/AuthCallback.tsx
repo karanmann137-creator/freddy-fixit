@@ -121,11 +121,12 @@ export default function AuthCallback() {
           <>
             <div style={s.h}>Welcome! One quick thing…</div>
             <p style={s.sub}>How will you be using Freddy Fix It?</p>
-            <button style={s.opt} disabled={saving} onClick={() => choose("client")}>
+            {/* No scoped stylesheet on this page, so the busy state is inline. */}
+            <button style={{ ...s.opt, opacity: saving ? .6 : 1, cursor: saving ? "not-allowed" : "pointer" }} disabled={saving} onClick={() => choose("client")}>
               <div style={s.optTitle}>🏠 I'm a homeowner</div>
               <div style={s.optSub}>I want to hire contractors for jobs around my home.</div>
             </button>
-            <button style={s.opt} disabled={saving} onClick={() => choose("contractor")}>
+            <button style={{ ...s.opt, opacity: saving ? .6 : 1, cursor: saving ? "not-allowed" : "pointer" }} disabled={saving} onClick={() => choose("contractor")}>
               <div style={s.optTitle}>🔧 I'm a contractor</div>
               <div style={s.optSub}>I want to receive job leads and grow my business.</div>
             </button>

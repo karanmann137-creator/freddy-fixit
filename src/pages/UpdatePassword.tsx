@@ -68,7 +68,8 @@ export default function UpdatePassword() {
               {error && <div style={s.err}>{error}</div>}
               <input type="password" placeholder="New password" value={pw} onChange={e => setPw(e.target.value)} style={{ ...inp, marginBottom: ".75rem" }} />
               <input type="password" placeholder="Confirm new password" value={pw2} onChange={e => setPw2(e.target.value)} onKeyDown={e => { if (e.key === "Enter") submit(); }} style={{ ...inp, marginBottom: "1.25rem" }} />
-              <button style={s.btn} onClick={submit} disabled={saving}>{saving ? "Updating..." : "Update password"}</button>
+              {/* No scoped stylesheet on this page, so the busy state is inline. */}
+              <button style={{ ...s.btn, opacity: saving ? .6 : 1, cursor: saving ? "not-allowed" : "pointer" }} onClick={submit} disabled={saving}>{saving ? "Updating..." : "Update password"}</button>
             </div>
           )}
 

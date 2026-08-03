@@ -64,6 +64,12 @@ const CONTRACTOR_TAB: Record<string, string> = {
   milestone_disputed:    "jobs",
   milestone_schedule_approved: "jobs",
   contract_signature:    "jobs",
+  visit_reminder:        "jobs",
+  chat_time_proposed:    "jobs",
+  chat_time_agreed:      "jobs",
+  // The booked time was released because the job wasn't signed and paid in
+  // time — the job is back to "needs a time", which lives on the jobs tab.
+  visit_slot_released:   "jobs",
 
   // Money and reputation.
   job_confirmed:   "earnings",
@@ -94,6 +100,10 @@ const CLIENT_TAB: Record<string, string> = {
   dispute_opened:      "requests",
   // The agreement lives on the job card, and the card lives under Requests.
   contract_signature:  "requests",
+  visit_reminder:      "requests",
+  chat_time_proposed:  "requests",
+  chat_time_agreed:    "requests",
+  visit_slot_released: "requests",
   seasonal:            "requests",
   recurring_due:       "requests",
 

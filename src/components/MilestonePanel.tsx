@@ -9,11 +9,16 @@
 //              (approve_milestone → release-payment), or disputes a stage.
 //  admin:      read-only oversight + manual release of an approved stage.
 //
-// Economics per stage mirror the whole-job flow: client pays amount + 3% service
-// fee; on release 93% → contractor, 7% platform.
+// Economics per stage mirror the whole-job flow: the client pays the stage
+// amount plus the platform service fee, and on release the contractor is paid
+// the stage amount less commission. The rates are NOT hardcoded here — the fee
+// shown to the client comes from platform_fee_rate() and the payout comes from
+// the milestone row itself, so this panel can never contradict what Stripe does.
 import { useEffect, useState, useCallback } from "react";
 import { Ic } from "@/components/Ic";
 import { supabase } from "@/lib/supabase";
+import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
+import { beforeRequired } from "@/components/JobPhotos";
 
 type Role = "contractor" | "client" | "admin";
 type Milestone = {
@@ -56,12 +61,22 @@ function suggestStages(total: number) {
 export default function MilestonePanel({ job, role, onUpdated, contractBlocked = false }: { job: any; role: Role; onUpdated?: () => void; contractBlocked?: boolean }) {
   const total = Number(job?.amount ?? 0);
   const [milestones, setMilestones] = useState<Milestone[] | null>(null);
-  const [busy, setBusy] = useState(false);
+  // Which action is in flight. Everything is disabled while one runs (two
+  // concurrent money operations on the same plan is never what anyone wants),
+  // but only the stage being acted on shows the busy label.
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const busy = busyKey !== null;
+  const [loadFailed, setLoadFailed] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [stages, setStages] = useState<{ title: string; amount: string }[]>([]);
   const [showBuilder, setShowBuilder] = useState(false);
   const [photoFor, setPhotoFor] = useState<Record<string, File | null>>({});
+  const [disputeFor, setDisputeFor] = useState<string | null>(null);
+  const [disputeText, setDisputeText] = useState("");
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
+  const askConfirm = (o: Omit<ConfirmState, "resolve">) =>
+    new Promise<boolean>(r => setConfirmState({ ...o, resolve: r }));
 
   const [schedStatus, setSchedStatus] = useState<string | null>(job?.milestone_schedule_status ?? null);
 
@@ -75,9 +90,13 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
     });
   }, []);
 
+  // A failed read used to fall through to an empty list, which reads as "there
+  // is no plan yet" — so a client whose contractor HAD sent a plan was told to
+  // sit and wait for one. Track the failure separately and say so.
   const load = useCallback(async () => {
     const { data, error } = await supabase.rpc("get_job_milestones", { p_job_id: job.id });
-    if (error) { setErr(error.message); setMilestones([]); return; }
+    if (error) { setErr(error.message); setLoadFailed(true); setMilestones([]); return; }
+    setLoadFailed(false);
     setMilestones((data ?? []) as Milestone[]);
   }, [job.id]);
 
@@ -95,7 +114,31 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
   }, [milestones, role, schedStatus, total]);
 
   if (total <= 2000 && !job?.is_milestone) return null;
-  if (milestones === null) return null;
+
+  // Styles used by the early returns below as well as the main render.
+  const wrap: React.CSSProperties = { margin: "1rem 0 1.25rem", padding: "1rem 1.1rem", borderRadius: "12px", background: "rgba(234,107,20,.05)", border: "1px solid rgba(234,107,20,.25)" };
+  const head: React.CSSProperties = { fontSize: ".72rem", textTransform: "uppercase", letterSpacing: ".1em", color: "#ea6b14", marginBottom: ".75rem", fontWeight: 700, display: "flex", alignItems: "center", gap: 6 };
+
+  // This panel gates real money, so a silent nothing is the worst outcome —
+  // say we're loading, and say plainly when the read failed.
+  if (milestones === null) {
+    return (
+      <div style={wrap}>
+        <div style={head}><Ic name="clipboard-list" size={13} />Milestone payments</div>
+        <div style={{ fontSize: ".82rem", color: "rgba(var(--ff-muted), .7)" }}>Loading the payment plan…</div>
+      </div>
+    );
+  }
+  if (loadFailed) {
+    return (
+      <div style={wrap}>
+        <div style={head}><Ic name="alert-triangle" size={13} />Milestone payments</div>
+        <div style={{ fontSize: ".82rem", color: "rgba(var(--ff-muted), .8)", lineHeight: 1.5 }}>
+          We couldn't load the payment plan for this job just now. Nothing has changed and no payment has been affected — please refresh the page. If it keeps happening, email hello@freddyfixit.ca.
+        </div>
+      </div>
+    );
+  }
 
   const stageSum = stages.reduce((a, s) => a + (Number(s.amount) || 0), 0);
   const sumOk = Math.round(stageSum * 100) === Math.round(total * 100);
@@ -106,10 +149,26 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
   // a refunded earlier stage must not block funding the next one.
   const earlierAllReleased = (seq: number) => milestones.filter(m => m.seq < seq).every(m => m.status === "released" || m.status === "refunded");
 
-  async function run(fn: () => Promise<void>) {
-    setBusy(true); setErr(null); setMsg(null);
+  async function run(key: string, fn: () => Promise<void>) {
+    if (busyKey) return;
+    setBusyKey(key); setErr(null); setMsg(null);
     try { await fn(); } catch (e: any) { setErr(e?.message || String(e)); }
-    finally { setBusy(false); }
+    finally { setBusyKey(null); }
+  }
+
+  // supabase.functions.invoke throws away the response body, so a 428 ("sign the
+  // service agreement first") or a 409 arrives as a bare "non-2xx status code".
+  // The real reason is on error.context — dig it out or the client is stuck with
+  // an error they can't act on.
+  async function invokeFn(name: string, body: any, fallback: string) {
+    const { data, error } = await supabase.functions.invoke(name, { body });
+    if (error) {
+      let m = fallback;
+      try { const j = await (error as any).context?.json?.(); if (j?.error) m = j.error; } catch { /* keep the fallback */ }
+      throw new Error(m);
+    }
+    if (data?.error) throw new Error(data.error);
+    return data;
   }
 
   const setStage = (i: number, patch: Partial<{ title: string; amount: string }>) =>
@@ -117,7 +176,7 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
   const addStage = () => setStages(prev => prev.length >= 5 ? prev : [...prev, { title: "Stage " + (prev.length + 1), amount: "0" }]);
   const removeStage = (i: number) => setStages(prev => prev.length <= 2 ? prev : prev.filter((_, j) => j !== i));
 
-  const propose = () => run(async () => {
+  const propose = () => run("plan", async () => {
     if (!sumOk) throw new Error("Stage amounts must add up to the estimate " + money(total));
     const payload = stages.map(s => ({ title: s.title.trim() || "Stage", amount: Number(s.amount) }));
     const { error } = await supabase.rpc("propose_milestones", { p_job_id: job.id, p_stages: payload });
@@ -126,7 +185,7 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
     await load(); onUpdated?.();
   });
 
-  const approveSchedule = () => run(async () => {
+  const approveSchedule = () => run("plan", async () => {
     const { error } = await supabase.rpc("approve_milestone_schedule", { p_job_id: job.id });
     if (error) throw error;
     // Email the client a written contract copy (Alberta: starts the 10-day cancellation clock).
@@ -135,20 +194,24 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
     await load(); onUpdated?.();
   });
 
-  const fund = (m: Milestone) => run(async () => {
-    const { data, error } = await supabase.functions.invoke("create-milestone-payment", { body: { milestone_id: m.id } });
-    if (error) throw error;
+  const fund = (m: Milestone) => run(m.id, async () => {
+    const data = await invokeFn("create-milestone-payment", { milestone_id: m.id }, "Could not start checkout. Please refresh and try again.");
     if (data?.url) { window.location.href = data.url; return; }
-    throw new Error(data?.error || "Could not start checkout");
+    throw new Error("Could not start checkout");
   });
 
-  const complete = (m: Milestone) => run(async () => {
+  const complete = (m: Milestone) => run(m.id, async () => {
     let path: string | null = null;
     const file = photoFor[m.id];
-    // Mirrors the complete_milestone guard, so the pro gets the nudge before the
-    // round-trip rather than a rejected RPC.
+    // Mirrors the complete_milestone guards, so the pro gets the nudge before the
+    // round-trip rather than a rejected RPC. The job-level "before" photo is
+    // checked too — the RPC requires it, but only for jobs created after the
+    // photo rules started (beforeRequired handles that grandfathering).
     if (!file && !m.completion_photo_path) {
       throw new Error("Add a photo of this stage's finished work first — the client can't release payment without it.");
+    }
+    if (!job?.before_photo_path && beforeRequired(job)) {
+      throw new Error("Add the job's \"before\" photo first — it's in the Before & after photos box on this job.");
     }
     if (file) {
       const p = job.id + "/milestone-" + m.id + "-" + Date.now() + "." + (file.name.split(".").pop() || "jpg");
@@ -158,50 +221,71 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
     }
     const { error } = await supabase.rpc("complete_milestone", { p_milestone: m.id, p_photo: path });
     if (error) throw error;
+    setPhotoFor(p => { const n = { ...p }; delete n[m.id]; return n; });
     setMsg("Stage marked complete — the client will review and release payment.");
     await load(); onUpdated?.();
   });
 
-  const approveRelease = (m: Milestone) => run(async () => {
+  const approveRelease = (m: Milestone) => run(m.id, async () => {
     const { error: aErr } = await supabase.rpc("approve_milestone", { p_milestone: m.id });
     if (aErr) throw aErr;
-    const { data, error } = await supabase.functions.invoke("release-payment", { body: { milestone_id: m.id } });
-    if (error) throw error;
-    if (data?.error) throw new Error(data.error);
+    await invokeFn("release-payment", { milestone_id: m.id }, "We approved the stage but couldn't release the payment just now. Refresh the page — if it still hasn't gone through, email hello@freddyfixit.ca.");
     setMsg("Approved — payment released for this stage.");
     await load(); onUpdated?.();
   });
 
-  const adminRelease = (m: Milestone) => run(async () => {
-    const { data, error } = await supabase.functions.invoke("release-payment", { body: { milestone_id: m.id } });
-    if (error) throw error;
-    if (data?.error) throw new Error(data.error);
+  const adminRelease = (m: Milestone) => run(m.id, async () => {
+    await invokeFn("release-payment", { milestone_id: m.id }, "Could not release this stage.");
     setMsg("Stage released.");
     await load(); onUpdated?.();
   });
 
-  const adminRefund = (m: Milestone) => run(async () => {
-    if (!window.confirm("Refund this stage's held funds to the client? Use this for a valid cancellation of a stage that hasn't been paid out yet.")) return;
-    const { data, error } = await supabase.functions.invoke("refund-milestone", { body: { milestone_id: m.id } });
-    if (error) throw error;
-    if (data?.error) throw new Error(data.error);
-    setMsg("Stage refunded to the client.");
-    await load(); onUpdated?.();
-  });
+  const adminRefund = async (m: Milestone) => {
+    const ok = await askConfirm({
+      title: "Refund this stage?",
+      message: "This sends " + money(m.amount) + " for \"" + m.title + "\" back to the client. Use it only for a valid cancellation of a stage that hasn't been paid out yet — the contractor will not be paid for it.",
+      confirmLabel: "Yes, refund the stage",
+    });
+    if (!ok) return;
+    return run(m.id, async () => {
+      await invokeFn("refund-milestone", { milestone_id: m.id }, "Could not refund this stage.");
+      setMsg("Stage refunded to the client.");
+      await load(); onUpdated?.();
+    });
+  };
 
-  const dispute = (m: Milestone) => run(async () => {
-    const reason = window.prompt("What's wrong with this stage? We'll freeze its payment and review.");
-    if (reason == null) return;
-    if (!reason.trim()) throw new Error("Please tell us what went wrong so we can review it.");
-    const { error } = await supabase.rpc("dispute_milestone", { p_milestone: m.id, p_reason: reason });
+  // Same rules as JobPhotos: iPhone HEIC often arrives with an empty f.type, so
+  // fall back to the extension, and check the bucket's 10MB cap here rather than
+  // letting the upload fail after the pro has already tapped "complete".
+  const pickStagePhoto = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return; // cancelled the picker — keep whatever was chosen
+    const ext = (f.name.split(".").pop() || "").toLowerCase();
+    const okType = f.type ? f.type.startsWith("image/") : ["jpg", "jpeg", "png", "webp", "heic", "heif"].includes(ext);
+    if (!okType) {
+      e.target.value = "";
+      setErr("That file isn't a photo. Use a JPG, PNG, WEBP or a photo straight from your phone.");
+      return;
+    }
+    if (f.size > 10 * 1024 * 1024) {
+      e.target.value = "";
+      setErr("That photo is over 10MB. Take it at a lower resolution or pick another one.");
+      return;
+    }
+    setErr(null);
+    setPhotoFor(p => ({ ...p, [id]: f }));
+  };
+
+  const submitDispute = (m: Milestone) => run(m.id, async () => {
+    if (!disputeText.trim()) throw new Error("Please tell us what went wrong so we can review it.");
+    const { error } = await supabase.rpc("dispute_milestone", { p_milestone: m.id, p_reason: disputeText.trim() });
     if (error) throw error;
+    setDisputeFor(null); setDisputeText("");
     setMsg("Stage disputed — its payment is frozen while we review.");
     await load(); onUpdated?.();
   });
 
-  const wrap: React.CSSProperties = { margin: "1rem 0 1.25rem", padding: "1rem 1.1rem", borderRadius: "12px", background: "rgba(234,107,20,.05)", border: "1px solid rgba(234,107,20,.25)" };
-  const head: React.CSSProperties = { fontSize: ".72rem", textTransform: "uppercase", letterSpacing: ".1em", color: "#ea6b14", marginBottom: ".75rem", fontWeight: 700, display: "flex", alignItems: "center", gap: 6 };
-  const inp: React.CSSProperties = { padding: ".45rem .6rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .14)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".85rem", boxSizing: "border-box" };
+  const inp: React.CSSProperties ={ padding: ".45rem .6rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .14)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".85rem", boxSizing: "border-box" };
   const btn: React.CSSProperties = { padding: ".5rem .85rem", borderRadius: "8px", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600, cursor: "pointer", border: "1px solid rgba(var(--ff-fg), .18)", background: "rgba(var(--ff-fg), .05)", color: "var(--ff-text)" };
   const btnPrimary: React.CSSProperties = { ...btn, background: "#ea6b14", color: "#fff", border: "none" };
   const btnGreen: React.CSSProperties = { ...btn, background: "#22c55e", color: "#06210f", border: "none" };
@@ -228,8 +312,8 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
             <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
               {stages.map((st, i) => (
                 <div key={i} style={{ display: "flex", gap: ".5rem", alignItems: "center" }}>
-                  <input value={st.title} onChange={e => setStage(i, { title: e.target.value })} placeholder={"Stage " + (i + 1)} style={{ ...inp, flex: 2 }} />
-                  <input type="number" min="0" value={st.amount} onChange={e => setStage(i, { amount: e.target.value })} placeholder="$" style={{ ...inp, flex: 1 }} />
+                  <input value={st.title} onChange={e => setStage(i, { title: e.target.value })} placeholder={"Stage " + (i + 1)} style={{ ...inp, flex: "2 1 0", minWidth: 0 }} />
+                  <input type="number" min="0" value={st.amount} onChange={e => setStage(i, { amount: e.target.value })} placeholder="$" style={{ ...inp, flex: "1 1 0", minWidth: 0 }} />
                   {stages.length > 2 && (
                     <button onClick={() => removeStage(i)} title="Remove" style={{ ...btn, padding: ".4rem .55rem", color: "#ef4444", borderColor: "rgba(239,68,68,.3)" }}>×</button>
                   )}
@@ -316,16 +400,39 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
                       {contractBlocked && (
                         <div style={{ display: "flex", alignItems: "center", gap: ".35rem", fontSize: ".76rem", color: "#f59e0b", marginBottom: ".4rem" }}><Ic name="alert-triangle" size={14} />Please sign the service agreement above before funding this stage.</div>
                       )}
-                      <button style={{ ...btnPrimary, opacity: (busy || contractBlocked) ? .6 : 1 }} disabled={busy || contractBlocked} onClick={() => fund(m)}>{busy ? "Opening checkout…" : "Fund this stage"}</button>
+                      <button style={{ ...btnPrimary, opacity: (busy || contractBlocked) ? .6 : 1 }} disabled={busy || contractBlocked} onClick={() => fund(m)}>{busyKey === m.id ? "Opening checkout…" : "Fund this stage"}</button>
                     </div>
                   )}
                   {m.status === "pending" && !isNextToFund && (
                     <div style={{ fontSize: ".76rem", color: "rgba(var(--ff-muted), .55)", marginTop: ".3rem" }}>Unlocks once the previous stage is released.</div>
                   )}
                   {m.status === "completed" && (
-                    <div style={{ marginTop: ".5rem", display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
-                      <button style={{ ...btnGreen, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => approveRelease(m)}>{busy ? "…" : "Approve & release " + money(m.contractor_payout)}</button>
-                      <button style={{ ...btn, color: "#ef4444", borderColor: "rgba(239,68,68,.3)" }} disabled={busy} onClick={() => dispute(m)}>Something's wrong</button>
+                    <div style={{ marginTop: ".5rem" }}>
+                      <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+                        <button style={{ ...btnGreen, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => approveRelease(m)}>{busyKey === m.id ? "…" : "Approve & release " + money(m.contractor_payout)}</button>
+                        <button style={{ ...btn, color: "#ef4444", borderColor: "rgba(239,68,68,.3)" }} disabled={busy} onClick={() => { setDisputeFor(disputeFor === m.id ? null : m.id); setDisputeText(""); setErr(null); }}>Something's wrong</button>
+                      </div>
+                      {/* An inline form rather than window.prompt: a prompt can't be
+                          styled, can't explain what happens next, and on mobile it
+                          reads like a browser error. */}
+                      {disputeFor === m.id && (
+                        <div style={{ marginTop: ".6rem", padding: ".7rem .8rem", borderRadius: "10px", background: "rgba(239,68,68,.06)", border: "1px solid rgba(239,68,68,.25)" }}>
+                          <div style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .8)", lineHeight: 1.5, marginBottom: ".5rem" }}>
+                            Tell us what's wrong with this stage. Its payment stays frozen — nothing is released to your contractor — while our team reviews it.
+                          </div>
+                          <textarea
+                            value={disputeText}
+                            onChange={e => setDisputeText(e.target.value)}
+                            rows={3}
+                            placeholder="What's wrong with the work in this stage?"
+                            style={{ ...inp, width: "100%", boxSizing: "border-box", resize: "vertical", marginBottom: ".5rem" }}
+                          />
+                          <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+                            <button style={{ ...btn, color: "#ef4444", borderColor: "rgba(239,68,68,.35)", opacity: (busy || !disputeText.trim()) ? .6 : 1 }} disabled={busy || !disputeText.trim()} onClick={() => submitDispute(m)}>{busyKey === m.id ? "Sending…" : "Report this stage"}</button>
+                            <button style={btn} disabled={busy} onClick={() => { setDisputeFor(null); setDisputeText(""); }}>Cancel</button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                   {m.status === "funded" && (
@@ -341,11 +448,12 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
                       <div style={{ fontSize: ".76rem", fontWeight: 700, color: "#ea6b14" }}>
                         Photo of this stage's finished work — required
                       </div>
-                      <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; setPhotoFor(p => ({ ...p, [m.id]: f })); }} style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .7)" }} />
+                      <input type="file" accept="image/*" onChange={e => pickStagePhoto(m.id, e)} style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .7)" }} />
+                      {photoFor[m.id] && <div style={{ fontSize: ".72rem", color: "#22c55e", fontWeight: 600 }}><Ic name="check-circle" size={12} style={{ marginRight: 4 }} />{photoFor[m.id]!.name}</div>}
                       <div style={{ fontSize: ".72rem", color: "rgba(var(--ff-muted), .6)", lineHeight: 1.4 }}>
                         The client can't release payment for this stage without it. Your job-level "before" photo is also needed.
                       </div>
-                      <button style={{ ...btnGreen, alignSelf: "flex-start", opacity: busy || !(photoFor[m.id] || m.completion_photo_path) ? .6 : 1 }} disabled={busy} onClick={() => complete(m)}>{busy ? "…" : "✓ Mark stage complete"}</button>
+                      <button style={{ ...btnGreen, alignSelf: "flex-start", opacity: busy || !(photoFor[m.id] || m.completion_photo_path) ? .6 : 1 }} disabled={busy || !(photoFor[m.id] || m.completion_photo_path)} onClick={() => complete(m)}>{busyKey === m.id ? "…" : "✓ Mark stage complete"}</button>
                     </div>
                   )}
                   {m.status === "pending" && <div style={{ fontSize: ".76rem", color: "rgba(var(--ff-muted), .55)", marginTop: ".3rem" }}>Waiting for the client to fund this stage.</div>}
@@ -359,12 +467,12 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
                   Payout {money(m.contractor_payout)} · fee {money(m.platform_fee)} · client fee {money(m.client_fee)}
                   {m.status === "completed" && (
                     <div style={{ marginTop: ".4rem" }}>
-                      <button style={{ ...btn, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => adminRelease(m)}>Manual release</button>
+                      <button style={{ ...btn, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => adminRelease(m)}>{busyKey === m.id ? "Releasing…" : "Manual release"}</button>
                     </div>
                   )}
                   {(m.status === "funded" || m.status === "completed" || m.status === "disputed") && (
                     <div style={{ marginTop: ".4rem" }}>
-                      <button style={{ ...btn, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => adminRefund(m)}>Refund stage to client</button>
+                      <button style={{ ...btn, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => adminRefund(m)}>{busyKey === m.id ? "Refunding…" : "Refund stage to client"}</button>
                     </div>
                   )}
                 </div>
@@ -373,6 +481,9 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
           );
         })}
       </div>
+      {/* askConfirm returns a promise that only settles when this dialog closes —
+          without it mounted, "Refund stage" would hang silently. */}
+      <ConfirmDialog state={confirmState} onClose={ok => { confirmState?.resolve(ok); setConfirmState(null); }} />
     </div>
   );
 }

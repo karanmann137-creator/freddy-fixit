@@ -19,13 +19,25 @@ export default function JobTimer({ job, role, hourlyRate, onBill, onError }: {
 }) {
   const [logs, setLogs] = useState<any[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [, setTick] = useState(0); // re-render each second while running
 
+  // A failed read used to fall through to an empty list, so a contractor with a
+  // timer already running was shown "0m" and a Start button. Track the failure
+  // instead and say so — start_job_timer would reject the duplicate anyway, but
+  // the number on screen has to be honest.
   useEffect(() => {
     let alive = true;
-    supabase.from("job_time_logs").select("*").eq("job_id", job.id).order("started_at", { ascending: true })
-      .then(({ data }) => { if (alive) { setLogs(data ?? []); setLoaded(true); } });
+    (async () => {
+      try {
+        const { data, error } = await supabase.from("job_time_logs").select("*").eq("job_id", job.id).order("started_at", { ascending: true });
+        if (!alive) return;
+        if (error) { setLoadFailed(true); return; }
+        setLogs(data ?? []);
+      } catch { if (alive) setLoadFailed(true); }
+      finally { if (alive) setLoaded(true); }
+    })();
     return () => { alive = false; };
   }, [job.id]);
 
@@ -90,10 +102,11 @@ export default function JobTimer({ job, role, hourlyRate, onBill, onError }: {
           <Ic name="timer" size={14} color="#ea6b14" />Time on site
         </div>
         <div style={{ fontSize: ".95rem", fontWeight: 700, color: running ? "#ea6b14" : "var(--ff-text)" }}>
-          {totalMs > 0 || running ? fmt(totalMs) : "0m"}
+          {loadFailed ? <span style={{ fontSize: ".78rem", fontWeight: 600, color: "rgba(var(--ff-muted), .7)" }}>Couldn't load your tracked time</span>
+            : totalMs > 0 || running ? fmt(totalMs) : "0m"}
           {running && <span style={{ fontSize: ".7rem", fontWeight: 600, marginLeft: ".45rem", color: "#ea6b14" }}>● tracking…</span>}
         </div>
-        {role === "contractor" && (
+        {role === "contractor" && !loadFailed && (
           <div style={{ marginLeft: "auto", display: "flex", gap: ".5rem", flexWrap: "wrap" as const }}>
             {running ? (
               <button disabled={busy} onClick={stop} style={btn("rgba(239,68,68,.12)", "#ef4444", "1px solid rgba(239,68,68,.35)")}>{busy ? "…" : "■ Stop timer"}</button>
@@ -104,14 +117,22 @@ export default function JobTimer({ job, role, hourlyRate, onBill, onError }: {
         )}
       </div>
 
-      {role === "contractor" && (
+      {role === "contractor" && loadFailed && (
+        <div style={{ marginTop: ".55rem", fontSize: ".76rem", color: "rgba(var(--ff-muted), .6)", lineHeight: 1.5 }}>
+          We couldn't read your tracked time just now, so we're not showing a number rather than showing the wrong one. Refresh the page to try again.
+        </div>
+      )}
+      {role === "contractor" && !loadFailed && (
         <div style={{ marginTop: ".55rem", fontSize: ".76rem", color: "rgba(var(--ff-muted), .55)", lineHeight: 1.5 }}>
           {hourlyRate != null
             ? <>At your rate of {"$" + hourlyRate + "/h"}, {hoursText()} tracked ≈ <b style={{ color: "var(--ff-text)" }}>{"$" + (Math.round((Math.round(hours * 4) / 4) * Number(hourlyRate) * 100) / 100).toFixed(2)}</b>. The client can see tracked time on their side.</>
             : <>Track your time on site — set an hourly rate in your Profile to bill from it. The client can see tracked time on their side.</>}
         </div>
       )}
-      {role === "contractor" && !running && totalMs > 60000 && onBill && job.payment_status !== "released" && !job.is_milestone && (
+      {/* Billing is off once the money has moved (released) or is frozen by a
+          claim (disputed) — propose_price_change rejects both, so offering the
+          button would only produce an error the pro can't act on. */}
+      {role === "contractor" && !loadFailed && !running && totalMs > 60000 && onBill && job.payment_status !== "released" && job.payment_status !== "disputed" && !job.is_milestone && (
         <button onClick={bill} style={{ ...btn("rgba(234,107,20,.12)", "#ea6b14", "1px solid rgba(234,107,20,.4)"), marginTop: ".6rem" }}>
           <Ic name="dollar" size={13} style={{ marginRight: 4 }} />Bill for tracked time{hourlyRate != null ? " (" + hoursText() + " × $" + hourlyRate + "/h)" : ""}
         </button>

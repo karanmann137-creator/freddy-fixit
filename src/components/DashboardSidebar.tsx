@@ -53,6 +53,7 @@ export default function DashboardSidebar({
   const bar: React.CSSProperties = { display:"block", height:"2px", width:"100%", background:"currentColor", borderRadius:"2px" };
 
   const rowBase = (labels: boolean): React.CSSProperties => ({
+    position:"relative" as const,
     display:"flex", alignItems:"center", gap:".7rem", width:"100%", textAlign:"left" as const,
     padding: labels ? ".62rem .8rem" : ".62rem 0", justifyContent: labels ? "flex-start" : "center",
     border:"none", cursor:"pointer", borderRadius:"10px",
@@ -81,6 +82,21 @@ export default function DashboardSidebar({
         {labels && <span style={{ whiteSpace:"nowrap" as const, flex:1 }}>{it.label}</span>}
         {labels && it.badge ? (
           <span style={{ marginLeft:"auto", fontSize:".7rem", fontWeight:700, minWidth:"18px", textAlign:"center" as const, padding:".05rem .35rem", borderRadius:"999px", background: on ? "rgba(234,107,20,.25)" : "rgba(var(--ff-fg), .1)", color: on ? "#ea6b14" : "rgba(var(--ff-muted), .8)" }}>{it.badge}</span>
+        ) : null}
+        {/* Icon-only rail (mobile, and the collapsed desktop rail): there's no room
+            for a label, but hiding the count entirely meant unread messages were
+            invisible on a phone. Pin a small orange dot to the icon instead. */}
+        {!labels && it.badge ? (
+          <span
+            aria-label={it.badge + " " + it.label}
+            style={{
+              position:"absolute" as const, top:".28rem", right:".5rem",
+              minWidth:"16px", height:"16px", padding:"0 .22rem", boxSizing:"border-box" as const,
+              display:"flex", alignItems:"center", justifyContent:"center",
+              fontSize:".62rem", fontWeight:700, lineHeight:1,
+              borderRadius:"999px", background:"#ea6b14", color:"#fff",
+            }}
+          >{Number(it.badge) > 9 ? "9+" : it.badge}</span>
         ) : null}
       </button>
     );

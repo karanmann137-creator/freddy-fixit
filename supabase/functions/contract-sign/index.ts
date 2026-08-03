@@ -1,9 +1,13 @@
 // Supabase Edge Function: contract-sign
-// Two-party e-signature for job contracts (milestone / recurring / big jobs).
+// Two-party e-signature for job contracts (required on EVERY job).
 //   action "contractor_sign" → the assigned contractor signs and SENDS the contract to the client.
 //   action "client_sign"     → the client signs to accept; we build an immutable signed copy and email both parties.
 // Both actions capture the signer's typed legal name + IP + timestamp into job_contracts (audit trail).
 // Legally valid electronic signature under Alberta's Electronic Transactions Act + PIPEDA.
+// v2: contractor_sign is gated on contract_ready() — the signed copy is what the
+//     fail-closed payment gate trusts, so it must describe a real transaction
+//     (a price, a booked time, a client who approved both). It can never be
+//     regenerated once signed, so signing early used to lock in a $0.00 document.
 // Deploy: supabase functions deploy contract-sign  (verify_jwt = true — the signer must be authenticated)
 // Secret needed: RESEND_API_KEY (SUPABASE_URL / SERVICE_ROLE_KEY auto-injected)
 
@@ -139,6 +143,14 @@ serve(async (req) => {
       if (user.id !== job.contractor_id) return json({ error: "Only the assigned contractor can sign here." }, 403);
       if (contract.status === "signed") return json({ error: "This contract is already fully signed." }, 409);
       if (contract.source === "uploaded" && !contract.uploaded_ack) return json({ error: "Accept the uploaded-document acknowledgment first." }, 400);
+      // The signed copy is what the fail-closed payment gate trusts, so it must
+      // describe a real transaction: a price, a booked time, and a client who
+      // has approved both. Once signed it can never be regenerated.
+      {
+        const { data: notReady, error: rErr } = await admin.rpc("contract_ready", { p_job_id: job_id });
+        if (rErr) return json({ error: "We couldn't check this job. Please refresh and try again." }, 409);
+        if (notReady) return json({ error: notReady }, 409);
+      }
       const { error } = await admin.from("job_contracts").update({
         contractor_signed_at: now, contractor_sig_name: signer_name.trim(), contractor_sig_ip: ip, status: "sent",
       }).eq("job_id", job_id).neq("status", "signed");

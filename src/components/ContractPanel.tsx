@@ -130,6 +130,24 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
     return () => { alive = false; };
   }, [role, job.id, contract?.status]);
 
+  // The signed copy can never be regenerated, and the payment gate trusts it —
+  // so it has to describe a real transaction (a price, a booked time, a client
+  // who approved both). contract-sign enforces this and returns a 409; ask the
+  // same question up front so the contractor sees the blocker before they type
+  // their signature rather than after.
+  const [notReady, setNotReady] = useState<string | null>(null);
+  useEffect(() => {
+    if (role !== "contractor") return;
+    if (contract?.status === "signed" || contract?.status === "sent") return;
+    let alive = true;
+    supabase.rpc("contract_ready", { p_job_id: job.id }).then(({ data, error }) => {
+      // A failed check must never block a contractor who is actually ready —
+      // the edge function is the real gate.
+      if (alive) setNotReady(error ? null : (typeof data === "string" && data ? data : null));
+    });
+    return () => { alive = false; };
+  }, [role, job.id, contract?.status, job.amount, job.scheduled_at, job.client_approved_at]);
+
   const invokeSign = async (action: "contractor_sign" | "client_sign") => {
     const { data, error } = await supabase.functions.invoke("contract-sign", {
       body: { action, job_id: job.id, signer_name: sigName.trim() },
@@ -284,9 +302,14 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
             <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} style={{ marginTop: 3 }} />
             <span>I agree that typing my name is my legal electronic signature, and I consent to signing this agreement electronically.</span>
           </label>
+          {notReady && (
+            <div style={{ fontSize: ".82rem", lineHeight: 1.55, color: "var(--ff-warn)", marginBottom: ".6rem", padding: ".6rem .75rem", borderRadius: "10px", background: "rgba(251,191,36,.08)", border: "1px solid rgba(251,191,36,.35)" }}>
+              <Ic name="alert-triangle" size={13} style={{ marginRight: 4 }} />{notReady}
+            </div>
+          )}
           {err && <div style={{ fontSize: ".82rem", color: "#ef4444", marginBottom: ".6rem" }}>{err}</div>}
           {msg && <div style={{ fontSize: ".82rem", color: "#22c55e", marginBottom: ".6rem" }}>{msg}</div>}
-          <button disabled={busy} onClick={contractorSign} style={{ ...btn, background: "#ea6b14", color: "#fff", opacity: busy ? .6 : 1 }}>
+          <button disabled={busy || !!notReady} onClick={contractorSign} style={{ ...btn, background: "#ea6b14", color: "#fff", opacity: (busy || notReady) ? .6 : 1, cursor: notReady ? "not-allowed" : "pointer" }}>
             {busy ? "Sending…" : "Sign & send to client"}
           </button>
         </div>
