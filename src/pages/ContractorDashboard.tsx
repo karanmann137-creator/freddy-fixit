@@ -861,6 +861,16 @@ export default function ContractorDashboard() {
   const netPayout = (job: any) => job?.contractor_payout != null
     ? Number(job.contractor_payout)
     : Math.round(Number(job?.amount ?? 0) * 0.93 * 100) / 100;
+  // Jobs are collected in two charges — a deposit that books the pro, and the
+  // balance once the work is done — so a job sitting at payment_status='held'
+  // is not necessarily paid in full. This is what stands between the pro and
+  // their payout, so it has to be visible to them, not just to the client.
+  const jobBalanceDue = (j: any) => {
+    if (typeof j?.fully_funded === "boolean" && j.fully_funded) return 0;
+    const owing = (Number(j?.total_charged) || 0) - (Number(j?.funded_amount) || 0);
+    return Math.max(Math.round(owing * 100) / 100, 0);
+  };
+  const awaitingBalance = (j: any) => j?.payment_status === "held" && !j?.is_milestone && jobBalanceDue(j) > 0.005;
   const awaitingJobs = myJobs.filter(j => j.status === "pending_confirmation" || j.status === "scheduled" || j.status === "in_progress");
   const awaitingTotal = awaitingJobs.reduce((t,j) => t + (j.amount ? netPayout(j) : 0), 0);
   const STATUS_COLORS: Record<string,string> = { pending:"#f59e0b", matched:"#3b82f6", in_progress:"#ea6b14", completed:"#22c55e", cancelled:"#ef4444", assigned:"#3b82f6", scheduled:"#8b5cf6", pending_confirmation:"#f59e0b" };
@@ -1187,6 +1197,12 @@ export default function ContractorDashboard() {
             } else if (job.status === "scheduled" && job.scheduled_at) {
               const dt = new Date(job.scheduled_at).getTime() - Date.now();
               if (dt > 0 && dt < 24 * 3600 * 1000) attn.push({ key: "soon-" + job.id, text: "“" + svc + "” is booked for " + new Date(job.scheduled_at).toLocaleString() + ".", cta: "View job", onClick: () => goJob(job) });
+            }
+            // Work is done and only the deposit is in: the outstanding balance is
+            // the single thing blocking this pro's payout, and nothing else on
+            // their dashboard would tell them so.
+            if (job.status === "pending_confirmation" && awaitingBalance(job)) {
+              attn.push({ key: "bal-" + job.id, text: "“" + svc + "” is finished but the client still owes $" + jobBalanceDue(job).toFixed(2) + " — your payout is released once they pay and confirm.", cta: "View job", onClick: () => goJob(job) });
             }
             // No signed agreement = the client physically cannot pay, so this
             // outranks everything else on a live job. Only prompt when it's the
@@ -1554,6 +1570,12 @@ export default function ContractorDashboard() {
                       {job.status === "pending_confirmation" && (
                         <>
                           <div style={{ fontSize:".85rem", color:"var(--ff-warn)" }}><Ic name="clock" size={13} style={{ marginRight:4 }} />You marked this complete — waiting for the client to confirm.</div>
+                          {awaitingBalance(job) && (
+                            <div style={{ background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.18)", borderRadius:"10px", padding:".7rem .8rem", fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.5 }}>
+                              <Ic name="dollar" size={13} color="#ea6b14" style={{ marginRight:4 }} />
+                              <strong>{"The client still owes $" + jobBalanceDue(job).toFixed(2) + "."}</strong> They paid a deposit to book you and pay the rest now the work is done. They can't confirm — and your payout can't be released — until that balance is in. We've asked them for it; a friendly message from you usually speeds it up.
+                            </div>
+                          )}
                           <JobPhotos job={job} role="contractor" onError={m => notify(m)} onSaved={(kind, path) => patchJobPhoto(job.id, kind, path)} />
                           <JobTimer job={job} role="contractor" hourlyRate={contractor?.hourly_rate ?? null} onError={m => notify(m)}
                             onBill={(_h, amt, reason) => {
@@ -2078,8 +2100,11 @@ export default function ContractorDashboard() {
                 <div style={{ display:"flex", alignItems:"center", gap:".6rem" }}>
                   <Ic name="key" size={16} color="#ea6b14" />
                   <div>
-                    <div style={{ fontSize:"1rem", fontWeight:600, color:"var(--ff-text)" }}>${awaitingTotal.toFixed(2)} held securely</div>
-                    <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .65)", lineHeight:1.45, marginTop:".1rem" }}>Held safely for {awaitingJobs.length} active job{awaitingJobs.length === 1 ? "" : "s"}. Released to you once the client confirms the work (or automatically after 3 days). Amounts shown are your 93% payout after the 7% platform fee.</div>
+                    <div style={{ fontSize:"1rem", fontWeight:600, color:"var(--ff-text)" }}>${awaitingTotal.toFixed(2)} coming your way</div>
+                    {/* A job is collected in two charges now — a deposit to book you and
+                        the balance when the work is done — so this total isn't all held
+                        yet on every job. Say so plainly rather than promising "held". */}
+                    <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .65)", lineHeight:1.45, marginTop:".1rem" }}>Your 93% payout across {awaitingJobs.length} active job{awaitingJobs.length === 1 ? "" : "s"}, after the 7% platform fee. Clients pay a deposit up front to book you and the balance once the work is done — every payment is held safely and released to you after the client confirms (or automatically after 3 days).</div>
                   </div>
                 </div>
               </div>

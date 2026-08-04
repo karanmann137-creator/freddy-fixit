@@ -18,7 +18,7 @@ const META_DESC = "Calgary contractors & handymen: get matched with local home a
 const BENEFITS = [
   { icon: "dollar", title: "No fees to join", desc: "Free to sign up. No monthly subscription, no charge to see jobs, and no buying leads. We only take a small service fee from completed jobs." },
   { icon: "map-pin", title: "Local Calgary jobs", desc: "Get notified about nearby work that matches your trade — Calgary, Airdrie, Cochrane, Chestermere and surrounding areas." },
-  { icon: "check-circle", title: "Get paid, guaranteed", desc: "The client's payment is collected and held up front, then released to you once the job is confirmed done. No chasing invoices." },
+  { icon: "check-circle", title: "Get paid, guaranteed", desc: "The client pays a deposit to book you and the balance when the work is done. Both are held, then released to you in full once the job is confirmed. No chasing invoices." },
   { icon: "clipboard-list", title: "You stay in control", desc: "See the job, set your own price and timing, and only take the work you want. Bid on jobs or get assigned directly." },
   { icon: "user-check", title: "Real, vetted clients", desc: "Clients submit a detailed request with photos before you're matched, so you know what you're walking into." },
   { icon: "briefcase", title: "Build your reputation", desc: "Earn public reviews on your contractor profile that win you more work over time." },
@@ -33,7 +33,7 @@ const STEPS = [
 
 const FAQS = [
   { q: "How much does it cost to join?", a: "Nothing. There's no signup fee, no monthly subscription, and no cost to receive or view jobs. We take a small service fee only from jobs you actually complete." },
-  { q: "How do I get paid?", a: "The client's payment is collected up front and held securely. When the job is marked complete and the client confirms (or after a short auto-confirm window), your payout is released to your connected account." },
+  { q: "How do I get paid?", a: "The client pays a deposit to book you, and the balance once the work is finished — both held securely. When the job is complete, the balance is in and the client confirms (or after a short auto-confirm window), your payout is released to your connected account in full. Your payout is the same either way; the deposit just means more clients say yes." },
   { q: "What trades do you need?", a: "Handyman/general repairs, plumbing, electrical, HVAC, carpentry, painting, drywall & flooring, landscaping, snow removal, gutters, siding & roofing, concrete & masonry, appliance repair, garage doors, windows & doors, cleaning, locksmith, and vehicle maintenance." },
   { q: "What do I need to sign up?", a: "Your trade and service area, plus the licence, insurance and WCB details relevant to your work. We collect references during onboarding and review everything before approving you." },
   { q: "Do I have to take every job?", a: "No. You choose which jobs to bid on or accept, set your own price and timing, and take only the work that suits you." },

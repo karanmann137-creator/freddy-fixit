@@ -76,7 +76,7 @@ serve(async (req) => {
       .from("jobs")
       .select(`
         id, client_id, contractor_id, amount, contractor_payout, scheduled_at,
-        is_milestone, total_charged, client_fee, contract_copy_sent_at,
+        is_milestone, total_charged, client_fee, deposit_rate, contract_copy_sent_at,
         request:client_requests!jobs_request_id_fkey(service_needed, job_description, location),
         contractor:profiles!jobs_contractor_id_fkey(first_name, last_name, company_name)
       `)
@@ -151,8 +151,18 @@ serve(async (req) => {
       const address = job.request?.location || "the address on file";
       const desc = job.request?.job_description || service;
       const price = job.amount != null ? Number(job.amount) : 0;
-      const total = job.total_charged != null ? Number(job.total_charged) : null;
-      const fee = job.client_fee != null ? Number(job.client_fee) : null;
+      // This email fires when the client approves the schedule — BEFORE any
+      // charge — so client_fee and total_charged are still null. Alberta's
+      // written-copy rules require the copy to state what will be collected
+      // and when, so fall back to the platform rate. A referral credit can
+      // only ever reduce the fee at checkout, so this is the ceiling.
+      let feeRate = 0.03;
+      try {
+        const { data: fr } = await admin.rpc("platform_fee_rate");
+        if (fr != null && Number(fr) >= 0) feeRate = Number(fr);
+      } catch { /* keep the 0.03 fallback */ }
+      const fee = job.client_fee != null ? Number(job.client_fee) : Math.round(price * feeRate * 100) / 100;
+      const total = job.total_charged != null ? Number(job.total_charged) : Math.round((price + fee) * 100) / 100;
       const startWhen = job.scheduled_at
         ? new Date(job.scheduled_at).toLocaleString("en-CA", { timeZone: "America/Edmonton", weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })
         : "the date you arrange with your contractor";
@@ -171,7 +181,22 @@ serve(async (req) => {
         scheduleRows = `<p style="line-height:1.6;margin-top:1rem;"><strong>Payment schedule (staged):</strong> you approve and fund each stage in order; nothing is charged until you fund a stage, and each stage is held until you approve the work.</p>
         <table style="width:100%;border-collapse:collapse;font-size:.9rem;margin-top:.5rem;">${rows}</table>`;
       } else {
-        scheduleRows = `<p style="line-height:1.6;margin-top:1rem;"><strong>Payment:</strong> job price $${price.toFixed(2)}${fee != null ? ` + service fee $${fee.toFixed(2)}` : ""}${total != null ? ` = <strong>$${total.toFixed(2)}</strong>` : ""}. Your payment is held securely and only released to the contractor after you confirm the work is complete.</p>`;
+        const totals = `job price $${price.toFixed(2)} + service fee $${fee.toFixed(2)} = <strong>$${total.toFixed(2)}</strong>`;
+        const depRate = job.deposit_rate != null ? Number(job.deposit_rate) : 1;
+        if (depRate > 0 && depRate < 1) {
+          // The deposit is a share of the job price; the service fee is charged
+          // once, with the deposit. Rounding must never push it past the total.
+          const dueNow = Math.min(Math.round(price * depRate * 100) / 100 + fee, total);
+          const balance = Math.max(Math.round((total - dueNow) * 100) / 100, 0);
+          scheduleRows = `<p style="line-height:1.6;margin-top:1rem;"><strong>Payment:</strong> ${totals}. You pay this in two parts:</p>
+        <table style="width:100%;border-collapse:collapse;font-size:.9rem;margin-top:.5rem;">
+          <tr><td style="padding:4px 8px;border-bottom:1px solid rgba(240,244,255,.15);">When you book — a ${Math.round(depRate * 100)}% deposit on the job price, plus the service fee</td><td style="padding:4px 8px;border-bottom:1px solid rgba(240,244,255,.15);text-align:right;"><strong>$${dueNow.toFixed(2)}</strong></td></tr>
+          <tr><td style="padding:4px 8px;border-bottom:1px solid rgba(240,244,255,.15);">Once the work is finished</td><td style="padding:4px 8px;border-bottom:1px solid rgba(240,244,255,.15);text-align:right;"><strong>$${balance.toFixed(2)}</strong></td></tr>
+        </table>
+        <p style="line-height:1.6;margin-top:.6rem;">Both payments are held securely and are only released to the contractor after you confirm the work is complete. The contractor is not paid anything from the deposit before then.</p>`;
+        } else {
+          scheduleRows = `<p style="line-height:1.6;margin-top:1rem;"><strong>Payment:</strong> ${totals}. Your payment is held securely and only released to the contractor after you confirm the work is complete.</p>`;
+        }
       }
 
       subject = "📄 Your Freddy Fix It job agreement (please keep this copy)";

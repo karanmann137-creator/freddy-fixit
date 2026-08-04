@@ -40,11 +40,16 @@ Deno.serve(async (req) => {
 
     let released = 0, failed = 0, checked = 0;
 
-    // 1) Single-charge jobs the client confirmed but still holding funds.
+    // 1) Jobs the client confirmed but still holding funds.
+    // fully_funded is required: a job is collected in two charges (deposit +
+    // balance), so 'held' on its own can mean only the 40% deposit is in. A job
+    // stuck here un-funded is surfaced to the owner by platform_health_check's
+    // no_unpaid_balances check instead of being silently paid out.
     const { data: jobs, error: je } = await admin.from("jobs")
       .select("id")
       .eq("status", "completed")
       .eq("payment_status", "held")
+      .eq("fully_funded", true)
       .is("prepayment_id", null)
       .not("client_confirmed_at", "is", null)
       .is("disputed_at", null)

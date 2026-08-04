@@ -19,12 +19,24 @@ export default function JobTimeline({ job }: { job: any }) {
   const paid = job.payment_status === "held" || job.payment_status === "released" || !!job.paid_at;
   const disputed = job.payment_status === "disputed";
 
+  // Jobs are collected in two charges — a deposit at booking, the balance when the
+  // work is done — so "paid" is no longer one moment. A job whose deposit rate is
+  // below 100% gets its own balance step; anything charged in full (older jobs, or
+  // a future 100% rate) keeps the single "Payment secured" line it always had.
+  const depRate = Number(job.deposit_rate);
+  const split = depRate > 0 && depRate < 1;
+  const fullyFunded = typeof job.fully_funded === "boolean"
+    ? job.fully_funded
+    : Number(job.funded_amount ?? 0) >= Number(job.total_charged ?? 0) - 0.01;
+  const balancePaid = paid && fullyFunded;
+
   const steps: Step[] = [
     { key: "matched",   label: "Contractor matched", icon: "user-check",   at: job.created_at ?? null,             done: true },
     { key: "scheduled", label: "Time scheduled",     icon: "calendar",     at: job.client_approved_at ?? null,     done: !!job.client_approved_at },
-    { key: "paid",      label: "Payment secured",    icon: "check-circle", at: job.paid_at ?? null,                done: paid },
+    { key: "paid",      label: split ? "Deposit secured" : "Payment secured", icon: "check-circle", at: job.deposit_paid_at ?? job.paid_at ?? null, done: paid },
     { key: "onway",     label: "Contractor on the way", icon: "map-pin",   at: job.on_my_way_at ?? null,           done: !!job.on_my_way_at },
     { key: "done",      label: "Work completed",     icon: "wrench",       at: job.contractor_completed_at ?? null, done: !!job.contractor_completed_at },
+    ...(split ? [{ key: "balance", label: "Balance paid", icon: "check-circle", at: null, done: balancePaid } as Step] : []),
     { key: "confirmed", label: "Confirmed & released", icon: "check-circle", at: job.client_confirmed_at ?? null,  done: !!job.client_confirmed_at },
   ];
 

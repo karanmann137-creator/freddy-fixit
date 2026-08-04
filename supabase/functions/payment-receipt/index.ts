@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
       const { data: claimed } = await SB.from("jobs")
         .update({ receipt_sent_at: new Date().toISOString() })
         .eq("id", id).eq("payment_status", "released").is("receipt_sent_at", null)
-        .select("id, request_id, client_id, contractor_id, amount, client_fee, contractor_payout, platform_fee, released_at, prepayment_id, prepayment_seq, is_milestone");
+        .select("id, request_id, client_id, contractor_id, amount, client_fee, contractor_payout, platform_fee, released_at, prepayment_id, prepayment_seq, is_milestone, deposit_rate");
       const job = claimed?.[0];
       if (!job) return new Response(JSON.stringify({ ok: true, skipped: true }), { status: 200 });
       if (job.is_milestone) return new Response(JSON.stringify({ ok: true, skipped: "milestone job — stage receipts sent per release" }), { status: 200 });
@@ -100,15 +100,27 @@ Deno.serve(async (req) => {
       const commission = Math.round((amount - payout) * 100) / 100;
       const prepaid = !!job.prepayment_id;
 
+      // A split job was collected in two charges — the receipt has to show both,
+      // or the client can't reconcile it against two lines on their statement.
+      const depRate = job.deposit_rate != null ? Number(job.deposit_rate) : 1;
+      const split = !prepaid && depRate > 0 && depRate < 1;
+      const depositPaid = split ? Math.min(Math.round(amount * depRate * 100) / 100 + fee, amount + fee) : 0;
+      const balancePaid = split ? Math.max(Math.round((amount + fee - depositPaid) * 100) / 100, 0) : 0;
+
       if (p.clientEmail) {
         const rows =
           row("Job", esc(p.service)) + row("Job ID", code) + row("Pro", esc(p.proName)) +
           row("Date completed", fmtDate(job.released_at)) +
           row("Service amount", money(amount)) +
           row("Service fee", fee > 0 ? money(fee) : "$0.00 (waived)") +
+          (split
+            ? row("Deposit paid at booking", money(depositPaid)) + row("Balance paid on completion", money(balancePaid))
+            : "") +
           row("Total paid", money(amount + fee), { strong: true, orange: true });
         const note = prepaid
           ? `This visit (#${job.prepayment_seq ?? ""}) was covered by your prepaid plan — no new charge was made. Payment for this visit has now been released to your pro.`
+          : split
+          ? "You paid this in two parts — a deposit to book your pro, and the balance once the work was done. Both were held securely and have now been released to your pro. No further action is needed."
           : "Your payment was held securely and has now been released to your pro. No further action is needed.";
         await send(p.clientEmail, `Receipt — ${p.service} (${code})`, shell("Payment receipt", rows, note));
       }

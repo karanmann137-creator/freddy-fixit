@@ -1,6 +1,13 @@
 // Stripe webhook receiver. No JWT — authenticity is proven by the Stripe
 // signature (STRIPE_WEBHOOK_SECRET). Keeps contractor onboarding state and
 // job/milestone payment state in sync with Stripe.
+//
+// MONEY INVARIANT: jobs.total_charged is the FULL amount owed; jobs.funded_amount
+// is how much has actually been collected. A job is only safe to pay out when
+// payment_status='held' AND fully_funded (a generated column derived from those
+// two). EVERY branch here that receives money must increment funded_amount, or
+// the invariant silently desynchronises and a payout path will transfer 93% of a
+// job we only partly collected.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@16.12.0?target=deno";
@@ -107,7 +114,7 @@ Deno.serve(async (req) => {
         // Contractor proposed a HIGHER price on an already-held job; client approved and
         // paid the delta via a second charge. Apply the pending new breakdown now.
         const { data: job } = await admin.from("jobs")
-          .select("id, contractor_id, amount, client_fee, price_change_pending, extra_charge_intent_ids")
+          .select("id, contractor_id, amount, client_fee, price_change_pending, extra_charge_intent_ids, funded_amount")
           .eq("id", jobId).maybeSingle();
         if (job?.price_change_pending) {
           const pc = job.price_change_pending as Record<string, unknown>;
@@ -136,6 +143,8 @@ Deno.serve(async (req) => {
               price_change_pending: null,
               price_change_proposed_at: null,
               extra_charge_intent_ids: [...already, pi.id],
+              // The delta just collected counts towards what's been funded.
+              funded_amount: r2((Number(job.funded_amount) || 0) + (pi.amount_received ?? 0) / 100),
             }).eq("id", jobId);
             try {
               await admin.rpc("_notify", {
@@ -147,24 +156,85 @@ Deno.serve(async (req) => {
             } catch (_) { /* best-effort */ }
           }
         }
-      } else if (jobId) {
-        // Single-charge job (unchanged path).
-        await admin.from("jobs")
-          .update({ payment_status: "held", paid_at: new Date().toISOString(), stripe_payment_intent_id: pi.id })
-          .eq("id", jobId).eq("payment_status", "processing");
+      } else if (pi.metadata?.kind === "balance" && jobId) {
+        // SECOND charge on a two-stage job: the client paid the remaining balance
+        // once the work was done. The deposit charge already put the job in 'held',
+        // so all this does is record the money — which is what unlocks the payout
+        // (release-payment refuses to transfer until fully_funded).
+        const { data: job } = await admin.from("jobs")
+          .select("id, contractor_id, funded_amount, total_charged, extra_charge_intent_ids")
+          .eq("id", jobId).maybeSingle();
+        if (job) {
+          const already = (job.extra_charge_intent_ids as string[] | null) ?? [];
+          // Same idempotency guard the price_topup branch uses: Stripe retries
+          // webhooks, and double-counting here would mark a job fully funded that
+          // isn't.
+          if (!already.includes(pi.id)) {
+            const paid = (pi.amount_received ?? 0) / 100;
+            const funded = r2((Number(job.funded_amount) || 0) + paid);
+            await admin.from("jobs").update({
+              funded_amount: funded,
+              extra_charge_intent_ids: [...already, pi.id],
+            }).eq("id", jobId);
+            if (job.contractor_id) {
+              try {
+                await admin.rpc("_notify", {
+                  p_user: job.contractor_id, p_type: "balance_paid",
+                  p_title: "The client paid the balance",
+                  p_body: "The rest of the payment for this job is now held. It's released to you as soon as the client confirms the work is done.",
+                  p_job: jobId,
+                });
+              } catch (_) { /* best-effort */ }
+            }
+          }
+        }
+      } else if (jobId && (!pi.metadata?.kind || pi.metadata.kind === "deposit")) {
+        // FIRST charge on a job: the deposit (platform_deposit_rate(), currently
+        // 40% of the quote) plus the full client service fee. A job charged in
+        // full still comes through here — funded_amount then already equals
+        // total_charged, so fully_funded flips true and nothing else changes.
+        //
+        // A PI with no `kind` is a pre-two-stage charge; treated as a deposit so
+        // older in-flight checkouts still settle correctly.
+        //
+        // The processing -> held guard makes a webhook replay a no-op (0 rows),
+        // so funded_amount can never be double-counted here.
+        const { data: rows } = await admin.from("jobs")
+          .update({
+            payment_status: "held",
+            paid_at: new Date().toISOString(),
+            deposit_paid_at: new Date().toISOString(),
+            stripe_payment_intent_id: pi.id,
+            funded_amount: r2((pi.amount_received ?? 0) / 100),
+          })
+          .eq("id", jobId).eq("payment_status", "processing")
+          .select("id");
         const clientId = pi.metadata?.client_id;
-        if (clientId) {
+        if (clientId && rows?.length) {
           try { await admin.rpc("consume_referral_waiver", { p_client: clientId, p_job_id: jobId }); }
           catch (_) { /* best-effort */ }
         }
+      } else if (jobId) {
+        // A charge tagged with a `kind` we don't handle. Deliberately does NOT
+        // touch payment_status — the old catch-all here would flip any such
+        // charge to 'held', which on a two-stage job could mark a job paid that
+        // we'd only partly collected. Tell the owner instead.
+        await alertAdmin(
+          "Unhandled Stripe charge kind",
+          `A succeeded PaymentIntent carried a metadata.kind this webhook doesn't handle, so nothing was recorded against the job.\n\nJob: ${jobId}\nKind: ${pi.metadata?.kind}\nPaymentIntent: ${pi.id}\nAmount: $${((pi.amount_received ?? 0) / 100).toFixed(2)}`,
+        );
       }
     } else if (event.type === "payment_intent.payment_failed") {
       const pi = event.data.object as Stripe.PaymentIntent;
       const jobId = pi.metadata?.job_id;
-      // Only single-charge jobs carry job-level payment_status; a failed milestone
-      // charge simply leaves the stage 'pending' so the client can retry.
-      if (jobId && pi.metadata?.kind !== "milestone" && pi.metadata?.kind !== "price_topup" && pi.metadata?.kind !== "recurring_prepay")
-        await admin.from("jobs").update({ payment_status: "failed" }).eq("id", jobId);
+      // Only the DEPOSIT charge owns job-level payment_status. A failed milestone
+      // charge leaves the stage 'pending' so the client can retry; a failed
+      // balance or top-up charge must NOT undo the deposit that's already held —
+      // the job stays 'held' and simply stays under-funded until they retry.
+      const kind = pi.metadata?.kind;
+      if (jobId && (!kind || kind === "deposit"))
+        await admin.from("jobs").update({ payment_status: "failed" })
+          .eq("id", jobId).eq("payment_status", "processing");
       const reason = pi.last_payment_error?.message ?? "unknown reason";
       await alertAdmin(
         "Client payment failed",

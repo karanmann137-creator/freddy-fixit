@@ -1,10 +1,21 @@
 // Client APPROVES a contractor's proposed price change on a HELD job.
-// Reconciles the already-held funds against the new price:
-//   * increase  -> returns a Stripe Checkout URL for the difference (a top-up).
-//                  The new price is applied by stripe-webhook once that succeeds.
-//   * decrease  -> partially refunds the difference on the original charge NOW
-//                  and applies the new price immediately.
+//
+// Reconciles what we've ACTUALLY COLLECTED (jobs.funded_amount) against the new
+// price — not the old price. Jobs are collected in two charges (a 40% deposit at
+// booking, the balance when the work is done), so on a deposit-only job the held
+// money is usually far less than the quote and a naive old-price-vs-new-price
+// delta would refund or re-charge money that was never moved.
+//
+//   * collected < new total (job FULLY funded) -> Stripe Checkout for the
+//     difference (a top-up); the new price is applied by stripe-webhook.
+//   * collected < new total (job only part-funded) -> apply the new price NOW
+//     and let it roll into the outstanding balance, which is derived as
+//     total_charged - funded_amount. Opening a top-up here would charge the
+//     client twice for the same money.
+//   * collected > new total -> refund the excess across every charge on the job
+//     (deposit, balance, earlier top-ups), decrement funded_amount, apply now.
 //   * no change -> applies the (re-itemised) breakdown immediately.
+//
 // Economics are unchanged: client pays quote + same fee rate as the original
 // charge; contractor is paid 93% of the FINAL amount; platform keeps 7%.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -38,7 +49,7 @@ Deno.serve(async (req) => {
     if (!job_id) return json({ error: "Missing job_id" }, 400);
 
     const { data: job } = await admin.from("jobs")
-      .select("id, client_id, contractor_id, amount, client_fee, platform_fee, total_charged, contractor_payout, payment_status, stripe_payment_intent_id, price_change_pending")
+      .select("id, client_id, contractor_id, amount, client_fee, platform_fee, total_charged, contractor_payout, payment_status, stripe_payment_intent_id, extra_charge_intent_ids, funded_amount, fully_funded, price_change_pending")
       .eq("id", job_id).maybeSingle();
     if (!job) return json({ error: "Job not found" }, 404);
 
@@ -53,17 +64,26 @@ Deno.serve(async (req) => {
     if (!(newAmount > 0)) return json({ error: "Proposed price is invalid." }, 400);
 
     const oldAmount = Number(job.amount) || 0;
-    const oldTotal = Number(job.total_charged) || 0;
     // Preserve whatever fee rate was applied on the original charge (0 if waived).
     const origRate = oldAmount > 0 ? r2((Number(job.client_fee) || 0) / oldAmount) : 0.03;
     const newClientFee = r2(newAmount * origRate);
     const newTotal = r2(newAmount + newClientFee);
     const newPlatformFee = r2(newAmount * 0.07);
     const newPayout = r2(newAmount - newPlatformFee);
-    const delta = r2(newTotal - oldTotal);
 
-    // ---- INCREASE: collect the difference via a top-up Checkout. ----
-    if (delta > 0.005) {
+    // Everything below is measured against what we HOLD, not against the old
+    // price — see the header. On a fully-funded job funded == old total, so this
+    // reduces to the original behaviour exactly.
+    const funded = Number(job.funded_amount) || 0;
+    const toCollect = r2(newTotal - funded);
+    const toRefund = r2(funded - newTotal);
+
+    // ---- INCREASE on a FULLY FUNDED job: collect the difference now. ----
+    // On a part-funded job we skip this: the increase simply raises the balance
+    // the client already owes (balance = total_charged - funded_amount), which
+    // create-balance-payment collects in one go.
+    if (toCollect > 0.005 && job.fully_funded) {
+      const delta = toCollect;
       const { data: profile } = await admin.from("profiles").select("email").eq("id", job.client_id).maybeSingle();
       const receiptEmail = profile?.email ?? undefined;
       const session = await stripe.checkout.sessions.create({
@@ -92,18 +112,39 @@ Deno.serve(async (req) => {
       return json({ mode: "topup", url: session.url, delta });
     }
 
-    // ---- DECREASE: refund the difference on the original charge now. ----
-    if (delta < -0.005) {
-      if (job.stripe_payment_intent_id) {
-        await stripe.refunds.create({
-          payment_intent: job.stripe_payment_intent_id,
-          amount: Math.round(Math.abs(delta) * 100),
-          metadata: { job_id: job.id, reason: "price_decrease" },
-        }, { idempotencyKey: `padj_${job.id}_${String(pend.reason ?? "").slice(0, 12)}_${Math.round(Math.abs(delta) * 100)}` });
+    // ---- DECREASE below what we hold: refund the excess now. ----
+    // The money can be spread over several charges (deposit, balance, earlier
+    // top-ups), so walk them newest-first — the deposit is the last thing we
+    // give back, since it's what keeps the booking bound.
+    let refunded = 0;
+    if (toRefund > 0.005) {
+      const intentIds = [
+        job.stripe_payment_intent_id,
+        ...((job.extra_charge_intent_ids as string[] | null) ?? []),
+      ].filter((x): x is string => !!x).reverse();
+
+      let remaining = Math.round(toRefund * 100);
+      const key = `padj_${job.id}_${String(pend.reason ?? "").slice(0, 12)}_${Math.round(toRefund * 100)}`;
+      for (const id of intentIds) {
+        if (remaining <= 0) break;
+        try {
+          const pi = await stripe.paymentIntents.retrieve(id, { expand: ["latest_charge"] });
+          const ch = pi.latest_charge as Stripe.Charge | null;
+          const left = ch ? (ch.amount_captured ?? 0) - (ch.amount_refunded ?? 0) : 0;
+          if (left <= 0) continue;
+          const take = Math.min(remaining, left);
+          await stripe.refunds.create({
+            payment_intent: id,
+            amount: take,
+            metadata: { job_id: job.id, reason: "price_decrease" },
+          }, { idempotencyKey: `${key}_${id}` });
+          remaining -= take;
+        } catch (_) { /* an intent we can't read or refund simply isn't used here */ }
       }
+      refunded = r2(toRefund - remaining / 100);
     }
 
-    // ---- DECREASE or NO-CHANGE: apply the new price immediately. ----
+    // ---- Apply the new price immediately. ----
     await admin.from("jobs").update({
       amount: newAmount,
       labour_amount: pend.labour ?? null,
@@ -117,20 +158,33 @@ Deno.serve(async (req) => {
       platform_fee: newPlatformFee,
       total_charged: newTotal,
       contractor_payout: newPayout,
+      // Money that went back to the client is no longer funding this job — every
+      // payout guard reads funded_amount / fully_funded.
+      funded_amount: refunded > 0 ? Math.max(r2(funded - refunded), 0) : funded,
       price_change_pending: null,
       price_change_proposed_at: null,
     }).eq("id", job.id);
+
+    // What the client still owes after this change (0 once fully funded).
+    const balanceDue = Math.max(r2(newTotal - (refunded > 0 ? r2(funded - refunded) : funded)), 0);
 
     try {
       await admin.rpc("_notify", {
         p_user: job.contractor_id, p_type: "price_change_approved",
         p_title: "Price change approved",
-        p_body: `The client approved your updated price of $${newAmount.toFixed(2)}.`,
+        p_body: balanceDue > 0.005
+          ? `The client approved your updated price of $${newAmount.toFixed(2)}. The remaining balance of $${balanceDue.toFixed(2)} is paid once the work is done — your payout is released after that.`
+          : `The client approved your updated price of $${newAmount.toFixed(2)}.`,
         p_job: job.id,
       });
     } catch (_) { /* best-effort */ }
 
-    return json({ mode: delta < -0.005 ? "refunded" : "applied", refunded: delta < -0.005 ? Math.abs(delta) : 0, new_amount: newAmount });
+    return json({
+      mode: refunded > 0 ? "refunded" : "applied",
+      refunded,
+      new_amount: newAmount,
+      balance_due: balanceDue,
+    });
   } catch (err) {
     console.error("adjust-payment:", String(err));
     return json({ error: String(err) }, 500);

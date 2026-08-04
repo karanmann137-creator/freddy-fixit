@@ -60,26 +60,65 @@ Deno.serve(async (req) => {
     if (dispute.status !== "open") return json({ error: "Dispute is already resolved" }, 409);
 
     const { data: job } = await admin.from("jobs")
-      .select("id, contractor_id, contractor_payout, total_charged, amount, payment_status, stripe_payment_intent_id, request_id")
+      .select("id, contractor_id, contractor_payout, total_charged, amount, payment_status, stripe_payment_intent_id, extra_charge_intent_ids, funded_amount, fully_funded, request_id")
       .eq("id", dispute.job_id).maybeSingle();
     if (!job) return json({ error: "Job not found" }, 404);
 
-    const chargedDollars = Number(job.total_charged ?? job.amount ?? 0);
+    // A job is collected across MORE THAN ONE charge: the 40% deposit, the
+    // balance, and any approved price top-up. Only refund what we actually
+    // hold — refunding total_charged on a job where the client only ever paid
+    // the deposit would hand back money that was never collected.
+    const intentIds = [
+      job.stripe_payment_intent_id,
+      ...((job.extra_charge_intent_ids as string[] | null) ?? []),
+    ].filter((x): x is string => !!x);
+
+    // What's left on each intent, oldest first (refund the deposit last so a
+    // partial refund comes out of the most recent money first).
+    const available: { id: string; cents: number }[] = [];
+    for (const id of intentIds) {
+      try {
+        const pi = await stripe.paymentIntents.retrieve(id, { expand: ["latest_charge"] });
+        const ch = pi.latest_charge as Stripe.Charge | null;
+        const left = ch ? (ch.amount_captured ?? 0) - (ch.amount_refunded ?? 0) : 0;
+        if (left > 0) available.push({ id, cents: left });
+      } catch (_) { /* an intent we can't read simply isn't refundable here */ }
+    }
+    const collectedDollars = Math.round(available.reduce((s, a) => s + a.cents, 0)) / 100;
+
     let stripeRefundId: string | null = null;
     let stripeTransferId: string | null = null;
     let newDisputeStatus = "";
     let newPaymentStatus = "";
     let refundDollars: number | null = null;
 
+    // Walks every charge on the job until the requested amount is refunded.
     const doRefund = async (dollars: number, keySuffix: string) => {
-      if (!job.stripe_payment_intent_id) throw new Error("No payment intent on job to refund");
-      const r = await stripe.refunds.create(
-        { payment_intent: job.stripe_payment_intent_id, amount: Math.round(dollars * 100) },
-        { idempotencyKey: `refund_${job.id}_${keySuffix}` },
-      );
-      return r.id;
+      if (!available.length) throw new Error("No payment on this job to refund");
+      let remaining = Math.round(dollars * 100);
+      let firstId: string | null = null;
+      for (const a of available) {
+        if (remaining <= 0) break;
+        const take = Math.min(remaining, a.cents);
+        const r = await stripe.refunds.create(
+          { payment_intent: a.id, amount: take },
+          { idempotencyKey: `refund_${job.id}_${keySuffix}_${a.id}` },
+        );
+        firstId = firstId ?? r.id;
+        remaining -= take;
+      }
+      if (remaining > 0)
+        throw new Error(`Only $${((Math.round(dollars * 100) - remaining) / 100).toFixed(2)} could be refunded`);
+      return firstId;
     };
     const doRelease = async () => {
+      // The payout is 93% of the WHOLE quote, so it can only be paid once the
+      // whole quote has been collected. On an under-funded job the right
+      // outcome is a refund of what's held, not a payout of money we don't have.
+      if (!job.fully_funded)
+        throw new Error(
+          `This job isn't paid in full — only $${collectedDollars.toFixed(2)} of $${Number(job.total_charged ?? 0).toFixed(2)} was collected. Refund what's held instead of releasing.`,
+        );
       const { data: contractor } = await admin.from("contractors")
         .select("stripe_account_id").eq("id", job.contractor_id).maybeSingle();
       if (!contractor?.stripe_account_id) throw new Error("Contractor has no connected payout account");
@@ -95,14 +134,17 @@ Deno.serve(async (req) => {
     };
 
     if (action === "refund_full") {
-      refundDollars = chargedDollars;
+      // "Full" = everything actually held, which on a deposit-only job is the
+      // deposit rather than the full quote.
+      refundDollars = collectedDollars;
+      if (!(refundDollars > 0)) return json({ error: "Nothing has been collected on this job to refund" }, 409);
       stripeRefundId = await doRefund(refundDollars, "full");
       newDisputeStatus = "resolved_refund";
       newPaymentStatus = "refunded";
     } else if (action === "refund_partial") {
       const amt = Number(refund_amount);
-      if (!amt || amt <= 0 || amt > chargedDollars)
-        return json({ error: "refund_amount must be between 0 and the amount charged" }, 400);
+      if (!amt || amt <= 0 || amt > collectedDollars)
+        return json({ error: `refund_amount must be between 0 and the $${collectedDollars.toFixed(2)} collected on this job` }, 400);
       refundDollars = amt;
       stripeRefundId = await doRefund(amt, "partial");
       stripeTransferId = await doRelease(); // contractor still paid their payout
@@ -117,6 +159,9 @@ Deno.serve(async (req) => {
     const jobUpdate: Record<string, unknown> = { payment_status: newPaymentStatus };
     if (newPaymentStatus === "released") jobUpdate.released_at = new Date().toISOString();
     if (stripeTransferId) jobUpdate.stripe_transfer_id = stripeTransferId;
+    // Keep funded_amount honest — it's what every payout guard reads.
+    if (refundDollars)
+      jobUpdate.funded_amount = Math.max(Math.round(((Number(job.funded_amount) || 0) - refundDollars) * 100) / 100, 0);
     await admin.from("jobs").update(jobUpdate).eq("id", job.id);
 
     await admin.from("disputes").update({

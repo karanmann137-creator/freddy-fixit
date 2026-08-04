@@ -28,7 +28,7 @@ It takes about five minutes to read. It is worth the five minutes. You can come 
 
 - Jobs in your trade and your area are emailed to you the moment a client posts one. Bid fast — the early bids get read.
 - You set your own price. We never take a cut of a lead and we never sell you leads.
-- The client's payment is collected up front and held. It is not paid to you yet.
+- The client pays a deposit to book you, and the rest when the work is done. Both are held. Neither is paid to you yet.
 - **Your money is released when the client confirms the work is done.** Ask them to do it while you are still standing there.
 - Set up your payout details before your first job, or there is nowhere for us to send the money.
 
@@ -73,11 +73,14 @@ The client's payment button stays locked until that agreement is signed, so do n
 
 Here is the whole flow, in order:
 
-1. The client approves your price and pays. Their money is collected at that point.
+1. The client approves your price and pays a **deposit** to book you. That is what dispatches the job to you and locks in the time.
 2. **The money is held. It has not been paid to you yet.** This protects both of you — the client knows the funds are committed, and you know you are not chasing an invoice after the fact.
 3. You do the work and mark the job complete in your dashboard, with a photo.
-4. **The client confirms the work is done.**
-5. Your payout is released and lands in your account.
+4. The client pays the **remaining balance**. Your dashboard tells you if a balance is still outstanding on a finished job, and we chase the client for it.
+5. **The client confirms the work is done.**
+6. Your payout is released — the full amount, deposit and balance together — and lands in your account.
+
+Why a deposit rather than the whole price up front: asking a stranger to hand over the full cost of a job before anyone has picked up a tool loses bookings. A deposit is enough to commit a serious client and hold your time, and you are still paid the full amount. Your payout never changes.
 
 Freddy Fix It keeps a commission out of each job, and the client pays a small service fee on top of your price. You will always see your exact payout on the job before you accept anything, and again on the payout statement we email you when the money is released. There are no other fees — no monthly charge, no lead fees, nothing taken for showing up in search.
 

@@ -30,7 +30,7 @@ export const SERVICES: Record<string, Svc> = {
     h1: "Handyman Services in Calgary",
     intro: [
       "Looking for a reliable handyman in Calgary? Freddy Fix It connects you with vetted, licensed and insured local tradespeople for everything around the house — the small jobs most contractors won't return your call for, and the bigger ones too.",
-      "Post your job in a couple of minutes, get up to five fixed-price estimates, and book the pro you like best. Your payment is held securely and only released once you confirm the work is done right.",
+      "Post your job in a couple of minutes, get up to five fixed-price estimates, and book the pro you like best. You pay a 40% deposit to book and the balance when the job is finished — both held securely, and only released once you confirm the work is done right.",
     ],
     cover: [
       "Mounting TVs, shelves, mirrors and artwork",
@@ -68,7 +68,7 @@ export const SERVICES: Record<string, Svc> = {
     faqs: [
       { q: "How fast can I get a plumber in Calgary?", a: "Once you post a job, vetted plumbers can estimate quickly. For urgent leaks, flag the job as urgent so nearby pros are notified right away." },
       { q: "Are the plumbers licensed?", a: "Yes — we verify licensing, insurance and WCB coverage. Plumbing in Alberta requires proper certification, and you can see a pro's credentials and reviews before booking." },
-      { q: "Do I pay before the work is done?", a: "No. Your payment is held securely and only released to the plumber after you confirm the work is complete and correct." },
+      { q: "Do I pay the whole thing before the work is done?", a: "No. You pay a 40% deposit to book your plumber, and the rest once the work is finished. Both payments are held securely and nothing reaches the plumber until you confirm the job is complete and correct." },
     ],
     related: ["electrical", "hvac", "handyman", "appliance-repair"],
   },
@@ -143,7 +143,7 @@ export const SERVICES: Record<string, Svc> = {
     faqs: [
       { q: "Can I get an estimate for custom work?", a: "Yes. Describe what you want (photos and rough dimensions help) and you'll get up to five fixed-price estimates from local carpenters." },
       { q: "Are your carpenters insured?", a: "Every pro is reviewed for insurance and WCB coverage where it applies, with reviews visible on their profile." },
-      { q: "When do I pay?", a: "Your payment is held securely and released only after you confirm the work is finished to your satisfaction." },
+      { q: "When do I pay?", a: "A 40% deposit books your pro, and the balance is due once the work is finished. Both are held securely and released only after you confirm the work is done to your satisfaction." },
     ],
     related: ["drywall-flooring", "painting", "handyman", "concrete-masonry"],
   },
@@ -243,7 +243,7 @@ export const SERVICES: Record<string, Svc> = {
     faqs: [
       { q: "Can I book seasonal snow removal?", a: "Yes — note that you want a seasonal contract when you post and crews will estimate accordingly." },
       { q: "How fast after a storm?", a: "Mark the job urgent so nearby crews are notified right away and you can book quickly." },
-      { q: "When do I pay?", a: "Your payment is held and released only after the clearing is confirmed complete." },
+      { q: "When do I pay?", a: "A 40% deposit books your pro and the balance is due once the work is finished. Both are held and released only after the clearing is confirmed complete." },
     ],
     related: ["landscaping", "gutters", "concrete-masonry", "handyman"],
   },
@@ -293,7 +293,7 @@ export const SERVICES: Record<string, Svc> = {
     faqs: [
       { q: "I had hail damage — can you help?", a: "Yes. Calgary sees serious hail, and storm-damage repair is one of the most common roofing jobs. Add photos when you post for accurate estimates." },
       { q: "Do you do full roof replacements?", a: "Absolutely — describe the roof and you'll get up to five fixed-price estimates from local roofers." },
-      { q: "When do I pay?", a: "Funds are held securely and released only after you confirm the work is complete." },
+      { q: "When do I pay?", a: "A 40% deposit books your pro; the balance is due once the work is finished. Funds are held securely and released only after you confirm the work is complete." },
     ],
     related: ["gutters", "concrete-masonry", "handyman", "windows-doors"],
   },
@@ -343,7 +343,7 @@ export const SERVICES: Record<string, Svc> = {
     faqs: [
       { q: "Can you tell me if it's worth repairing?", a: "Pros will assess and estimate — often the diagnosis tells you whether repair or replacement makes more sense. Add the make and model when you post." },
       { q: "Do you install new appliances?", a: "Yes — installs and hookups are common jobs. Note what you need and you'll get fixed-price estimates." },
-      { q: "When do I pay?", a: "Your payment is held and released only after you confirm the work is done." },
+      { q: "When do I pay?", a: "A 40% deposit books your pro; the balance is due once the work is finished. Both are held and released only after you confirm the work is done." },
     ],
     related: ["plumbing", "electrical", "handyman", "hvac"],
   },
@@ -418,7 +418,7 @@ export const SERVICES: Record<string, Svc> = {
     faqs: [
       { q: "Can you fix a drafty door?", a: "Yes — weatherproofing and adjustments are common jobs. Post it for fixed-price estimates." },
       { q: "Do you install new windows?", a: "Absolutely. Describe the openings and you'll get up to five estimates from local pros." },
-      { q: "When do I pay?", a: "Funds are held until you confirm the work is complete." },
+      { q: "When do I pay?", a: "A 40% deposit books your pro; the balance is due once the work is finished. Funds are held until you confirm the work is complete." },
     ],
     related: ["carpentry", "handyman", "siding-roofing", "garage"],
   },

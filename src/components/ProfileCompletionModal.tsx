@@ -71,8 +71,8 @@ export default function ProfileCompletionModal({
       : "Update my details";
 
   const escrow = role === "contractor"
-    ? "Heads up: clients' payments are held securely by us and released to you automatically once the job is confirmed complete — so everyone's protected."
-    : "Your money is safe: we hold your payment securely and only release it to the contractor once the job is done and you've confirmed it — so you're covered if anything goes wrong.";
+    ? "Heads up: clients pay a deposit to book you and the balance when the work is done. Both are held securely by us and released to you in full once the job is confirmed complete — so everyone's protected."
+    : "Your money is safe: you pay a deposit to book, the rest when the work is finished, and we hold both securely — nothing reaches the contractor until the job is done and you've confirmed it.";
 
   return (
     <div onClick={close} style={{ position:"fixed", inset:0, zIndex:9999, background:"rgba(8,12,22,.72)", backdropFilter:"blur(3px)", display:"flex", alignItems:"center", justifyContent:"center", padding:"1.2rem" }}>

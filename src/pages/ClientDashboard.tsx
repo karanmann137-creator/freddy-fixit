@@ -139,6 +139,8 @@ export default function ClientDashboard() {
   const [contractCheckError, setContractCheckError] = useState(false); // couldn't verify → fail closed, ask to refresh
   const [contractStatus, setContractStatus] = useState<string|null>(null); // draft|sent|signed|void — drives the attention row wording only
   const [feeRate, setFeeRate] = useState(0.03); // base service-fee rate; loaded from platform_fee_rate() so it matches what Stripe charges
+  const [depositRate, setDepositRate] = useState(0.40); // share of the quote taken up front; from platform_deposit_rate()
+  const [busyBalance, setBusyBalance] = useState(false); // second charge (the 60% balance) is opening
   const [waivedForJob, setWaivedForJob] = useState<string|null>(null); // job whose 3% fee a referral waives
   const [loadError, setLoadError] = useState(false);
   const [selectedReqId, setSelectedReqId] = useState<string|null>(null);
@@ -224,17 +226,21 @@ export default function ClientDashboard() {
         if (!user) { setLoading(false); return; }
 
         // profile + requests have no inter-dependency — fetch them together.
-        const [prof, reqs, myPros, ref, rate, planRows] = await Promise.all([
+        const [prof, reqs, myPros, ref, rate, planRows, dep] = await Promise.all([
           supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
           supabase.from("client_requests").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
           supabase.rpc("list_my_pros"),
           supabase.rpc("get_my_referral"),
           supabase.rpc("platform_fee_rate"),
           supabase.rpc("list_my_recurring_plans"),
+          supabase.rpc("platform_deposit_rate"),
         ]);
         // Base fee rate comes from the DB (single source of truth) so the total
         // shown here is exactly what create-payment-intent will charge.
         if (typeof rate.data === "number" && rate.data >= 0 && rate.data < 0.2) setFeeRate(Number(rate.data));
+        // Same idea for the deposit share — the amount due up front is worked out
+        // from platform_deposit_rate() so the button matches the charge exactly.
+        if (typeof dep.data === "number" && dep.data > 0 && dep.data <= 1) setDepositRate(Number(dep.data));
         // A failed profile/requests read must show an error+retry, not a false "no jobs" empty state.
         if (prof.error || reqs.error) { setLoadError(true); return; }
         // Half-finished signup (e.g. Google one-tap / email-only account): self-repair
@@ -585,6 +591,11 @@ export default function ClientDashboard() {
     const amt = Number(j?.amount ?? 0);
     const total = jobTotal(j);
     const fee = r2(total - amt);
+    // What we've actually collected — on an unpaid job that's nothing, and on a
+    // deposit-only job it's the deposit, not the whole quote.
+    const unpaid = j?.payment_status === "unpaid" || j?.payment_status === "failed" || j?.payment_status === "processing";
+    const paid = unpaid ? 0 : Math.min(jobFunded(j) || total, total);
+    const balance = Math.max(r2(total - paid), 0);
     const paidOn = j.paid_at ? new Date(j.paid_at).toLocaleDateString() : new Date().toLocaleDateString();
     const ref = (j.id ?? "").slice(0, 8).toUpperCase();
     const esc = (v: any) => String(v ?? "").replace(/[<>&]/g, (c: string) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" } as any)[c]);
@@ -603,8 +614,16 @@ export default function ClientDashboard() {
       (contractor ? "<tr><td>Contractor</td><td class='r'>" + esc(contractor.first_name + " " + (contractor.last_name?.[0] ?? "") + ".") + "</td></tr>" : "") +
       "<tr><td>Job amount</td><td class='r'>$" + amt.toFixed(2) + "</td></tr>" +
       "<tr><td>Service fee (" + (amt > 0 ? Math.round((fee / amt) * 100) : Math.round(feeRate * 100)) + "%)</td><td class='r'>$" + fee.toFixed(2) + "</td></tr>" +
-      "<tr class='tot'><td>Total paid</td><td class='r'>$" + total.toFixed(2) + "</td></tr>" +
+      "<tr class='tot'><td>Job total</td><td class='r'>$" + total.toFixed(2) + "</td></tr>" +
       "</table>" +
+      // A job can be part-paid (deposit taken, balance still to come), so the
+      // receipt must say what was actually collected rather than implying the
+      // whole total has been charged.
+      (balance > 0.005
+        ? "<table><tr><td>Paid so far</td><td class='r'>$" + paid.toFixed(2) + "</td></tr>" +
+          "<tr><td>Still to pay</td><td class='r'>$" + balance.toFixed(2) + "</td></tr></table>" +
+          "<div class='muted'>This job is part-paid. Your deposit is held securely; the remaining balance is due once the work is finished. Nothing is released to your contractor until you confirm the job is complete.</div>"
+        : "<table><tr class='tot'><td>Total paid</td><td class='r'>$" + paid.toFixed(2) + "</td></tr></table>") +
       "<div class='muted'>Status: " + esc((j.payment_status ?? "").replace("_", " ")) + ". Payment is held securely and released to your contractor after you confirm the work is complete.</div>" +
       "<button onclick='window.print()'>Print / Save as PDF</button>" +
       "</body></html>";
@@ -626,6 +645,51 @@ export default function ClientDashboard() {
     if (j?.id && waivedForJob === j.id) return "Your service fee is waived on this job (referral reward).";
     return "Total includes a " + (Math.round(feeRate * 1000) / 10) + "% service fee.";
   }
+
+  // ---- Two-stage payment: a deposit at booking, the balance when work is done ----
+  // The rate is stamped onto the job once a deposit is taken (jobs.deposit_rate),
+  // so a later platform-wide change can never move the goalposts mid-job.
+  function jobDepositRate(j: any) {
+    const r = Number(j?.deposit_rate);
+    return r > 0 && r <= 1 ? r : depositRate;
+  }
+  function jobFunded(j: any) { return Math.max(Number(j?.funded_amount) || 0, 0); }
+  // Due at booking = the deposit share of the quote PLUS the whole service fee.
+  // The fee is deliberately NOT split across the two charges: the receipt, the
+  // price-change maths and the money-path health check all reconstruct the fee
+  // rate from client_fee / amount, and a part-fee would break that ratio.
+  function jobDueNow(j: any) {
+    const total = jobTotal(j);
+    const amt = Number(j?.amount ?? 0);
+    const fee = r2(total - amt);
+    return Math.min(r2(r2(amt * jobDepositRate(j)) + fee), total);
+  }
+  function jobBalance(j: any) { return Math.max(r2(jobTotal(j) - jobFunded(j)), 0); }
+  // Prefer the DB's generated column; fall back to the maths on a stale row.
+  function jobFullyFunded(j: any) {
+    if (typeof j?.fully_funded === "boolean") return j.fully_funded;
+    return jobBalance(j) <= 0.005;
+  }
+  // True when this job is actually split in two — a 100% deposit rate (or a job
+  // stamped before the split existed) should read exactly as it always did.
+  function depositSplit(j: any) { return jobTotal(j) - jobDueNow(j) > 0.005; }
+  // Small "$X now / $Y when it's done" breakdown shown above the deposit button.
+  const PaySplit = ({ job }: { job: any }) => (
+    <div style={{ display:"grid", gap:".3rem", marginBottom:".6rem", padding:".65rem .75rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .09)" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", gap:".75rem", fontSize:".82rem" }}>
+        <span style={{ color:"rgba(var(--ff-muted), .8)" }}>Due now ({Math.round(jobDepositRate(job) * 100)}% deposit + service fee)</span>
+        <strong>${jobDueNow(job).toFixed(2)}</strong>
+      </div>
+      <div style={{ display:"flex", justifyContent:"space-between", gap:".75rem", fontSize:".82rem" }}>
+        <span style={{ color:"rgba(var(--ff-muted), .8)" }}>Due when the work is done</span>
+        <strong>${r2(jobTotal(job) - jobDueNow(job)).toFixed(2)}</strong>
+      </div>
+      <div style={{ display:"flex", justifyContent:"space-between", gap:".75rem", fontSize:".82rem", paddingTop:".3rem", borderTop:"1px solid rgba(var(--ff-fg), .09)" }}>
+        <span style={{ color:"rgba(var(--ff-muted), .8)" }}>Total</span>
+        <strong>${jobTotal(job).toFixed(2)}</strong>
+      </div>
+    </div>
+  );
   const payForJob = async () => {
     if (!activeJob) return;
     // Fail closed — the edge function returns 428 for an unsigned agreement, so
@@ -636,9 +700,15 @@ export default function ClientDashboard() {
         : "Please sign the service agreement above before paying for this job.");
       return;
     }
+    const dueNow = jobDueNow(activeJob);
+    const total = jobTotal(activeJob);
+    const split = total - dueNow > 0.005;
     if (!(await askConfirm({
-      title: "Pay " + "$" + jobTotal(activeJob).toFixed(2) + "?",
-      message: "You'll be taken to a secure checkout. Your payment is held safely and only released to the contractor after you confirm the work is done.",
+      title: "Pay " + "$" + dueNow.toFixed(2) + (split ? " deposit?" : "?"),
+      message: split
+        ? "You're paying a " + Math.round(jobDepositRate(activeJob) * 100) + "% deposit now to book your pro. The remaining $"
+          + r2(total - dueNow).toFixed(2) + " is paid once the work is done. Both payments are held safely and only released to the contractor after you confirm the job is complete."
+        : "You'll be taken to a secure checkout. Your payment is held safely and only released to the contractor after you confirm the work is done.",
       confirmLabel: "Continue to checkout",
       danger: false,
     }))) return;
@@ -653,6 +723,42 @@ export default function ClientDashboard() {
       try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
       notify("Payment couldn't start: " + msg);
       setBusyPay(false);
+    }
+  };
+
+  // Second charge: whatever is still outstanding on a job whose deposit is held.
+  // The amount is derived server-side (total_charged - funded_amount) — we only
+  // display it here, so a stale row can never under- or over-charge.
+  const payBalance = async () => {
+    if (!activeJob) return;
+    if (contractBlocked) {
+      notify(contractCheckError
+        ? "We couldn't verify the service agreement. Please refresh the page and try again."
+        : "Please sign the service agreement above before paying for this job.");
+      return;
+    }
+    if (activeJob.price_change_pending) {
+      notify("Please approve or decline your pro's proposed price change first.");
+      return;
+    }
+    const bal = jobBalance(activeJob);
+    if (!(await askConfirm({
+      title: "Pay the remaining $" + bal.toFixed(2) + "?",
+      message: "This is the balance on your job. It's held safely alongside your deposit and only released to your contractor once you confirm the work is done.",
+      confirmLabel: "Continue to checkout",
+      danger: false,
+    }))) return;
+    setBusyBalance(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-balance-payment", { body: { job_id: activeJob.id } });
+      if (error) throw error;
+      if (data?.url) { window.location.href = data.url; return; }
+      throw new Error(data?.error || "Could not start checkout");
+    } catch (e: any) {
+      let msg = e?.message || String(e);
+      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
+      notify("Payment couldn't start: " + msg);
+      setBusyBalance(false);
     }
   };
 
@@ -1018,9 +1124,19 @@ export default function ClientDashboard() {
               ? { key: "contract", text: "Your pro sent the service agreement — sign it so you can pay and lock in your visit.", cta: "Review & sign", onClick: focusContract, ownsScroll: true }
               : { key: "contract", text: "Waiting on your pro to send the service agreement. You'll be able to pay and book once it's signed by both of you.", cta: "See job", onClick: focusContract, ownsScroll: true });
           }
+          // Work is finished and only the deposit is held: the balance is now the
+          // thing standing between the pro and their money, so it outranks
+          // everything except the agreement.
+          if (activeJob?.status === "pending_confirmation" && !activeJob?.is_milestone
+              && activeJob?.payment_status === "held" && !jobFullyFunded(activeJob)) {
+            attn.push({ key: "balance", text: "Your pro finished the job — pay the remaining $" + jobBalance(activeJob).toFixed(2) + " so you can confirm and release their payment.", cta: "Pay balance", onClick: () => focusAnchor("ffc-confirm"), ownsScroll: true });
+          }
           if (activeJob?.price_change_pending) attn.push({ key: "price", text: "Your pro proposed a new price — review and approve or decline.", cta: "Review price", onClick: () => focusAnchor("ffc-price"), ownsScroll: true });
           if (activeJob?.status === "assigned" && activeJob?.price_hike_from != null && Number(activeJob.amount ?? 0) > Number(activeJob.price_hike_from) + 0.005) attn.push({ key: "hike", text: "Your pro raised the price after you picked them — approve it or re-open to other pros.", cta: "Review price", onClick: () => focusAnchor("ffc-hike"), ownsScroll: true });
-          else if (activeJob?.status === "pending_confirmation" && !activeJob?.is_milestone) attn.push({ key: "confirm", text: "Your pro marked the job complete — confirm the work to release payment.", cta: "Confirm now", onClick: () => focusAnchor("ffc-confirm"), ownsScroll: true });
+          // Only chase the confirmation once the job is paid in full — on a part-paid
+          // job the confirm button is disabled (confirm_job_completion raises), and
+          // the "balance" row above is already asking for the right thing.
+          else if (activeJob?.status === "pending_confirmation" && !activeJob?.is_milestone && jobFullyFunded(activeJob)) attn.push({ key: "confirm", text: "Your pro marked the job complete — confirm the work to release payment.", cta: "Confirm now", onClick: () => focusAnchor("ffc-confirm"), ownsScroll: true });
           if (activeJob?.status === "assigned" && activeJob?.schedule_proposed_at && !activeJob?.client_approved_at && !(activeJob?.client_rescheduled_at && !activeJob?.reschedule_accepted_at)) attn.push({ key: "sched", text: "Your pro proposed a time and price — approve it to book the visit.", cta: "Review proposal", onClick: () => focusAnchor("ffc-sched"), ownsScroll: true });
           if (activeJob?.status === "assigned" && activeJob?.walkthrough_proposed_at && !activeJob?.walkthrough_approved_at) attn.push({ key: "walkthrough", text: "Your pro wants to do a free walkthrough before pricing — confirm the visit time.", cta: "Review time", onClick: () => focusAnchor("ffc-walkthrough"), ownsScroll: true });
           if (!activeJob && clientBids.length > 0) attn.push({ key: "bids", text: clientBids.length + " pro" + (clientBids.length === 1 ? " has" : "s have") + " bid on your request — pick the one you like.", cta: "See bids", onClick: () => focusAnchor("ffc-bids"), ownsScroll: true });
@@ -1465,7 +1581,20 @@ export default function ClientDashboard() {
                             </div>
                             {(activeJob.payment_status === "held" || activeJob.payment_status === "released") ? (
                               <>
-                                <div style={{ fontSize:".82rem", color:"var(--ff-success)", marginBottom:".6rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Payment secured — we'll release it to your contractor once you confirm the work is done.</div>
+                                {activeJob.payment_status === "held" && !jobFullyFunded(activeJob) ? (
+                                  <div style={{ marginBottom:".7rem", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.18)" }}>
+                                    <div style={{ fontSize:".82rem", color:"var(--ff-success)", marginBottom:".4rem", lineHeight:1.5 }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Deposit of ${jobFunded(activeJob).toFixed(2)} paid — your pro is booked in.</div>
+                                    <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", marginBottom:".6rem", lineHeight:1.5 }}>The remaining <strong>${jobBalance(activeJob).toFixed(2)}</strong> is due once the work is finished — you can pay it now or wait until then. It's <strong>held safely</strong> with your deposit, and everything is released to your contractor only after you confirm the job is done.</div>
+                                    {contractBlocked && (
+                                      <div style={{ fontSize:".82rem", color:"var(--ff-warn)", marginBottom:".6rem", lineHeight:1.5 }}>
+                                        <Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />{contractCheckError ? "We couldn't verify the service agreement. Please refresh the page and try again." : "Please sign the service agreement above before paying the balance."}
+                                      </div>
+                                    )}
+                                    <button style={s.primaryBtn} disabled={busyBalance || contractBlocked || !!activeJob.price_change_pending} onClick={payBalance}>{busyBalance ? "Opening checkout…" : "Pay remaining $" + jobBalance(activeJob).toFixed(2)}</button>
+                                  </div>
+                                ) : (
+                                  <div style={{ fontSize:".82rem", color:"var(--ff-success)", marginBottom:".6rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Payment secured — we'll release it to your contractor once you confirm the work is done.</div>
+                                )}
                                 <button style={s.btn} onClick={() => downloadReceipt(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Download receipt</button>
                               </>
                             ) : activeJob.amount ? (
@@ -1473,16 +1602,21 @@ export default function ClientDashboard() {
                                 {activeJob.payment_status === "failed" && (
                                   <div style={{ fontSize:".82rem", color:"var(--ff-danger)", marginBottom:".6rem", lineHeight:1.5 }}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />Your last payment didn't go through. No charge was made — please try again below.</div>
                                 )}
-                                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".6rem", lineHeight:1.5 }}>Pay now to secure the job. Your money is <strong>held safely</strong> and only released to the contractor after you confirm the work is done. {feeText(activeJob)}</div>
+                                {depositSplit(activeJob) ? (
+                                  <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".6rem", lineHeight:1.5 }}>You only pay a <strong>{Math.round(jobDepositRate(activeJob) * 100)}% deposit</strong> now to book your pro — the rest is paid once the work is done. Both payments are <strong>held safely</strong> and only released to the contractor after you confirm. {feeText(activeJob)}</div>
+                                ) : (
+                                  <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".6rem", lineHeight:1.5 }}>Pay now to secure the job. Your money is <strong>held safely</strong> and only released to the contractor after you confirm the work is done. {feeText(activeJob)}</div>
+                                )}
+                                {depositSplit(activeJob) && <PaySplit job={activeJob} />}
                                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".6rem", lineHeight:1.5, padding:".6rem .75rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .09)" }}>
-                                  <Ic name="bell" size={13} color="#ea6b14" style={{ marginRight:5 }} /><strong>Your pro isn't dispatched until this is paid.</strong> Paying is what books them in and sends them the job — until then the visit isn't locked. Nothing to worry about: we <strong>hold your money</strong> the whole time and only release it to the contractor once you've confirmed the work is done.
+                                  <Ic name="bell" size={13} color="#ea6b14" style={{ marginRight:5 }} /><strong>Your pro isn't dispatched until the deposit is paid.</strong> Paying is what books them in and sends them the job — until then the visit isn't locked. Nothing to worry about: we <strong>hold your money</strong> the whole time and only release it to the contractor once you've confirmed the work is done.
                                 </div>
                                 {contractBlocked && (
                                   <div style={{ fontSize:".82rem", color:"var(--ff-warn)", marginBottom:".6rem", lineHeight:1.5 }}>
                                     <Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />{contractCheckError ? "We couldn't verify the service agreement. Please refresh the page and try again." : "Please sign the service agreement above before paying for this job."}
                                   </div>
                                 )}
-                                <button style={s.primaryBtn} disabled={busyPay || contractBlocked} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " (held until you confirm)"}</button>
+                                <button style={s.primaryBtn} disabled={busyPay || contractBlocked} onClick={payForJob}>{busyPay ? "Opening checkout…" : depositSplit(activeJob) ? "Pay $" + jobDueNow(activeJob).toFixed(2) + " deposit" : "Pay $" + jobTotal(activeJob).toFixed(2) + " (held until you confirm)"}</button>
                               </>
                             ) : null}
                           </>
@@ -1497,22 +1631,46 @@ export default function ClientDashboard() {
                             </div>
                             {(activeJob.payment_status === "held" || activeJob.payment_status === "released") ? (
                               <>
-                                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".75rem" }}>Confirm the work is done and we'll release your held payment to the contractor. If you don't, it auto-confirms in a few days.</div>
+                                {/* The work is done, so the balance is genuinely due now. Paying it
+                                    and confirming stay two separate actions: confirming is a
+                                    statement about the WORK, and confirm_job_completion raises when
+                                    the job isn't fully funded — so the button is disabled to match. */}
+                                {activeJob.payment_status === "held" && !jobFullyFunded(activeJob) ? (
+                                  <div style={{ marginBottom:".75rem", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.18)" }}>
+                                    <div style={{ fontSize:".82rem", color:"var(--ff-success)", marginBottom:".4rem", lineHeight:1.5 }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Deposit of ${jobFunded(activeJob).toFixed(2)} already paid.</div>
+                                    <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", marginBottom:".6rem", lineHeight:1.5 }}>Your pro has finished, so the remaining <strong>${jobBalance(activeJob).toFixed(2)}</strong> is now due. It's <strong>held safely</strong> alongside your deposit — nothing reaches your contractor until you confirm the work below.</div>
+                                    {contractBlocked && (
+                                      <div style={{ fontSize:".82rem", color:"var(--ff-warn)", marginBottom:".6rem", lineHeight:1.5 }}>
+                                        <Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />{contractCheckError ? "We couldn't verify the service agreement. Please refresh the page and try again." : "Please sign the service agreement above before paying the balance."}
+                                      </div>
+                                    )}
+                                    <button style={s.primaryBtn} disabled={busyBalance || contractBlocked || !!activeJob.price_change_pending} onClick={payBalance}>{busyBalance ? "Opening checkout…" : "Pay remaining $" + jobBalance(activeJob).toFixed(2)}</button>
+                                  </div>
+                                ) : (
+                                  <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".75rem" }}>Confirm the work is done and we'll release your held payment to the contractor. If you don't, it auto-confirms in a few days.</div>
+                                )}
                                 <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
-                                  <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq || !!activeJob.price_change_pending} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm & release payment"}</button>
+                                  <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq || !!activeJob.price_change_pending || (activeJob.payment_status === "held" && !jobFullyFunded(activeJob))} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm & release payment"}</button>
                                   <button style={{ ...s.btn, color:"var(--ff-warn)", borderColor:"rgba(251,191,36,.35)", background:"rgba(251,191,36,.08)" }} disabled={busyReq} onClick={() => setReportOpen(true)}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />File a claim</button>
                                   <button style={s.btn} onClick={() => downloadReceipt(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Download receipt</button>
                                 </div>
+                                {activeJob.payment_status === "held" && !jobFullyFunded(activeJob) && (
+                                  <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .65)", marginTop:".5rem", lineHeight:1.5 }}>Pay the balance above to unlock confirming. If something isn't right with the work, file a claim instead — that freezes everything while we look into it.</div>
+                                )}
                               </>
                             ) : activeJob.amount ? (
                               <>
-                                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".6rem", lineHeight:1.5 }}>Pay for the job, then confirm. Your payment is held and only released to the contractor once you confirm. {feeText(activeJob)}</div>
+                                {/* Unpaid but already worked: the deposit still comes first, because
+                                    that's the charge create-payment-intent opens. The balance button
+                                    appears immediately afterwards, so nothing is left uncollected. */}
+                                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".6rem", lineHeight:1.5 }}>{depositSplit(activeJob) ? <>Pay your ${jobDueNow(activeJob).toFixed(2)} deposit, then the ${r2(jobTotal(activeJob) - jobDueNow(activeJob)).toFixed(2)} balance, and confirm. Everything is held and only released to the contractor once you confirm. </> : <>Pay for the job, then confirm. Your payment is held and only released to the contractor once you confirm. </>}{feeText(activeJob)}</div>
+                                {depositSplit(activeJob) && <PaySplit job={activeJob} />}
                                 {contractBlocked && (
                                   <div style={{ fontSize:".82rem", color:"var(--ff-warn)", marginBottom:".6rem", lineHeight:1.5 }}>
                                     <Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />{contractCheckError ? "We couldn't verify the service agreement. Please refresh the page and try again." : "Please sign the service agreement above before paying for this job."}
                                   </div>
                                 )}
-                                <button style={s.primaryBtn} disabled={busyPay || contractBlocked} onClick={payForJob}>{busyPay ? "Opening checkout…" : "Pay $" + jobTotal(activeJob).toFixed(2) + " now"}</button>
+                                <button style={s.primaryBtn} disabled={busyPay || contractBlocked} onClick={payForJob}>{busyPay ? "Opening checkout…" : depositSplit(activeJob) ? "Pay $" + jobDueNow(activeJob).toFixed(2) + " deposit" : "Pay $" + jobTotal(activeJob).toFixed(2) + " now"}</button>
                               </>
                             ) : (
                               <>

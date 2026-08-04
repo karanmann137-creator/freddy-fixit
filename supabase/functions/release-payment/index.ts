@@ -1,8 +1,10 @@
 // Releases held funds to the contractor once work is client-confirmed.
 //
 // TWO modes:
-//  - Job-level (small/single-charge jobs): pass { job_id }. Transfers 93% of the
-//    quote (contractor_payout); requires the job held + client-confirmed.
+//  - Job-level: pass { job_id }. Transfers 93% of the quote (contractor_payout);
+//    requires the job held + client-confirmed + FULLY FUNDED. Jobs are collected
+//    in two charges (40% deposit at booking, the balance when the work is done),
+//    so 'held' alone no longer means paid in full.
 //  - Milestone (big jobs): pass { milestone_id }. Transfers 93% of THAT stage's
 //    amount; requires the stage completed + client-approved (or auto-approved)
 //    and not disputed. Idempotency key is per-milestone.
@@ -20,6 +22,7 @@ const cors = {
 };
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...cors, "Content-Type": "application/json" } });
+const r2 = (n: number) => Math.round(n * 100) / 100;
 
 // Fire-and-forget alert so a failed payout never goes unnoticed.
 async function alertAdmin(subject: string, detail: string) {
@@ -190,11 +193,11 @@ Deno.serve(async (req) => {
       return json({ ok: true, transfer_id: transfer.id, occurrences_released: released });
     }
 
-    // ---------- JOB MODE (unchanged except price-change guard) ----------
+    // ---------- JOB MODE ----------
     if (!job_id) return json({ error: "Missing job_id" }, 400);
 
     const { data: job } = await admin.from("jobs")
-      .select("id, client_id, contractor_id, contractor_payout, payment_status, client_confirmed_at, stripe_transfer_id, price_change_pending")
+      .select("id, client_id, contractor_id, contractor_payout, payment_status, client_confirmed_at, stripe_transfer_id, price_change_pending, funded_amount, total_charged, fully_funded")
       .eq("id", job_id).maybeSingle();
     if (!job) return json({ error: "Job not found" }, 404);
     if (!internal && job.client_id !== userId && meRole !== "admin")
@@ -204,6 +207,22 @@ Deno.serve(async (req) => {
       return json({ error: "A price change is pending client approval. Resolve it before releasing payment." }, 409);
     if (job.payment_status !== "held") return json({ error: "Payment is not in a releasable (held) state" }, 409);
     if (!job.client_confirmed_at) return json({ error: "Job is not confirmed yet" }, 409);
+
+    // Jobs are collected in two charges (deposit + balance). 'held' now only
+    // means "some money is held" — it does NOT mean paid in full. The payout is
+    // 93% of the WHOLE quote, so releasing an under-funded job would pay the
+    // contractor money we never collected. This is the last line of defence:
+    // confirm_job_completion and auto_confirm_stale_jobs both guard too.
+    if (!job.fully_funded) {
+      const owing = Math.max(
+        r2((Number(job.total_charged) || 0) - (Number(job.funded_amount) || 0)),
+        0,
+      );
+      return json({
+        error: `The remaining balance of $${owing.toFixed(2)} hasn't been paid yet, so this job can't be released.`,
+        balance_due: owing,
+      }, 409);
+    }
 
     const acctId = await payoutAccount(admin, stripe, job.contractor_id);
     if (!acctId) return json({ error: "Contractor has not finished payout setup" }, 409);

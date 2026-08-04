@@ -29,7 +29,7 @@ export const AREAS: Record<string, Area> = {
     h1: "Home Services in Northwest Calgary",
     intro: [
       "Freddy Fix It connects Northwest Calgary homeowners with vetted, licensed and insured local tradespeople — for everything from a quick handyman fix to plumbing, electrical, HVAC and full renovations.",
-      "Post your job in a couple of minutes, get up to five fixed-price estimates from pros who work your area, and book the one you like best. Your payment is held securely and only released once you confirm the work is done right.",
+      "Post your job in a couple of minutes, get up to five fixed-price estimates from pros who work your area, and book the one you like best. You pay a 40% deposit to book and the balance when the job is finished — both held securely, and only released once you confirm the work is done right.",
     ],
     places: ["Tuscany", "Royal Oak", "Ranchlands", "Varsity", "Brentwood", "Bowness", "Arbour Lake", "Silver Springs"],
   },
@@ -55,7 +55,7 @@ export const AREAS: Record<string, Area> = {
     h1: "Home Services in Southwest Calgary",
     intro: [
       "Freddy Fix It connects Southwest Calgary homeowners with vetted, licensed and insured local tradespeople — handyman work, plumbing, electrical, painting, landscaping and more.",
-      "Post your job, get up to five fixed-price estimates from pros who work the southwest, and book with confidence. Your payment is held securely until you confirm the work is done right.",
+      "Post your job, get up to five fixed-price estimates from pros who work the southwest, and book with confidence. You pay a 40% deposit to book and the balance when the job is finished — both held securely until you confirm the work is done right.",
     ],
     places: ["Signal Hill", "Aspen Woods", "Springbank Hill", "Killarney", "Marda Loop", "Lakeview", "Bridlewood", "Evergreen"],
   },
@@ -81,7 +81,7 @@ export const AREAS: Record<string, Area> = {
     h1: "Home Services in Airdrie",
     intro: [
       "Freddy Fix It connects Airdrie homeowners with vetted, licensed and insured local tradespeople — for handyman jobs, plumbing, electrical, HVAC, landscaping, snow removal and full renovations.",
-      "Post your job in a couple of minutes, get up to five fixed-price estimates from pros who serve Airdrie, and book the one you like best. Your payment is held securely until you confirm the work is done.",
+      "Post your job in a couple of minutes, get up to five fixed-price estimates from pros who serve Airdrie, and book the one you like best. You pay a 40% deposit to book and the balance when the job is finished — both held securely until you confirm the work is done.",
     ],
     places: ["Bayside", "Kings Heights", "Cooper's Crossing", "Sagewood", "Windsong", "Luxstone", "Ravenswood", "Prairie Springs"],
   },
@@ -107,7 +107,7 @@ export const AREAS: Record<string, Area> = {
     h1: "Home Services in Okotoks",
     intro: [
       "Freddy Fix It connects Okotoks homeowners with vetted, licensed and insured local tradespeople — handyman work, plumbing, electrical, painting, landscaping and more.",
-      "Post your job, get up to five fixed-price estimates from pros who serve Okotoks, and book with confidence. Your payment is held securely until you confirm the work is done right.",
+      "Post your job, get up to five fixed-price estimates from pros who serve Okotoks, and book with confidence. You pay a 40% deposit to book and the balance when the job is finished — both held securely until you confirm the work is done right.",
     ],
     places: ["Drake Landing", "Air Ranch", "Cimarron", "Sheep River", "Crystal Shores", "Wedderburn", "Suntree", "Mountainview"],
   },

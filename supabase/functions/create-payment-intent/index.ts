@@ -1,8 +1,19 @@
-// Client pays for a job via Stripe-hosted Checkout. Charges the contractor's
-// quote + a 3% client service fee onto the PLATFORM balance (separate charges &
-// transfers) — funds are HELD until the client confirms the work, at which
-// point release-payment transfers 93% of the quote to the contractor and the
-// platform retains the 7% fee. Returns a Checkout URL to redirect the client to.
+// Client pays the DEPOSIT on a job via Stripe-hosted Checkout.
+//
+// A job is collected in two charges:
+//   1. here — a deposit (platform_deposit_rate(), currently 40% of the quote)
+//      plus the full 3% client service fee, charged onto the PLATFORM balance
+//      (separate charges & transfers).
+//   2. create-balance-payment — the remaining 60%, once the contractor has
+//      marked the work complete.
+//
+// Both charges are HELD. Nothing reaches the contractor until the client
+// confirms the work AND the job is fully funded, at which point release-payment
+// transfers 93% of the quote and the platform retains the 7% commission.
+//
+// jobs.total_charged is always the FULL amount owed; jobs.funded_amount tracks
+// how much has actually been collected. Those two are what every payout path
+// compares — 'held' on its own no longer means "paid in full".
 //
 // NOTE: Clients pay a standard 3% service fee, EXCEPT a referred client's very
 // first job, where the 3% is waived (referral reward). Eligibility is checked
@@ -42,7 +53,9 @@ Deno.serve(async (req) => {
     if (!job) return json({ error: "Job not found" }, 404);
     if (job.client_id !== user.id) return json({ error: "Not your job" }, 403);
     if (!job.amount || Number(job.amount) <= 0) return json({ error: "Job has no agreed price yet" }, 400);
-    if (job.payment_status === "held" || job.payment_status === "released")
+    if (job.payment_status === "held")
+      return json({ error: "The deposit on this job is already paid." }, 409);
+    if (job.payment_status === "released")
       return json({ error: "This job is already paid" }, 409);
 
     // Every job requires a signed service agreement before any money is collected.
@@ -85,6 +98,22 @@ Deno.serve(async (req) => {
     const platformFee = r2(amount * 0.07);
     const payout = r2(amount - platformFee);
 
+    // How much of the job we collect up front. Read from ONE place so the split
+    // can never drift from what the dashboard promises; fall back to charging in
+    // full (the old behaviour) rather than under-collecting if the read fails.
+    let depositRate = 1;
+    try {
+      const { data: dr } = await admin.rpc("platform_deposit_rate");
+      if (typeof dr === "number" && dr > 0 && dr <= 1) depositRate = Number(dr);
+    } catch (_) { /* keep the safe fallback */ }
+    // The service fee is charged once, in full, with the deposit — splitting it
+    // proportionally would break the fee/amount ratio that adjust-payment and
+    // stripe-webhook reconstruct, and the health check that verifies it.
+    const deposit = depositRate >= 1 ? amount : r2(amount * depositRate);
+    const dueNow = r2(deposit + clientFee);
+    const balance = r2(total - dueNow);
+    const isSplit = balance > 0;
+
     const { data: profile } = await admin.from("profiles").select("email").eq("id", user.id).maybeSingle();
     const receiptEmail = profile?.email ?? user.email ?? undefined;
 
@@ -97,31 +126,54 @@ Deno.serve(async (req) => {
         quantity: 1,
         price_data: {
           currency: "cad",
-          unit_amount: Math.round(total * 100),
+          unit_amount: Math.round(dueNow * 100),
           product_data: {
-            name: "Freddy Fix It — service payment",
-            description: waived
-              ? `Service $${amount.toFixed(2)} — 3% service fee waived (referral reward \u{1F389})`
-              : `Service $${amount.toFixed(2)} + 3% service fee $${clientFee.toFixed(2)}`,
+            name: isSplit
+              ? "Freddy Fix It — deposit"
+              : "Freddy Fix It — service payment",
+            description: [
+              isSplit
+                ? `Deposit $${deposit.toFixed(2)} of $${amount.toFixed(2)} — $${balance.toFixed(2)} due when the work is done`
+                : `Service $${amount.toFixed(2)}`,
+              waived
+                ? "3% service fee waived (referral reward \u{1F389})"
+                : `+ 3% service fee $${clientFee.toFixed(2)}`,
+            ].join(" "),
           },
         },
       }],
       payment_intent_data: {
-        description: `Freddy Fix It — job ${job.id}`,
+        description: isSplit
+          ? `Freddy Fix It — deposit on job ${job.id}`
+          : `Freddy Fix It — job ${job.id}`,
         // Stripe emails an automatic receipt to this address on a successful
         // live charge (in addition to the in-app downloadable receipt).
         receipt_email: receiptEmail,
-        metadata: { job_id: job.id, client_id: user.id },
+        metadata: { job_id: job.id, client_id: user.id, kind: "deposit" },
       },
-      metadata: { job_id: job.id },
+      metadata: { job_id: job.id, kind: "deposit" },
     });
 
+    // total_charged stays the FULL amount owed. funded_amount (written by the
+    // webhook once the charge succeeds) is what says how much is actually held.
     await admin.from("jobs").update({
       client_fee: clientFee, platform_fee: platformFee, total_charged: total,
       contractor_payout: payout, payment_status: "processing",
+      deposit_rate: depositRate,
     }).eq("id", job.id);
 
-    return json({ url: session.url, amount: total, client_fee: clientFee, quote: amount, fee_waived: waived });
+    return json({
+      url: session.url,
+      amount: dueNow,          // what the client is charged right now
+      due_now: dueNow,
+      balance_due: balance,
+      deposit: deposit,
+      deposit_rate: depositRate,
+      total: total,
+      client_fee: clientFee,
+      quote: amount,
+      fee_waived: waived,
+    });
   } catch (err) {
     console.error("create-payment-intent:", String(err));
     return json({ error: String(err) }, 500);
