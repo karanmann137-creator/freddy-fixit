@@ -39,7 +39,9 @@ export default function TopNav() {
       setUid(userId);
       if (!userId) { setAuthed(false); setRole(null); return; }
       setAuthed(true);
-      const { data } = await supabase.from("profiles").select("role").eq("id", userId).single();
+      // maybeSingle(): an orphaned account has no profile row, and single() would
+      // error rather than simply leaving the role null (which the nav handles).
+      const { data } = await supabase.from("profiles").select("role").eq("id", userId).maybeSingle();
       setRole(data?.role ?? null);
     };
     supabase.auth.getUser().then(({ data }) => sync(data.user?.id ?? null));

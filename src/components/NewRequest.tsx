@@ -96,12 +96,19 @@ export default function NewRequest() {
       setLoadError(false);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLocation("/login"); return; }
-      const [{ data: prof }, { data: reqs }, { data: addrs }, { data: vehs }] = await Promise.all([
+      // A PostgREST error resolves rather than throwing, so destructuring only
+      // `data` let one failed read (say saved_addresses) look like "you have no
+      // saved addresses" — the client re-types an address they already gave us,
+      // and `loadError` never fires. Check each result explicitly.
+      const [pRes, rRes, aRes, vRes] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
         supabase.from("client_requests").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1),
         supabase.from("saved_addresses").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
         supabase.from("saved_vehicles").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
       ]);
+      const firstErr = [pRes, rRes, aRes, vRes].find(r => (r as any).error);
+      if (firstErr) throw (firstErr as any).error;
+      const prof = pRes.data, reqs = rRes.data, addrs = aRes.data, vehs = vRes.data;
       setProfile(prof);
       const last = (reqs ?? [])[0] ?? null;
       setLastReq(last);

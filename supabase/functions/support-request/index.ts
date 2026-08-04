@@ -3,7 +3,12 @@
 // support message to the platform admin (hello@freddyfixit.ca). We look the
 // sender up by their user_id (service role) to attach their real name / email /
 // phone and set Reply-To so the admin can reply straight to them.
-// verify_jwt = true (only authenticated users may send).
+// AUTH: verify_jwt = true is NOT sufficient on its own — the anon key is itself
+// a valid project-signed JWT and ships in the public browser bundle, so it
+// satisfies verify_jwt. The sender is therefore resolved from the access token
+// via auth.getUser(); user_id in the request body is IGNORED. Trusting the body
+// let anyone send mail that appeared to come from any user, with that user's
+// real address in Reply-To.
 // Deploy: supabase functions deploy support-request
 // Secret needed: RESEND_API_KEY  (SUPABASE_URL / SERVICE_ROLE_KEY auto-injected)
 
@@ -52,17 +57,30 @@ async function lookupPerson(userId: string) {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
+    // Sender identity comes from the access token, never from the body.
+    const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+    const { data: authed } = jwt ? await admin.auth.getUser(jwt) : { data: null as any };
+    const userId = authed?.user?.id ?? "";
+    if (!userId) {
+      return new Response(JSON.stringify({ ok: false, error: "sign in to send a support request" }),
+        { status: 401, headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
     const body = await req.json().catch(() => ({}));
-    const role     = String(body?.role || "user");
-    const userId   = String(body?.user_id || "");
     const subject  = String(body?.subject || "Support request").slice(0, 160);
     const jobCode  = body?.job_code ? String(body.job_code).slice(0, 40) : null;
-    const message  = String(body?.message || "").trim();
+    const message  = String(body?.message || "").trim().slice(0, 5000);
 
-    if (!userId || !message) {
-      return new Response(JSON.stringify({ ok: false, error: "missing user_id or message" }),
+    if (!message) {
+      return new Response(JSON.stringify({ ok: false, error: "missing message" }),
         { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
     }
+
+    // Role is a label in the email subject, so read it from the DB rather than
+    // the body and constrain it to known values.
+    const { data: prof } = await admin.from("profiles").select("role").eq("id", userId).maybeSingle();
+    const role = ["client", "contractor", "admin"].includes(String(prof?.role))
+      ? String(prof?.role) : "user";
 
     const person = await lookupPerson(userId);
     const html = `

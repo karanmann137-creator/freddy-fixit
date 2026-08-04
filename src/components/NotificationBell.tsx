@@ -81,9 +81,16 @@ export default function NotificationBell({ userId, dashboardPath }: { userId: st
     // Wouter treats navigating to the path you're already on as a no-op, and the
     // bell usually sits on the very dashboard the notification points at. So when
     // we're already there, tell the page directly instead of navigating.
-    if (window.location.pathname === target.path && (target.tab || target.jobId)) {
-      const detail: DashNavDetail = { tab: target.tab, jobId: target.jobId };
-      window.dispatchEvent(new CustomEvent(DASH_NAV_EVENT, { detail }));
+    if (window.location.pathname === target.path) {
+      if (target.tab || target.jobId) {
+        const detail: DashNavDetail = { tab: target.tab, jobId: target.jobId };
+        window.dispatchEvent(new CustomEvent(DASH_NAV_EVENT, { detail }));
+      } else {
+        // Unknown types fall back to the dashboard root with no tab and no job, and
+        // wouter no-ops on same-path navigation — so this used to be a dead tap that
+        // only closed the dropdown. Scrolling to the top at least acknowledges it.
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
       return;
     }
     setLocation(targetToUrl(target));

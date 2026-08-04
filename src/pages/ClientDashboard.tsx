@@ -18,6 +18,7 @@ import ReportProblem from "@/components/ReportProblem";
 import FileClaimModal, { type ClaimJob } from "@/components/FileClaimModal";
 import RequestHelpModal from "@/components/RequestHelpModal";
 import { jobCode } from "@/lib/jobCode";
+import { sendContractCopy, CONTRACT_COPY_FAILED } from "@/lib/contractCopy";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 import FreddyRewind from "@/components/FreddyRewind";
@@ -483,7 +484,9 @@ export default function ClientDashboard() {
     });
     if (error) { notify("Couldn't approve: " + error.message); return; }
     // Email the client a written contract copy (Alberta: starts the 10-day cancellation clock).
-    supabase.functions.invoke("notify-email", { body: { event: "contract_copy", job_id: activeJob.id } }).catch(() => {});
+    // Retries internally; only speaks up if every attempt failed, and never blocks
+    // the approval — which has already succeeded by this point.
+    void sendContractCopy(activeJob.id).then(ok => { if (!ok) notify(CONTRACT_COPY_FAILED); });
     // If this job is covered by a prepaid recurring pool, draw down one occurrence
     // now (links the job to the held funds — no separate checkout needed).
     // (Stays inside the busy window so a double-tap can't race the draw-down.)
@@ -807,7 +810,12 @@ export default function ClientDashboard() {
     setBusyReq(true);
     try {
       const { data, error } = await supabase.functions.invoke("adjust-payment", { body: { job_id: activeJob.id } });
-      const errMsg = error ? error.message : (data && (data as any).error);
+      // invoke() throws the body away, so a 428 ("sign the agreement first") or a
+      // 409 reads as a bare "non-2xx status code". Dig the real reason out.
+      let errMsg: string | null = error ? error.message : ((data && (data as any).error) || null);
+      if (error) {
+        try { const b = await (error as any)?.context?.json?.(); if (b?.error) errMsg = b.error; } catch { /* keep the fallback */ }
+      }
       if (errMsg) { setBusyReq(false); notify("Couldn't apply the price change: " + errMsg); return; }
       if (data && (data as any).mode === "topup" && (data as any).url) {
         // Increase — pay the extra via Stripe Checkout; the webhook applies the new price.
@@ -1096,24 +1104,12 @@ export default function ClientDashboard() {
           // ownsScroll: the row's own handler scrolls somewhere specific, so the
           // shared button must NOT also fire its scroll-to-top (two smooth
           // scrolls on the same box fight, and the top one usually wins).
+          // ORDER MATTERS: only the first three rows render, so everything that
+          // gates money is pushed FIRST and the conversational rows (a time
+          // suggested in chat, unread messages) go last. Two unread messages plus
+          // a chat time suggestion used to fill all three slots and hide the
+          // agreement, the balance and the confirm prompt entirely.
           const attn: { key: string; text: string; cta: string; onClick?: () => void; ownsScroll?: boolean }[] = [];
-          if (chatTimeJob) attn.push({
-            key: "chattime",
-            text: (contractor?.first_name || "Your pro") + " suggested " + formatWhen(chatTimeJob.chat_time_at) + " in the chat.",
-            cta: "Accept or change",
-            // Un-dismiss so "Decide later" can never lose a suggested time.
-            onClick: () => setTimeDismissed(prev => { const n = new Set(prev); n.delete(chatTimeJob.id); return n; }),
-          });
-          // Unread messages, capped at 2 so they can't bury the rows that gate money.
-          // The row's button jumps to Requests first, so onClick corrects the tab.
-          for (const c of conversations.filter(c => c.unread > 0).slice(0, 2)) {
-            attn.push({
-              key: "msg-" + c.job_id,
-              text: partyName(c) + " sent you " + (c.unread === 1 ? "a message" : c.unread + " messages") + " about “" + (c.service_needed ?? "your job") + "”.",
-              cta: "Read it",
-              onClick: () => { setActiveTab("messages"); openConversation(c); },
-            });
-          }
           // No signed agreement means the client physically can't pay, which means
           // the pro is never dispatched — so this is pushed BEFORE the rest, since
           // only the first three rows are shown.
@@ -1140,6 +1136,24 @@ export default function ClientDashboard() {
           if (activeJob?.status === "assigned" && activeJob?.schedule_proposed_at && !activeJob?.client_approved_at && !(activeJob?.client_rescheduled_at && !activeJob?.reschedule_accepted_at)) attn.push({ key: "sched", text: "Your pro proposed a time and price — approve it to book the visit.", cta: "Review proposal", onClick: () => focusAnchor("ffc-sched"), ownsScroll: true });
           if (activeJob?.status === "assigned" && activeJob?.walkthrough_proposed_at && !activeJob?.walkthrough_approved_at) attn.push({ key: "walkthrough", text: "Your pro wants to do a free walkthrough before pricing — confirm the visit time.", cta: "Review time", onClick: () => focusAnchor("ffc-walkthrough"), ownsScroll: true });
           if (!activeJob && clientBids.length > 0) attn.push({ key: "bids", text: clientBids.length + " pro" + (clientBids.length === 1 ? " has" : "s have") + " bid on your request — pick the one you like.", cta: "See bids", onClick: () => focusAnchor("ffc-bids"), ownsScroll: true });
+          // ── Conversational rows last (see the ordering note above) ──────────
+          if (chatTimeJob) attn.push({
+            key: "chattime",
+            text: (contractor?.first_name || "Your pro") + " suggested " + formatWhen(chatTimeJob.chat_time_at) + " in the chat.",
+            cta: "Accept or change",
+            // Un-dismiss so "Decide later" can never lose a suggested time.
+            onClick: () => setTimeDismissed(prev => { const n = new Set(prev); n.delete(chatTimeJob.id); return n; }),
+          });
+          // Unread messages, capped at 2 so they can't bury the rows that gate money.
+          // The row's button jumps to Requests first, so onClick corrects the tab.
+          for (const c of conversations.filter(c => c.unread > 0).slice(0, 2)) {
+            attn.push({
+              key: "msg-" + c.job_id,
+              text: partyName(c) + " sent you " + (c.unread === 1 ? "a message" : c.unread + " messages") + " about “" + (c.service_needed ?? "your job") + "”.",
+              cta: "Read it",
+              onClick: () => { setActiveTab("messages"); openConversation(c); },
+            });
+          }
           if (attn.length === 0) return null;
           return (
             <div style={{ ...s.card, padding:"1.1rem 1.25rem", marginBottom:"1.25rem", border:"1px solid rgba(234,107,20,.3)" }}>

@@ -43,7 +43,10 @@ export default function AuthCallback() {
       // The trigger creates the profile row; poll briefly in case it's a hair behind.
       let profile: { role: string } | null = null;
       for (let i = 0; i < 8 && !cancelled; i++) {
-        const { data } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+        // maybeSingle(), not single(): on the polls where the trigger hasn't landed
+        // yet there is genuinely no row, and single() turns that expected case into
+        // a logged error on every iteration.
+        const { data } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
         if (data) { profile = data as any; break; }
         await new Promise(r => setTimeout(r, 250));
       }

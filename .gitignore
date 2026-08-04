@@ -35,3 +35,7 @@ apply-global-footer.sh
 apply-contractor-cleanup.sh
 apply-contact-privacy.sh
 apply-before-after.sh
+
+# private security audit - never commit to the public repo
+SECURITY-AUDIT-PRIVATE.md
+apply-security-audit.sh

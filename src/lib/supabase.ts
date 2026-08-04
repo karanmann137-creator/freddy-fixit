@@ -5,15 +5,9 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-export async function getProfile(userId: string) {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", userId)
-    .single();
-  if (error) throw error;
-  return data;
-}
+// getProfile() was removed: nothing called it, and it used `.single()`, which
+// errors on zero rows — exactly what half-finished (orphaned) accounts hit. Every
+// live profile lookup uses `.maybeSingle()` plus the `ensure_profile` self-repair.
 
 export async function signOut() {
   await supabase.auth.signOut();

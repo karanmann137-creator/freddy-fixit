@@ -10,12 +10,17 @@ type Mode = "contractor" | "client";
 export default function FreddyRewind({ mode, onClose }: { mode: Mode; onClose: () => void }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     (async () => {
-      const { data: d } = await supabase.rpc(mode === "contractor" ? "get_contractor_rewind" : "get_client_rewind");
+      const { data: d, error } = await supabase.rpc(mode === "contractor" ? "get_contractor_rewind" : "get_client_rewind");
+      // A failed RPC used to fall through to `{}`, which renders as a card telling
+      // the user they completed 0 jobs and earned $0 — a false and demoralising
+      // statement about their actual year. Say we couldn't load it instead.
+      if (error) { setFailed(true); setLoading(false); return; }
       setData(d || {});
       setLoading(false);
     })();
@@ -133,6 +138,10 @@ export default function FreddyRewind({ mode, onClose }: { mode: Mode; onClose: (
 
         {loading ? (
           <div style={{ padding:"3rem 0", textAlign:"center", color:"rgba(190,205,235,.6)" }}>Loading your year…</div>
+        ) : failed ? (
+          <div style={{ padding:"2.5rem 1rem", textAlign:"center", color:"rgba(190,205,235,.75)", lineHeight:1.6, fontSize:".9rem" }}>
+            We couldn't pull your year together just now. Nothing is missing from your account — please close this and try again in a moment.
+          </div>
         ) : (
           <>
             <div style={{ borderRadius:"16px", padding:"1.5rem", background:"linear-gradient(135deg,#1a2236,#111827)", color:"#f0f4ff", position:"relative", overflow:"hidden" }}>

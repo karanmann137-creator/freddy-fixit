@@ -9,6 +9,27 @@ const BID_CAP        = 7;
 const admin          = createClient(SUPABASE_URL, SERVICE_KEY);
 const cors           = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
 
+// Every value below is interpolated straight into email HTML. Escape it.
+// This fn is called only by accept_bid / place_bid, but the body still arrives
+// over HTTP, so treat it as untrusted input regardless.
+const esc = (s: unknown) =>
+  String(s ?? "").replace(/[&<>"]/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
+
+// AUTH: verify_jwt is NOT authentication here — the anon key is a valid
+// project-signed JWT that ships in the public JS bundle. accept_bid/place_bid
+// mint a single-use token via public.issue_internal_token and send it as
+// x-ff-internal; redeeming it is what proves the caller is Postgres.
+async function callerIsInternal(req: Request): Promise<boolean> {
+  const t = req.headers.get("x-ff-internal") ?? "";
+  if (!t) return false;
+  const { data, error } = await admin.rpc("consume_internal_token", {
+    p_token: t,
+    p_purpose: "edge-internal",
+  });
+  return !error && data === true;
+}
+
 async function sendEmail(to: string, subject: string, html: string) {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -26,7 +47,14 @@ function firstJobHtml(opts: {
   name: string; service: string; location: string; client_name: string;
   amount: number | null; payoutsReady: boolean;
 }) {
-  const { name, service, location, client_name, amount, payoutsReady } = opts;
+  // Escape once here so every interpolation in the template below is safe.
+  const payoutsReady = opts.payoutsReady;
+  const name        = esc(opts.name);
+  const service     = esc(opts.service);
+  const location    = esc(opts.location);
+  const client_name = esc(opts.client_name);
+  const amount      = opts.amount != null && Number.isFinite(Number(opts.amount))
+    ? Number(opts.amount) : null;
   const tip = (n: string, title: string, body: string) => `
     <tr>
       <td style="vertical-align:top;padding:.55rem .75rem .55rem 0;width:34px;">
@@ -80,6 +108,12 @@ function firstJobHtml(opts: {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+
+  if (!(await callerIsInternal(req))) {
+    return new Response(JSON.stringify({ error: "forbidden" }),
+      { status: 403, headers: { ...cors, "Content-Type": "application/json" } });
+  }
+
   const json = await req.json();
   const { event } = json;
 
@@ -87,10 +121,16 @@ serve(async (req) => {
 
     // ── bid_won: email to winning contractor ────────────────────────────────
     if (event === "bid_won") {
-      const { contractor_id, service, location, client_name, amount } = json;
-      const { data: p } = await admin.from("profiles").select("first_name, email").eq("id", contractor_id).single();
+      const { contractor_id } = json;
+      // Raw values are kept for firstJobHtml (which escapes internally); the
+      // e* copies are the escaped ones used by the plain template below.
+      const service = json.service, location = json.location;
+      const client_name = json.client_name, amount = json.amount;
+      const eService = esc(service), eLocation = esc(location), eClient = esc(client_name);
+      const eAmount = amount != null && Number.isFinite(Number(amount)) ? Number(amount) : null;
+      const { data: p } = await admin.from("profiles").select("first_name, email").eq("id", contractor_id).maybeSingle();
       if (!p?.email) return ok({ status: "skipped" });
-      const name = p.first_name ?? "there";
+      const name = esc(p.first_name ?? "there");
 
       // First job? accept_bid inserts the job row before this fn runs, so count<=1 => first.
       let isFirst = false;
@@ -115,17 +155,17 @@ serve(async (req) => {
           <span style="color:#f87171;font-weight:700;font-size:1rem;letter-spacing:.05em;">⚡ URGENT — ACTION REQUIRED</span>
         </div>
         <h2 style="color:#ea6b14;margin-top:0;">Your bid was accepted!</h2>
-        <p>Hi ${name}, <strong>${client_name}</strong> accepted your bid${amount ? " of <strong>$" + amount + "</strong>" : ""}. Contact them and schedule the job as soon as possible.</p>
+        <p>Hi ${name}, <strong>${eClient}</strong> accepted your bid${eAmount ? " of <strong>$" + eAmount + "</strong>" : ""}. Contact them and schedule the job as soon as possible.</p>
         <table style="width:100%;border-collapse:collapse;margin:1rem 0;">
-          <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;width:110px;">SERVICE</td><td style="padding:.5rem 0;font-weight:500;">${service}</td></tr>
-          <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;">LOCATION</td><td style="padding:.5rem 0;">${location}</td></tr>
-          ${amount ? `<tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;">YOUR BID</td><td style="padding:.5rem 0;color:#22c55e;font-weight:600;">$${amount}</td></tr>` : ""}
+          <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;width:110px;">SERVICE</td><td style="padding:.5rem 0;font-weight:500;">${eService}</td></tr>
+          <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;">LOCATION</td><td style="padding:.5rem 0;">${eLocation}</td></tr>
+          ${eAmount ? `<tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;">YOUR BID</td><td style="padding:.5rem 0;color:#22c55e;font-weight:600;">$${eAmount}</td></tr>` : ""}
         </table>
         <p style="color:rgba(190,205,235,.7);font-size:.9rem;">Log in now to propose a time. Clients expect a response quickly — contractors who respond fast get more jobs.</p>
         <a href="https://freddyfixit.ca/contractor-dashboard" style="display:inline-block;margin-top:.5rem;padding:.85rem 1.75rem;background:#ea6b14;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:1rem;">Schedule Now →</a>
         <p style="margin-top:1.5rem;font-size:.78rem;color:rgba(190,205,235,.35);">Questions? hello@freddyfixit.ca or WhatsApp +1 (825) 561-8331</p>
       </div>`;
-      await sendEmail(p.email, `⚡ URGENT — Your bid was accepted: ${service} in ${(location ?? "").split(",")[0]}`, html);
+      await sendEmail(p.email, `⚡ URGENT — Your bid was accepted: ${String(service ?? "")} in ${String(location ?? "").split(",")[0]}`, html);
       return ok({ status: "sent", to: p.email });
     }
 
@@ -133,15 +173,16 @@ serve(async (req) => {
     // (event key kept as 'three_bids' for backwards-compat; fires when the job reaches BID_CAP bids)
     if (event === "three_bids") {
       const { client_id, service, request_id } = json;
+      const eService = esc(service);
       const results: string[] = [];
 
       // 1. Email the client
-      const { data: cp } = await admin.from("profiles").select("first_name, email").eq("id", client_id).single();
+      const { data: cp } = await admin.from("profiles").select("first_name, email").eq("id", client_id).maybeSingle();
       if (cp?.email) {
-        const name = cp.first_name ?? "there";
+        const name = esc(cp.first_name ?? "there");
         const html = `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#1a2236;color:#f0f4ff;padding:2rem;border-radius:12px;">
           <h2 style="color:#ea6b14;">You have ${BID_CAP} bids — ready to choose! 🔨</h2>
-          <p>Hi ${name}, your <strong>${service}</strong> job has received ${BID_CAP} bids. That's the maximum — the job is now closed to new contractors.</p>
+          <p>Hi ${name}, your <strong>${eService}</strong> job has received ${BID_CAP} bids. That's the maximum — the job is now closed to new contractors.</p>
           <p>Log in to review each bid, compare prices, and accept the one that works best for you.</p>
           <a href="https://freddyfixit.ca/client-dashboard" style="display:inline-block;margin-top:1rem;padding:.85rem 1.75rem;background:#ea6b14;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:1rem;">Review Bids Now →</a>
           <p style="margin-top:1.5rem;font-size:.82rem;color:rgba(190,205,235,.45);">Questions? Reply to this email or WhatsApp us at +1 (825) 561-8331.</p>
@@ -155,7 +196,7 @@ serve(async (req) => {
         const { data: request } = await admin
           .from("client_requests")
           .select("dispatched_to, location")
-          .eq("id", request_id).single();
+          .eq("id", request_id).maybeSingle();
 
         const dispatched: string[] = request?.dispatched_to ?? [];
 
@@ -176,16 +217,17 @@ serve(async (req) => {
               .select("id, first_name, email")
               .in("id", nonBidders);
 
+            const eArea = esc(String(request?.location ?? "").split(",")[0]);
             for (const p of profiles ?? []) {
               if (!p.email) continue;
-              const name = p.first_name ?? "there";
+              const name = esc(p.first_name ?? "there");
               const html = `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#1a2236;color:#f0f4ff;padding:2rem;border-radius:12px;">
                 <h2 style="color:#ea6b14;">Job filled 🔒</h2>
-                <p>Hi ${name}, the <strong>${service}</strong> job in <strong>${(request?.location ?? "").split(",")[0]}</strong> has received ${BID_CAP} bids and is now closed.</p>
+                <p>Hi ${name}, the <strong>${eService}</strong> job in <strong>${eArea}</strong> has received ${BID_CAP} bids and is now closed.</p>
                 <p>We'll send you the next matching job as soon as it comes in. Keep an eye on your dashboard for open requests.</p>
                 <a href="https://freddyfixit.ca/contractor-dashboard" style="display:inline-block;margin-top:1rem;padding:.75rem 1.5rem;background:rgba(255,255,255,.08);color:#f0f4ff;border-radius:8px;text-decoration:none;font-weight:600;border:1px solid rgba(255,255,255,.15);">View Available Jobs →</a>
               </div>`;
-              await sendEmail(p.email, `Job filled — ${service} in ${(request?.location ?? "").split(",")[0]}`, html);
+              await sendEmail(p.email, `Job filled — ${String(service ?? "")} in ${String(request?.location ?? "").split(",")[0]}`, html);
               results.push("contractor:" + p.email);
             }
           }

@@ -154,6 +154,9 @@ export default function ContractorDashboard() {
   // job_id -> service-agreement status. The client can't pay until this is
   // "signed", so it drives the "send your agreement" attention row.
   const [contracts, setContracts]     = useState<Record<string, string>>({});
+  // True when the job_contracts read failed, so "needs a signed agreement" stays
+  // silent instead of firing off an empty map (see loadContracts).
+  const [contractsFailed, setContractsFailed] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string|null>(null);
   const [chatJob, setChatJob]         = useState<any|null>(null);
   const [timeDismissed, setTimeDismissed] = useState<Set<string>>(new Set());
@@ -208,6 +211,7 @@ export default function ContractorDashboard() {
   const [earn, setEarn]               = useState<any>(null);
   const [respMins, setRespMins]       = useState<number|null>(null); // own median first-response time (speed-to-lead)
   const [expenses, setExpenses]       = useState<JobExpense[]>([]);  // job costing — contractor-private (RLS scopes to own rows)
+  const [expensesFailed, setExpensesFailed] = useState(false);       // read failed ≠ no costs logged
   const [goalInput, setGoalInput]     = useState("");
   const [savingGoal, setSavingGoal]   = useState(false);
   const [rewindOpen, setRewindOpen]   = useState(false);
@@ -288,12 +292,17 @@ export default function ContractorDashboard() {
 
   // Pull the service-agreement status for a set of jobs. Called on load for every
   // job, and again after ContractPanel signs so the attention row clears without
-  // a refresh. A failure just leaves the map untouched — the panel itself is the
-  // source of truth on screen, this only drives the nudge.
+  // a refresh.
+  //
+  // A failed read used to return silently, leaving `contracts[job.id]` undefined —
+  // which the attention row below reads as "no agreement has ever been sent" and
+  // tells the pro to send one they may already have signed. Record the failure so
+  // that row can stay quiet rather than assert something we don't know.
   const loadContracts = async (jobIds: string[]) => {
     if (!jobIds.length) return;
     const { data, error } = await supabase.from("job_contracts").select("job_id, status").in("job_id", jobIds);
-    if (error || !data) return;
+    if (error || !data) { setContractsFailed(true); return; }
+    setContractsFailed(false);
     setContracts(prev => {
       const next = { ...prev };
       for (const id of jobIds) delete next[id]; // a job with no row is "not started"
@@ -365,9 +374,16 @@ export default function ContractorDashboard() {
       // Speed-to-lead: own median first-response time (fire-and-forget; null = not enough bids yet)
       supabase.rpc("contractor_response_stats")
         .then(({ data }: any) => { const r = (data ?? [])[0]; setRespMins(r ? Number(r.median_minutes) : null); });
-      // Job costing: own expense rows (fire-and-forget; RLS scopes to this contractor)
+      // Job costing: own expense rows (fire-and-forget; RLS scopes to this contractor).
+      // A failed read used to be indistinguishable from "no costs logged", which
+      // hides the real-profit rollup and invites the pro to re-enter costs they
+      // already have. Flag it so the earnings tab can say so instead.
       supabase.from("job_expenses").select("*").order("created_at", { ascending: false })
-        .then(({ data }: any) => setExpenses((data ?? []) as JobExpense[]));
+        .then(({ data, error }: any) => {
+          if (error) { setExpensesFailed(true); return; }
+          setExpensesFailed(false);
+          setExpenses((data ?? []) as JobExpense[]);
+        });
       setGoalInput(earnStats?.weekly_goal ? String(earnStats.weekly_goal) : "");
       setGoogleUrl(con2?.google_reviews_url ?? "");
       // Sync live Stripe payout status (no account.updated webhook needed) and
@@ -1160,25 +1176,11 @@ export default function ContractorDashboard() {
           // "Needs your attention" — the one place that answers "what should I do next?"
           const attn: { key: string; text: string; cta: string; onClick: () => void; danger?: boolean }[] = [];
           const goJob = (job: any) => { setActiveTab("jobs"); setJobFilter(null); if (activeJobId !== job.id) openJob(job); window.scrollTo({ top: 0, behavior: "smooth" }); };
-          for (const job of chatTimeJobs) {
-            // Stays put after "Decide later" so a suggested time can't be lost.
-            attn.push({
-              key: "chattime-" + job.id,
-              text: (job.client?.first_name || "Your client") + " suggested " + formatWhen(job.chat_time_at) + " for “" + (job.request?.service_needed ?? "a job") + "”.",
-              cta: "Accept or change",
-              onClick: () => setTimeDismissed(prev => { const n = new Set(prev); n.delete(job.id); return n; }),
-            });
-          }
-          // Unread messages. Capped at 3 so a chatty week can't bury the rows
-          // that gate money (claims, agreements, photos).
-          for (const c of conversations.filter(c => c.unread > 0).slice(0, 3)) {
-            attn.push({
-              key: "msg-" + c.job_id,
-              text: partyName(c) + " sent you " + (c.unread === 1 ? "a message" : c.unread + " messages") + " about “" + (c.service_needed ?? "a job") + "”.",
-              cta: "Read it",
-              onClick: () => { setActiveTab("messages"); openConversation(c); window.scrollTo({ top: 0, behavior: "smooth" }); },
-            });
-          }
+          // ORDER MATTERS: only the first four rows render, so money-gating rows
+          // (claims, unsent agreements, missing photos, an unpaid balance) are
+          // pushed FIRST and the conversational rows go last. A chat time
+          // suggestion plus three unread threads used to fill every slot and hide
+          // the fact that a claim was open or an agreement had never been sent.
           for (const job of myJobs) {
             const d = disputes[job.id];
             const svc = job.request?.service_needed ?? "a job";
@@ -1208,7 +1210,8 @@ export default function ContractorDashboard() {
             // outranks everything else on a live job. Only prompt when it's the
             // contractor's move (nothing sent yet); once it's with the client the
             // panel on the job already says who we're waiting on.
-            if (["assigned", "scheduled", "in_progress", "pending_confirmation"].includes(job.status)
+            if (!contractsFailed
+                && ["assigned", "scheduled", "in_progress", "pending_confirmation"].includes(job.status)
                 && !["signed", "sent"].includes(contracts[job.id] ?? "")) {
               attn.push({ key: "contract-" + job.id, text: "“" + svc + "” needs a signed service agreement — your client can't pay until you send it.", cta: "Send agreement", onClick: () => focusContractJob(job) });
             }
@@ -1221,6 +1224,26 @@ export default function ContractorDashboard() {
           const reserved = availableJobs.filter((r: any) => r.is_preferred);
           if (reserved.length > 0) {
             attn.push({ key: "reserved", text: reserved.length === 1 ? "A client requested you — “" + reserved[0].service_needed + "” is reserved for you for 48h." : reserved.length + " clients requested you — jobs are reserved for you for 48h.", cta: "See jobs", onClick: () => { setActiveTab("available"); window.scrollTo({ top: 0, behavior: "smooth" }); } });
+          }
+          // ── Conversational rows last (see the ordering note above) ──────────
+          for (const job of chatTimeJobs) {
+            // Stays put after "Decide later" so a suggested time can't be lost.
+            attn.push({
+              key: "chattime-" + job.id,
+              text: (job.client?.first_name || "Your client") + " suggested " + formatWhen(job.chat_time_at) + " for “" + (job.request?.service_needed ?? "a job") + "”.",
+              cta: "Accept or change",
+              onClick: () => setTimeDismissed(prev => { const n = new Set(prev); n.delete(job.id); return n; }),
+            });
+          }
+          // Unread messages. Capped at 3 so a chatty week can't bury the rows
+          // that gate money (claims, agreements, photos).
+          for (const c of conversations.filter(c => c.unread > 0).slice(0, 3)) {
+            attn.push({
+              key: "msg-" + c.job_id,
+              text: partyName(c) + " sent you " + (c.unread === 1 ? "a message" : c.unread + " messages") + " about “" + (c.service_needed ?? "a job") + "”.",
+              cta: "Read it",
+              onClick: () => { setActiveTab("messages"); openConversation(c); window.scrollTo({ top: 0, behavior: "smooth" }); },
+            });
           }
           if (attn.length === 0) return null;
           return (
@@ -1345,7 +1368,12 @@ export default function ContractorDashboard() {
                         so this sits above the pricing/scheduling work — it's the first move. */}
                     <ContractPanel role="contractor" job={job} onUpdated={() => loadContracts([job.id])} highlight={pulseAnchor === CONTRACT_ANCHOR} />
 
-                    {Number(job.amount) > 2000 && <MilestonePanel role="contractor" job={job} />}
+                    {/* No outer price gate: MilestonePanel self-gates on
+                        `total <= 2000 && !job.is_milestone`. Gating here on the
+                        raw amount hid the panel from a job already ON a milestone
+                        plan whose price later dropped to $2,000 or less — the pro
+                        could then neither complete a stage nor get paid. */}
+                    <MilestonePanel role="contractor" job={job} />
 
                     {(job.client_approved_at || job.status === "scheduled" || job.status === "pending_confirmation" || job.status === "completed") && (
                       <div style={{ margin:"1rem 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .07)" }}>
@@ -2079,6 +2107,13 @@ export default function ContractorDashboard() {
                 </div>
               ))}
             </div>
+            {expensesFailed && (
+              <div style={{ ...s.earnCard, marginBottom:"1.5rem", textAlign:"left" as const, borderColor:"rgba(239,68,68,.3)" }}>
+                <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
+                  We couldn't load your logged job costs just now, so your real-profit total isn't shown. Nothing has been lost — refresh the page to try again.
+                </div>
+              </div>
+            )}
             {expenses.length > 0 && (() => {
               const totalCosts = expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
               const profit = totalEarned - totalCosts;

@@ -421,9 +421,32 @@ Consumer-facing wording: say **"held securely"**, never "escrow" — the Stripe 
 
 ---
 
+# Security model (2026-08-04 audit)
+
+**`verify_jwt=true` is NOT authentication here.** The anon key is itself a valid project-signed JWT and ships publicly in the JS bundle, so it satisfies the platform gate. Any edge function that must know *who* is calling has to check in code: pull the bearer, `admin.auth.getUser(jwt)`, and resolve role/identity from `profiles` — **never from the request body.** `support-request` v2 does exactly this; trusting the body previously let anyone send mail that looked like it came from another user.
+
+**The internal-token primitive.** DB→edge calls (triggers, pg_cron) carried the anon bearer, which proves nothing. Now `public.internal_tokens` + `issue_internal_token(p_purpose)` / `consume_internal_token(p_token, p_purpose)`: the DB mints a single-use 10-minute token and sends it as the **`x-ff-internal`** header; the edge function redeems it through its service-role client. Redeeming is what proves the caller is Postgres. Universal purpose string is **`'edge-internal'`**. Minting DB callers: `accept_bid`, `place_bid`, `notify_new_message`, `kick_newsletter`. Gated functions: `notify-accepted` v12, `notify-message` v2, `newsletter-send` v2 (which also accepts a real admin JWT). A service-role key is deliberately **never** embedded in a function body — `pg_proc.prosrc` is publicly readable.
+
+**Revoking from `anon` alone is a no-op.** The default function grant is to `PUBLIC` (`proacl` = `=X/postgres`), so `revoke … from public` is required too. Internal/cron functions (`notify_user`, `_notify`, the four `kick_*`, `run_reminders`, `run_platform_health_check`, `escalate_stale_unbid_requests`, `auto_confirm_stale_jobs`, `auto_approve_stale_milestones`, `generate_recurring_occurrences`, both token functions) are now `{postgres,service_role}` only.
+
+**`contractors` is own-row + RPC only.** The old "Active contractors visible to clients" policy exposed all 38 columns — auth uids, `total_earned`, `stripe_account_id`, licence/insurance, `work_references`, `doc_urls` — to anon. It's dropped, and `anon` has no grants on the table. Every read of someone else's row goes through a curating `SECURITY DEFINER` RPC (`get_contractor_profile`, `get_top_pros`, `get_contractor_directory`, `list_my_pros`, `admin_get_contractor_detail`). `TRUNCATE` (not subject to RLS) revoked from `anon`/`authenticated` on every public table.
+
+**Every `public` function now has a pinned `search_path`** (`public, extensions, pg_temp` — `extensions` included because pgcrypto lives there).
+
+**Frontend honesty rule:** a failed read is not an empty result. `contractsFailed` suppresses the "needs a signed agreement" nudge, `expensesFailed` replaces the profit rollup with a notice, `ContractPanel` has an error+retry branch, and `FreddyRewind` says it couldn't load rather than reporting a $0 year. Same principle behind `.maybeSingle()` everywhere.
+
+**`src/lib/contractCopy.ts`** — `sendContractCopy(jobId)` retries the Alberta written-copy email 3× (the edge update is write-once, so retrying can't double-send) and returns false only if all attempts fail; `CONTRACT_COPY_FAILED` is the copy to show then.
+
+**Owner-only, still open:** leaked-password protection (Dashboard → Authentication → Policies), and six deployed edge functions with **no source in the repo** (`analyze-repair`, `remind-contractor`, `resend-domains`, `send-bid-email`, `send-reminder`, `send-welcome`) — all but `resend-domains` are `verify_jwt=false`.
+
+The full ranked findings live in `SECURITY-AUDIT-PRIVATE.md`, which is **gitignored** — the repo is public and must never carry a map of holes.
+
+---
+
 # Open / queued
 
-- **⚠️ `apply-deposit-payments.sh` is built but NOT YET RUN** (26 files). Its DB migrations and 9 edge functions are **already live**, so `create-payment-intent` v16 is charging only the 40% deposit while the un-shipped client UI still describes a single full charge. Run: `rm -f ~/freddy-fixit/.git/index.lock && bash ~/freddy-fixit/apply-deposit-payments.sh`. **It carries the pre-compression copy of this file** — regenerate it (or ship this file in a follow-up installer) or it will revert the rewrite.
+- **Owner action: leaked-password protection** — Supabase Dashboard → Authentication → Policies. Can't be set over MCP.
+- **Six deployed edge functions have no source in the repo** — see the security section. Either recover their source or delete the ones that are dead.
 - **Prepaid-contracting licensing** (contractor licence + bond; whether the platform needs its own) — lawyer + Service Alberta. Blocking-risk item.
 - **One real end-to-end live payment run** — no job has ever reached `held`, so the held→dispute→release path is production-untested.
 - Balance-owed client reminders in `run_reminders()`; admin escalation for health check 5.

@@ -26,7 +26,11 @@ export function SettingsPanel({ role }: { role: Role }) {
       if (data?.url) { window.location.href = data.url; return; }
       throw new Error(data?.error || "Could not open Stripe");
     } catch (e: any) {
-      alert("Couldn't open payout settings: " + (e?.message || String(e)));
+      // invoke() discards the response body, so without this the user only ever
+      // sees "Edge Function returned a non-2xx status code".
+      let msg = e?.message || String(e);
+      try { const b = await e?.context?.json?.(); if (b?.error) msg = b.error; } catch { /* keep the fallback */ }
+      alert("Couldn't open payout settings: " + msg);
       setBusyPay(false);
     }
   }

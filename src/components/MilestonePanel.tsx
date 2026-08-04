@@ -19,6 +19,7 @@ import { Ic } from "@/components/Ic";
 import { supabase } from "@/lib/supabase";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import { beforeRequired } from "@/components/JobPhotos";
+import { sendContractCopy, CONTRACT_COPY_FAILED } from "@/lib/contractCopy";
 
 type Role = "contractor" | "client" | "admin";
 type Milestone = {
@@ -189,7 +190,9 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
     const { error } = await supabase.rpc("approve_milestone_schedule", { p_job_id: job.id });
     if (error) throw error;
     // Email the client a written contract copy (Alberta: starts the 10-day cancellation clock).
-    supabase.functions.invoke("notify-email", { body: { event: "contract_copy", job_id: job.id } }).catch(() => {});
+    // Retries internally; only surfaces a message if every attempt failed, and never
+    // blocks the approval, which has already succeeded.
+    void sendContractCopy(job.id).then(ok => { if (!ok) setMsg(CONTRACT_COPY_FAILED); });
     setSchedStatus("approved"); setMsg("Plan approved — you can fund the first stage.");
     await load(); onUpdated?.();
   });

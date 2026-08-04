@@ -29,10 +29,11 @@ export default function RequestHelpModal({
     if (!message.trim()) { setErr(isBug ? "Please describe what went wrong." : "Please describe what you need help with."); return; }
     setBusy(true); setErr(null);
     try {
+      // role and user_id are deliberately NOT sent: support-request resolves the
+      // sender from the access token and ignores the body, because trusting the
+      // body let anyone send mail that looked like it came from another user.
       const { error } = await supabase.functions.invoke("support-request", {
         body: {
-          role,
-          user_id: userId,
           subject: isBug
             ? `🐞 Bug report: ${subject.trim() || "something isn't working"}`
             : subject.trim() || (role === "client" ? "Client support request" : "Contractor support request"),
@@ -40,7 +41,13 @@ export default function RequestHelpModal({
           message: message.trim(),
         },
       });
-      if (error) throw new Error(error.message);
+      if (error) {
+        // invoke() drops the body, so pull the real reason (e.g. "sign in to
+        // send a support request") off error.context.
+        let m = error.message;
+        try { const b = await (error as any)?.context?.json?.(); if (b?.error) m = b.error; } catch { /* keep the fallback */ }
+        throw new Error(m);
+      }
       setSent(true);
     } catch (e: any) {
       setErr(e?.message || "Couldn't send your request. Please try again or email hello@freddyfixit.ca.");

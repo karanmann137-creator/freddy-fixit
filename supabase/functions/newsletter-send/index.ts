@@ -28,6 +28,33 @@ const MUTED = "#9aa4bf";
 
 const sb = createClient(SB_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
+// AUTH. This endpoint can mail every subscriber on the platform, so it must
+// know who is calling. verify_jwt cannot do that here: the anon key is itself
+// a valid project-signed JWT and ships in the public browser bundle.
+// Two accepted callers:
+//   * pg_cron, via kick_newsletter(), which mints a single-use token
+//     (public.issue_internal_token) and sends it as x-ff-internal
+//   * a signed-in admin, for the {test:true} preview
+// The 5-day rate guard stays as a backstop but is no longer the only defence.
+async function callerIsInternal(req: Request): Promise<boolean> {
+  const t = req.headers.get("x-ff-internal") ?? "";
+  if (!t) return false;
+  const { data, error } = await sb.rpc("consume_internal_token", {
+    p_token: t,
+    p_purpose: "edge-internal",
+  });
+  return !error && data === true;
+}
+
+async function callerIsAdmin(req: Request): Promise<boolean> {
+  const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  if (!jwt) return false;
+  const { data: u } = await sb.auth.getUser(jwt);
+  if (!u?.user) return false;
+  const { data: p } = await sb.from("profiles").select("role").eq("id", u.user.id).maybeSingle();
+  return p?.role === "admin";
+}
+
 function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -156,6 +183,14 @@ async function nextQueued(audience: string) {
 
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+
+  const internal = await callerIsInternal(req);
+  if (!internal && !(await callerIsAdmin(req))) {
+    return new Response(JSON.stringify({ ok: false, error: "forbidden" }), {
+      status: 403, headers: { "Content-Type": "application/json" },
+    });
+  }
+
   let payload: Record<string, unknown> = {};
   try { payload = await req.json(); } catch { /* empty body ok */ }
 

@@ -223,6 +223,22 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
 
   if (loading) return <div {...anchor} style={{ ...cardBase, fontSize: ".85rem", color: "rgba(var(--ff-muted), .7)" }}>Loading the agreement…</div>;
 
+  // A failed read left `contract` null, which every branch below reads as "no
+  // agreement yet" — the client was told their contractor was still preparing it
+  // and the contractor was offered a blank compose form that could overwrite a
+  // draft we simply failed to fetch. Say what actually happened, and offer retry.
+  if (err && !contract) {
+    return (
+      <div {...anchor} style={{ ...cardBase, borderColor: "rgba(239,68,68,.35)" }}>
+        <div style={label}><Ic name="alert-triangle" size={14} color="#ef4444" />Service agreement</div>
+        <div style={{ fontSize: ".85rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .9)", marginBottom: ".7rem" }}>
+          We couldn't load this job's agreement just now, so we can't show you where it stands. Nothing has been lost — please try again.
+        </div>
+        <button style={{ ...btn, background: "#ea6b14", color: "#fff" }} onClick={() => { setLoading(true); void load(); }}>Try again</button>
+      </div>
+    );
+  }
+
   const status = contract?.status ?? null;
   const bodyForView = contract?.body_md || preview;
 

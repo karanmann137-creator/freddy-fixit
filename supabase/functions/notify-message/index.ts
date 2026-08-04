@@ -3,7 +3,14 @@
 // clients and contractors get notified off-platform. Called by the DB trigger
 // notify_new_message() (which already enforces a ~15-min-per-(job,recipient)
 // throttle via message_email_log), so this fn just renders + sends.
-// verify_jwt = false (invoked server-side by Postgres with the anon bearer).
+// verify_jwt = false (invoked server-side by Postgres).
+//
+// AUTH: verify_jwt is NOT authentication on this project — the anon key is
+// itself a valid project-signed JWT and ships publicly in the browser bundle,
+// so "Bearer <anon>" proves nothing. The DB now mints a single-use token
+// (public.issue_internal_token) and sends it as x-ff-internal; we redeem it
+// here. Without this, anyone could POST a message_id and make the platform
+// send a DKIM-signed email to that job's other party.
 // Secret needed: RESEND_API_KEY  (SUPABASE_URL / SERVICE_ROLE_KEY auto-injected)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -28,6 +35,22 @@ const esc = (s: unknown) =>
 
 const jobCode = (id: string) => "FFX-" + String(id).replace(/-/g, "").slice(0, 5).toUpperCase();
 
+// Single-use token minted by the database. Redeeming it is what proves the
+// caller is Postgres and not the open internet.
+async function callerIsInternal(req: Request): Promise<boolean> {
+  const t = req.headers.get("x-ff-internal") ?? "";
+  if (!t) return false;
+  const { data, error } = await admin.rpc("consume_internal_token", {
+    p_token: t,
+    p_purpose: "edge-internal",
+  });
+  return !error && data === true;
+}
+
+const forbidden = () =>
+  new Response(JSON.stringify({ ok: false, error: "forbidden" }),
+    { status: 403, headers: { ...cors, "Content-Type": "application/json" } });
+
 async function lookupPerson(userId: string) {
   let email: string | null = null, name = "";
   const { data: p } = await admin.from("profiles")
@@ -47,6 +70,8 @@ async function lookupPerson(userId: string) {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
+    if (!(await callerIsInternal(req))) return forbidden();
+
     const body = await req.json().catch(() => ({}));
     const messageId   = String(body?.message_id || "");
     let   recipientId = body?.recipient_id ? String(body.recipient_id) : "";
@@ -76,6 +101,15 @@ serve(async (req) => {
     }
     if (!recipientId || recipientId === msg.sender_id) {
       return new Response(JSON.stringify({ ok: true, skipped: "no recipient" }),
+        { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    // recipient_id arrives in the body, so never take it on trust: it must be
+    // one of the two parties on THIS job. Otherwise a caller could name any
+    // user id and have that person emailed someone else's message content.
+    if (recipientId !== job.client_id && recipientId !== job.contractor_id) {
+      console.warn("notify-message: recipient not a party to job", msg.job_id);
+      return new Response(JSON.stringify({ ok: true, skipped: "recipient not a job party" }),
         { headers: { ...cors, "Content-Type": "application/json" } });
     }
 

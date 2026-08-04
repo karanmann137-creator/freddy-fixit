@@ -36,10 +36,13 @@ export default function ProfileBar({ role, onSaved }: { role: Role; onSaved?: ()
       if (!user || cancelled) { setLoading(false); return; }
       setUserId(user.id);
       setEmail(user.email ?? "");
-      const { data: prof } = await supabase.from("profiles").select("first_name,last_name,phone,email").eq("id", user.id).single();
+      // maybeSingle() throughout: an orphaned account (auth user, no profile/contractor
+      // row yet) is a real state on this platform, and single() turns it into an error
+      // that leaves the whole profile bar blank instead of showing empty fields to fill.
+      const { data: prof } = await supabase.from("profiles").select("first_name,last_name,phone,email").eq("id", user.id).maybeSingle();
       let companyName = "", workType = "";
       if (role === "contractor") {
-        const { data: con } = await supabase.from("contractors").select("company_name,work_type").eq("id", user.id).single();
+        const { data: con } = await supabase.from("contractors").select("company_name,work_type").eq("id", user.id).maybeSingle();
         companyName = con?.company_name ?? "";
         workType = con?.work_type ?? "";
       }
