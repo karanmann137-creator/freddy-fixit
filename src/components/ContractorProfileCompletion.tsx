@@ -28,6 +28,7 @@ type DocKey = "insurance" | "wcb" | "certification" | "gov_id";
 // Anchor ids for the sections a contractor can still be missing. The dashboard
 // scrolls to one of these and passes it as `highlight` so the section pulses.
 export const GAP_ANCHORS = {
+  photo: "cpc-photo",
   area: "cpc-area",
   work_type: "cpc-worktype",
   credentials: "cpc-credentials",
@@ -49,6 +50,8 @@ export default function ContractorProfileCompletion({
   const [operatesAlone, setOperatesAlone] = useState<boolean>(!!contractor?.operates_alone);
   const [workReferences, setWorkReferences] = useState<string>(contractor?.work_references ?? "");
   const [docFiles, setDocFiles] = useState<Record<DocKey, File | null>>({ insurance: null, wcb: null, certification: null, gov_id: null });
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
@@ -76,6 +79,24 @@ export default function ContractorProfileCompletion({
     setDocFiles(prev => ({ ...prev, [key]: f }));
   };
 
+  // iPhone photos frequently arrive with an EMPTY f.type, so a strict MIME
+  // whitelist silently rejects perfectly good pictures — fall back to the
+  // filename extension. And a cancelled picker returns no file at all, so we
+  // return early rather than wiping a selection the contractor already made.
+  const pickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setMsg(null);
+    const t = (f.type || "").toLowerCase();
+    const okType = t.startsWith("image/") || /\.(jpe?g|png|webp|gif|heic|heif)$/.test(f.name.toLowerCase());
+    // Reset the input on reject, otherwise re-picking the SAME file fires no
+    // onChange and the contractor gets no feedback at all the second time.
+    if (!okType) { setMsg({ kind: "err", text: "Please choose a photo (JPG, PNG or HEIC)." }); e.target.value = ""; return; }
+    if (f.size > 10 * 1024 * 1024) { setMsg({ kind: "err", text: "Your photo must be under 10MB." }); e.target.value = ""; return; }
+    setPhotoFile(f);
+    setPhotoPreview(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(f); });
+  };
+
   const save = async () => {
     setBusy(true); setMsg(null);
     try {
@@ -93,7 +114,23 @@ export default function ContractorProfileCompletion({
         uploadedAny = true;
       }
 
+      // Profile photo. Same bucket + path convention as signup so a contractor
+      // who added one there just overwrites it. The bucket is public, so the
+      // URL can be stored directly and shown to clients with no signing.
+      let photoUrl: string | null = contractor?.photo_url ?? null;
+      if (photoFile) {
+        const pext = (photoFile.name.split(".").pop() || "jpg").toLowerCase();
+        const ppath = `${profile.id}/avatar.${pext}`;
+        const { error: pErr } = await supabase.storage.from("contractor-photos").upload(ppath, photoFile, { upsert: true });
+        if (pErr) { setMsg({ kind: "err", text: "Couldn't upload your photo: " + pErr.message }); setBusy(false); return; }
+        const { data: pub } = supabase.storage.from("contractor-photos").getPublicUrl(ppath);
+        // Overwriting the same path leaves the old image in the CDN cache, so
+        // stamp the URL — without this a replaced photo looks like it didn't save.
+        photoUrl = pub?.publicUrl ? `${pub.publicUrl}?v=${Date.now()}` : photoUrl;
+      }
+
       const patch = {
+        photo_url: photoUrl,
         service_area: area,
         company_name: companyName || null,
         work_type: workType || null,
@@ -114,6 +151,7 @@ export default function ContractorProfileCompletion({
         supabase.functions.invoke("review-contractor", { body: { contractor_id: profile.id } }).catch(() => {});
       }
       setDocFiles({ insurance: null, wcb: null, certification: null, gov_id: null });
+      setPhotoFile(null);
       onSaved(patch);
       setMsg({ kind: "ok", text: "Saved. Thanks — we'll review anything new within 24 hours." });
     } finally {
@@ -133,6 +171,30 @@ export default function ContractorProfileCompletion({
 
   return (
     <div>
+      {/* Profile photo — the one thing on this page a client actually sees. */}
+      <div {...sect(GAP_ANCHORS.photo)}>
+        <span style={lbl}>Profile photo</span>
+        <div style={{ display: "flex", alignItems: "center", gap: ".9rem", flexWrap: "wrap" }}>
+          <div style={{ width: 72, height: 72, borderRadius: "50%", overflow: "hidden", flex: "0 0 auto",
+            background: "rgba(234,107,20,.14)", border: "1px solid rgba(var(--ff-fg), .12)",
+            display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {(photoPreview || contractor?.photo_url)
+              ? <img src={photoPreview || contractor.photo_url} alt="Your profile photo" style={{ width: "100%", height: "100%", objectFit: "cover" as const }} />
+              : <span style={{ fontSize: "1.4rem", fontWeight: 700, color: "#ea6b14" }}>
+                  {((profile?.first_name?.[0] ?? "") + (profile?.last_name?.[0] ?? "")).toUpperCase() || "?"}
+                </span>}
+          </div>
+          <div style={{ flex: "1 1 200px", minWidth: 0 }}>
+            {/* accept without `capture` so a pro can attach a photo they already took. */}
+            <input type="file" accept="image/*" onChange={pickPhoto} style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .7)", maxWidth: "100%" }} />
+            <p style={{ fontSize: ".74rem", color: "rgba(var(--ff-muted), .55)", margin: ".4rem 0 0", lineHeight: 1.5 }}>
+              Clients see this next to your estimate. A clear photo of your face — or your logo — gets picked noticeably more often than a blank circle.
+              {photoFile ? " Press Save below to finish." : ""}
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Service area */}
       <div {...sect(GAP_ANCHORS.area)}>
         <span style={lbl}>Service area — which parts of Calgary do you cover?</span>

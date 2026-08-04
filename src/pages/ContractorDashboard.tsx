@@ -61,6 +61,7 @@ const STAGE_LABEL: Record<string, string> = {
 type ProfileGap = { key: string; label: string; anchor: string };
 const contractorGaps = (c: any): ProfileGap[] => {
   const g: ProfileGap[] = [];
+  if (!c?.photo_url)                                     g.push({ key: "photo",       label: "profile photo",          anchor: GAP_ANCHORS.photo });
   if (!(c?.service_area?.length))                        g.push({ key: "area",        label: "service area",           anchor: GAP_ANCHORS.area });
   if (!c?.work_type)                                     g.push({ key: "work_type",   label: "your trade",             anchor: GAP_ANCHORS.work_type });
   if (!c?.has_liability_insurance && !c?.licensed)       g.push({ key: "credentials", label: "licence or insurance",   anchor: GAP_ANCHORS.credentials });
@@ -1081,7 +1082,7 @@ export default function ContractorDashboard() {
                   <Ic name="alert-triangle" size={14} />Finish setting up your profile
                 </div>
                 <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5, marginBottom:".55rem" }}>
-                  Still needed before you can take jobs — tap one to jump straight to it:
+                  Still missing from your profile — tap one to jump straight to it:
                 </div>
                 <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const }}>
                   {gaps.map(g => (
@@ -1832,14 +1833,19 @@ export default function ContractorDashboard() {
             <ProfileBar role="contractor" />
             {(() => {
               const missing = contractorMissing(contractor);
-              if (missing.length === 0) return null;
+              // Rendered whether or not anything is missing. It used to disappear
+              // the moment the profile was complete, which left a finished
+              // contractor with no way to change their photo or their area again.
+              const done = missing.length === 0;
               return (
-                <div style={{ ...s.card, border:"1px solid rgba(234,107,20,.35)", background:"rgba(234,107,20,.06)" }}>
+                <div style={done ? s.card : { ...s.card, border:"1px solid rgba(234,107,20,.35)", background:"rgba(234,107,20,.06)" }}>
                   <div style={{ ...s.cardTitle, display:"flex", alignItems:"center", gap:".5rem" }}>
-                    <Ic name="bell" size={18} color="#ea6b14" /> Finish setting up your profile
+                    <Ic name="bell" size={18} color="#ea6b14" /> {done ? "Your profile details" : "Finish setting up your profile"}
                   </div>
                   <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.55, marginBottom:"1.25rem" }}>
-                    You still need to add: <strong style={{ color:"var(--ff-text)" }}>{missing.join(", ")}</strong>. Complete these so admin can approve you and you can start taking jobs.
+                    {done
+                      ? <>Everything's filled in. You can change your photo, service area or credentials here any time.</>
+                      : <>You still need to add: <strong style={{ color:"var(--ff-text)" }}>{missing.join(", ")}</strong>. Complete these so admin can approve you and clients can see who they're hiring.</>}
                   </p>
                   <ContractorProfileCompletion
                     profile={profile}

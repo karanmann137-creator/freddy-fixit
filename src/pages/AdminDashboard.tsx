@@ -56,6 +56,7 @@ export default function AdminDashboard() {
   const [busyDelete, setBusyDelete] = useState(false);
   const [busyDeleteAccount, setBusyDeleteAccount] = useState<string|null>(null);
   const [busyNudge, setBusyNudge] = useState(false);
+  const [busyRefire, setBusyRefire] = useState<string|null>(null); // request id being re-sent
   // Live Stripe payout diagnosis, keyed by contractor id. Fetched on demand
   // (one Stripe API call each) so the owner can see exactly what a stuck
   // contractor still owes Stripe without asking them.
@@ -228,6 +229,33 @@ export default function AdminDashboard() {
     setBusyDelete(false);
     if (error) { alert("Couldn't delete: " + error.message); return; }
     setRequests(prev => prev.filter(x => x.id !== r.id));
+  };
+
+  // Re-send the new-job email for a request that stalled. This normally happens by
+  // itself at 24h and again at 48h while the request is under 3 bids; the button is
+  // the manual override and deliberately ignores that two-nudge cap.
+  //
+  // admin_refire_request resets `dispatched_to` down to the pros who already bid
+  // before re-invoking dispatch-job, so a pro who has already quoted is never
+  // nudged about it and everyone else is emailed exactly once per press.
+  const refireRequest = async (r: any) => {
+    if (!window.confirm(
+      "Re-send this job to every matching contractor who hasn't bid on it yet?\n\n" +
+      "Pros who already sent an estimate won't be emailed again."
+    )) return;
+    setBusyRefire(r.id);
+    try {
+      const { data, error } = await supabase.rpc("admin_refire_request", { p_request_id: r.id });
+      if (error) throw error;
+      const reached = Number((data as any)?.reached ?? 0);
+      const count   = Number((data as any)?.refire_count ?? 0);
+      setRequests(prev => prev.map(x => x.id === r.id ? { ...x, refire_count: count } : x));
+      alert(reached === 0
+        ? "Nothing sent — every matching contractor has either already bid on this job or hidden it from their feed."
+        : `Re-sent to ${reached} contractor${reached === 1 ? "" : "s"}.`);
+    } catch (e: any) {
+      alert("Couldn't re-send: " + (e?.message || String(e)));
+    } finally { setBusyRefire(null); }
   };
 
   const deleteJob = async (j: any) => {
@@ -541,9 +569,24 @@ export default function AdminDashboard() {
                   </div>
                 )}
                 <RequestPhotoQuote requestId={r.id} photoPath={r.photo_path} estimatedQuote={r.estimated_quote} quoteNotes={r.quote_notes} canQuote />
-                <div style={{ marginTop:".75rem" }}>
+                <div style={{ marginTop:".75rem", display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
+                  {/* Only for requests still taking bids — dispatch-job refuses anything
+                      else, so offering the button there would be a dead control. */}
+                  {r.status === "pending" && (
+                    <button style={{ ...s.btn, color:"#ea6b14", borderColor:"rgba(234,107,20,.35)", background:"rgba(234,107,20,.08)" }}
+                      disabled={busyRefire === r.id} onClick={() => refireRequest(r)}>
+                      <Ic name="mail" size={13} style={{ marginRight:4 }} />
+                      {busyRefire === r.id ? "Sending…" : "Re-send to contractors"}
+                    </button>
+                  )}
                   <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyDelete} onClick={() => deleteRequest(r)}><Ic name="trash" size={13} style={{ marginRight:4 }} />Delete request</button>
                 </div>
+                {r.status === "pending" && Number(r.refire_count ?? 0) > 0 && (
+                  <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .45)", marginTop:".4rem" }}>
+                    Re-sent {r.refire_count} time{Number(r.refire_count) === 1 ? "" : "s"}
+                    {Number(r.refire_count) >= 2 ? " — automatic nudges are used up, but you can still re-send by hand." : "."}
+                  </div>
+                )}
               </div>
             ))}
             {pager("requests")}

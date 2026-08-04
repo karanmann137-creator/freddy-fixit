@@ -134,6 +134,7 @@ export default function ClientDashboard() {
   const [bidResp, setBidResp] = useState<Record<string,number>>({}); // contractor_id -> median first-response minutes
   const [bidMatch, setBidMatch] = useState<Record<string,any>>({}); // contractor_id -> smart-match score + signals
   const [bidGrade, setBidGrade] = useState<Record<string,string>>({}); // contractor_id -> A+/A/A- price grade
+  const [bidPhoto, setBidPhoto] = useState<Record<string,string>>({}); // contractor_id -> profile photo URL
   const [busyPick, setBusyPick] = useState<string|null>(null);
   const [busyPay, setBusyPay] = useState(false);
   const [contractBlocked, setContractBlocked] = useState(false);      // agreement not signed yet → payment blocked
@@ -880,15 +881,18 @@ export default function ClientDashboard() {
           setClientBids(data ?? []);
           const ids = Array.from(new Set((data ?? []).map((b: any) => b.contractor_id)));
           if (ids.length) {
-            const { data: dir } = await supabase.rpc("get_contractor_directory").select("id, first_name, last_name, price_grade").in("id", ids);
+            const { data: dir } = await supabase.rpc("get_contractor_directory").select("id, first_name, last_name, price_grade, photo_url").in("id", ids);
             const m: Record<string,string> = {};
             const g: Record<string,string> = {};
+            const ph: Record<string,string> = {};
             ((dir ?? []) as any[]).forEach((c: any) => {
               m[c.id] = ((c.first_name ?? "") + " " + (c.last_name ? c.last_name[0] + "." : "")).trim() || "Contractor";
               if (c.price_grade) g[c.id] = c.price_grade;
+              if (c.photo_url) ph[c.id] = c.photo_url;
             });
             setBidNames(m);
             setBidGrade(g);
+            setBidPhoto(ph);
             // Speed-to-lead: median first-response time per bidding pro (badge on the bid card).
             const { data: rs } = await supabase.rpc("contractor_response_stats", { p_ids: ids });
             const rm: Record<string,number> = {};
@@ -901,7 +905,7 @@ export default function ClientDashboard() {
             setBidMatch(mm);
           }
         });
-    } else { setClientBids([]); setBidMatch({}); }
+    } else { setClientBids([]); setBidMatch({}); setBidPhoto({}); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeReq?.id, activeReq?.status]);
 
@@ -1365,7 +1369,18 @@ export default function ClientDashboard() {
                         )}
                         {[...clientBids].sort((a, b) => (Number(bidMatch[b.contractor_id]?.score ?? -1)) - (Number(bidMatch[a.contractor_id]?.score ?? -1)) || (Number(a.amount ?? Infinity)) - (Number(b.amount ?? Infinity))).map((b, bi) => (
                           <div key={b.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", padding:".6rem .7rem", marginBottom:".5rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px", flexWrap:"wrap" as const }}>
-                            <div style={{ flex:"1 1 160px" }}>
+                            {/* Who you'd be letting into your home. Falls back to initials
+                                rather than a broken image when the pro hasn't added a photo. */}
+                            <div style={{ width:44, height:44, borderRadius:"50%", overflow:"hidden", flex:"0 0 auto", alignSelf:"flex-start",
+                              background:"rgba(234,107,20,.14)", border:"1px solid rgba(var(--ff-fg), .1)",
+                              display:"flex", alignItems:"center", justifyContent:"center" }}>
+                              {bidPhoto[b.contractor_id]
+                                ? <img src={bidPhoto[b.contractor_id]} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" as const }} />
+                                : <span style={{ fontSize:".85rem", fontWeight:700, color:"#ea6b14" }}>
+                                    {(bidNames[b.contractor_id] ?? "Contractor").split(/\s+/).map((w: string) => w[0] ?? "").join("").slice(0,2).toUpperCase()}
+                                  </span>}
+                            </div>
+                            <div style={{ flex:"1 1 160px", minWidth:0 }}>
                               <div style={{ fontSize:".88rem", color:"var(--ff-text)", display:"flex", alignItems:"center", gap:".45rem", flexWrap:"wrap" as const }}>
                                 {bidNames[b.contractor_id] ?? "Contractor"}{b.amount != null ? " — $" + b.amount : ""}
                                 {bi === 0 && clientBids.length > 1 && bidMatch[b.contractor_id] != null && (
