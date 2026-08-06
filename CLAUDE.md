@@ -137,7 +137,9 @@ Client files a formal claim (`ReportProblem` → `open_dispute` RPC: reason, ser
 `profiles.referral_code`/`referred_by` (auto via `gen_referral_code()`), `referrals` table, RPCs `apply_referral_code`, `get_my_referral`, `consume_referral_waiver`, `referral_waiver_eligible`. Reward = **3% fee waived on the referred client's first job**. App.tsx captures `?ref=` → localStorage; ClientOnboarding + AuthCallback apply it. `create-payment-intent` waives (read-only check); `stripe-webhook` consumes only on `payment_intent.succeeded`.
 
 ## Health check
-`platform_health_check()` returns 6 named checks: fee rate sane; `client_fee` matches `amount * rate`; critical RPCs present; no confirmed+held payout stuck >2h; `no_unpaid_balances`; `no_underfunded_payouts`. `run_platform_health_check()` (pg_cron `platform-health-check`, 15:00 UTC daily) alerts every admin **in-app only when a check fails**, deduped ~20h.
+`platform_health_check()` returns 7 named checks: fee rate sane; `client_fee` matches `amount * rate`; critical RPCs present; no confirmed+held payout stuck >2h; `no_unpaid_balances`; `no_underfunded_payouts`; **`no_stuck_signups`**. `run_platform_health_check()` (pg_cron `platform-health-check`, 15:00 UTC daily) alerts every admin when a check fails, deduped ~20h — and since `health_alert` is NOT in `EMAIL_HANDLED_ELSEWHERE`, that alert emails as well as ringing the bell.
+
+**Check 7 `no_stuck_signups` (2026-08-06)** counts `auth.users` rows created **24h–7d ago** that are still `email_confirmed_at is null` AND `last_sign_in_at is null`. Both ends of the window are deliberate: 24h so someone still working through their inbox isn't flagged, 7d so a genuinely abandoned signup ages out on its own instead of pinning the check red forever — while a real mailer outage re-fires every day it continues. Back-tested against the Aug 2026 incident it goes red on **Aug 1**, five days before the first phone call, and stays clean on the four days before that.
 
 ---
 
@@ -289,6 +291,10 @@ Sidebar badges render on the collapsed/mobile icon rail too (absolutely-position
 **CASL:** mailing address `20 Whiteram Mews NE, Calgary`, `List-Unsubscribe` + `List-Unsubscribe-Post` headers (Gmail one-click sends **POST**, per RFC 8058), and unsubscribe handled **before** any auth gate, always returning the same page (no id-existence leak).
 
 **DKIM:** an outage once killed ALL platform email — a second, truncated TXT record at `resend._domainkey.freddyfixit.ca` with no `p=`. Check for stray records first if Resend returns "domain not verified".
+
+**⚠️ There are TWO email systems, and only one of them is Resend.** Everything above — welcome, dispatch, receipts, reminders, newsletter — is ours, sent from edge functions via Resend as `noreply@freddyfixit.ca`. But **signup confirmation and password reset are sent by Supabase's own GoTrue mailer**, a different sender on a different domain that we do not monitor. In Aug 2026 that path broke on its own: people signed up, got our Resend welcome, never got the GoTrue confirmation, and were **silently locked out with no error visible to anyone**. Three accounts were stranded — one an already-approved contractor who had been receiving job emails for five days that he could not act on — and we only found out because one of them phoned. Password reset runs through the same mailer, so "just reset your password" fails too and is not a workaround.
+
+Diagnosing it: **GoTrue returns HTTP 500 on SMTP failure and 200 on a successful handoff**, so triggering a real auth email from Postgres (`net.http_post` → `/auth/v1/recover`, then re-select `net._http_response` after `pg_sleep(12)`) tells you whether the mailer accepted it. A 200 proves handoff, never delivery — only an inbox proves that. The permanent detection net is health check 7 `no_stuck_signups`.
 
 Standing owner instruction: **don't send bulk email without asking.**
 
