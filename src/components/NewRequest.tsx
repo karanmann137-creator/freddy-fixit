@@ -11,6 +11,8 @@ import { useServicePricing, fromText } from "@/lib/servicePricing";
 import ServicePicker from "@/components/ServicePicker";
 import BudgetPicker from "@/components/BudgetPicker";
 import { isPerKmService, freqLabel, SLIDER_STOPS, SLIDER_SHORT } from "@/lib/recurrence";
+import WaitlistForm from "@/components/WaitlistForm";
+import { usePlatformStatus, acceptingRequests } from "@/lib/platformStatus";
 
 // Shown when an already-signed-in client starts another request. Unlike the
 // first-time onboarding flow, this never creates an account — it reuses the
@@ -21,6 +23,10 @@ export default function NewRequest() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [lastReq, setLastReq] = useState<any>(null);
+
+  // Is the marketplace taking new job requests right now? Read unconditionally
+  // (hooks rule) — the gate itself lives further down, past the early returns.
+  const { status: platform, ready: platformReady } = usePlatformStatus();
 
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const pricing = useServicePricing();
@@ -296,6 +302,33 @@ export default function NewRequest() {
     <div style={{ minHeight:"100vh", background:"var(--ff-bg)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"1rem", fontFamily:"'DM Sans', sans-serif", padding:"2rem", textAlign:"center" }}>
       <p style={{ margin:0, color:"var(--ff-text)", fontSize:"1rem" }}>We couldn&rsquo;t load your details. Check your connection and try again.</p>
       <button onClick={() => { setLoading(true); setLoadTick(t => t + 1); }} style={{ padding:".7rem 1.6rem", borderRadius:"8px", border:"none", background:"#ea6b14", color:"#fff", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer" }}>Try again</button>
+    </div>
+  );
+
+  // Waitlist / paused mode — a returning client is the person most likely to be
+  // let down by silence, so capture them by name and tell them plainly. The DB
+  // trigger `enforce_platform_pause` is the real gate; this is the humane
+  // version of it. Their profile already has the contact details, so the form is
+  // prefilled and they only confirm.
+  if (platformReady && !acceptingRequests(platform.mode)) return (
+    <div style={s.wrap}>
+      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+      <div style={s.inner}>
+        <button onClick={() => setLocation("/client-dashboard")} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".82rem", textTransform:"uppercase", letterSpacing:".08em", padding:0, marginBottom:"1.5rem", display:"block" }}>
+          ← Dashboard
+        </button>
+        <WaitlistForm
+          initialService={selectedServices[0] || ""}
+          initialDescription={description}
+          initialEmail={profile?.email || ""}
+          initialName={profile?.first_name || ""}
+          source="new_request"
+        />
+        <p style={{ textAlign:"center", fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.6, margin:"1.5rem auto 0", maxWidth:"460px" }}>
+          Any job already in progress carries on as normal — you&rsquo;ll find it on your{" "}
+          <a href="/client-dashboard" style={{ color:"#ea6b14", textDecoration:"none", fontWeight:600 }}>dashboard</a>.
+        </p>
+      </div>
     </div>
   );
 

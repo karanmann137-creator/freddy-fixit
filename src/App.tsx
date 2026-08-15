@@ -13,6 +13,8 @@ import TopNav from "@/components/TopNav";
 import ChatWidget from "@/components/ChatWidget";
 import GoogleReviewModal from "@/components/GoogleReviewModal";
 import FinishSignupBanner from "@/components/FinishSignupBanner";
+import CookieConsent from "@/components/CookieConsent";
+import OverhaulNotice from "@/components/OverhaulNotice";
 import Footer from "@/components/Footer";
 
 // Lazy: heavy pages are split into their own chunks and fetched on demand,
@@ -168,6 +170,8 @@ export default function App() {
       <ChatWidget />
       <GoogleReviewModal />
       <FinishSignupBanner />
+      <CookieConsent />
+      <OverhaulNotice />
       <Suspense fallback={<PageLoader />}>
       <Switch>
       {/* Public */}

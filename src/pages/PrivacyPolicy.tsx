@@ -8,7 +8,7 @@ export default function PrivacyPolicy() {
       <div style={{ maxWidth:"800px", margin:"0 auto" }}>
 
         <h1 style={{ fontSize:"clamp(2.5rem,6vw,4rem)", color:"var(--ff-text)", marginBottom:".5rem" }}>Privacy Policy</h1>
-        <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)", marginBottom:"3rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 4, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
+        <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)", marginBottom:"3rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 4, 2026 &nbsp;·&nbsp; Last Updated: August 14, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
 
         <section style={{ marginBottom:"2.5rem" }}>
           <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>1. Introduction</h2>
@@ -183,9 +183,11 @@ export default function PrivacyPolicy() {
 
         <section style={{ marginBottom:"2.5rem" }}>
           <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>11. Cookies and Tracking Technologies</h2>
-          <p>The Platform uses <strong>essential session cookies</strong> required for user authentication and platform security. These cookies are strictly necessary for the Platform to function and cannot be disabled without affecting your ability to log in.</p>
-          <p>We use <strong>Google Analytics 4</strong> to understand how visitors use the Platform (for example, which pages are viewed and how people reach us) so we can improve it. This sets analytics cookies and shares limited usage data with Google LLC. We enable IP-address anonymization, and we do not use advertising cookies or sell your information. You can opt out at any time by installing the <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener noreferrer">Google Analytics Opt-out Browser Add-on</a> or by using your browser&rsquo;s cookie controls. Essential session cookies (described above) cannot be disabled without affecting login.</p>
-          <p>We also use <strong>PostHog</strong> for product analytics and <strong>session replay</strong>. Session replay records how visitors interact with the Platform (pages viewed, clicks, scrolling) so we can find and fix usability problems. Anything you type into form fields is <strong>masked and not recorded</strong>, and we do not use this data for advertising or sell it. This shares limited usage data with PostHog, Inc. (United States). You can opt out by using your browser&rsquo;s cookie controls or a tracker-blocking browser extension.</p>
+          <p><strong>Analytics cookies on this Platform are opt-in.</strong> When you first visit, we ask whether we may use them. Until you choose &ldquo;Accept,&rdquo; no analytics script is loaded, no analytics cookie is written, and nothing about how you use the Platform is recorded. Declining, or simply ignoring the request, leaves analytics off.</p>
+          <p>The Platform uses <strong>essential session cookies</strong> required for user authentication and platform security. These are strictly necessary for the Platform to function, are not used for analytics or advertising, and cannot be disabled without affecting your ability to log in.</p>
+          <p>If you accept, we use <strong>Google Analytics 4</strong> to understand how visitors use the Platform (for example, which pages are viewed and how people reach us) so we can improve it. This sets analytics cookies and shares limited usage data with Google LLC. We enable IP-address anonymization, and we do not use advertising cookies or sell your information.</p>
+          <p>If you accept, we also use <strong>PostHog</strong> for product analytics and <strong>session replay</strong>. Session replay records how visitors interact with the Platform (pages viewed, clicks, scrolling) so we can find and fix usability problems. Anything you type into form fields is <strong>masked and not recorded</strong>, and we do not use this data for advertising or sell it. This shares limited usage data with PostHog, Inc. (United States).</p>
+          <p><strong>Changing your mind.</strong> You can withdraw or grant consent at any time under <strong>Settings &rarr; Privacy &amp; cookies</strong>. When you withdraw it, we delete the analytics cookies we set and stop collecting; the page will reload so that any script already running in your browser stops. As an additional control, you may also install the <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener noreferrer">Google Analytics Opt-out Browser Add-on</a>, use your browser&rsquo;s cookie controls, or use a tracker-blocking extension.</p>
         </section>
 
         <section style={{ marginBottom:"2.5rem" }}>

@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
+// v16 (2026-08-14): the DETAILS row is now run through scrubAddressText() —
+// masking the LOCATION field was pointless while the description underneath
+// still printed the street address the client typed. Also v15's waitlist guard.
+//
 // v14 (2026-07-30): the new-job email now leads with urgency — bidding is
 // first-come, first-served and jobs close at the bid cap, so the subject says
 // so outright. When the request is reserved for a specific pro (rehire flow)
@@ -55,6 +59,32 @@ function maskLocation(loc: string): string {
   return parts.length ? parts.join(" · ") : "Calgary area";
 }
 
+// Clients routinely paste the street address into the free-text description,
+// which defeats maskLocation() entirely — the LOCATION row says "T2P 0R5 · NW
+// Calgary" while the DETAILS row underneath prints "1234 17 Ave SW". This is
+// the TS twin of public.scrub_address_text(); keep the two in step. Both are
+// deliberately conservative: a civic address must carry a street SUFFIX word,
+// so "sink on the 2nd floor" and "24 hour access" survive untouched.
+const STREET_SUFFIX =
+  "st|street|ave|avenue|rd|road|dr|drive|blvd|boulevard|cres|crescent|way|close|cl|court|ct|place|pl|" +
+  "gate|green|grove|bay|link|mews|terrace|trail|tr|rise|point|pt|landing|manor|heights|hts|parkway|pkwy|" +
+  "lane|ln|circle|cir|hill|row|common|commons|gardens|gdns|villas|square|sq";
+
+function scrubAddressText(t: string | null | undefined): string | null {
+  if (!t) return null;
+  return t
+    // The trailing quadrant is \b-anchored on purpose: without it, "ne" greedily
+    // ate the first two letters of the next word ("Drive needs" -> "Drive ne|eds").
+    .replace(
+      new RegExp(
+        `\\b\\d{1,6}\\s+[A-Za-z0-9'.\\-]+(\\s+[A-Za-z0-9'.\\-]+)?\\s+(${STREET_SUFFIX})\\b\\.?(\\s+(nw|ne|sw|se)\\b)?`,
+        "gi",
+      ),
+      "[address hidden]",
+    )
+    .replace(/\b[A-Za-z]\d[A-Za-z][ \-]?\d[A-Za-z]\d\b/gi, "[postal code hidden]");
+}
+
 const TRADE_MAP: Record<string, string[]> = {
   plumbing:    ["plumbing","pipe","drain","water","leak","faucet","toilet"],
   electrical:  ["electrical","electric","wiring","outlet","breaker","light"],
@@ -103,9 +133,19 @@ serve(async (req) => {
 
     const { data: request } = await admin
       .from("client_requests")
-      .select("id, service_needed, location, preferred_schedule, job_description, dispatched_to, status, preferred_contractor_id, created_at")
+      .select("id, service_needed, location, preferred_schedule, job_description, dispatched_to, status, preferred_contractor_id, created_at, waitlisted")
       .eq("id", request_id).single();
     if (!request) return new Response(JSON.stringify({ error: "not found" }), { status: 404, headers: { ...cors, "Content-Type": "application/json" } });
+
+    // Waitlist mode: this function is deployed verify_jwt=false, so it is
+    // PUBLICLY callable — anyone holding a request UUID could POST here and
+    // force the "URGENT — bid now" blast out to every matched contractor. The
+    // Postgres callers are already gated on client_requests.waitlisted, but
+    // this guard is the single choke point that makes that gate unbypassable.
+    // 200, not an error: a waitlisted request is a normal no-op, and the DB
+    // callers wrap this in an exception guard where a non-2xx is just log noise.
+    if (request.waitlisted) return new Response(JSON.stringify({ status: "skipped", reason: "waitlisted" }), { headers: { ...cors, "Content-Type": "application/json" } });
+
     if (request.status !== "pending") return new Response(JSON.stringify({ status: "not_pending" }), { headers: { ...cors, "Content-Type": "application/json" } });
 
     const alreadyNotified: string[] = request.dispatched_to ?? [];
@@ -185,7 +225,7 @@ serve(async (req) => {
           <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;width:120px;">SERVICE</td><td style="padding:.5rem 0;font-weight:500;">${request.service_needed}</td></tr>
           <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;">LOCATION</td><td style="padding:.5rem 0;">${area}</td></tr>
           <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;">TIMING</td><td style="padding:.5rem 0;">${request.preferred_schedule}</td></tr>
-          <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;">DETAILS</td><td style="padding:.5rem 0;font-size:.9rem;">${request.job_description ?? "—"}</td></tr>
+          <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;">DETAILS</td><td style="padding:.5rem 0;font-size:.9rem;">${scrubAddressText(request.job_description) ?? "—"}</td></tr>
         </table>
         <a href="https://freddyfixit.ca/contractor-dashboard" style="display:inline-block;margin-top:.5rem;padding:.75rem 1.5rem;background:#ea6b14;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Go bid on this job →</a>
         <p style="margin-top:1.5rem;font-size:.82rem;color:rgba(190,205,235,.55);">New to bidding? The <a href="https://freddyfixit.ca/contractor-guide" style="color:#ea6b14;">contractor guide</a> walks through how bidding and payment work.</p>

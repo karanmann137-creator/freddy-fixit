@@ -5,6 +5,7 @@ import {
   getTheme, setTheme, getTextScale, setTextScale,
   TEXT_SCALES, SCALE_LABELS, type Theme,
 } from "@/lib/theme";
+import { getConsent, setConsent, type ConsentChoice } from "@/lib/analytics";
 
 type Role = "client" | "contractor" | "admin" | null;
 
@@ -14,9 +15,20 @@ export function SettingsPanel({ role }: { role: Role }) {
   const [theme, setThemeState] = useState<Theme>(getTheme());
   const [scale, setScaleState] = useState<number>(getTextScale());
   const [busyPay, setBusyPay] = useState(false);
+  const [consent, setConsentState] = useState<ConsentChoice | null>(getConsent());
 
   const chooseTheme = (t: Theme) => { setTheme(t); setThemeState(t); };
   const chooseScale = (v: number) => { setTextScale(v); setScaleState(v); };
+
+  // Turning analytics OFF needs a reload: setConsent clears the cookies, but a
+  // script that's already running in this tab keeps running until the page is
+  // rebuilt. Turning it ON takes effect immediately, no reload needed.
+  const chooseConsent = (v: ConsentChoice) => {
+    const wasOn = consent === "granted";
+    setConsent(v);
+    setConsentState(v);
+    if (wasOn && v === "denied") window.location.reload();
+  };
 
   async function managePayout() {
     setBusyPay(true);
@@ -91,6 +103,24 @@ export function SettingsPanel({ role }: { role: Role }) {
         </div>
         <p style={{ fontSize:".82rem", color:"rgb(var(--ff-muted))", margin:".7rem 0 0", lineHeight:1.4 }}>
           Adjusts text across the whole site. Current: <strong style={{ color:"var(--ff-text)" }}>{SCALE_LABELS[scale]}</strong>
+        </p>
+      </div>
+
+      {/* Privacy — analytics cookies are opt-in and reversible from here */}
+      <div style={card}>
+        <p style={sectionTitle}>Privacy &amp; cookies</p>
+        <div style={segWrap}>
+          <button style={seg(consent === "granted")} onClick={() => chooseConsent("granted")}>Allow</button>
+          <button style={seg(consent === "denied")} onClick={() => chooseConsent("denied")}>Don't allow</button>
+        </div>
+        <p style={{ fontSize:".82rem", color:"rgb(var(--ff-muted))", margin:".7rem 0 0", lineHeight:1.45 }}>
+          {consent === "granted"
+            ? "Analytics cookies are on. They tell us which parts of the site people get stuck on, including session replay of page interactions."
+            : consent === "denied"
+            ? "Analytics cookies are off. Nothing about how you use the site is recorded."
+            : "You haven't chosen yet, so nothing is being recorded. Analytics cookies stay off until you allow them."}
+          {" "}
+          <a href="/privacy-policy" style={{ color:"#ea6b14", textDecoration:"underline" }}>Privacy Policy</a>
         </p>
       </div>
 

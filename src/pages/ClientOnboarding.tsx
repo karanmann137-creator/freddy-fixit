@@ -14,6 +14,8 @@ import AddressAutocomplete from "@/components/AddressAutocomplete";
 import ServicePicker from "@/components/ServicePicker";
 import BudgetPicker from "@/components/BudgetPicker";
 import { validateEmail, validatePhone } from "@/lib/emailValidation";
+import WaitlistForm from "@/components/WaitlistForm";
+import { usePlatformStatus, acceptingRequests } from "@/lib/platformStatus";
 
 export const SERVICES = [
   { iconName: "wrench", label: "General Handyman" },
@@ -116,6 +118,10 @@ export default function ClientOnboarding() {
       setMode(user ? "new" : "signup");
     })();
   }, []);
+
+  // Is the marketplace taking new job requests right now? Read unconditionally
+  // (hooks rule) — the gate itself lives further down, past the early returns.
+  const { status: platform, ready: platformReady } = usePlatformStatus();
 
   // Pre-select a service if the home page linked here with ?service=…
   useEffect(() => {
@@ -403,6 +409,34 @@ export default function ClientOnboarding() {
           <button style={{ ...s.navBtn, background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"1px solid rgba(var(--ff-fg), .1)" }} onClick={() => setLocation("/")}>← Home</button>
           <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff" }} onClick={() => setLocation("/client-dashboard")}>My Dashboard →</button>
         </div>
+      </div>
+    </div>
+  );
+
+  // Waitlist / paused mode — capture interest instead of creating an account and
+  // a job request no contractor is allowed to act on yet. The DB trigger
+  // `enforce_platform_pause` is the real gate; this is the humane version of it.
+  // Anything the visitor already typed is carried into the waitlist form so they
+  // don't start over. Placed AFTER the verifyEmail/success returns so someone who
+  // signed up moments before the owner flipped the switch still sees their
+  // confirmation screen.
+  if (platformReady && !acceptingRequests(platform.mode)) return (
+    <div style={s.wrap}>
+      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+      <div style={{ ...s.inner, paddingTop:"2.5rem" }}>
+        <button onClick={() => setLocation("/")} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".82rem", textTransform:"uppercase", letterSpacing:".08em", padding:0, marginBottom:"1.5rem", display:"block" }}>
+          ← Home
+        </button>
+        <WaitlistForm
+          initialService={selectedServices[0] || ""}
+          initialDescription={form.jobDescription}
+          initialEmail={form.email}
+          source="client_onboarding"
+        />
+        <p style={{ textAlign:"center", fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.6, margin:"1.5rem auto 0", maxWidth:"460px" }}>
+          Are you a contractor? We're still onboarding pros while we rebuild —{" "}
+          <a href="/contractor-onboarding" style={{ color:"#ea6b14", textDecoration:"none", fontWeight:600 }}>join Freddy's team →</a>
+        </p>
       </div>
     </div>
   );

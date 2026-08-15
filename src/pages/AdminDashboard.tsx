@@ -14,6 +14,7 @@ import JobChat from "@/components/JobChat";
 import { jobCode } from "@/lib/jobCode";
 import { DASH_NAV_EVENT, readDashNavFromUrl, clearDashNavFromUrl, type DashNavDetail } from "@/lib/notificationRoutes";
 import { needsFor, pendingText, disabledText } from "@/lib/stripeRequirements";
+import { clearPlatformStatusCache, DEFAULT_NOTICE, type PlatformMode, type PlatformNotice } from "@/lib/platformStatus";
 
 // Re-signup flagging is computed server-side by admin_resignup_matches().
 // The Accounts tab lists every auth user (via admin_list_accounts) so the admin
@@ -22,6 +23,7 @@ import { needsFor, pendingText, disabledText } from "@/lib/stripeRequirements";
 
 const ADMIN_NAV: SidebarItem[] = [
   { key: "health",   label: "Health",   icon: "check" },
+  { key: "platform", label: "Platform", icon: "settings" },
   { key: "requests", label: "Requests", icon: "clipboard-list" },
   { key: "jobs",     label: "Jobs",     icon: "briefcase" },
   { key: "picks",    label: "Picks",    icon: "star" },
@@ -37,7 +39,7 @@ export default function AdminDashboard() {
   const [requests, setRequests] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
-  const [tab, setTab] = useState<"health"|"requests"|"jobs"|"picks"|"accounts"|"flagged"|"disputes"|"prepaid"|"leads">("requests");
+  const [tab, setTab] = useState<"health"|"platform"|"requests"|"jobs"|"picks"|"accounts"|"flagged"|"disputes"|"prepaid"|"leads">("requests");
   const [prepays, setPrepays] = useState<any[]>([]);
   const [busyRefund, setBusyRefund] = useState<string|null>(null);
   const [disputes, setDisputes] = useState<any[]>([]);
@@ -82,6 +84,17 @@ export default function AdminDashboard() {
   const [editEmailId, setEditEmailId] = useState<string|null>(null);
   const [editEmailVal, setEditEmailVal] = useState("");
   const [busyEmailEdit, setBusyEmailEdit] = useState<string|null>(null);
+  // ── Platform mode ───────────────────────────────────────────────────────────
+  // While the site is paused or in waitlist mode, new client requests are held
+  // instead of dispatched. The DB trigger enforce_platform_pause is the real
+  // gate; this tab is the switch and the review queue for what got held.
+  const [platMode, setPlatMode] = useState<PlatformMode>("open");
+  const [noticeDraft, setNoticeDraft] = useState<PlatformNotice>(DEFAULT_NOTICE);
+  const [heldReqs, setHeldReqs] = useState<any[]>([]);
+  const [waitlistRows, setWaitlistRows] = useState<any[]>([]);
+  const [heldSel, setHeldSel] = useState<Set<string>>(new Set());
+  const [busyPlatform, setBusyPlatform] = useState(false);
+  const [busyRelease, setBusyRelease] = useState(false);
   const PAGE_SIZE = 20;
   const [page, setPage] = useState<{ requests: number; jobs: number }>({ requests: 0, jobs: 0 });
   const [counts, setCounts] = useState<{ requests: number; jobs: number }>({ requests: 0, jobs: 0 });
@@ -165,6 +178,31 @@ export default function AdminDashboard() {
       const { data: cf } = await supabase.rpc("admin_list_chat_flags", { p_limit: 200 });
       setChatFlags((cf as any[]) ?? []);
     } catch { setChatFlags([]); }
+    // Platform mode + everything the pause is holding. Three separate try/catch
+    // blocks so a DB that predates any one of them still renders the rest.
+    try {
+      const { data: ps } = await supabase.rpc("platform_status");
+      const m = (ps as any)?.mode;
+      if (m === "open" || m === "paused" || m === "waitlist") setPlatMode(m);
+      const n = (ps as any)?.notice;
+      if (n && typeof n === "object") {
+        setNoticeDraft({
+          headline: String(n.headline ?? DEFAULT_NOTICE.headline),
+          body:     String(n.body     ?? DEFAULT_NOTICE.body),
+          cta:      String(n.cta      ?? DEFAULT_NOTICE.cta),
+        });
+      }
+    } catch { /* leave the defaults — the tab still renders */ }
+    try {
+      const { data: wl } = await supabase.rpc("admin_list_waitlisted", { p_limit: 200 });
+      setHeldReqs((wl as any[]) ?? []);
+    } catch { setHeldReqs([]); }
+    try {
+      const { data: wr } = await supabase.from("waitlist")
+        .select("id, name, email, phone, service, description, source, created_at, notified_at")
+        .order("created_at", { ascending: false }).limit(200);
+      setWaitlistRows(wr ?? []);
+    } catch { setWaitlistRows([]); }
     // Resolve signed URLs for all dispute photos (problem-photos is private). Both
     // the claim photos and the contractor-response photos are signed in a single
     // parallel pass instead of two sequential per-dispute loops.
@@ -422,6 +460,93 @@ export default function AdminDashboard() {
     await loadAll();
   };
 
+  // ── Platform mode handlers ──────────────────────────────────────────────────
+  // set_platform_mode is admin-gated in the DB and returns the new
+  // platform_status(), so we patch local state from the response rather than
+  // trusting what we sent. clearPlatformStatusCache() is essential: every other
+  // surface (the banner, both client gates) caches the status once per session.
+  const applyMode = async (mode: PlatformMode, notice: PlatformNotice) => {
+    const { data, error } = await supabase.rpc("set_platform_mode", {
+      p_mode: mode,
+      p_notice: { headline: notice.headline, body: notice.body, cta: notice.cta },
+    });
+    if (error) throw error;
+    clearPlatformStatusCache();
+    const m = (data as any)?.mode;
+    if (m === "open" || m === "paused" || m === "waitlist") setPlatMode(m);
+    const n = (data as any)?.notice;
+    if (n && typeof n === "object") {
+      setNoticeDraft({
+        headline: String(n.headline ?? notice.headline),
+        body:     String(n.body     ?? notice.body),
+        cta:      String(n.cta      ?? notice.cta),
+      });
+    }
+    return data;
+  };
+
+  const changeMode = async (mode: PlatformMode) => {
+    if (mode === platMode) return;
+    const warn = mode === "open"
+      ? "Reopen the site to new client requests?\n\nThe overhaul banner disappears and new requests dispatch to contractors immediately.\n\nAnything already held stays held until you release it below."
+      : mode === "waitlist"
+      ? "Switch to WAITLIST mode?\n\nClients can still describe their job, but it's captured instead of sent to contractors. Nobody gets emailed.\n\nContractors can still sign up and browse."
+      : "PAUSE the site?\n\nNew client requests stop entirely and the overhaul notice shows site-wide.\n\nContractors can still sign up and browse.";
+    if (!window.confirm(warn)) return;
+    setBusyPlatform(true);
+    try {
+      await applyMode(mode, noticeDraft);
+      alert(mode === "open" ? "Site is open. New requests dispatch normally again."
+          : mode === "waitlist" ? "Waitlist mode is on. New requests are captured, not dispatched."
+          : "Site is paused. New client requests are blocked.");
+    } catch (e: any) {
+      alert("Couldn't change the mode: " + (e?.message || String(e)));
+    } finally { setBusyPlatform(false); }
+  };
+
+  const saveNotice = async () => {
+    if (!noticeDraft.headline.trim() || !noticeDraft.body.trim() || !noticeDraft.cta.trim()) {
+      alert("Headline, message and button text all need something in them."); return;
+    }
+    setBusyPlatform(true);
+    try {
+      await applyMode(platMode, {
+        headline: noticeDraft.headline.trim(),
+        body:     noticeDraft.body.trim(),
+        cta:      noticeDraft.cta.trim(),
+      });
+      alert("Saved. Anyone who loads the site from now on sees the new wording.");
+    } catch (e: any) {
+      alert("Couldn't save the wording: " + (e?.message || String(e)));
+    } finally { setBusyPlatform(false); }
+  };
+
+  // Releasing sends held requests through the normal dispatch path — contractors
+  // get emailed. All four arguments are passed explicitly: leaning on PostgREST
+  // to fill defaults risks overload ambiguity if the signature ever changes.
+  const releaseHeld = async (ids: string[]) => {
+    if (!ids.length) return;
+    if (!window.confirm(
+      `Release ${ids.length} held request${ids.length === 1 ? "" : "s"} to contractors?\n\n` +
+      "Matching contractors get emailed straight away. This can't be undone."
+    )) return;
+    setBusyRelease(true);
+    try {
+      const { data, error } = await supabase.rpc("release_waitlisted_requests", {
+        p_ids: ids, p_max: ids.length, p_max_age_days: 3650, p_dispatch: true,
+      });
+      if (error) throw error;
+      const n = Number((data as any)?.released ?? ids.length);
+      setHeldReqs(prev => prev.filter(r => !ids.includes(r.id)));
+      setHeldSel(new Set());
+      alert(n === 0
+        ? "Nothing was released — those requests may have already gone out."
+        : `Released ${n} request${n === 1 ? "" : "s"}. Matching contractors have been emailed.`);
+    } catch (e: any) {
+      alert("Couldn't release: " + (e?.message || String(e)));
+    } finally { setBusyRelease(false); }
+  };
+
   const s = { wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" }, header: { background:"rgba(var(--ff-fg), .03)", borderBottom:"1px solid rgba(var(--ff-fg), .07)", padding:"1rem 1.5rem", display:"flex", justifyContent:"space-between", alignItems:"center" }, logo: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.4rem", letterSpacing:".1em" }, content: { maxWidth:"1000px", margin:"0 auto", padding:"clamp(1rem, 4vw, 2rem) clamp(.75rem, 3vw, 1.5rem)" }, tabs: { display:"flex", gap:".5rem", marginBottom:"1.5rem", flexWrap:"wrap" as const }, tab: { padding:".6rem 1.2rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px", color:"rgba(var(--ff-muted), .6)", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem" }, activeTab: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.4)", color:"var(--ff-text)" }, card: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.25rem", marginBottom:"1rem" }, title: { fontSize:".95rem", fontWeight:500, color:"var(--ff-text)", marginBottom:".35rem" }, meta: { fontSize:".78rem", color:"rgba(var(--ff-muted), .5)", marginBottom:".2rem" }, badge: { fontSize:".75rem", fontWeight:500, color:"#ea6b14" }, btn: { padding:".5rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"6px", color:"rgba(var(--ff-muted), .7)", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer" } };
 
   if (loading) return <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>Loading…</div>;
@@ -438,6 +563,7 @@ export default function AdminDashboard() {
   const navItems: SidebarItem[] = ADMIN_NAV.map(it => ({
     ...it,
     badge: it.key === "health"   ? (healthAlerts || undefined)
+         : it.key === "platform" ? (heldReqs.length || undefined)
          : it.key === "requests" ? (counts.requests || undefined)
          : it.key === "jobs"     ? (counts.jobs || undefined)
          : it.key === "picks"    ? (picks.length || undefined)
@@ -1162,6 +1288,189 @@ export default function AdminDashboard() {
                 </>
               );
             })()}
+          </div>
+        )}
+
+        {tab === "platform" && (
+          <div>
+            <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.3rem", letterSpacing:".05em", marginBottom:".3rem" }}>Platform mode</h2>
+            <p style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .6)", marginBottom:"1.25rem", maxWidth:"58ch" }}>
+              This is the master switch for whether the site takes new client jobs.
+              Contractors can always sign up and look around, whichever mode you pick.
+            </p>
+
+            {/* ── Mode picker ─────────────────────────────────────────────── */}
+            {([
+              { key:"open"     as PlatformMode, label:"Open",     tone:"var(--ff-success)",
+                desc:"Normal. New client requests go straight out to matching contractors." },
+              { key:"waitlist" as PlatformMode, label:"Waitlist", tone:"#ea6b14",
+                desc:"Clients can still describe their job and leave their details, but nothing is sent to contractors. You release the jobs by hand when you're ready." },
+              { key:"paused"   as PlatformMode, label:"Paused",   tone:"var(--ff-warn)",
+                desc:"New client requests stop completely. The overhaul notice shows across the site." },
+            ]).map(m => {
+              const on = platMode === m.key;
+              return (
+                <button
+                  key={m.key}
+                  onClick={() => changeMode(m.key)}
+                  disabled={busyPlatform}
+                  style={{
+                    ...s.card,
+                    display:"flex", alignItems:"flex-start", gap:".75rem", width:"100%",
+                    textAlign:"left" as const, cursor: busyPlatform ? "default" : "pointer",
+                    fontFamily:"inherit", color:"var(--ff-text)",
+                    background: on ? "rgba(234,107,20,.08)" : "rgba(var(--ff-fg), .04)",
+                    borderColor: on ? "rgba(234,107,20,.4)" : "rgba(var(--ff-fg), .08)",
+                  }}
+                >
+                  <Ic name={on ? "radio-on" : "radio-off"} size={20} style={{ color: on ? m.tone : "rgba(var(--ff-muted), .4)", flexShrink:0, marginTop:2 }} />
+                  <span style={{ minWidth:0 }}>
+                    <span style={{ display:"block", fontSize:".95rem", fontWeight:600, color: on ? m.tone : "var(--ff-text)" }}>
+                      {m.label}{on ? " — currently on" : ""}
+                    </span>
+                    <span style={{ display:"block", fontSize:".8rem", color:"rgba(var(--ff-muted), .6)", marginTop:".25rem" }}>{m.desc}</span>
+                  </span>
+                </button>
+              );
+            })}
+
+            {/* ── Notice wording ──────────────────────────────────────────── */}
+            <div style={{ ...s.card, marginTop:"1.5rem" }}>
+              <div style={{ ...s.title, marginBottom:".2rem" }}>What clients see while you're paused</div>
+              <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginBottom:".9rem" }}>
+                Used on the site-wide banner and on the waitlist form. Editing this takes effect on the next page load — no deploy needed.
+              </div>
+              {([
+                { key:"headline" as const, label:"Headline",    ph:"We're rebuilding Freddy Fix It" },
+                { key:"cta"      as const, label:"Button text", ph:"Join the waitlist" },
+              ]).map(f => (
+                <label key={f.key} style={{ display:"block", marginBottom:".8rem" }}>
+                  <span style={{ display:"block", fontSize:".76rem", color:"rgba(var(--ff-muted), .6)", marginBottom:".3rem" }}>{f.label}</span>
+                  <input
+                    value={noticeDraft[f.key]}
+                    onChange={e => setNoticeDraft(d => ({ ...d, [f.key]: e.target.value }))}
+                    placeholder={f.ph}
+                    style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .05)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"6px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }}
+                  />
+                </label>
+              ))}
+              <label style={{ display:"block", marginBottom:".9rem" }}>
+                <span style={{ display:"block", fontSize:".76rem", color:"rgba(var(--ff-muted), .6)", marginBottom:".3rem" }}>Message</span>
+                <textarea
+                  value={noticeDraft.body}
+                  onChange={e => setNoticeDraft(d => ({ ...d, body: e.target.value }))}
+                  rows={3}
+                  style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .05)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"6px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", resize:"vertical" as const }}
+                />
+              </label>
+              <button
+                onClick={saveNotice}
+                disabled={busyPlatform}
+                style={{ ...s.btn, background:"rgba(234,107,20,.15)", borderColor:"rgba(234,107,20,.4)", color:"var(--ff-text)" }}
+              >
+                {busyPlatform ? "Saving…" : "Save wording"}
+              </button>
+            </div>
+
+            {/* ── Held requests ───────────────────────────────────────────── */}
+            <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".05em", marginTop:"2rem", marginBottom:".3rem" }}>
+              Jobs held by the pause ({heldReqs.length})
+            </h2>
+            <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", marginBottom:".9rem", maxWidth:"58ch" }}>
+              Real job requests from signed-in clients that were captured instead of sent out. Releasing one emails every matching contractor immediately.
+            </p>
+            {heldReqs.length === 0 ? (
+              <div style={{ ...s.card, color:"rgba(var(--ff-muted), .55)", fontSize:".85rem" }}>
+                Nothing is being held right now.
+              </div>
+            ) : (
+              <>
+                <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginBottom:".9rem", alignItems:"center" }}>
+                  <button
+                    onClick={() => setHeldSel(prev => prev.size === heldReqs.length ? new Set() : new Set(heldReqs.map(r => r.id)))}
+                    style={s.btn}
+                  >
+                    {heldSel.size === heldReqs.length ? "Clear selection" : "Select all"}
+                  </button>
+                  <button
+                    onClick={() => releaseHeld(Array.from(heldSel))}
+                    disabled={busyRelease || heldSel.size === 0}
+                    style={{ ...s.btn,
+                      background: heldSel.size ? "rgba(234,107,20,.15)" : "rgba(var(--ff-fg), .06)",
+                      borderColor: heldSel.size ? "rgba(234,107,20,.4)" : "rgba(var(--ff-fg), .1)",
+                      color: heldSel.size ? "var(--ff-text)" : "rgba(var(--ff-muted), .5)" }}
+                  >
+                    {busyRelease ? "Releasing…" : `Release selected (${heldSel.size})`}
+                  </button>
+                </div>
+                {heldReqs.map(r => {
+                  const picked = heldSel.has(r.id);
+                  return (
+                    <div key={r.id} style={{ ...s.card, borderColor: picked ? "rgba(234,107,20,.4)" : "rgba(var(--ff-fg), .08)" }}>
+                      <div style={{ display:"flex", gap:".7rem", alignItems:"flex-start" }}>
+                        <input
+                          type="checkbox"
+                          checked={picked}
+                          onChange={() => setHeldSel(prev => { const n = new Set(prev); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n; })}
+                          aria-label={`Select ${r.service_needed || "request"}`}
+                          style={{ marginTop:4, flexShrink:0, accentColor:"#ea6b14" }}
+                        />
+                        <div style={{ minWidth:0, flex:1 }}>
+                          <div style={s.title}>{r.service_needed || "Job request"}</div>
+                          {r.client_name && <div style={s.meta}><Ic name="user" size={13} style={{ marginRight:4 }} />{r.client_name}{r.client_email ? ` · ${r.client_email}` : ""}</div>}
+                          {r.location && <div style={s.meta}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{r.location}</div>}
+                          <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .45)" }}>
+                            Waiting {Number(r.days_waiting ?? 0)} day{Number(r.days_waiting ?? 0) === 1 ? "" : "s"}
+                            {r.created_at ? ` · posted ${new Date(r.created_at).toLocaleDateString("en-CA", { dateStyle:"medium" })}` : ""}
+                          </div>
+                          {r.job_description && (
+                            <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .65)", marginTop:".5rem", whiteSpace:"pre-wrap" as const }}>
+                              {String(r.job_description).slice(0, 400)}{String(r.job_description).length > 400 ? "…" : ""}
+                            </div>
+                          )}
+                          <button
+                            onClick={() => releaseHeld([r.id])}
+                            disabled={busyRelease}
+                            style={{ ...s.btn, marginTop:".7rem" }}
+                          >
+                            {busyRelease ? "Working…" : "Release just this one"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+
+            {/* ── Waitlist signups ────────────────────────────────────────── */}
+            <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".05em", marginTop:"2rem", marginBottom:".3rem" }}>
+              Waitlist signups ({waitlistRows.length})
+            </h2>
+            <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", marginBottom:".9rem", maxWidth:"58ch" }}>
+              People who left their details while the site was paused. Nobody here has an account or a job request yet — email them when you reopen.
+            </p>
+            {waitlistRows.length === 0 ? (
+              <div style={{ ...s.card, color:"rgba(var(--ff-muted), .55)", fontSize:".85rem" }}>
+                No signups yet.
+              </div>
+            ) : waitlistRows.map(w => (
+              <div key={w.id} style={s.card}>
+                <div style={s.title}>{w.name || w.email}</div>
+                <div style={s.meta}><Ic name="mail" size={13} style={{ marginRight:4 }} />{w.email}{w.phone ? ` · ${w.phone}` : ""}</div>
+                {w.service && <div style={s.meta}><Ic name="wrench" size={13} style={{ marginRight:4 }} />{w.service}</div>}
+                <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .45)" }}>
+                  {new Date(w.created_at).toLocaleString("en-CA", { dateStyle:"medium", timeStyle:"short" })}
+                  {w.source ? ` · from ${String(w.source).replace(/_/g, " ")}` : ""}
+                  {w.notified_at ? " · already emailed" : ""}
+                </div>
+                {w.description && (
+                  <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .65)", marginTop:".5rem", whiteSpace:"pre-wrap" as const }}>
+                    {String(w.description).slice(0, 400)}{String(w.description).length > 400 ? "…" : ""}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>
