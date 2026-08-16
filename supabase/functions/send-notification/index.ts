@@ -1,4 +1,4 @@
-// Supabase Edge Function: send-notification  (v14)
+// Supabase Edge Function: send-notification  (v15)
 //
 // Fired by the `send-notification-email` Database Webhook on every
 // public.notifications INSERT. Turns an in-app bell into an email.
@@ -31,6 +31,17 @@
 // prompts, not something worth an email. `visit_reminder`'s email is built in
 // the `visit-reminder` function and is gated behind visit_reminder_enabled(),
 // which currently returns false — so nothing goes out until the owner flips it.
+//
+// WHAT CHANGED IN v15 — `bid_received` is suppressed. Four clients received
+// estimates and not one of them ever picked a pro. Part of the reason is that
+// this generic email arrived alongside send-bid-email's, saying less and
+// pointing at /client-dashboard — a login wall — while the good one pointed at
+// the one-tap /pick/<token> page. Two emails about the same event, and the
+// weaker one competing for the click. send-bid-email carries the pro's name,
+// the price (or the ballpark on a walkthrough bid) and the passwordless link,
+// so it wins. Verified single-emitter before suppressing, per the rule in
+// CLAUDE.md: `bid_received` is written by `place_bid` and nothing else, and
+// only ever to the client — the admin's copy uses a different type.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
@@ -54,6 +65,11 @@ const EMAIL_HANDLED_ELSEWHERE = new Set([
   "chat_time_proposed",
   "chat_time_agreed",
   "visit_reminder",
+  // send-bid-email sends the real one: pro's name, price, and the one-tap
+  // /pick/<token> link that needs no login. This generic copy only ever
+  // offered a dashboard link, which is the step the first four clients
+  // never got past.
+  "bid_received",
 ]);
 
 const wrap = (inner: string) => `

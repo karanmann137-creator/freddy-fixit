@@ -33,6 +33,7 @@ const ProtectionPromise    = lazy(() => import("@/pages/ProtectionPromise"));
 const Blog                 = lazy(() => import("@/pages/Blog"));
 const BlogPost             = lazy(() => import("@/pages/BlogPost"));
 const GetQuote             = lazy(() => import("@/pages/GetQuote"));
+const PickPro              = lazy(() => import("@/pages/PickPro"));
 const ServicesIndex        = lazy(() => import("@/pages/ServicesIndex"));
 const ServiceLanding       = lazy(() => import("@/pages/ServiceLanding"));
 const ForContractors       = lazy(() => import("@/pages/ForContractors"));
@@ -181,6 +182,10 @@ export default function App() {
       <Route path="/auth/callback" component={AuthCallback} />
       <Route path="/client-onboarding" component={ClientOnboarding} />
       <Route path="/get-a-quote" component={GetQuote} />
+      {/* Pick-your-pro straight from the estimate email. The token in the URL is
+          the authorization, so this route must stay PUBLIC — a login wall here is
+          exactly what stopped the first four clients from ever choosing anyone. */}
+      <Route path="/pick/:token" component={PickPro} />
       <Route path="/contractor-onboarding" component={ContractorOnboarding} />
       <Route path="/contractors/:id" component={ContractorProfile} />
       <Route path="/client-success" component={ClientSuccess} />

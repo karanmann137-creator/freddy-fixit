@@ -677,7 +677,20 @@ export default function ContractorDashboard() {
     let total = wt ? null : quoteTotal(f);
     if (!wt && total == null && r.my_amount != null) total = Number(r.my_amount);
     if (!wt && total == null) { notify("Enter your bid amount or an itemised breakdown."); return; }
-    if (wt && f.price_low && f.price_high && Number(f.price_high) < Number(f.price_low)) { notify("Your ballpark high can't be below the low."); return; }
+    // A walkthrough-first bid carries no firm price, so the ballpark range IS the
+    // number the client compares. place_bid enforces all three of these server-side
+    // too; checking here means the pro sees our wording, not a raw Postgres error.
+    const lo = f.price_low !== undefined && f.price_low !== "" ? Number(f.price_low) : null;
+    const hi = f.price_high !== undefined && f.price_high !== "" ? Number(f.price_high) : null;
+    if (wt) {
+      if (lo == null || hi == null || !isFinite(lo) || !isFinite(hi)) {
+        notify("A walkthrough bid still needs a ballpark range — the client has nothing to compare without one."); return;
+      }
+      if (lo <= 0 || hi <= 0) { notify("Your ballpark range needs to be more than zero."); return; }
+      if (hi < lo) { notify("Your ballpark high can't be below the low."); return; }
+    } else if (lo != null && hi != null && hi < lo) {
+      notify("Your estimated range high can't be below the low."); return;
+    }
     setBusyBid(r.id);
     const msg = f.message !== undefined ? f.message : (r.my_message ?? "");
     const { error } = await supabase.rpc("place_bid", {
@@ -689,8 +702,8 @@ export default function ContractorDashboard() {
       p_callout: wt ? null : (f.callout ? Number(f.callout) : null),
       p_assumptions: f.assumptions || null,
       p_subject_to_inspection: !!f.subject,
-      p_price_low: f.price_low ? Number(f.price_low) : null,
-      p_price_high: f.price_high ? Number(f.price_high) : null,
+      p_price_low: lo,
+      p_price_high: hi,
       p_used_base_price: wt ? false : !!f.used_base_price,
       p_walkthrough: wt,
     });
@@ -698,7 +711,7 @@ export default function ContractorDashboard() {
     if (error) { notify("Couldn't place bid: " + error.message); return; }
     const hadBid = r.my_amount != null || r.my_walkthrough;
     setAvailableJobs(prev => prev.map(x => x.id === r.id
-      ? { ...x, my_amount: total, my_message: msg || null, my_walkthrough: wt, bid_count: hadBid ? x.bid_count : (x.bid_count ?? 0) + 1 }
+      ? { ...x, my_amount: total, my_message: msg || null, my_walkthrough: wt, my_price_low: lo, my_price_high: hi, bid_count: hadBid ? x.bid_count : (x.bid_count ?? 0) + 1 }
       : x));
     setBidOpen(prev => ({ ...prev, [r.id]: false }));
     notify(hadBid ? "Your bid has been updated." : "Your bid has been placed.", "ok");
@@ -1776,7 +1789,9 @@ export default function ContractorDashboard() {
                           <Ic name="check-circle" size={16} color="#22c55e" style={{ marginTop:1, flexShrink:0 }} />
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ fontSize:".85rem", fontWeight:600, color:"var(--ff-text)" }}>Your bid has been placed</div>
-                            <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .7)", marginTop:"1px" }}>Waiting on client confirmation · {r.my_walkthrough ? "Walkthrough-first offer" : ("$" + r.my_amount)}</div>
+                            <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .7)", marginTop:"1px" }}>Waiting on client confirmation · {r.my_walkthrough
+                              ? (r.my_price_low != null && r.my_price_high != null ? ("Walkthrough first · $" + r.my_price_low + "–$" + r.my_price_high) : "Walkthrough-first offer")
+                              : ("$" + r.my_amount)}</div>
                           </div>
                           <button onClick={() => setBidOpen(pp => ({ ...pp, [r.id]: true }))} style={{ background:"none", border:"1px solid rgba(var(--ff-fg), .18)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".78rem", fontWeight:600, cursor:"pointer", padding:".35rem .7rem", flexShrink:0 }}>Edit bid</button>
                         </div>
@@ -1796,15 +1811,15 @@ export default function ContractorDashboard() {
                       <label style={{ flexBasis:"100%", display:"flex", alignItems:"flex-start", gap:".5rem", cursor:"pointer", padding:".45rem .55rem", borderRadius:"8px", background: wtOn ? "rgba(234,107,20,.08)" : "transparent", border: wtOn ? "1px solid rgba(234,107,20,.3)" : "1px solid transparent" }}>
                         <input type="checkbox" checked={wtOn} onChange={e => setBid(r.id, { walkthrough: e.target.checked })} style={{ marginTop:"2px", cursor:"pointer", accentColor:"#ea6b14" }} />
                         <span style={{ fontSize:".8rem", lineHeight:1.45, color:"var(--ff-text)" }}>
-                          <strong>I'd like to see the space first.</strong> Bid without a firm price — if the client picks you, you'll book a free walkthrough, then send your estimate. Great for bigger or hard-to-price jobs.
+                          <strong>I'd like to see the space first.</strong> Bid with a ballpark range instead of a firm price — if the client picks you, you'll book a free walkthrough, then send your exact estimate. Great for bigger or hard-to-price jobs. A range is still required: it's the only number the client can compare you on.
                         </span>
                       </label>
                       {wtOn ? (
                         <>
                           {/* flex-basis, not a fixed 170px each: two 170px inputs
                               exceed the ~276px content column on a phone. */}
-                          <input type="number" min="0" placeholder="Ballpark low $ (optional)" value={bidForm[r.id]?.price_low ?? ""} onChange={e => setBid(r.id, { price_low: e.target.value })} style={{ flex:"1 1 130px", minWidth:0, maxWidth:"170px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
-                          <input type="number" min="0" placeholder="Ballpark high $ (optional)" value={bidForm[r.id]?.price_high ?? ""} onChange={e => setBid(r.id, { price_high: e.target.value })} style={{ flex:"1 1 130px", minWidth:0, maxWidth:"170px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
+                          <input type="number" min="0" placeholder="Ballpark low $" value={bidForm[r.id]?.price_low ?? (r.my_price_low != null ? String(r.my_price_low) : "")} onChange={e => setBid(r.id, { price_low: e.target.value })} style={{ flex:"1 1 130px", minWidth:0, maxWidth:"170px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
+                          <input type="number" min="0" placeholder="Ballpark high $" value={bidForm[r.id]?.price_high ?? (r.my_price_high != null ? String(r.my_price_high) : "")} onChange={e => setBid(r.id, { price_high: e.target.value })} style={{ flex:"1 1 130px", minWidth:0, maxWidth:"170px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
                         </>
                       ) : (
                         <input type="number" min="0" placeholder="Price $" value={bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "")} onChange={e => setBid(r.id, { amount: e.target.value, message: bidForm[r.id]?.message ?? (r.my_message ?? ""), used_base_price:false })} style={{ width:"100px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />

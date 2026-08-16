@@ -1382,7 +1382,11 @@ export default function ClientDashboard() {
                             </div>
                             <div style={{ flex:"1 1 160px", minWidth:0 }}>
                               <div style={{ fontSize:".88rem", color:"var(--ff-text)", display:"flex", alignItems:"center", gap:".45rem", flexWrap:"wrap" as const }}>
-                                {bidNames[b.contractor_id] ?? "Contractor"}{b.amount != null ? " — $" + b.amount : ""}
+                                {/* A walkthrough bid has no b.amount, so without the range fallback the
+                                    headline showed a name and no number at all — nothing to compare. */}
+                                {bidNames[b.contractor_id] ?? "Contractor"}{b.amount != null
+                                  ? " — $" + b.amount
+                                  : (b.price_low != null && b.price_high != null ? " — $" + b.price_low + "–$" + b.price_high : "")}
                                 {bi === 0 && clientBids.length > 1 && bidMatch[b.contractor_id] != null && (
                                   <span style={{ padding:".14rem .5rem", borderRadius:"999px", fontSize:".66rem", fontWeight:700, background:"rgba(234,107,20,.14)", border:"1px solid rgba(234,107,20,.4)", color:"#ea6b14" }}>Best match</span>
                                 )}
