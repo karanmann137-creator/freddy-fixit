@@ -16,6 +16,8 @@ import BudgetPicker from "@/components/BudgetPicker";
 import { validateEmail, validatePhone } from "@/lib/emailValidation";
 import WaitlistForm from "@/components/WaitlistForm";
 import { usePlatformStatus, acceptingRequests } from "@/lib/platformStatus";
+import { detectFromText } from "@/lib/serviceTags";
+import { questionsFor, answerSummary, type JobAnswers } from "@/lib/jobQuestions";
 
 export const SERVICES = [
   { iconName: "wrench", label: "General Handyman" },
@@ -63,17 +65,31 @@ export const SCHEDULES = [
   { iconName: "refresh", label: "Recurring",       sub: "Regular maintenance" },
 ];
 
-const STEP_TITLES = ["What Do You Need?", "Job Details", "Almost Done"];
-const STEP_SUBS   = ["Choose your service and preferred timing", "Where and what needs fixing?", "Create a free account to track your request"];
-// Stable machine names for the drop-off funnel in PostHog (do not rename — insights key off these).
-const STEP_NAMES  = ["service", "details", "account"];
+const STEP_TITLES = ["What Needs Fixing?", "Did We Get That Right?", "A Few Quick Questions", "Job Details", "Almost Done"];
+const STEP_SUBS   = [
+  "Describe it in your own words — we'll work out the rest",
+  "Check the service we picked and the details we spotted",
+  "Tap the answers — no typing, and you can skip any of them",
+  "Where, when, and roughly what you'd like to spend",
+  "Create a free account to track your request",
+];
+// Stable machine names for the drop-off funnel in PostHog (do not rename — insights
+// key off these). "details" and "account" are deliberately unchanged so the existing
+// funnel keeps working; "service" is gone because that screen no longer exists.
+const STEP_NAMES  = ["describe", "confirm", "questions", "details", "account"];
 // Plain-language "Freddy walks you through it" copy, one per step (see GuideBubble).
 const CLIENT_GUIDE: { message: string; why?: string; tip?: string }[] = [
-  { message: "Hi, I'm Freddy. Tell me what needs fixing and I'll help you get free estimates from vetted Calgary pros. First, pick your service and when you'd like it done.",
-    why: "This lets us match you with the right pro fast.",
-    tip: "Not sure of the exact service? Pick the closest one — you can add details next." },
-  { message: "Now, where's the job and what needs doing? A few details help pros give you an accurate estimate — photos help a lot too.",
-    why: "The more you share, the more accurate your estimate." },
+  { message: "Hi, I'm Freddy. Just tell me what's wrong in your own words — no need to know what the trade is called. I'll figure out which pro you need.",
+    why: "Pros quote far more accurately when they can read the problem in your words.",
+    tip: "In a hurry? Tap the microphone and say it out loud." },
+  { message: "Here's what I picked up. Tap anything that's wrong to remove it, or add a service I missed.",
+    why: "Getting the service right is what decides which pros see your job.",
+    tip: "You can pick more than one — plenty of jobs need two trades." },
+  { message: "A few quick taps so your estimates come back accurate instead of \"it depends\".",
+    why: "These are the questions a pro would phone you to ask anyway.",
+    tip: "Not sure on any of them? Skip it — a pro can confirm on site." },
+  { message: "Now the practical bits: where the job is, when you'd like it done, and roughly what you'd like to spend.",
+    why: "Location and timing decide which pros are free to take it on." },
   { message: "Last step — create a quick free account so you can track your request and message your pro.",
     why: "There's no charge now. You pay when you approve an estimate — we hold it safely and only release it to your pro after you confirm the work is done." },
 ];
@@ -131,7 +147,15 @@ export default function ClientOnboarding() {
     if (SERVICES.some(sv => sv.label === mapped)) setSelectedServices([mapped]);
   }, []);
   const [step, setStep] = useState(1);
-  const TOTAL = 3;
+  const TOTAL = 5;
+  // What the keyword map pulled out of the description, and the exact text it was
+  // read from. Storing the text lets us re-run detection only when the description
+  // actually changed, so a client who edits their chips then steps back and forward
+  // doesn't have their edits silently overwritten.
+  const [tags, setTags]                   = useState<string[]>([]);
+  const [answers, setAnswers]             = useState<JobAnswers>({});
+  const [detectedFor, setDetectedFor]     = useState("");
+  const [showAllServices, setShowAllServices] = useState(false);
   const [form, setForm] = useState({ email:"", phone:"", password:"", preferredSchedule:"", location:"", postalCode:"", jobDescription:"", businessName:"", businessType:"", locations:"", billingPreference:"" });
   const [clientType, setClientType] = useState<"individual"|"business">("individual");
   const [recurring, setRecurring] = useState(false);
@@ -211,10 +235,71 @@ export default function ClientOnboarding() {
     setErrors(e => ({ ...e, serviceNeeded: "" }));
   };
 
+  const removeTag = (t: string) => setTags(prev => prev.filter(x => x !== t));
+
+  // The questions shown are driven by the FIRST selected service, so if that
+  // changes the recorded answers belong to a different question set and must go.
+  // Keeping them would attach (say) a plumbing answer to an electrical job.
+  const primaryService = selectedServices[0] || "";
+  useEffect(() => { setAnswers({}); }, [primaryService]);
+  const activeQuestions = questionsFor(primaryService);
+
+  const setAnswer = (q: { id: string; multi?: boolean }, option: string) => {
+    setAnswers(prev => {
+      if (!q.multi) {
+        // Tapping the chosen answer again clears it — every question is skippable.
+        return prev[q.id] === option ? { ...prev, [q.id]: "" } : { ...prev, [q.id]: option };
+      }
+      const cur = Array.isArray(prev[q.id]) ? (prev[q.id] as string[]) : [];
+      const nextVals = cur.includes(option) ? cur.filter(v => v !== option) : [...cur, option];
+      return { ...prev, [q.id]: nextVals };
+    });
+  };
+  const isAnswered = (q: { id: string; multi?: boolean }, option: string) => {
+    const v = answers[q.id];
+    return Array.isArray(v) ? v.includes(option) : v === option;
+  };
+  const answeredCount = activeQuestions.filter(q => {
+    const v = answers[q.id];
+    return Array.isArray(v) ? v.length > 0 : !!v;
+  }).length;
+
+  // Read the description and pre-fill services + descriptive tags. Runs when the
+  // client leaves the description screen, never on every keystroke — and never
+  // overwrites services they picked themselves (or a ?service= deep link).
+  const runDetect = () => {
+    const text = form.jobDescription.trim();
+    if (!text || text === detectedFor) return;
+    const d = detectFromText(text);
+    setDetectedFor(text);
+    setTags(d.tags);
+    if (d.services.length) setSelectedServices(prev => prev.length ? prev : d.services);
+  };
+
+  // What the contractor actually reads. The answers and tags are folded into the
+  // description text itself so pros see them today without a schema change; the
+  // structured copies also ride along in signup metadata for later use.
+  const composedDescription = () => {
+    const parts = [form.jobDescription.trim()];
+    const sum = answerSummary(primaryService, answers);
+    if (sum) parts.push(sum);
+    if (tags.length) parts.push("Details: " + tags.join(", "));
+    return parts.join("\n\n");
+  };
+
   const validate = () => {
     const errs: Record<string,string> = {};
+    // 1 describe · 2 confirm · 3 questions (nothing required — every one is skippable)
+    // · 4 details · 5 account
     if (step === 1) {
+      if (form.jobDescription.trim().length < 10) errs.jobDescription = "Tell us a little more — at least 10 characters";
+    }
+    if (step === 2) {
       if (selectedServices.length === 0) errs.serviceNeeded = "Please select at least one service";
+    }
+    if (step === 4) {
+      if (!form.location.trim() && !form.postalCode.trim()) errs.location = "Enter your address or postal code";
+      else if (!form.location.trim() && form.postalCode.trim() && !/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(form.postalCode.trim())) errs.location = "Enter a valid postal code (e.g. T2P 1J9) or your address";
       if (!form.preferredSchedule) errs.preferredSchedule = "Please select a schedule";
       // Budget is optional, but if given it has to make sense.
       if (!budgetFlexible) {
@@ -227,25 +312,27 @@ export default function ClientOnboarding() {
         }
       }
     }
-    if (step === 2) {
-      if (!form.location.trim() && !form.postalCode.trim()) errs.location = "Enter your address or postal code";
-      else if (!form.location.trim() && form.postalCode.trim() && !/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(form.postalCode.trim())) errs.location = "Enter a valid postal code (e.g. T2P 1J9) or your address";
-      if (form.jobDescription.trim().length < 10) errs.jobDescription = "Min 10 characters";
-    }
-    if (step === 3) {
+    if (step === 5) {
       { const ev = validateEmail(form.email); if (!ev.ok) errs.email = ev.error!; }
       { const pv = validatePhone(form.phone); if (!pv.ok) errs.phone = pv.error!; }
       if (form.password.length < 8) errs.password = "Minimum 8 characters";
     }
     setErrors(errs);
     // On a long step the errored field can sit below the fold — scroll it into view.
-    const order = ["serviceNeeded","budget","preferredSchedule","location","jobDescription","email","phone","password"];
+    const order = ["jobDescription","serviceNeeded","location","preferredSchedule","budget","email","phone","password"];
     const first = order.find(k => errs[k]);
     if (first) setTimeout(() => { document.getElementById("co-err-" + first)?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 60);
     return Object.keys(errs).length === 0;
   };
 
-  const next = () => { if (validate()) { setStep(s => s + 1); window.scrollTo(0,0); } };
+  const next = () => {
+    if (!validate()) return;
+    // Read the description on the way out of screen 1 so screen 2 has something
+    // to confirm.
+    if (step === 1) runDetect();
+    setStep(s => s + 1);
+    window.scrollTo(0,0);
+  };
   const back = () => { if (step === 1) setLocation("/"); else { setStep(s => s - 1); window.scrollTo(0,0); } };
 
   const handleSubmit = async () => {
@@ -268,7 +355,12 @@ export default function ClientOnboarding() {
         preferred_schedule: form.preferredSchedule,
         location: form.location.trim() || form.postalCode.trim(),
         postal_code: form.postalCode.trim(),
-        job_description: form.jobDescription,
+        // The description a pro reads already has the answers + tags folded in, so
+        // this works today with no schema change. The structured copies ride along
+        // separately for a later migration that wants them as real columns.
+        job_description: composedDescription(),
+        job_tags: tags,
+        job_answers: answers,
         client_type: clientType,
         business_name: clientType === "business" ? form.businessName : "",
         business_type: clientType === "business" ? form.businessType : "",
@@ -462,7 +554,8 @@ export default function ClientOnboarding() {
           tip={CLIENT_GUIDE[step-1]?.tip} />
 
         <div style={s.card}>
-          {step === 3 && (
+          {/* ── 5 · Account ─────────────────────────────────────────────── */}
+          {step === 5 && (
             <div>
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Email</label>
@@ -511,10 +604,132 @@ export default function ClientOnboarding() {
             </div>
           )}
 
+          {/* ── 1 · Describe ────────────────────────────────────────────── */}
           {step === 1 && (
             <div>
               <OAuthButtons role="client" label="sign up in one tap with" />
-              <p style={{ textAlign:"center", fontSize:".78rem", color:"rgba(var(--ff-muted), .4)", margin:"1.25rem 0" }}>or tell us what you need</p>
+              <p style={{ textAlign:"center", fontSize:".78rem", color:"rgba(var(--ff-muted), .4)", margin:"1.25rem 0" }}>or tell us what's wrong</p>
+              <div style={{ marginBottom:"1.2rem" }}>
+                <label style={s.label}>What needs fixing?</label>
+                <textarea
+                  style={{ ...inp, resize:"vertical", minHeight:"140px", borderColor: errors.jobDescription ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }}
+                  placeholder="e.g. My kitchen tap has been dripping for a week and the cupboard underneath is damp."
+                  value={form.jobDescription}
+                  onChange={e => set("jobDescription", e.target.value)}
+                />
+                <VoiceDictate onAppend={(t) => set("jobDescription", (form.jobDescription.trim() ? form.jobDescription.trim() + " " : "") + t)} />
+                <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginTop:".4rem" }}>
+                  No need to know the trade name — plain English is perfect. We'll work out who to send.
+                </p>
+                {errors.jobDescription && <p id="co-err-jobDescription" style={s.err}>{errors.jobDescription}</p>}
+              </div>
+              <div style={{ marginBottom:"1.2rem" }}>
+                <label style={s.label}>Photo of the Problem <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
+                <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB."); e.target.value = ""; return; } setSubmitError(""); setPhotoFile(f); }} style={{ ...inp, padding:".6rem", cursor:"pointer" }} />
+                <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginTop:".4rem" }}>A photo helps us give you a faster, more accurate estimate. Max 5MB.</p>
+                {photoFile && <p style={{ fontSize:".78rem", color:"var(--ff-success)", marginTop:".3rem" }}>Attached: {photoFile.name}</p>}
+              </div>
+              {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"var(--ff-danger)", marginTop:"1rem" }}>{submitError}</div>}
+            </div>
+          )}
+
+          {/* ── 2 · Confirm ─────────────────────────────────────────────
+              What we read out of the description, shown as chips the client can
+              tap off. They always get the last word — nothing here is locked in. */}
+          {step === 2 && (
+            <div>
+              <p style={s.label}>The service we picked</p>
+              {selectedServices.length > 0 ? (
+                <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginBottom:".75rem" }}>
+                  {selectedServices.map(sv => (
+                    <button key={sv} type="button" onClick={() => toggleService(sv)}
+                      style={{ display:"inline-flex", alignItems:"center", gap:".5rem", padding:".55rem .9rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".88rem", fontWeight:500, cursor:"pointer", background:"rgba(234,107,20,.15)", border:"1px solid #ea6b14", color:"var(--ff-text)" }}>
+                      {sv}
+                      <span aria-hidden style={{ color:"#ea6b14", fontSize:"1.05rem", lineHeight:1 }}>×</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ fontSize:".88rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.55, marginBottom:".75rem" }}>
+                  We couldn't tell which trade this needs — pick one below and we'll take it from there.
+                </p>
+              )}
+              {selectedServices.length > 0 && (
+                <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"1.25rem" }}>
+                  Tap one to remove it. Wrong trade? Add the right one below.
+                </p>
+              )}
+              {errors.serviceNeeded && <p id="co-err-serviceNeeded" style={s.err}>{errors.serviceNeeded}</p>}
+
+              {tags.length > 0 && (
+                <div style={{ marginBottom:"1.25rem" }}>
+                  <p style={s.label}>Details we spotted</p>
+                  <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
+                    {tags.map(t => (
+                      <button key={t} type="button" onClick={() => removeTag(t)}
+                        style={{ display:"inline-flex", alignItems:"center", gap:".45rem", padding:".4rem .75rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .14)", color:"rgba(var(--ff-muted), .85)" }}>
+                        {t}
+                        <span aria-hidden style={{ fontSize:"1rem", lineHeight:1, opacity:.7 }}>×</span>
+                      </button>
+                    ))}
+                  </div>
+                  <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginTop:".5rem" }}>
+                    These ride along to your pro. Tap any that don't apply.
+                  </p>
+                </div>
+              )}
+
+              {showAllServices || selectedServices.length === 0 ? (
+                <div style={{ marginBottom:".5rem" }}>
+                  <p style={s.label}>All services <span style={{ color:"rgba(var(--ff-muted), .4)", textTransform:"none", letterSpacing:0 }}>(select all that apply)</span></p>
+                  <ServicePicker items={SERVICES} selected={selectedServices} onToggle={toggleService} pricing={pricing} />
+                </div>
+              ) : (
+                <button type="button" onClick={() => setShowAllServices(true)}
+                  style={{ width:"100%", padding:".8rem 1rem", borderRadius:"10px", fontFamily:"inherit", fontSize:".88rem", cursor:"pointer", background:"rgba(var(--ff-fg), .04)", border:"1px dashed rgba(var(--ff-fg), .2)", color:"rgba(var(--ff-muted), .8)" }}>
+                  + Add or change the service
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* ── 3 · Questions ───────────────────────────────────────────
+              Tap-only, and every one is skippable. The answers are folded into
+              the description a contractor reads, so a skipped question costs
+              detail but never blocks the request. */}
+          {step === 3 && (
+            <div>
+              <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", marginBottom:"1.5rem" }}>
+                {answeredCount} of {activeQuestions.length} answered · every one is optional
+              </p>
+              {activeQuestions.map(q => (
+                <div key={q.id} style={{ marginBottom:"1.75rem" }}>
+                  <p style={{ fontSize:".95rem", fontWeight:500, color:"var(--ff-text)", marginBottom:".7rem", lineHeight:1.45 }}>
+                    {q.prompt}
+                    {q.multi && <span style={{ fontWeight:400, color:"rgba(var(--ff-muted), .55)", fontSize:".82rem" }}> · pick any that apply</span>}
+                  </p>
+                  <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
+                    {q.options.map(opt => {
+                      const on = isAnswered(q, opt);
+                      return (
+                        <button key={opt} type="button" onClick={() => setAnswer(q, opt)}
+                          style={{ padding:".6rem 1rem", borderRadius:"10px", fontFamily:"inherit", fontSize:".88rem", fontWeight: on ? 500 : 400, cursor:"pointer",
+                            background: on ? "rgba(234,107,20,.15)" : "rgba(var(--ff-fg), .04)",
+                            border: on ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .12)",
+                            color: on ? "var(--ff-text)" : "rgba(var(--ff-muted), .8)" }}>
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── 4 · Details ─────────────────────────────────────────────── */}
+          {step === 4 && (
+            <div>
               <div style={{ marginBottom:"1.5rem" }}>
                 <label style={s.label}>I am requesting as</label>
                 <div style={{ display:"flex", gap:".6rem", marginTop:".4rem" }}>
@@ -527,27 +742,44 @@ export default function ClientOnboarding() {
                   ))}
                 </div>
               </div>
-              <p style={s.label}>Services Needed <span style={{ color:"rgba(var(--ff-muted), .4)", textTransform:"none", letterSpacing:0 }}>(select all that apply)</span></p>
-              <div style={{ marginBottom:"1.5rem" }}>
-                <ServicePicker items={SERVICES} selected={selectedServices} onToggle={toggleService} pricing={pricing} />
-              </div>
-              {errors.serviceNeeded && <p id="co-err-serviceNeeded" style={s.err}>{errors.serviceNeeded}</p>}
-              {selectedServices.length > 0 && (
-                <p style={{ fontSize:".78rem", color:"#ea6b14", marginBottom:"1.5rem" }}>✓ {selectedServices.length} service{selectedServices.length > 1 ? "s" : ""} selected</p>
+              {clientType === "business" && (
+                <div style={{ marginBottom:"1.75rem", paddingBottom:"1.25rem", borderBottom:"1px solid rgba(var(--ff-fg), .08)" }}>
+                  <div style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".12em", color:"#ea6b14", marginBottom:".9rem" }}>Business details</div>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:"1rem" }}>
+                    <div style={{ marginBottom:"1.2rem" }}>
+                      <label style={s.label}>Business name</label>
+                      <input style={inp} placeholder="Acme Property Mgmt" value={form.businessName} onChange={e => set("businessName", e.target.value)} />
+                    </div>
+                    <div style={{ marginBottom:"1.2rem" }}>
+                      <label style={s.label}>Business type</label>
+                      <input style={inp} placeholder="e.g. Property mgmt, Cafe" value={form.businessType} onChange={e => set("businessType", e.target.value)} />
+                    </div>
+                  </div>
+                  <div style={{ marginBottom:"1.2rem" }}>
+                    <label style={s.label}>Locations / sites <span style={{ opacity:.5, fontWeight:400 }}>(if more than one)</span></label>
+                    <textarea style={{ ...inp, resize:"vertical", minHeight:"70px" }} placeholder="List the addresses or number of sites we would be servicing." value={form.locations} onChange={e => set("locations", e.target.value)} />
+                  </div>
+                  <div style={{ marginBottom:"1.2rem" }}>
+                    <label style={s.label}>Billing preference</label>
+                    <input style={inp} placeholder="e.g. Net-30 invoicing, PO required" value={form.billingPreference} onChange={e => set("billingPreference", e.target.value)} />
+                  </div>
+                  <label style={{ display:"flex", alignItems:"center", gap:".5rem", cursor:"pointer", fontSize:".88rem", color:"rgba(var(--ff-fg), .85)" }}>
+                    <input type="checkbox" checked={recurring} onChange={e => setRecurring(e.target.checked)} style={{ width:"16px", height:"16px", accentColor:"#ea6b14" }} />
+                    This is recurring / scheduled maintenance
+                  </label>
+                </div>
               )}
-              {/* Budget — anchored to the category average so the number is informed. */}
-              <BudgetPicker
-                services={selectedServices}
-                pricing={pricing}
-                min={budgetMin}
-                max={budgetMax}
-                flexible={budgetFlexible}
-                onMin={v => { setBudgetMin(v); setErrors(e => ({ ...e, budget: "" })); }}
-                onMax={v => { setBudgetMax(v); setErrors(e => ({ ...e, budget: "" })); }}
-                onFlexible={v => { setBudgetFlexible(v); setErrors(e => ({ ...e, budget: "" })); }}
-                error={errors.budget}
-                errorId="co-err-budget"
-              />
+              <div style={{ marginBottom:"1.2rem" }}>
+                <label style={s.label}>Where's the job? <span style={{ color:"rgba(var(--ff-muted), .4)", textTransform:"none", letterSpacing:0 }}>(address or postal code — either one)</span></label>
+                <AddressAutocomplete autoComplete="street-address" style={{ ...inp, borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="e.g. 123 Main St NW" value={form.location} onChange={v => set("location", v)} />
+                <div style={{ display:"flex", alignItems:"center", gap:".6rem", margin:".55rem 0" }}>
+                  <div style={{ flex:1, height:1, background:"rgba(var(--ff-fg), .12)" }} />
+                  <span style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .5)" }}>or just a postal code</span>
+                  <div style={{ flex:1, height:1, background:"rgba(var(--ff-fg), .12)" }} />
+                </div>
+                <input autoComplete="postal-code" style={{ ...inp, borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="e.g. T2P 1J9" value={form.postalCode} onChange={e => set("postalCode", e.target.value)} />
+                {errors.location && <p id="co-err-location" style={s.err}>{errors.location}</p>}
+              </div>
 
               <p style={{ ...s.label, marginTop:"1.5rem" }}>When Do You Need It?</p>
               {SCHEDULES.map(sc => (
@@ -689,62 +921,20 @@ export default function ClientOnboarding() {
                   </div>
                 </div>
               )}
-            </div>
-          )}
 
-          {step === 2 && (
-            <div>
-              {clientType === "business" && (
-                <div style={{ marginBottom:"1.75rem", paddingBottom:"1.25rem", borderBottom:"1px solid rgba(var(--ff-fg), .08)" }}>
-                  <div style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".12em", color:"#ea6b14", marginBottom:".9rem" }}>Business details</div>
-                  <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:"1rem" }}>
-                    <div style={{ marginBottom:"1.2rem" }}>
-                      <label style={s.label}>Business name</label>
-                      <input style={inp} placeholder="Acme Property Mgmt" value={form.businessName} onChange={e => set("businessName", e.target.value)} />
-                    </div>
-                    <div style={{ marginBottom:"1.2rem" }}>
-                      <label style={s.label}>Business type</label>
-                      <input style={inp} placeholder="e.g. Property mgmt, Cafe" value={form.businessType} onChange={e => set("businessType", e.target.value)} />
-                    </div>
-                  </div>
-                  <div style={{ marginBottom:"1.2rem" }}>
-                    <label style={s.label}>Locations / sites <span style={{ opacity:.5, fontWeight:400 }}>(if more than one)</span></label>
-                    <textarea style={{ ...inp, resize:"vertical", minHeight:"70px" }} placeholder="List the addresses or number of sites we would be servicing." value={form.locations} onChange={e => set("locations", e.target.value)} />
-                  </div>
-                  <div style={{ marginBottom:"1.2rem" }}>
-                    <label style={s.label}>Billing preference</label>
-                    <input style={inp} placeholder="e.g. Net-30 invoicing, PO required" value={form.billingPreference} onChange={e => set("billingPreference", e.target.value)} />
-                  </div>
-                  <label style={{ display:"flex", alignItems:"center", gap:".5rem", cursor:"pointer", fontSize:".88rem", color:"rgba(var(--ff-fg), .85)" }}>
-                    <input type="checkbox" checked={recurring} onChange={e => setRecurring(e.target.checked)} style={{ width:"16px", height:"16px", accentColor:"#ea6b14" }} />
-                    This is recurring / scheduled maintenance
-                  </label>
-                </div>
-              )}
-              <div style={{ marginBottom:"1.2rem" }}>
-                <label style={s.label}>Where's the job? <span style={{ color:"rgba(var(--ff-muted), .4)", textTransform:"none", letterSpacing:0 }}>(address or postal code — either one)</span></label>
-                <AddressAutocomplete autoComplete="street-address" style={{ ...inp, borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="e.g. 123 Main St NW" value={form.location} onChange={v => set("location", v)} />
-                <div style={{ display:"flex", alignItems:"center", gap:".6rem", margin:".55rem 0" }}>
-                  <div style={{ flex:1, height:1, background:"rgba(var(--ff-fg), .12)" }} />
-                  <span style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .5)" }}>or just a postal code</span>
-                  <div style={{ flex:1, height:1, background:"rgba(var(--ff-fg), .12)" }} />
-                </div>
-                <input autoComplete="postal-code" style={{ ...inp, borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="e.g. T2P 1J9" value={form.postalCode} onChange={e => set("postalCode", e.target.value)} />
-                {errors.location && <p id="co-err-location" style={s.err}>{errors.location}</p>}
-              </div>
-              <div style={{ marginBottom:"1.2rem" }}>
-                <label style={s.label}>Describe the Job</label>
-                <textarea style={{ ...inp, resize:"vertical", minHeight:"120px", borderColor: errors.jobDescription ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="Tell us what's broken or what you need done." value={form.jobDescription} onChange={e => set("jobDescription",e.target.value)} />
-                <VoiceDictate onAppend={(t) => set("jobDescription", (form.jobDescription.trim() ? form.jobDescription.trim() + " " : "") + t)} />
-                {errors.jobDescription && <p id="co-err-jobDescription" style={s.err}>{errors.jobDescription}</p>}
-              </div>
-              <div style={{ marginBottom:"1.2rem" }}>
-                <label style={s.label}>Photo of the Problem <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
-                <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB."); e.target.value = ""; return; } setSubmitError(""); setPhotoFile(f); }} style={{ ...inp, padding:".6rem", cursor:"pointer" }} />
-                <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginTop:".4rem" }}>A photo helps us give you a faster, more accurate estimate. Max 5MB.</p>
-                {photoFile && <p style={{ fontSize:".78rem", color:"var(--ff-success)", marginTop:".3rem" }}>Attached: {photoFile.name}</p>}
-              </div>
-              {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"var(--ff-danger)", marginTop:"1rem" }}>{submitError}</div>}
+              {/* Budget — anchored to the category average so the number is informed. */}
+              <BudgetPicker
+                services={selectedServices}
+                pricing={pricing}
+                min={budgetMin}
+                max={budgetMax}
+                flexible={budgetFlexible}
+                onMin={v => { setBudgetMin(v); setErrors(e => ({ ...e, budget: "" })); }}
+                onMax={v => { setBudgetMax(v); setErrors(e => ({ ...e, budget: "" })); }}
+                onFlexible={v => { setBudgetFlexible(v); setErrors(e => ({ ...e, budget: "" })); }}
+                error={errors.budget}
+                errorId="co-err-budget"
+              />
             </div>
           )}
         </div>
