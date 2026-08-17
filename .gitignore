@@ -39,3 +39,4 @@ apply-before-after.sh
 # private security audit - never commit to the public repo
 SECURITY-AUDIT-PRIVATE.md
 apply-security-audit.sh
+_skills-to-install/

@@ -26,6 +26,7 @@ import { freqLabel } from "@/lib/recurrence";
 import { respText } from "@/lib/respTime";
 import { DASH_NAV_EVENT, readDashNavFromUrl, clearDashNavFromUrl, type DashNavDetail } from "@/lib/notificationRoutes";
 import PriceGrade from "@/components/PriceGrade";
+import VerifiedMarks, { type VerifyFlags } from "@/components/VerifiedMarks";
 import type { Grade } from "@/lib/servicePricing";
 import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/components/DashboardSidebar";
 import NotificationBell from "@/components/NotificationBell";
@@ -135,6 +136,7 @@ export default function ClientDashboard() {
   const [bidMatch, setBidMatch] = useState<Record<string,any>>({}); // contractor_id -> smart-match score + signals
   const [bidGrade, setBidGrade] = useState<Record<string,string>>({}); // contractor_id -> A+/A/A- price grade
   const [bidPhoto, setBidPhoto] = useState<Record<string,string>>({}); // contractor_id -> profile photo URL
+  const [bidVerif, setBidVerif] = useState<Record<string,VerifyFlags>>({}); // contractor_id -> ID/insurance/WCB markers
   const [busyPick, setBusyPick] = useState<string|null>(null);
   const [busyPay, setBusyPay] = useState(false);
   const [contractBlocked, setContractBlocked] = useState(false);      // agreement not signed yet → payment blocked
@@ -881,18 +883,21 @@ export default function ClientDashboard() {
           setClientBids(data ?? []);
           const ids = Array.from(new Set((data ?? []).map((b: any) => b.contractor_id)));
           if (ids.length) {
-            const { data: dir } = await supabase.rpc("get_contractor_directory").select("id, first_name, last_name, price_grade, photo_url").in("id", ids);
+            const { data: dir } = await supabase.rpc("get_contractor_directory").select("id, first_name, last_name, price_grade, photo_url, id_verified, insurance_on_file, wcb_on_file").in("id", ids);
             const m: Record<string,string> = {};
             const g: Record<string,string> = {};
             const ph: Record<string,string> = {};
+            const vf: Record<string,VerifyFlags> = {};
             ((dir ?? []) as any[]).forEach((c: any) => {
               m[c.id] = ((c.first_name ?? "") + " " + (c.last_name ? c.last_name[0] + "." : "")).trim() || "Contractor";
               if (c.price_grade) g[c.id] = c.price_grade;
               if (c.photo_url) ph[c.id] = c.photo_url;
+              vf[c.id] = { id_verified: c.id_verified, insurance_on_file: c.insurance_on_file, wcb_on_file: c.wcb_on_file };
             });
             setBidNames(m);
             setBidGrade(g);
             setBidPhoto(ph);
+            setBidVerif(vf);
             // Speed-to-lead: median first-response time per bidding pro (badge on the bid card).
             const { data: rs } = await supabase.rpc("contractor_response_stats", { p_ids: ids });
             const rm: Record<string,number> = {};
@@ -1406,6 +1411,7 @@ export default function ClientDashboard() {
                                   ⚡ Usually responds in {respText(bidResp[b.contractor_id])}
                                 </div>
                               )}
+                              <VerifiedMarks flags={bidVerif[b.contractor_id]} size="sm" style={{ marginTop:".3rem" }} />
                               {b.walkthrough_requested && (
                                 <div style={{ display:"inline-flex", alignItems:"center", gap:".35rem", padding:".22rem .55rem", borderRadius:"99px", background:"rgba(234,107,20,.14)", color:"#ea6b14", fontSize:".72rem", fontWeight:700, marginTop:".3rem" }}>
                                   <Ic name="search" size={11} />Wants a free walkthrough first

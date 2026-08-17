@@ -3,6 +3,7 @@ import { useRoute, useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { Ic } from "@/components/Ic";
 import PriceGrade from "@/components/PriceGrade";
+import VerifiedMarks from "@/components/VerifiedMarks";
 import type { Grade } from "@/lib/servicePricing";
 
 export default function ContractorProfile() {
@@ -305,6 +306,7 @@ export default function ContractorProfile() {
               )}
               <PriceGrade grade={priceGrade} kind="pro" size="sm" />
             </div>
+            <VerifiedMarks flags={contractor} size="md" style={{ marginBottom:".75rem" }} />
             {(contractor.specialties?.length ?? 0) > 0 && (
               <div style={{ marginBottom:".75rem" }}>
                 {contractor.specialties.map((sp: string) => <span key={sp} style={s.chip}>{sp}</span>)}

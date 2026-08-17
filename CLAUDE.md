@@ -331,6 +331,15 @@ Documents are **optional at signup** (added later from the dashboard; admin appr
 
 **Profile photo (2026-08-05).** `contractors.photo_url`, public **`contractor-photos`** bucket at `<uid>/avatar.<ext>` with `upsert:true` — same convention as signup, so adding one here overwrites the signup upload. Overwriting the same path leaves the old image in the CDN cache, so the stored URL is stamped `?v=<Date.now()>`; without that a replaced photo looks like it didn't save. Missing photo is a normal profile gap (chip + pulse, ignorable, **no email** — an owner decision). Clients see it as a 44px avatar on each bid row in `ClientDashboard`, falling back to initials rather than a broken image; the data comes from `get_contractor_directory`, whose `.select()` there had to gain `photo_url`.
 
+## Verification markers (2026-08-16)
+`src/components/VerifiedMarks.tsx` renders up to three chips on each bid row and on the public profile, fed by three booleans added to `get_contractor_directory()` and `get_contractor_profile()`: `id_verified` (= `stripe_payouts_enabled`), `insurance_on_file` and `wcb_on_file` (= a non-empty `doc_urls` key). Both RPCs return a fixed `TABLE(...)`, so adding the columns needed **DROP then CREATE**, not `CREATE OR REPLACE`, and the grants had to be re-issued — and as with `photo_url`, the `.select()` at the ClientDashboard call site must name each new column or PostgREST silently omits it.
+
+**The wording is load-bearing.** Only `id_verified` says "verified", because Stripe had a regulated third party check government photo ID. Insurance and WCB say **"on file"** — a claim about what we hold, not about whether the document is current or genuine. Never promote an "on file" marker to "verified" without a real check behind it. Trade certificate is deliberately absent until there is a Tradesecrets lookup: it is the marker most likely to be read as "licensed for compulsory work", so it is the one that could push someone into an unsafe hire.
+
+**Absence is quiet, not scarlet** — no red X, no "unverified" badge, no trust score, because a brand-new pro still has to be able to win their first job. This is what makes the friction ladder work: verification is an incentive (verified pros visibly win more) rather than a gate on bidding. Today 6 of 22 active pros show any marker.
+
+**Owed:** once `insurance_expiry_date` is a real parsed date, `insurance_on_file` must also test `expiry > now()` — showing "insurance on file" for a lapsed policy is worse than showing nothing, because the client relies on it.
+
 `focusProfileGap(anchor)` switches to the Profile tab, then `requestAnimationFrame` + 60ms (so the tab paints before measuring) → `scrollIntoView({block:"center"})` → `.ff-pulse` for **4500ms** (1.5s × 3 keyframes + a persistent orange outline; `prefers-reduced-motion` gets a static tint).
 
 The banner renders each gap as a tappable chip plus an **"Ignore — my profile is complete"** link, persisted to `contractors.setup_skipped` as `profile_nudge:<sorted gap keys>` — **keyed to the gap SET**, so if the gaps later change the reminder returns on its own. The Profile-tab card is deliberately NOT hidden by the ignore.
