@@ -64,7 +64,7 @@ The important consequence: **the money trap closes on its own.** Gating the agre
 
 **0. Verification markers — SHIPPED to the database, installer waiting for you.** The incentive half of the ladder is built: `id_verified` / `insurance_on_file` / `wcb_on_file` now come back from `get_contractor_directory` and `get_contractor_profile`, and `VerifiedMarks.tsx` renders them on every bid row and public profile. Right now **6 of your 22 active pros would show a marker** — which is exactly the point. A client comparing bids sees who has done the paperwork, and the pros who haven't find out why they're losing.
 
-**1. Ship the agreement gate** — `migration-require-payout-before-contract.sql`. Safe to apply now; it costs the supply side nothing because it only bites after a pro has won.
+**1. ~~Ship the agreement gate~~ — DONE 2026-08-16.** `migration-require-payout-before-contract.sql` is applied live. The money trap is closed: no client can be charged for a job whose contractor has nowhere to be paid. It blocked nothing that already existed (1 job, 0 contracts, 0 jobs ever held), and it costs the supply side nothing because it only bites after a pro has won.
 
 **2. Nudge the 5 pros with live bids.** Not urgent any more, and framed as opportunity: you have a live bid, get ready.
 
