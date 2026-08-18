@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Ic } from "@/components/Ic";
 import { supabase } from "@/lib/supabase";
+import { compressImage } from "@/lib/imageCompress";
 
 // Before / after job photos. Both are mandatory for the contractor: the "after"
 // photo is what unlocks marking the job complete (and therefore payment), and
@@ -107,9 +108,12 @@ export default function JobPhotos({ job, role, onSaved, onError }: {
     }
     setBusy(kind);
     try {
-      const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
+      // Shrink before upload. Falls back to the original on any failure, so a
+      // photo can never be lost to compression — and this is a payment gate.
+      const up = await compressImage(f, "photo");
+      const ext = (up.name.split(".").pop() || "jpg").toLowerCase();
       const path = job.id + "/" + kind + "-" + crypto.randomUUID() + "." + ext;
-      const { error: upErr } = await supabase.storage.from("completion-photos").upload(path, f);
+      const { error: upErr } = await supabase.storage.from("completion-photos").upload(path, up, { contentType: up.type || undefined });
       if (upErr) throw upErr;
       const { error } = await supabase.rpc("save_job_photo", { p_job_id: job.id, p_kind: kind, p_path: path });
       if (error) throw error;

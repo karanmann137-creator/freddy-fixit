@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { compressImage } from "@/lib/imageCompress";
 
 const REASONS = [
   "Work was not completed",
@@ -54,9 +55,10 @@ export default function ReportProblem({
     try {
       const paths: string[] = [];
       for (const f of files) {
-        const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
+        const small = await compressImage(f, "photo");
+        const ext = (small.name.split(".").pop() || "jpg").toLowerCase();
         const key = `${userId}/${jobId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("problem-photos").upload(key, f, { upsert: false });
+        const { error: upErr } = await supabase.storage.from("problem-photos").upload(key, small, { upsert: false, contentType: small.type || undefined });
         if (upErr) throw new Error("Photo upload failed: " + upErr.message);
         paths.push(key);
       }

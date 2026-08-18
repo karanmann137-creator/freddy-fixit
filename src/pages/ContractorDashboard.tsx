@@ -2,6 +2,7 @@ import { Ic } from "@/components/Ic";
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { compressImage } from "@/lib/imageCompress";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import DeleteAccount from "@/components/DeleteAccount";
 import ProfileBar from "@/components/ProfileBar";
@@ -651,9 +652,10 @@ export default function ContractorDashboard() {
     if (!pfForm.file) { notify("Choose a photo first."); return; }
     setBusyPf(true);
     try {
-      const ext = (pfForm.file.name.split(".").pop() || "jpg").toLowerCase();
+      const small = await compressImage(pfForm.file, "photo");
+      const ext = (small.name.split(".").pop() || "jpg").toLowerCase();
       const path = profile.id + "/" + crypto.randomUUID() + "." + ext;
-      const { error: upErr } = await supabase.storage.from("portfolio-photos").upload(path, pfForm.file);
+      const { error: upErr } = await supabase.storage.from("portfolio-photos").upload(path, small, { contentType: small.type || undefined });
       if (upErr) throw upErr;
       const { data: row, error } = await supabase.from("portfolio_items")
         .insert({ contractor_id: profile.id, title: pfForm.title || null, description: pfForm.description || null, photo_path: path })

@@ -17,6 +17,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Ic } from "@/components/Ic";
 import { supabase } from "@/lib/supabase";
+import { compressImage } from "@/lib/imageCompress";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import { beforeRequired } from "@/components/JobPhotos";
 import { sendContractCopy, CONTRACT_COPY_FAILED } from "@/lib/contractCopy";
@@ -217,8 +218,9 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
       throw new Error("Add the job's \"before\" photo first — it's in the Before & after photos box on this job.");
     }
     if (file) {
-      const p = job.id + "/milestone-" + m.id + "-" + Date.now() + "." + (file.name.split(".").pop() || "jpg");
-      const { error: upErr } = await supabase.storage.from("completion-photos").upload(p, file);
+      const small = await compressImage(file, "photo");
+      const p = job.id + "/milestone-" + m.id + "-" + Date.now() + "." + (small.name.split(".").pop() || "jpg");
+      const { error: upErr } = await supabase.storage.from("completion-photos").upload(p, small, { contentType: small.type || undefined });
       if (upErr) throw upErr;
       path = p;
     }

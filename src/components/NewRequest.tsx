@@ -4,6 +4,7 @@ import VoiceDictate from "@/components/VoiceDictate";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { compressImage } from "@/lib/imageCompress";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
 import GuideBubble from "@/components/GuideBubble";
 import { SERVICES, SCHEDULES } from "@/pages/ClientOnboarding";
@@ -210,9 +211,10 @@ export default function NewRequest() {
 
       let photoPath: string | null = null;
       if (photoFile) {
-        const ext = (photoFile.name.split(".").pop() || "jpg").toLowerCase();
+        const small = await compressImage(photoFile, "photo");
+        const ext = (small.name.split(".").pop() || "jpg").toLowerCase();
         const path = user.id + "/" + crypto.randomUUID() + "." + ext;
-        const up = await supabase.storage.from("problem-photos").upload(path, photoFile, { upsert: false });
+        const up = await supabase.storage.from("problem-photos").upload(path, small, { upsert: false, contentType: small.type || undefined });
         if (!up.error) photoPath = path;
       }
 

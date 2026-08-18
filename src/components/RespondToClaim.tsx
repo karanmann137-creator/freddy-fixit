@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { compressImage } from "@/lib/imageCompress";
 
 // Contractor's side of the story on an open claim. Mirrors the client's claim
 // form: a written response plus optional photos, submitted via respond_to_dispute.
@@ -33,9 +34,10 @@ export default function RespondToClaim({
     try {
       const paths: string[] = [];
       for (const f of files) {
-        const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
+        const small = await compressImage(f, "photo");
+        const ext = (small.name.split(".").pop() || "jpg").toLowerCase();
         const key = `${userId}/resp-${disputeId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("problem-photos").upload(key, f, { upsert: false });
+        const { error: upErr } = await supabase.storage.from("problem-photos").upload(key, small, { upsert: false, contentType: small.type || undefined });
         if (upErr) throw new Error("Photo upload failed: " + upErr.message);
         paths.push(key);
       }

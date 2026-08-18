@@ -54,7 +54,7 @@ The fix isn't to require less. It's to require each thing **at the moment it bec
 | Browse and bid | **Nothing** | Client sees a name and a number. No money, no home visit. Let them bid freely, forever. |
 | Won the job → send agreement | **Payout account** | They have a real job in hand. Five minutes is obviously worth it now, and it closes the money trap before any client is charged. |
 | Won the job → before the visit | **Proof of insurance** | Someone is about to be in a stranger's home. This is the moment it matters. |
-| Bidding in a compulsory trade | **Trade certificate** | Electrical, plumbing, gas, A/C, appliance. Not policy — it's illegal to do the work without one. |
+| Bidding in a compulsory trade | **Trade certificate** | The seven labels flagged in `service_compulsory`: Electrical Work, Plumbing Repair, Air Conditioning, HVAC Maintenance, Appliance Repair / Install, Battery / Brakes, Solar. Not policy — Alberta lists these as restricted activities, so it's illegal to do the work without one. Researched 2026-08-16 against the published restricted-activities lists, which are narrower than the trades themselves: routine vehicle maintenance (oil, tires) is **not** gated even though Automotive Service Technician is a compulsory trade. |
 
 Everything else moves from gate to **incentive**: verified pros show verification markers on their bid row, unverified pros just don't. Clients pick the ones with the badges, pros notice, pros verify themselves. That's the spec's client-facing display doing double duty — honesty toward the client, and a reason for the contractor to bother.
 

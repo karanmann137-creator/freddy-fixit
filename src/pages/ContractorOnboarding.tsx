@@ -2,6 +2,7 @@ import { Ic } from "@/components/Ic";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { compressImage } from "@/lib/imageCompress";
 import { AVAIL_DAYS, WEEKDAYS, TIME_OPTIONS, DEFAULT_START, DEFAULT_END } from "@/lib/availability";
 import { trackEvent } from "@/lib/analytics";
 import OAuthButtons from "@/components/OAuthButtons";
@@ -288,9 +289,10 @@ export default function ContractorOnboarding() {
       let photoPublicUrl: string | null = null;
       const failedUploads: string[] = [];
       if (photoFile) {
-        const ext = (photoFile.name.split(".").pop() || "jpg").toLowerCase();
+        const smallPhoto = await compressImage(photoFile, "avatar");
+        const ext = (smallPhoto.name.split(".").pop() || "jpg").toLowerCase();
         const filePath = userId + "/avatar." + ext;
-        const { error: upErr } = await supabase.storage.from("contractor-photos").upload(filePath, photoFile, { upsert: true });
+        const { error: upErr } = await supabase.storage.from("contractor-photos").upload(filePath, smallPhoto, { upsert: true, contentType: smallPhoto.type || undefined });
         if (!upErr) {
           const { data: pub } = supabase.storage.from("contractor-photos").getPublicUrl(filePath);
           photoPublicUrl = pub?.publicUrl ?? null;
@@ -303,9 +305,13 @@ export default function ContractorOnboarding() {
       for (const key of docKeys) {
         const file = docFiles[key];
         if (!file) continue;
-        const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+        // "document" is the gentle profile — these get read by the AI reviewer
+        // and by the owner, so small print has to survive. PDFs pass straight
+        // through untouched.
+        const doc = await compressImage(file, "document");
+        const ext = (doc.name.split(".").pop() || "jpg").toLowerCase();
         const path = `${userId}/${key}.${ext}`;
-        const { error: docErr } = await supabase.storage.from("contractor-docs").upload(path, file, { upsert: true });
+        const { error: docErr } = await supabase.storage.from("contractor-docs").upload(path, doc, { upsert: true, contentType: doc.type || undefined });
         if (!docErr) docUrls[key] = path;
         else failedUploads.push(DOC_NAMES[key] ?? key);
       }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { compressImage } from "@/lib/imageCompress";
 
 interface Props {
   requestId: string;
@@ -33,9 +34,10 @@ export default function RequestPhotoQuote({ requestId, photoPath, estimatedQuote
     const { data: auth } = await supabase.auth.getUser();
     const uid = auth.user?.id;
     if (!uid) { setUploading(false); alert("Please sign in again to add a photo."); return; }
-    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const small = await compressImage(file, "photo");
+    const ext = (small.name.split(".").pop() || "jpg").toLowerCase();
     const path = uid + "/" + crypto.randomUUID() + "." + ext;
-    const up = await supabase.storage.from("problem-photos").upload(path, file, { upsert: false });
+    const up = await supabase.storage.from("problem-photos").upload(path, small, { upsert: false, contentType: small.type || undefined });
     if (up.error) { setUploading(false); alert("Couldn't upload photo: " + up.error.message); return; }
     const { error } = await supabase.from("client_requests").update({ photo_path: path }).eq("id", requestId);
     setUploading(false);

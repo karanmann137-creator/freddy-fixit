@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
+import { compressImage } from "@/lib/imageCompress";
 import { blockedReason, BLOCKED_HELP, detectDateTime, formatWhen } from "@/lib/chatParse";
 import { markJobRead, announceChatChange, messageTime, daySeparator, isNewDay } from "@/lib/chatUnread";
 import { jobCode } from "@/lib/jobCode";
@@ -221,10 +222,14 @@ export default function JobChat({
     let attachment_type: string | null = null;
     try {
       if (pending) {
-        const ext = (pending.file.name.split(".").pop() || (pending.kind === "image" ? "jpg" : "mp4")).toLowerCase();
+        // Videos and animated GIFs come back untouched; a photo comes back a
+        // fraction of the size, which is what makes sending one over cell data
+        // in a basement bearable.
+        const outFile = await compressImage(pending.file, "photo");
+        const ext = (outFile.name.split(".").pop() || (pending.kind === "image" ? "jpg" : "mp4")).toLowerCase();
         const path = `${jobId}/${meId}-${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, pending.file, {
-          contentType: pending.file.type, upsert: false,
+        const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, outFile, {
+          contentType: outFile.type || undefined, upsert: false,
         });
         if (upErr) { setErr("Upload failed — please try again."); setSending(false); return; }
         attachment_path = path;

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { compressImage } from "@/lib/imageCompress";
 
 // Editors for the profile fields we moved OFF the fast-track signup
 // ("Name + specialties only"). A contractor who signed up quickly finishes
@@ -106,9 +107,12 @@ export default function ContractorProfileCompletion({
       for (const key of Object.keys(docFiles) as DocKey[]) {
         const file = docFiles[key];
         if (!file) continue;
-        const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+        // Gentle profile: the AI reviewer and the owner both have to read the
+        // small print on these. PDFs pass through untouched.
+        const doc = await compressImage(file, "document");
+        const ext = (doc.name.split(".").pop() || "jpg").toLowerCase();
         const path = `${profile.id}/${key}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("contractor-docs").upload(path, file, { upsert: true });
+        const { error: upErr } = await supabase.storage.from("contractor-docs").upload(path, doc, { upsert: true, contentType: doc.type || undefined });
         if (upErr) { setMsg({ kind: "err", text: `Couldn't upload ${DOC_LABELS[key]}: ${upErr.message}` }); setBusy(false); return; }
         docUrls[key] = path;
         uploadedAny = true;
@@ -119,9 +123,10 @@ export default function ContractorProfileCompletion({
       // URL can be stored directly and shown to clients with no signing.
       let photoUrl: string | null = contractor?.photo_url ?? null;
       if (photoFile) {
-        const pext = (photoFile.name.split(".").pop() || "jpg").toLowerCase();
+        const smallPhoto = await compressImage(photoFile, "avatar");
+        const pext = (smallPhoto.name.split(".").pop() || "jpg").toLowerCase();
         const ppath = `${profile.id}/avatar.${pext}`;
-        const { error: pErr } = await supabase.storage.from("contractor-photos").upload(ppath, photoFile, { upsert: true });
+        const { error: pErr } = await supabase.storage.from("contractor-photos").upload(ppath, smallPhoto, { upsert: true, contentType: smallPhoto.type || undefined });
         if (pErr) { setMsg({ kind: "err", text: "Couldn't upload your photo: " + pErr.message }); setBusy(false); return; }
         const { data: pub } = supabase.storage.from("contractor-photos").getPublicUrl(ppath);
         // Overwriting the same path leaves the old image in the CDN cache, so

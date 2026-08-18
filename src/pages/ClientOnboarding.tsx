@@ -3,6 +3,7 @@ import VoiceDictate from "@/components/VoiceDictate";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { compressImage } from "@/lib/imageCompress";
 import GuideBubble from "@/components/GuideBubble";
 import { trackEvent } from "@/lib/analytics";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
@@ -402,9 +403,10 @@ export default function ClientOnboarding() {
 
       // Session exists: attach the optional photo to the request the trigger made.
       if (photoFile) {
-        const ext = (photoFile.name.split(".").pop() || "jpg").toLowerCase();
+        const small = await compressImage(photoFile, "photo");
+        const ext = (small.name.split(".").pop() || "jpg").toLowerCase();
         const path = userId + "/" + crypto.randomUUID() + "." + ext;
-        const up = await supabase.storage.from("problem-photos").upload(path, photoFile, { upsert: false });
+        const up = await supabase.storage.from("problem-photos").upload(path, small, { upsert: false, contentType: small.type || undefined });
         if (!up.error) {
           const { data: reqRow } = await supabase.from("client_requests").select("id").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
           if (reqRow) await supabase.from("client_requests").update({ photo_path: path }).eq("id", reqRow.id);

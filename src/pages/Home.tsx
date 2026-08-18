@@ -24,6 +24,12 @@ const BEFORE_AFTER = [
   { label:"Auto / Tires & PPF",  before:"/before-after/auto-before.webp",        after:"/before-after/auto-after.webp" },
 ];
 
+// Each before/after ships in two widths: a 688px "-sm" file and the 1100px
+// default. The slider box is capped at 900px, so nothing ever needs more than
+// 1100, and a phone pulls roughly a fifth of the bytes it used to.
+const BA_SIZES = "(max-width: 940px) 100vw, 900px";
+const baSrcSet = (p: string) => p.replace(".webp", "-sm.webp") + " 688w, " + p + " 1100w";
+
 function BeforeAfter() {
   const [idx, setIdx] = useState(0);
   const [pct, setPct] = useState(55);
@@ -67,8 +73,10 @@ function BeforeAfter() {
         onTouchMove={onMove}
         onTouchEnd={onUp}
       >
-        <img className="ff-ba-img" src={pair.after} alt={pair.label + " after"} draggable={false} />
-        <img className="ff-ba-img" src={pair.before} alt={pair.label + " before"} draggable={false}
+        <img className="ff-ba-img" src={pair.after} srcSet={baSrcSet(pair.after)} sizes={BA_SIZES}
+          alt={pair.label + " after"} draggable={false} decoding="async" />
+        <img className="ff-ba-img" src={pair.before} srcSet={baSrcSet(pair.before)} sizes={BA_SIZES}
+          alt={pair.label + " before"} draggable={false} decoding="async"
           style={{ clipPath: "inset(0 " + (100 - pct) + "% 0 0)" }} />
 
         <span className="ff-ba-badge ff-ba-badge-before" style={{ opacity: pct > 12 ? 1 : 0 }}>Before</span>
