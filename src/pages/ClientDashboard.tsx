@@ -27,6 +27,7 @@ import { respText } from "@/lib/respTime";
 import { DASH_NAV_EVENT, readDashNavFromUrl, clearDashNavFromUrl, type DashNavDetail } from "@/lib/notificationRoutes";
 import PriceGrade from "@/components/PriceGrade";
 import VerifiedMarks, { type VerifyFlags } from "@/components/VerifiedMarks";
+import BidChat from "@/components/BidChat";
 import type { Grade } from "@/lib/servicePricing";
 import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/components/DashboardSidebar";
 import NotificationBell from "@/components/NotificationBell";
@@ -137,6 +138,9 @@ export default function ClientDashboard() {
   const [bidGrade, setBidGrade] = useState<Record<string,string>>({}); // contractor_id -> A+/A/A- price grade
   const [bidPhoto, setBidPhoto] = useState<Record<string,string>>({}); // contractor_id -> profile photo URL
   const [bidVerif, setBidVerif] = useState<Record<string,VerifyFlags>>({}); // contractor_id -> ID/insurance/WCB markers
+  // Bid-stage chat: a private thread per (request, pro), open before any job exists.
+  const [bidUnread, setBidUnread] = useState<Record<string,number>>({});     // contractor_id -> unread on the active request
+  const [bidChat, setBidChat] = useState<{ requestId:string; contractorId:string; name:string; title?:string|null } | null>(null);
   const [busyPick, setBusyPick] = useState<string|null>(null);
   const [busyPay, setBusyPay] = useState(false);
   const [contractBlocked, setContractBlocked] = useState(false);      // agreement not signed yet → payment blocked
@@ -910,9 +914,21 @@ export default function ClientDashboard() {
             setBidMatch(mm);
           }
         });
-    } else { setClientBids([]); setBidMatch({}); setBidPhoto({}); }
+      refreshBidUnread(ar.id);
+    } else { setClientBids([]); setBidMatch({}); setBidPhoto({}); setBidUnread({}); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeReq?.id, activeReq?.status]);
+
+  // Unread per bid-stage thread, keyed by pro, for the badge on "Ask a question".
+  const refreshBidUnread = async (reqId: string) => {
+    const { data, error } = await supabase.rpc("my_bid_threads");
+    if (error) return;                       // a failed read is not "no unread"
+    const u: Record<string,number> = {};
+    ((data ?? []) as any[]).forEach((t: any) => {
+      if (t.request_id === reqId) u[t.contractor_id] = Number(t.unread ?? 0);
+    });
+    setBidUnread(u);
+  };
 
   const pickBid = async (bidId: string) => {
     if (!(await askConfirm({
@@ -1306,6 +1322,41 @@ export default function ClientDashboard() {
 
         {activeTab === "requests" && (
         <>
+            {/* Rebooking is the cheapest job on the platform to win, and it was
+                buried one tab deep. Surface the same pros here on the home tab
+                so "get the guy who did it last time" is one tap from landing.
+                Sits BELOW Needs-your-attention on purpose — money-gating rows
+                still come first. The full list, favourites and last-service
+                detail stay on the My Pros tab. */}
+            {pros.length > 0 && (
+              <div style={{ ...s.card, padding:"1rem 1.25rem" }}>
+                <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:".75rem", flexWrap:"wrap" as const, marginBottom:".75rem" }}>
+                  <div>
+                    <div style={{ ...s.cardTitle, marginBottom:".15rem" }}>Book a pro you've used before</div>
+                    <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .55)" }}>They get first refusal for 48 hours — no need to compare estimates again.</div>
+                  </div>
+                  {pros.length > 3 && (
+                    <button onClick={() => setActiveTab("pros")} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".8rem", fontWeight:600, cursor:"pointer", padding:0 }}>
+                      All {pros.length} pros →
+                    </button>
+                  )}
+                </div>
+                <div style={{ display:"flex", gap:".7rem", overflowX:"auto" as const, paddingBottom:".3rem" }}>
+                  {pros.slice(0, 6).map(pro => (
+                    <div key={pro.contractor_id} style={{ minWidth:"178px", flex:"0 0 auto", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"12px", padding:".8rem", background:"rgba(var(--ff-fg), .03)" }}>
+                      <div style={{ fontSize:".88rem", fontWeight:600, color:"var(--ff-text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
+                        {pro.company_name || pro.name || "Your pro"}
+                      </div>
+                      <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .5)", marginTop:".15rem", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
+                        {pro.rating ? "⭐ " + Number(pro.rating).toFixed(1) : "New"}
+                        {pro.last_service ? " · " + pro.last_service : ""}
+                      </div>
+                      <button style={{ ...s.primaryBtn, width:"100%", marginTop:".6rem", padding:".45rem", fontSize:".8rem" }} onClick={() => rehire(pro)}>Book again</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {requests.length === 0 ? (
               <div style={{ textAlign:"center", padding:"3rem 2rem" }}>
                 <div style={{ marginBottom:"1rem" }}><Ic name="home" size={44} color="#ea6b14" /></div>
@@ -1425,7 +1476,22 @@ export default function ClientDashboard() {
                               {b.message && <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .65)", marginTop:".15rem" }}>{b.message}</div>}
                               {!b.walkthrough_requested && <QuoteBreakdownView row={b} assumptionsKey="assumptions" />}
                             </div>
-                            <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f", padding:".5rem 1rem" }} disabled={busyPick === b.id} onClick={() => pickBid(b.id)}>{busyPick === b.id ? "…" : "Choose"}</button>
+                            {/* Ask before you commit. Every pro on this list can be
+                                messaged privately — they can only reply, never cold-call. */}
+                            <div style={{ display:"flex", flexDirection:"column", gap:".4rem", flex:"0 0 auto" }}>
+                              <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f", padding:".5rem 1rem" }} disabled={busyPick === b.id} onClick={() => pickBid(b.id)}>{busyPick === b.id ? "…" : "Choose"}</button>
+                              <button
+                                style={{ ...s.btn, padding:".4rem .8rem", fontSize:".78rem", position:"relative" as const }}
+                                onClick={() => setBidChat({ requestId: activeReq.id, contractorId: b.contractor_id, name: bidNames[b.contractor_id] ?? "Contractor", title: activeReq.service_needed })}
+                              >
+                                <Ic name="message-square" size={12} style={{ marginRight:4 }} />Ask a question
+                                {Number(bidUnread[b.contractor_id] ?? 0) > 0 && (
+                                  <span style={{ position:"absolute", top:-6, right:-6, minWidth:16, height:16, padding:"0 4px", borderRadius:999, background:"#ea6b14", color:"#fff", fontSize:".62rem", fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                                    {Number(bidUnread[b.contractor_id]) > 9 ? "9+" : bidUnread[b.contractor_id]}
+                                  </span>
+                                )}
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1860,6 +1926,19 @@ export default function ClientDashboard() {
       </div>
         </div>
       </div>
+
+      {bidChat && profile && (
+        <BidChat
+          requestId={bidChat.requestId}
+          contractorId={bidChat.contractorId}
+          meId={profile.id}
+          role="client"
+          title={bidChat.title}
+          otherName={bidChat.name}
+          onRead={() => setBidUnread(u => ({ ...u, [bidChat.contractorId]: 0 }))}
+          onClose={() => { const rid = bidChat.requestId; setBidChat(null); refreshBidUnread(rid); }}
+        />
+      )}
 
       {timePromptJob && profile && !chatJob && (
         <ChatTimePrompt

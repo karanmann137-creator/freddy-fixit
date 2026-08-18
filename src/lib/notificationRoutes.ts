@@ -41,6 +41,9 @@ const CONTRACTOR_TAB: Record<string, string> = {
   job_still_open:    "available",
   bid_declined:      "available",
   job_reopened:      "available",
+  // Bid-stage chat: the thread hangs off a request, not a job, so it lives on
+  // the Available Jobs card rather than the Messages inbox (which is per-job).
+  bid_message:       "available",
 
   // Work already theirs.
   bid_accepted:          "jobs",
@@ -84,6 +87,8 @@ const CONTRACTOR_TAB: Record<string, string> = {
 const CLIENT_TAB: Record<string, string> = {
   bid_received:        "requests",
   bids_waiting:        "requests",
+  // A pro replied to a pre-hire question — the thread opens off the bid row.
+  bid_message:         "requests",
   no_quotes_alert:     "requests",
   job_assigned:        "requests",
   schedule_proposed:   "requests",

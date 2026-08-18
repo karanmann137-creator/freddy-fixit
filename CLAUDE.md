@@ -121,6 +121,12 @@ A contractor can adjust the price at any live stage **until payout** — assigne
 
 `jobs.price_change_pending jsonb` / `price_change_proposed_at` / `extra_charge_intent_ids text[]`. `propose_price_change(...)` on an **unpaid** job applies the price and returns to `assigned` for re-approval (`'reapprove'`); on a **held** job it stores the pending jsonb and notifies the client (`'pending_client_approval'`). `decline_price_change(...)` clears it. `confirm_job_completion` raises while a change is pending, and `auto_confirm_stale_jobs` skips those jobs. Edge **adjust-payment** (v2): increase → Stripe Checkout for the delta (`kind:'price_topup'`), decrease → partial refund, no-change → apply; preserves the original fee rate and pays 93% of the FINAL amount. On an under-funded job an increase rolls into the outstanding balance instead of opening a top-up. `release-payment` 409s while a change is pending.
 
+**The client can walk instead of paying more (2026-08-18).** `decline_price_reopen(job)` cancels the job, flips the request back to `pending`, declines the offending pro's bid and re-sets **every other bid to `pending`**, so the client re-picks in one tap from estimates already on the request. `preferred_contractor_id` is cleared too, or a rehire reservation would hand it straight back to the same pro. Nothing is deleted — chat, agreement and history survive on the cancelled row.
+
+It carries **three money guards** modelled on `withdraw_job`, because it cancels a job and every child of `jobs` is ON DELETE CASCADE: whole-job `payment_status in ('held','released','disputed')`; any `job_milestones` stage in `funded/completed/released/disputed` (**a milestone job holds real money while `jobs.payment_status` is still `'unpaid'`**); and a `recurring_prepayments` pool in `held/partially_released`. It touches **none of the four payout guards** — it can only fire on a job that holds no money at all.
+
+The contractor is told this plainly in `renderPriceChange` before they send: on an unpaid job, an amber block says raising the price can cost them the job because the client can re-open it to the other bidders in one tap; once money is held it says the opposite, that the job can't be handed away but the change can be declined. The old single line ("They'll re-approve … your chat history stays") was misleadingly reassuring.
+
 ## Disputes / claims
 Client files a formal claim (`ReportProblem` → `open_dispute` RPC: reason, service date, agreed scope, requested remedy, amount, signed declaration + photos) which freezes payment to `disputed` and notifies contractor + all admins. Contractor responds within 3 days (`RespondToClaim` → `respond_to_dispute`). Admin resolves via `resolve-dispute` edge fn (v5 — walks multiple payment intents newest-first) with full/partial refund or release. Photos in the private `problem-photos` bucket; dispute parties can read each other's via RLS. Clients reach the flow from the sidebar **File a claim** action (`FileClaimModal.tsx` → picks a job by `jobCode`).
 
@@ -267,6 +273,27 @@ The sender's browser fires `chat_propose_time` fire-and-forget after its own mes
 
 Admin needed no DB work — the existing `Admin full access to messages` ALL policy means a **Read chat** button on the Jobs tab opens `JobChat` with `role="admin"`, `readOnly`; `markRead()` is a no-op for admins.
 
+## Bid-stage chat (2026-08-18)
+A private thread between the client and **ONE** pro who bid, **before any job exists** — so a client can ask several pros a question and compare answers, not just prices.
+
+Two rules are load-bearing and enforced in the **database, not the UI**:
+- **The CLIENT opens the thread; a pro can only reply.** A pro who could message first would turn a posted request into a cold-call list.
+- **A pro sees only their own thread.** RLS matches a contractor on `thread_contractor_id`, so pro A can never read pro B's conversation.
+
+Built on `public.messages` **on purpose**, not a parallel table — so `chat_guard()` circumvention blocking, the `blocked` flag and sender-only visibility all apply unchanged. Bid stage is exactly where the incentive to go off-platform is highest, because there is no job yet to lose.
+
+`messages.request_id` + `messages.thread_contractor_id`, with CHECK `messages_one_thread` = `((job_id is not null) <> (request_id is not null)) and (request_id is null or thread_contractor_id is not null)` — a message belongs to a job **or** a request, never both. Index `messages_request_thread_idx`. Read state in `bid_thread_reads (request_id, contractor_id, user_id, last_read_at)`, the same per-person model as `message_reads`.
+
+**The "has the client written yet?" test cannot live inline in the send policy** — an INSERT WITH CHECK on `messages` containing a subquery on `messages` is *infinite recursion*. It lives in `SECURITY DEFINER` **`bid_thread_open(request_id, contractor_id)`**, which also made the test stricter: it requires that the **request owner** specifically has spoken, not merely somebody other than the caller.
+
+`my_bid_threads()` returns threads + unread + snippet in one call. Its client side is one row per pro who bid on any of my `status='pending'` requests, so a thread can be **started** from the list; its contractor side returns only threads the client has already opened, so an empty result genuinely means nobody has written. `mark_bid_thread_read(request, contractor)` returns early unless the caller is one of the two parties.
+
+`notify_new_message()` gained a request branch **before** the untouched job branch. It **does not** touch `message_email_log` (PK is `(job_id, recipient_id)`, and `job_id` is null here) — it throttles on the `notifications` table instead, 15 min per recipient. Type is `bid_message`, routed to `available` (contractor) / `requests` (client) in `notificationRoutes.ts`.
+
+**`BidChat.tsx` is deliberately TEXT ONLY.** Attachments would need storage RLS keyed on a job id that doesn't exist yet, and a pre-hire question doesn't need a photo — the client's request photos are already on the request.
+
+Verified end to end with a rolled-back RLS probe under real JWT claims, 16/16: contractor-initiates blocked, client-opens OK, pro-replies OK, pro2 reading pro1's thread returns 0 rows, pro2 hijack blocked, unread 1 → 0 after mark_read.
+
 ## Media in chat
 Private **`message-media`** bucket (image/jpeg,png,webp,gif,heic,heif + video/mp4,webm,quicktime; 50MB cap), `messages.attachment_path` / `attachment_type`, path convention `<job_id>/<file>` with storage RLS keyed on the first path segment. `JobChat.tsx` validates type and size **before** upload (images ≤10MB, videos ≤50MB), supports caption-only or attachment-only messages, and renders via 1-hour signed URLs cached in state.
 
@@ -388,7 +415,7 @@ Admins additionally see an **Admin Review panel**: `admin_get_contractor_detail(
 - **`ClientOnboarding.tsx`** (3 steps: need → details → account). Google one-tap is at the **top of step 1**. Phone optional, auto-formatted; address via `AddressAutocomplete.tsx` (Photon / photon.komoot.io, OpenStreetMap, **no API key**, Calgary-biased, 280ms debounce, silently degrades to plain typing). Validation scrolls to the first error (`co-err-*` ids). `NewRequest.tsx` is the short returning-client form ("same address as last time?"), reached because ClientOnboarding branches logged-in → NewRequest. `?pro=` pre-targets a favourite.
 - **Base prices** — `service_pricing` table (label PK → base_price / typical_low / typical_high / unit) for all 23 services, public via `get_service_pricing()`; `src/lib/servicePricing.ts` (`useServicePricing()` cached once/session, `rangeText`/`fromText`/`money`). Clients see "from $X" in the picker and a typical range on the lead form; contractors get a base-price box with a one-tap "Use base price" plus optional min–max inputs (`price_low`/`price_high`/`used_base_price` on `bids` and `jobs`).
 - **Client dashboard** sidebar: My Requests / Messages / My Pros / Recurring Plans / History / Profile / Settings. **Needs your attention** ordered money-first (contract → balance → price change → schedule → walkthrough → confirm → bids), each row carrying `ownsScroll` and an anchor (`ffc-price`, `ffc-sched`, `ffc-hike`, `ffc-walkthrough`, `ffc-confirm`, `ffc-bids`).
-- **My Pros** — `favorites` + `toggle_favorite(uuid)`, `list_my_pros()` (worked-with OR favorited; jobs_together, last_service, rating). Rehire routes to `/client-onboarding`.
+- **My Pros** — `favorites` + `toggle_favorite(uuid)`, `list_my_pros()` (worked-with OR favorited; jobs_together, last_service, rating). Rehire routes to `/client-onboarding`. The same list also renders as a **"Book a pro you've used before"** strip on the Requests (home) tab — first 6, horizontally scrolling, one "Book again" per card, with an "All N pros →" link once there are more than 3. It sits **below Needs-your-attention on purpose** so money-gating rows still come first, and it renders above the empty state too, since a returning client with no open request is exactly who should see it. Rebooking is the cheapest job on the platform to win and it was one tab deep.
 - **Self-serve deletion** — `delete-account` edge fn + `DeleteAccount` component (inside SettingsPanel), with re-signup flagging for poorly-rated contractors.
 - **Google review popup** — `src/lib/reviewPrompt.ts` fires `ff:google-review`; `GoogleReviewModal.tsx` listens. Three moments only (account created, job posted, job done), localStorage-deduped with a ~21-day cooldown and a "Don't ask again" opt-out. URL `https://g.page/r/CYvpOy2pJh_YEAI/review`.
 - **IntroTips.tsx** — two first-visit coach-marks (Settings gear, chat bubble) for **logged-out** first-timers only, `localStorage['ff_seen_intro_tips']`, hidden on auth/onboarding/dashboard routes (and the flag is only burned when actually shown).

@@ -29,6 +29,7 @@ import JobChecklist from "@/components/JobChecklist";
 import JobPhotos, { photosMissing } from "@/components/JobPhotos";
 import JobExpenses, { type JobExpense } from "@/components/JobExpenses";
 import ContractPanel, { CONTRACT_ANCHOR } from "@/components/ContractPanel";
+import BidChat from "@/components/BidChat";
 
 const CONTRACTOR_NAV: SidebarItem[] = [
   { key: "jobs",      label: "My Jobs",        icon: "briefcase" },
@@ -200,6 +201,11 @@ export default function ContractorDashboard() {
   const [hiding, setHiding]           = useState<string|null>(null);
   const [busyBid, setBusyBid]         = useState<string|null>(null);
   const [bidOpen, setBidOpen]         = useState<Record<string,boolean>>({});
+  // Bid-stage chat, keyed by request_id. A pro only ever has one thread per
+  // request (their own), and the row only exists once the CLIENT has written —
+  // the pro can reply but can never open the conversation.
+  const [bidThreads, setBidThreads]   = useState<Record<string, any>>({});
+  const [bidChat, setBidChat]         = useState<{ requestId:string; name:string; title?:string|null } | null>(null);
   const [busyStripe, setBusyStripe]   = useState(false);
   // What Stripe is still waiting on, straight from refresh-connect-status (v11).
   // Empty until that call returns; the banner falls back to generic copy.
@@ -220,6 +226,18 @@ export default function ContractorDashboard() {
   const [loadError, setLoadError]     = useState(false);
   const [toast, setToast]             = useState<{ kind:"err"|"ok"; text:string }|null>(null);
   const toastTimer = useRef<number | null>(null);
+  // my_bid_threads() returns, for a contractor, only the threads the CLIENT has
+  // already opened — so an empty map genuinely means nobody has written yet.
+  // A failed read returns early rather than clearing: losing a thread the pro
+  // can see would look like the client's question vanished.
+  const refreshBidThreads = async () => {
+    const { data, error } = await supabase.rpc("my_bid_threads");
+    if (error) return;
+    const m: Record<string, any> = {};
+    ((data ?? []) as any[]).forEach((t: any) => { m[t.request_id] = t; });
+    setBidThreads(m);
+  };
+
   const notify = (text: string, kind: "err" | "ok" = "err") => {
     setToast({ kind, text });
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
@@ -373,6 +391,7 @@ export default function ContractorDashboard() {
       setContractor(con2);
       setBidsCount(bidsCnt ?? 0);
       setEarn(earnStats ?? null);
+      refreshBidThreads();
       // Speed-to-lead: own median first-response time (fire-and-forget; null = not enough bids yet)
       supabase.rpc("contractor_response_stats")
         .then(({ data }: any) => { const r = (data ?? [])[0]; setRespMins(r ? Number(r.median_minutes) : null); });
@@ -788,6 +807,26 @@ export default function ContractorDashboard() {
         ) : (
           <div style={{ display:"flex", flexDirection:"column", gap:".6rem" }}>
             <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.45 }}>Send the client a revised estimate. They'll re-approve (and cover any extra) before it takes effect — your chat history stays.</div>
+            {/* Be straight with the pro about what a price rise risks. On an
+                unpaid job decline_price_reopen genuinely releases them and puts
+                the request back in front of the other bids, so the soft copy
+                above on its own was misleading. Once money is held the job
+                can't be handed away, so say that instead of implying it can. */}
+            {(job.payment_status ?? "unpaid") === "unpaid" ? (
+              <div style={{ display:"flex", alignItems:"flex-start", gap:".5rem", padding:".6rem .7rem", borderRadius:"10px", background:"rgba(245,158,11,.10)", border:"1px solid rgba(245,158,11,.32)" }}>
+                <Ic name="alert-triangle" size={14} color="#f59e0b" style={{ marginTop:2, flexShrink:0 }} />
+                <div style={{ fontSize:".78rem", color:"var(--ff-text)", lineHeight:1.5 }}>
+                  <strong>Raising the price can cost you the job.</strong> Nothing has been paid yet, so the client can decline and re-open the request to the other pros who bid — in one tap, without talking to you first. Only raise it if the work genuinely changed, give the specific reason, and message them about it before you send this.
+                </div>
+              </div>
+            ) : (
+              <div style={{ display:"flex", alignItems:"flex-start", gap:".5rem", padding:".6rem .7rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .1)" }}>
+                <Ic name="bell" size={14} color="#f59e0b" style={{ marginTop:2, flexShrink:0 }} />
+                <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
+                  The client has already paid on this job, so they can't hand it to another pro. But they can decline the change — you'd finish at the agreed price. Give the specific reason and message them first.
+                </div>
+              </div>
+            )}
             <input type="number" min="0" value={rf.amount} placeholder="New total price $" onChange={e => setRf({ amount: e.target.value })} style={ffInp} />
             <QuoteBreakdown v={rf} on={setRf} calloutHint={contractor?.min_callout ?? null} price={priceFor(job.request?.service_needed)} />
             <textarea value={rf.reason} rows={2} placeholder="Reason for the change (e.g. found a cracked pipe behind the wall)" onChange={e => setRf({ reason: e.target.value })} style={{ ...ffInp, resize:"vertical" as const }} />
@@ -1783,7 +1822,6 @@ export default function ContractorDashboard() {
                   </div>
                   {(() => {
                     const hasBid = r.my_amount != null || r.my_walkthrough;
-                    const full = (r.bid_count ?? 0) >= 7;
                     const isOpen = bidOpen[r.id] ?? false;
                     if (hasBid && !isOpen) {
                       return (
@@ -1799,6 +1837,28 @@ export default function ContractorDashboard() {
                         </div>
                       );
                     }
+                    return null;
+                  })()}
+                  {/* A client can open a private thread with any pro who bid. The pro
+                      can only reply, so this button only appears once they've written. */}
+                  {bidThreads[r.id] && (
+                    <button
+                      onClick={() => setBidChat({ requestId: r.id, name: bidThreads[r.id].other_name ?? "Client", title: r.service_needed })}
+                      style={{ ...s.btn, width:"100%", justifyContent:"center", marginTop:".5rem", position:"relative" as const,
+                        background: Number(bidThreads[r.id].unread ?? 0) > 0 ? "rgba(234,107,20,.12)" : undefined,
+                        border: Number(bidThreads[r.id].unread ?? 0) > 0 ? "1px solid rgba(234,107,20,.45)" : undefined }}
+                    >
+                      <Ic name="message-square" size={13} style={{ marginRight:5 }} />
+                      {Number(bidThreads[r.id].unread ?? 0) > 0
+                        ? "The client messaged you — reply (" + bidThreads[r.id].unread + " new)"
+                        : "Message the client"}
+                    </button>
+                  )}
+                  {(() => {
+                    const hasBid = r.my_amount != null || r.my_walkthrough;
+                    const full = (r.bid_count ?? 0) >= 7;
+                    const isOpen = bidOpen[r.id] ?? false;
+                    if (hasBid && !isOpen) return null;
                     if (!hasBid && !isOpen && full) {
                       return <div style={{ fontSize:".82rem", color:"var(--ff-warn)" }}>This job already has 7 bids.</div>;
                     }
@@ -2281,6 +2341,18 @@ export default function ContractorDashboard() {
         </div>
       </div>
 
+      {bidChat && profile && (
+        <BidChat
+          requestId={bidChat.requestId}
+          contractorId={profile.id}
+          meId={profile.id}
+          role="contractor"
+          title={bidChat.title}
+          otherName={bidChat.name}
+          onRead={() => setBidThreads(m => (m[bidChat.requestId] ? { ...m, [bidChat.requestId]: { ...m[bidChat.requestId], unread: 0 } } : m))}
+          onClose={() => { setBidChat(null); refreshBidThreads(); }}
+        />
+      )}
       {timePromptJob && profile && !chatJob && (
         <ChatTimePrompt
           job={timePromptJob}
