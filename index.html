@@ -6,6 +6,18 @@
     <link rel="apple-touch-icon" href="/favicon-180.png" />
     <meta name="theme-color" content="#1a2236" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Fonts start downloading during HTML parse, in parallel with the JS bundle.
+         Every page also injects its own <link> to the same URL; those are now
+         cache hits rather than the first request, so headings stop arriving one
+         render late. This is the superset of every weight any page asks for
+         (600 and 700 included) — one request covers the whole site.
+         preconnect matters more than the link itself: it opens the TLS handshake
+         to both font hosts up front instead of after the CSS is parsed. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" />
+
     <title>Freddy Fix It — Calgary's On-Demand Home Repair & Vehicle Service Marketplace</title>
     <meta name="description" content="Freddy Fix It connects Calgary homeowners with vetted, licensed and insured contractors. Post a job, get free estimates, and have AI match you to your ideal contractor for home repairs and vehicle maintenance." />
     <link rel="canonical" href="https://freddyfixit.ca/" />

@@ -5,12 +5,18 @@ import NotificationBell from "@/components/NotificationBell";
 import SettingsModal from "@/components/SettingsModal";
 
 const CONTACT_EMAIL = "hello@freddyfixit.ca";
-const CONTACT_PHONE = "+18255618331";
-const CONTACT_PHONE_DISPLAY = "(825) 561-8331";
 
 // Right-side links shown to everyone. Add more here later — each appears automatically.
-const NAV_LINKS: { label: string; to: string; accent?: boolean }[] = [
-  { label: "Blog", to: "/blog" },
+//
+// `small: false` drops a link on narrow phones. The header is a fixed row with
+// the wordmark on one side and everything else on the other, so every link
+// added here eats width that Sign In needs. About us earns its place — it is
+// the page a first-time visitor goes looking for before they trust us with
+// their address — and Blog is one scroll away in the footer, so Blog is the
+// one that steps aside.
+const NAV_LINKS: { label: string; to: string; accent?: boolean; small?: boolean }[] = [
+  { label: "About us", to: "/about" },
+  { label: "Blog", to: "/blog", small: false },
 ];
 
 export default function TopNav() {
@@ -102,19 +108,21 @@ export default function TopNav() {
           .ff-nav-wrap { padding: .7rem .9rem !important; }
           .ff-brand { font-size: 1.4rem !important; }
           .ff-nav-btn { padding: .4rem .75rem !important; font-size: .72rem !important; }
-          .ff-phone-txt { display: none !important; }
         }
+        @media (max-width: 460px) { .ff-nav-small-hide { display: none !important; } }
       `}</style>
 
       <div className="ff-brand" style={brand} onClick={() => setLocation("/")}>FREDDYFIXIT</div>
 
       <div style={right}>
-        {/* Blog stays visible outside the menu on every screen size (hidden during onboarding). */}
+        {/* Public links sit outside the menu, so they're one tap rather than two
+            (hidden during onboarding, where the whole point is to keep people
+            moving forward). Blog collapses under 460px — see NAV_LINKS. */}
         {!onOnboarding && NAV_LINKS.map(l => (
           <button
             key={l.to}
             onClick={() => setLocation(l.to)}
-            className={`ff-nav-btn ${l.accent ? "ff-nav-btn-accent" : "ff-nav-btn-ghost"}`}
+            className={`ff-nav-btn ${l.accent ? "ff-nav-btn-accent" : "ff-nav-btn-ghost"}${l.small === false ? " ff-nav-small-hide" : ""}`}
             style={{ ...btn, ...(l.accent ? accentBtn : ghostBtn) }}
           >
             {l.label}
@@ -160,14 +168,9 @@ export default function TopNav() {
                 >
                   My Dashboard
                 </button>
-                <a
-                  href={`tel:${CONTACT_PHONE}`}
-                  className="ff-menu-item"
-                  style={menuItem}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Call us · {CONTACT_PHONE_DISPLAY}
-                </a>
+                {/* No "Call us" row here any more. The number still lives in
+                    the footer on every page, so nobody loses the phone line —
+                    it just stops being the loudest thing in the header. */}
                 <button
                   onClick={() => { setMenuOpen(false); window.dispatchEvent(new CustomEvent("ff:open-chat")); }}
                   className="ff-menu-item"
@@ -201,14 +204,8 @@ export default function TopNav() {
             )}
           </div>
         ) : (
-          // Logged out: simple header — click-to-call + gear + Sign In.
+          // Logged out: simple header — gear + Sign In.
           <>
-            {!onOnboarding && (
-              <a href={`tel:${CONTACT_PHONE}`} aria-label="Call Freddy Fix It" className="ff-nav-btn ff-nav-btn-ghost" style={{ ...btn, ...ghostBtn, display:"inline-flex", alignItems:"center", gap:".4rem", textDecoration:"none" }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                <span className="ff-phone-txt">{CONTACT_PHONE_DISPLAY}</span>
-              </a>
-            )}
             <button aria-label="Settings" onClick={() => setSettingsOpen(true)} className="ff-nav-btn ff-nav-btn-ghost" style={{ ...btn, ...ghostBtn, padding:".5rem", display:"inline-flex", alignItems:"center", justifyContent:"center" }}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             </button>

@@ -73,10 +73,13 @@ function BeforeAfter() {
         onTouchMove={onMove}
         onTouchEnd={onUp}
       >
+        {/* Below the fold and behind a tab, so nothing here competes with the
+            hero for bandwidth. The wrapper already fixes a 16/9 aspect ratio,
+            so lazy-loading costs no layout shift. */}
         <img className="ff-ba-img" src={pair.after} srcSet={baSrcSet(pair.after)} sizes={BA_SIZES}
-          alt={pair.label + " after"} draggable={false} decoding="async" />
+          alt={pair.label + " after"} draggable={false} decoding="async" loading="lazy" />
         <img className="ff-ba-img" src={pair.before} srcSet={baSrcSet(pair.before)} sizes={BA_SIZES}
-          alt={pair.label + " before"} draggable={false} decoding="async"
+          alt={pair.label + " before"} draggable={false} decoding="async" loading="lazy"
           style={{ clipPath: "inset(0 " + (100 - pct) + "% 0 0)" }} />
 
         <span className="ff-ba-badge ff-ba-badge-before" style={{ opacity: pct > 12 ? 1 : 0 }}>Before</span>
@@ -201,49 +204,196 @@ export default function Home() {
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
+        /* ── Hero ────────────────────────────────────────────────────────────
+           60/30/10, applied literally. The ground and every surface are navy
+           (60), the type and hairlines are ink (30), and orange appears on
+           exactly two things: the primary button, and one word of the
+           headline (10). Everything that used to spend the accent budget on
+           decoration is gone — the eight scattered orange trade icons, the
+           orange divider, the twin orange corner glows, the orange icon on
+           the contractor pill, the orange sparkle line. That was the real
+           problem with the old hero: with seven orange things competing,
+           none of them read as the thing to do next.
+
+           The other change is what leads. The largest element used to be the
+           company name, which tells a first-time visitor nothing — the brand
+           is already floating top-left in the fixed TopNav, so repeating it
+           here in 6rem type spent the whole first impression on a word the
+           visitor cannot act on. Now the largest element is the promise. */
         .ff-hero {
+          position: relative; overflow: hidden;
           min-height: 100vh;
-          background: var(--ff-bg);
-          background-image:
-            radial-gradient(ellipse 46% 36% at 26% -6%, rgba(234,107,20,0.42) 0%, transparent 70%),
-            radial-gradient(ellipse 52% 40% at 78% -10%, rgba(234,107,20,0.30) 0%, transparent 72%),
-            radial-gradient(ellipse 90% 70% at 50% 118%, rgba(13,18,30,0.85) 0%, transparent 70%);
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
-          padding: 2rem 1rem 4rem; position: relative; overflow: hidden;
+          min-height: 100svh;   /* iOS counts the URL bar in vh, which pushed the button under the fold */
+          display: flex; flex-direction: column;
+          background: var(--ff-c60);
+          background-image: radial-gradient(ellipse 85% 55% at 50% 118%, rgba(9,13,22,0.92) 0%, transparent 72%);
+          /* Top padding clears the fixed TopNav (~4.5rem tall incl. its own
+             padding) so the eyebrow never sits under the wordmark. */
+          padding: 5rem clamp(1.15rem, 5vw, 2rem) clamp(2rem, 7vh, 3.5rem);
         }
-        /* faint diagonal woven grid, vignette-masked toward the centre */
+        /* One warm glow behind the headline instead of two in the corners, and
+           it drifts over 22s — slow enough to read as light rather than motion. */
+        .ff-hero-glow {
+          position: absolute; top: -30%; left: 50%; margin-left: -65%;
+          width: 130%; height: 78%; pointer-events: none; z-index: 0;
+          background: radial-gradient(ellipse at center, rgba(234,107,20,0.30) 0%, rgba(234,107,20,0.09) 44%, transparent 70%);
+          animation: ff-glow 22s ease-in-out infinite;
+        }
+        @keyframes ff-glow {
+          0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.85; }
+          50%      { transform: translate3d(0, -18px, 0) scale(1.07); opacity: 1; }
+        }
+        /* faint diagonal weave, masked to the centre so edges stay clean */
         .ff-hero::before {
-          content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
+          content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.42; z-index: 0;
           background-image:
-            repeating-linear-gradient(45deg, transparent 0 25px, rgba(var(--ff-fg), 0.035) 25px, rgba(var(--ff-fg), 0.035) 26px),
-            repeating-linear-gradient(-45deg, transparent 0 25px, rgba(var(--ff-fg), 0.03) 25px, rgba(var(--ff-fg), 0.03) 26px);
-          -webkit-mask-image: radial-gradient(circle at 50% 35%, #000 30%, transparent 82%);
-                  mask-image: radial-gradient(circle at 50% 35%, #000 30%, transparent 82%);
+            repeating-linear-gradient(45deg, transparent 0 26px, rgba(var(--ff-fg), 0.03) 26px, rgba(var(--ff-fg), 0.03) 27px),
+            repeating-linear-gradient(-45deg, transparent 0 26px, rgba(var(--ff-fg), 0.025) 26px, rgba(var(--ff-fg), 0.025) 27px);
+          -webkit-mask-image: radial-gradient(circle at 50% 40%, #000 26%, transparent 80%);
+                  mask-image: radial-gradient(circle at 50% 40%, #000 26%, transparent 80%);
         }
-                /* scattered, faint trade icons hinting at the jobs we do */
-        .ff-hero-icons { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-        .ff-hero-icons span { position: absolute; color: #ea6b14; opacity: 0.07; }
+        /* Trade icons as texture only — ink, never orange, so they read as
+           watermark rather than accent and don't spend the 10% budget.
+
+           The mask is what lets there be twelve of them without the hero
+           getting busy: it erases the icon field through the whole middle of
+           the section and only fades them up toward the edges. So the icons
+           are dense where the eye isn't and absent where the words are, which
+           is the opposite of scattering them evenly and hoping the opacity is
+           low enough. Nothing ever sits behind the headline. */
+        .ff-hero-icons { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+          -webkit-mask-image: radial-gradient(ellipse 60% 54% at 50% 48%, transparent 30%, #000 82%);
+                  mask-image: radial-gradient(ellipse 60% 54% at 50% 48%, transparent 30%, #000 82%); }
+        .ff-hero-icons span { position: absolute; color: rgb(var(--ff-fg)); opacity: 0.055; }
         .ff-hero-icons span svg { display: block; }
         @media (max-width: 600px) { .ff-hero-icons span.ff-hi-hide { display: none; } }
-        .ff-inner { max-width: 680px; width: 100%; position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; }
-        .ff-logo-mark { width: 80px; height: 80px; margin-bottom: 1.5rem; filter: drop-shadow(0 0 18px rgba(234,107,20,0.6)); }
-        .ff-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(3.5rem, 10vw, 6rem); letter-spacing: 0.08em; line-height: 0.9; text-align: center; margin: 0 0 0.5rem; color: var(--ff-text); }
-        .ff-title span { color: #ea6b14; }
-        .ff-tagline { font-size: 1rem; font-weight: 300; color: rgba(var(--ff-muted), 0.75); text-align: center; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 1.5rem; }
-        .ff-divider { width: 48px; height: 2px; background: linear-gradient(90deg, transparent, #ea6b14, transparent); margin: 0 auto 1.5rem; }
-        /* Hero CTAs: one big client button, one much smaller contractor button below. */
-        .ff-cta-main { display: block; width: 100%; max-width: 420px; padding: 1.15rem clamp(1rem, 4vw, 2rem); background: #ea6b14; color: #fff;
-          border: none; border-radius: 14px; font-family: 'Bebas Neue', sans-serif; font-size: 1.65rem; letter-spacing: 0.07em;
-          cursor: pointer; transition: all 0.25s ease; box-shadow: 0 0 0 1px rgba(234,107,20,0.35), 0 10px 36px rgba(234,107,20,0.3); }
-        .ff-cta-main:hover { background: #f07a28; transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(234,107,20,0.5), 0 14px 44px rgba(234,107,20,0.4); }
-        .ff-cta-sub { background: rgba(var(--ff-fg), 0.05); border: 1px solid rgba(var(--ff-fg), 0.12); border-radius: 999px;
-          padding: 0.45rem 1.1rem; color: rgba(var(--ff-muted), 0.75); font-family: 'DM Sans', sans-serif; font-size: 0.8rem;
-          font-weight: 500; cursor: pointer; transition: all 0.2s; }
-        .ff-cta-sub:hover { border-color: rgba(234,107,20,0.45); color: var(--ff-text); }
-        .ff-signin { display: flex; align-items: center; gap: 0.5rem; background: rgba(var(--ff-fg), 0.05); border: 1px solid rgba(var(--ff-fg), 0.1); border-radius: 999px; padding: 0.6rem 1.4rem; color: rgba(var(--ff-muted), 0.7); font-size: 0.85rem; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; margin-top: 0.75rem; }
-        .ff-signin:hover { background: rgba(var(--ff-fg), 0.1); color: var(--ff-text); }
-        .ff-scroll-hint { position: absolute; bottom: 0.6rem; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 0.4rem; color: rgba(var(--ff-muted), 0.3); font-size: 0.72rem; letter-spacing: 0.15em; text-transform: uppercase; animation: bounce 2s infinite; }
+
+        /* The mark alone, at size. The FREDDYFIXIT word is deliberately gone:
+           <TopNav/> is fixed and already spells the name out top-left over
+           this very section, and a logotype set twice on one screen reads as
+           a template rather than a brand. The mark carries the identity here;
+           the name is two inches away if anyone needs it.
+
+           It also does NOT animate. Everything below it rises in, but the
+           logo is the first thing on the page and a mark that arrives late
+           undercuts the exact steadiness it is there to project. */
+        .ff-herolock { display: block; line-height: 0; }
+        .ff-herolock svg { display: block;
+          width: clamp(76px, 20vw, 132px); height: clamp(76px, 20vw, 132px); }
+
+        /* ── Hero layout: axial + modular ─────────────────────────────
+           AXIAL — one vertical centre line, and every block is centred on
+           it with nothing offset, so the eye travels straight down: mark,
+           promise, action. That symmetry is what lets a deliberately short
+           hero read as composed instead of merely sparse.
+
+           MODULAR — one spacing unit (--ff-mod) and every vertical gap is a
+           whole multiple of it: 1× inside a group, 2× between groups. What
+           this replaces is seven blocks that each carried their own
+           hand-picked margin (1.15rem, then 1.1rem, then a clamp, then
+           0.75rem, then another clamp), which is precisely why the old
+           spacing never felt intentional. The rhythm is now arithmetic, and
+           re-tuning the whole hero is one number. */
+        .ff-hero-body {
+          --ff-mod: clamp(0.62rem, 1.9vh, 0.95rem);
+          position: relative; z-index: 1; flex: 1; width: 100%; max-width: 46rem; margin: 0 auto;
+          display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: min-content;
+          justify-items: center; align-content: center; row-gap: var(--ff-mod);
+          text-align: center;
+        }
+        /* Group breaks, expressed in modules rather than eyeballed pixels. */
+        .ff-hero-body > .ff-h1       { margin-top: var(--ff-mod); }
+        .ff-hero-body > .ff-cta      { margin-top: calc(var(--ff-mod) * 2); }
+        .ff-hero-body > .ff-proof    { margin-top: calc(var(--ff-mod) * 2); }
+        .ff-hero-body > .ff-hero-alt { margin-top: calc(var(--ff-mod) * 2); }
+        /* One column, so the flex-era justify-content that used to push the
+           body into the thumb arc becomes align-content. The "safe" keyword
+           matters: on a short phone a plain "end" would overflow the TOP of
+           the section and slide the logo up under the fixed nav. */
+        @media (max-width: 640px) {
+          .ff-hero-body { --ff-mod: clamp(0.5rem, 1.4vh, 0.8rem);
+            align-content: end; align-content: safe end; padding-bottom: 3vh; }
+        }
+
+        .ff-h1 { font-family: 'Bebas Neue', sans-serif; font-weight: 400;
+          font-size: clamp(3rem, 11.5vw, 5.6rem); line-height: 0.9; letter-spacing: 0.02em;
+          color: var(--ff-ink-1); margin: 0; }
+        .ff-h1 em { font-style: normal; color: var(--ff-c10); }
+        .ff-sub { font-size: clamp(1rem, 2.5vw, 1.15rem); font-weight: 300; line-height: 1.62;
+          color: var(--ff-ink-3); max-width: 33rem; margin: 0; }
+        .ff-sub strong { color: var(--ff-ink-2); font-weight: 500; }
+
+        /* The one accent action on the page. 56px tall is the floor, not the
+           target — it clears the 44px thumb minimum with room for a mis-tap. */
+        .ff-cta { display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
+          width: 100%; max-width: 23rem; min-height: 56px;
+          padding: 1rem 1.5rem; border: none; border-radius: 14px; cursor: pointer;
+          background: linear-gradient(180deg, var(--ff-accent-400) 0%, var(--ff-accent-500) 100%);
+          color: #fff; font-family: 'Bebas Neue', sans-serif; font-size: 1.55rem; letter-spacing: 0.06em;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 10px 30px rgba(234,107,20,0.28);
+          transition: transform 0.18s cubic-bezier(0.2,0.7,0.3,1), box-shadow 0.18s ease, filter 0.18s ease; }
+        .ff-cta:hover { transform: translateY(-2px); filter: brightness(1.04);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), 0 16px 40px rgba(234,107,20,0.38); }
+        .ff-cta:active { transform: translateY(0) scale(0.994); }
+        .ff-cta:focus-visible { outline: 2px solid var(--ff-accent-400); outline-offset: 3px; }
+        .ff-cta-note { margin: 0; font-size: 0.8rem; letter-spacing: 0.04em; color: var(--ff-ink-4); }
+
+        /* The proof line. It answers the question a first-time visitor is
+           actually asking under the button — "who are these people and what
+           stops one of them taking my money?" — and every clause of it is a
+           mechanism that exists in the code, not a boast:
+             · "passed our review"   → a contractor is inert until an admin
+                                        sets status='active'.
+             · "verified their ID"   → contract_ready() refuses to let an
+                                        agreement be sent unless Stripe has
+                                        completed identity verification, and
+                                        the payment functions refuse to charge
+                                        without a signed agreement. So the ID
+                                        check gates the money BY CONSTRUCTION.
+             · "signed agreement"    → contract_required() is true for every
+                                        job, and the charge endpoints 428.
+           What it deliberately does NOT say is anything about volume. We have
+           11 active pros, no completed jobs and no reviews yet, so "trusted by
+           hundreds" would be a lie, and the one thing a marketplace cannot
+           afford to be caught doing early is inventing its own traction.
+
+           It is set as plain text on the axis — no box, no tinted panel, no
+           border. A card here would have been a fourth bordered thing on a
+           screen whose whole job is to feel calm, and the sentence does not
+           need a container to be believed. The single small mark carries it. */
+        .ff-proof { display: flex; align-items: flex-start; justify-content: center; gap: 0.45rem;
+          max-width: 31rem; margin: 0; padding: 0;
+          font-size: 0.82rem; line-height: 1.55; color: var(--ff-ink-4); text-align: left; }
+        .ff-proof svg { flex-shrink: 0; margin-top: 0.22rem; }
+        .ff-proof strong { color: var(--ff-ink-2); font-weight: 500; }
+
+        /* A notch larger than the contractor line's neighbours, so a tradesperson
+           scanning the page actually registers it — but still well under the
+           subheading, so it never competes with the orange button. */
+        .ff-hero-alt { font-size: 0.95rem; color: var(--ff-ink-4); }
+        .ff-hero-alt button { background: none; border: none; padding: 0; cursor: pointer; font: inherit;
+          color: var(--ff-ink-2); font-weight: 500; text-decoration: underline; text-underline-offset: 3px;
+          transition: color 0.18s; }
+        .ff-hero-alt button:hover { color: var(--ff-c10); }
+
+        .ff-scroll-hint { position: absolute; bottom: 0.7rem; left: 50%; transform: translateX(-50%);
+          display: flex; flex-direction: column; align-items: center; gap: 0.35rem; z-index: 1;
+          color: var(--ff-ink-4); opacity: 0.6; font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase;
+          animation: bounce 2.4s ease-in-out infinite; }
+        @media (max-width: 640px) { .ff-scroll-hint { display: none; } }
         @keyframes bounce { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(6px); } }
+
+        /* Entrance. The headline rises but never starts transparent — an
+           invisible LCP element is an LCP element the browser doesn't count,
+           so fading in the biggest text on the page measurably hurts the
+           score it is meant to win. Everything else fades. */
+        @keyframes ff-rise { from { opacity: 0; transform: translate3d(0, 14px, 0); } to { opacity: 1; transform: none; } }
+        @keyframes ff-lift { from { transform: translate3d(0, 10px, 0); } to { transform: none; } }
+        .ff-anim { animation: ff-rise 0.62s cubic-bezier(0.22,0.61,0.36,1) both; }
+        .ff-anim-lcp { animation: ff-lift 0.5s cubic-bezier(0.22,0.61,0.36,1) both; }
+        .ff-d1 { animation-delay: 0.05s; } .ff-d2 { animation-delay: 0.12s; }
+        .ff-d3 { animation-delay: 0.19s; } .ff-d4 { animation-delay: 0.26s; }
+        .ff-d5 { animation-delay: 0.33s; }
 
         /* ── Services ── */
         .ff-services { background: var(--ff-surface); position: relative; overflow: hidden; }
@@ -323,72 +473,106 @@ export default function Home() {
         .ff-footer-bar { background: var(--ff-surface-2); border-top: 1px solid rgba(var(--ff-fg), 0.06); padding: 2rem 1.5rem; text-align: center; font-size: 0.75rem; color: rgba(var(--ff-muted), 0.25); letter-spacing: 0.05em; }
       `}</style>
 
-      {/* ── Hero ── */}
+      {/* ── Hero ──
+          One job: in about three seconds, tell a stranger what this is, why
+          they should trust it, and give them exactly one thing to press.
+          Everything here is subordinate to that — which is why there is one
+          button and not three, and why the brand is a lockup rather than the
+          headline. The whole entrance is CSS, not framer-motion, so the text
+          paints on the HTML/CSS pass instead of waiting for the JS bundle. */}
       <div className="ff-hero">
-        {/* faint trade icons hinting at the jobs we do */}
+        <div className="ff-hero-glow" aria-hidden="true" />
+        {/* Watermark texture. Ink, not orange — the accent budget is spent on
+            the button, and these used to be eight competing orange shapes. */}
+        {/* Twelve trade marks instead of four. They can be this many and still
+            read as clean because of the mask on .ff-hero-icons, which erases
+            the middle of the field entirely — density lives out at the edges
+            where nothing has to be read, and the centre column stays empty.
+            Positions are deliberately off the axis and the sizes vary, since a
+            tidy ring of same-size icons looks like a border, not texture. The
+            six marked ff-hi-hide drop on phones, where there is no margin to
+            spare beside the text. */}
         <div className="ff-hero-icons" aria-hidden="true">
-          <span style={{ top:"12%", left:"8%", transform:"rotate(-18deg)" }}><Ic name="wrench" size={64} color="#ea6b14" /></span>
-          <span className="ff-hi-hide" style={{ top:"20%", right:"10%", transform:"rotate(14deg)" }}><Ic name="pipe" size={72} color="#ea6b14" /></span>
-          <span style={{ top:"58%", left:"6%", transform:"rotate(10deg)" }}><Ic name="paint-roller" size={58} color="#ea6b14" /></span>
-          <span className="ff-hi-hide" style={{ top:"62%", right:"7%", transform:"rotate(-12deg)" }}><Ic name="hammer" size={66} color="#ea6b14" /></span>
-          <span className="ff-hi-hide" style={{ top:"40%", left:"15%", transform:"rotate(8deg)" }}><Ic name="zap" size={48} color="#ea6b14" /></span>
-          <span style={{ top:"78%", left:"42%", transform:"rotate(-6deg)" }}><Ic name="car" size={54} color="#ea6b14" /></span>
-          <span className="ff-hi-hide" style={{ top:"34%", right:"16%", transform:"rotate(-10deg)" }}><Ic name="thermometer" size={50} color="#ea6b14" /></span>
-          <span className="ff-hi-hide" style={{ top:"82%", right:"20%", transform:"rotate(-6deg)" }}><Ic name="home" size={50} color="#ea6b14" /></span>
+          <span style={{ top:"11%", left:"6%", transform:"rotate(-18deg)" }}><Ic name="wrench" size={64} color="currentColor" /></span>
+          <span className="ff-hi-hide" style={{ top:"9%", left:"27%", transform:"rotate(9deg)" }}><Ic name="trowel" size={40} color="currentColor" /></span>
+          <span className="ff-hi-hide" style={{ top:"18%", right:"25%", transform:"rotate(-7deg)" }}><Ic name="droplet" size={38} color="currentColor" /></span>
+          <span className="ff-hi-hide" style={{ top:"20%", right:"8%", transform:"rotate(14deg)" }}><Ic name="pipe" size={70} color="currentColor" /></span>
+          <span style={{ top:"38%", left:"3%", transform:"rotate(6deg)" }}><Ic name="zap" size={44} color="currentColor" /></span>
+          <span style={{ top:"42%", right:"4%", transform:"rotate(-16deg)" }}><Ic name="thermometer" size={46} color="currentColor" /></span>
+          <span className="ff-hi-hide" style={{ top:"62%", left:"22%", transform:"rotate(-11deg)" }}><Ic name="key" size={36} color="currentColor" /></span>
+          <span className="ff-hi-hide" style={{ top:"66%", right:"9%", transform:"rotate(-12deg)" }}><Ic name="hammer" size={62} color="currentColor" /></span>
+          <span style={{ top:"74%", left:"5%", transform:"rotate(10deg)" }}><Ic name="paint-roller" size={56} color="currentColor" /></span>
+          <span className="ff-hi-hide" style={{ top:"80%", right:"27%", transform:"rotate(8deg)" }}><Ic name="snowflake" size={40} color="currentColor" /></span>
+          <span style={{ top:"88%", left:"33%", transform:"rotate(-6deg)" }}><Ic name="toolbox" size={48} color="currentColor" /></span>
+          <span style={{ top:"86%", right:"14%", transform:"rotate(13deg)" }}><Ic name="tree" size={42} color="currentColor" /></span>
         </div>
-        <motion.div className="ff-inner" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: "easeOut" }}>
-          <motion.svg className="ff-logo-mark" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg"
-            initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.6, delay: 0.1 }}>
-            
-            <polygon points="65.9,50.7 50.7,65.9 29.3,65.9 14.1,50.7 14.1,29.3 29.3,14.1 50.7,14.1 65.9,29.3" fill="rgba(234,107,20,0.08)" stroke="#ea6b14" strokeWidth="2"/>
-            <path d="M28 54 L28 38 L40 28 L52 38 L52 54 Z" stroke="var(--ff-text)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-            <path d="M36 54 L36 43 L44 43 L44 54" stroke="#ea6b14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-            
-          </motion.svg>
 
-          <motion.h1 className="ff-title" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }}>
-            FREDDY<br /><span>FIXIT</span>
-          </motion.h1>
+        <div className="ff-hero-body">
+          {/* The mark, large and dead centre on the axis, with no entrance
+              animation — see .ff-herolock. role="img" + a label because the
+              wordmark that used to name the company is gone, so this SVG is
+              now the only thing carrying the brand in this section. */}
+          <div className="ff-herolock" role="img" aria-label="Freddy Fix It">
+            <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <polygon points="65.9,50.7 50.7,65.9 29.3,65.9 14.1,50.7 14.1,29.3 29.3,14.1 50.7,14.1 65.9,29.3" fill="rgba(234,107,20,0.10)" stroke="#ea6b14" strokeWidth="3"/>
+              <path d="M28 54 L28 38 L40 28 L52 38 L52 54 Z" stroke="var(--ff-text)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              <path d="M36 54 L36 43 L44 43 L44 54" stroke="#ea6b14" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+            </svg>
+          </div>
 
-          <motion.p className="ff-tagline" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.35 }}>
-            Free Estimates — No Signup
-          </motion.p>
+          <h1 className="ff-h1 ff-anim-lcp">
+            Fix it once.<br /><em>Fix it right.</em>
+          </h1>
 
-          <div className="ff-divider" />
+          {/* Short on purpose. The old version spent three lines listing things
+              the tick row underneath already says, and a subheading nobody
+              finishes reading is a subheading that isn't working. Calgary stays
+              in it because the eyebrow that used to carry the city is gone. */}
+          <p className="ff-sub ff-anim ff-d1">
+            Tell us what needs doing. Compare prices from local pros.
+          </p>
 
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.4 }}
-            style={{ display:"flex", justifyContent:"center", marginBottom:"1.4rem" }}>
-            <span style={{ display:"inline-flex", alignItems:"center", gap:".45rem", fontSize:"1rem", fontWeight:500, color:"rgba(var(--ff-fg), .9)" }}>
-              <Ic name="user-check" size={17} color="#ea6b14" />Calgary's Vetted Pros, On Demand
+          <button className="ff-cta ff-anim ff-d2" onClick={() => setLocation("/client-onboarding")}>
+            Get Free Estimates
+          </button>
+          <div className="ff-cta-note ff-anim ff-d2">No signup to start · Takes about 2 minutes</div>
+
+          {/* Credibility by mechanism, not by claimed volume — see .ff-proof.
+              Every clause here is enforced in code and can be shown to anyone
+              who asks. Do not "strengthen" this into a numbers claim until the
+              numbers exist. */}
+          <p className="ff-proof ff-anim ff-d3">
+            <Ic name="user-check" size={15} color="var(--ff-c10)" />
+            <span>
+              <strong>No pro can charge you</strong> until they've passed our review, verified
+              their ID, and signed an agreement with you.
             </span>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.45 }}
-            style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:".9rem" }}>
-            <button className="ff-cta-main" onClick={() => setLocation("/client-onboarding")}>
-              Get 5 Free Estimates →
-            </button>
-            <button className="ff-cta-sub" onClick={() => setLocation("/contractor-onboarding")}>
-              <Ic name="wrench" size={13} color="#ea6b14" style={{ marginRight:6, verticalAlign:"-2px" }} />Join Freddy's Team
-            </button>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:".4rem", fontSize:".82rem", color:"rgba(var(--ff-fg), .85)", fontWeight:500 }}>
-              <Ic name="sparkles" size={14} color="#ea6b14" /> Have AI match you to your ideal contractor
-            </div>
-          </motion.div>
+          </p>
 
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.55 }}
-            style={{ marginTop:".95rem", fontSize:".85rem", color:"rgba(var(--ff-muted), .6)" }}>
-            Used Freddy before?{" "}
-            <a href="/login" onClick={(e) => { e.preventDefault(); setLocation("/login"); }}
-              style={{ color:"#ea6b14", fontWeight:500, textDecoration:"underline", textUnderlineOffset:"3px", cursor:"pointer" }}>
-              Log in to rebook your pro →
-            </a>
-          </motion.div>
+          {/* Contractor sign-up sits ABOVE the tick row, not buried under it.
+              Supply is the harder side of a marketplace to fill, and a pro who
+              scrolls past this is a pro we pay to reach some other way. It is
+              still plainly secondary to the orange button — bigger than the
+              ticks, but a text link, not a second competing action. */}
+          {/* The three-tick row that used to close the hero is GONE, and that
+              is the simplification. It was a third trust block saying what the
+              subheading and the proof line had already said — "Vetted Calgary
+              pros" duplicated both, and "No fees to post a job" duplicated the
+              CTA note directly above it. Three overlapping reassurances read
+              as anxious rather than confident. One sentence that is specific
+              and checkable does more than three that are generic.
 
-        </motion.div>
+              The trust bar immediately below the hero still carries the same
+              points for anyone who scrolls, so nothing was actually lost. */}
+          <div className="ff-hero-alt ff-anim ff-d4">
+            A tradesperson?{" "}
+            <button onClick={() => setLocation("/contractor-onboarding")}>Join Freddy's team →</button>
+          </div>
+        </div>
 
-        <div className="ff-scroll-hint">
+        <div className="ff-scroll-hint" aria-hidden="true">
           <span>Scroll</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
         </div>
@@ -398,7 +582,11 @@ export default function Home() {
       <div style={{ background:"rgba(var(--ff-fg), .03)", borderTop:"1px solid rgba(var(--ff-fg), .07)", borderBottom:"1px solid rgba(var(--ff-fg), .07)", padding:"1.4rem 1rem" }}>
         <div style={{ maxWidth:"1000px", margin:"0 auto", display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(min(200px, 100%), 1fr))", gap:"1rem" }}>
           {[
-            { icon:"user-check", label:"Licensed, insured & WCB-verified" },
+            /* Same correction as the hero tick row: we cannot say every pro is
+               licensed, insured and WCB-verified, because most have not filed
+               all three. What IS true of every one of them is that a person
+               reviewed and approved them before they could quote. */
+            { icon:"user-check", label:"Reviewed & approved before they quote" },
             { icon:"dollar", label:"Payment held until you approve" },
             { icon:"map-pin", label:"Calgary local — zones & nearby towns" },
             { icon:"sparkles", label:"Free estimates, no signup" },

@@ -11,6 +11,16 @@ import { getConsent, setConsent, CONSENT_EVENT } from "@/lib/analytics";
  *
  * It re-appears if the choice is cleared from Settings (which fires
  * CONSENT_EVENT with a null detail).
+ *
+ * SIZE: this is deliberately about a third of what it used to be — one row
+ * instead of a four-line paragraph and two full-width buttons. The old copy
+ * explained session replay, the Settings opt-out and sign-in cookies in
+ * prose, which is a lot of screen to spend on a bar most people dismiss
+ * without reading. What has to survive the cut is the disclosure itself, so
+ * the two facts that carry the CASL/PIPA weight are still on the face of it:
+ * that session replay is part of what is being asked for, and that nothing
+ * runs before consent. The detail moved to the Privacy Policy link, which is
+ * where a person actually goes to read it.
  */
 export default function CookieConsent() {
   const [show, setShow] = useState(false);
@@ -35,12 +45,6 @@ export default function CookieConsent() {
     setShow(false);
   };
 
-  const btn: React.CSSProperties = {
-    flex: "1 1 auto", padding: ".62rem 1rem", borderRadius: "10px",
-    fontFamily: "'DM Sans',sans-serif", fontWeight: 700, fontSize: ".88rem",
-    cursor: "pointer", border: "1px solid transparent",
-  };
-
   return (
     <div
       className="ff-cookie"
@@ -48,66 +52,69 @@ export default function CookieConsent() {
       aria-live="polite"
       aria-label="Cookie choices"
     >
-      <p style={{
-        fontFamily: "'DM Sans',sans-serif", fontSize: ".85rem", lineHeight: 1.55,
-        color: "var(--ff-text)", margin: "0 0 .85rem",
-      }}>
-        <strong style={{ display: "block", fontSize: ".95rem", marginBottom: ".3rem" }}>
-          Can we use analytics cookies?
-        </strong>
-        They help us see which parts of the site people get stuck on, and include
-        session replay that records how pages are used. Nothing is collected until
-        you say yes, and you can change your mind anytime in Settings. The cookies
-        that keep you signed in are always on.{" "}
-        <a href="/privacy-policy" style={{ color: "#ea6b14", textDecoration: "underline" }}>
-          Privacy Policy
-        </a>
+      <p className="ff-cookie-txt">
+        Analytics cookies, including session replay? Nothing runs until you agree.{" "}
+        <a href="/privacy-policy">Privacy&nbsp;Policy</a>
       </p>
 
-      <div style={{ display: "flex", gap: ".55rem", flexWrap: "wrap" }}>
-        <button
-          onClick={() => choose("granted")}
-          style={{ ...btn, background: "#ea6b14", color: "#fff" }}
-        >
-          Accept
-        </button>
-        <button
-          onClick={() => choose("denied")}
-          style={{
-            ...btn,
-            background: "rgba(var(--ff-fg), .06)",
-            border: "1px solid rgba(var(--ff-fg), .16)",
-            color: "var(--ff-text)",
-            fontWeight: 600,
-          }}
-        >
-          Decline
-        </button>
+      <div className="ff-cookie-btns">
+        <button className="ff-cookie-yes" onClick={() => choose("granted")}>Accept</button>
+        <button className="ff-cookie-no" onClick={() => choose("denied")}>Decline</button>
       </div>
 
-      {/* Inline styles can't express media queries, so the position/size rules
-          live here. Sits bottom-left so the chat bubble (bottom-right) stays
-          tappable; on narrow screens it lifts clear of the bubble. */}
+      {/* Inline styles can't express media queries or :hover, so the whole bar
+          is styled here. Sits bottom-left so the chat bubble (bottom-right)
+          stays tappable; on narrow screens it lifts clear of the bubble and
+          the buttons drop below the text rather than squeezing it. */}
       <style>{`
         .ff-cookie {
           position: fixed;
-          left: 1rem;
-          bottom: 1rem;
+          left: .75rem;
+          bottom: .75rem;
           z-index: 9998;
-          width: min(400px, calc(100% - 2rem));
+          width: min(420px, calc(100% - 1.5rem));
+          display: flex;
+          align-items: center;
+          gap: .6rem;
           background: var(--ff-surface);
-          border: 1px solid rgba(var(--ff-fg), .14);
-          border-radius: 14px;
-          padding: 1rem 1.05rem;
-          box-shadow: 0 18px 50px rgba(0,0,0,.45);
+          border: 1px solid var(--ff-hair);
+          border-radius: 12px;
+          padding: .5rem .55rem .5rem .8rem;
+          box-shadow: var(--ff-lift-3);
           animation: ff-cookie-in .28s ease-out both;
         }
+        .ff-cookie-txt {
+          flex: 1 1 auto;
+          min-width: 0;
+          margin: 0;
+          font-family: 'DM Sans', sans-serif;
+          font-size: .73rem;
+          line-height: 1.4;
+          color: var(--ff-ink-3);
+        }
+        .ff-cookie-txt a { color: var(--ff-c10); text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
+        .ff-cookie-btns { flex: 0 0 auto; display: flex; gap: .35rem; }
+        .ff-cookie-btns button {
+          font-family: 'DM Sans', sans-serif;
+          font-size: .78rem;
+          padding: .35rem .7rem;
+          border-radius: 8px;
+          cursor: pointer;
+          border: 1px solid transparent;
+          transition: filter .18s ease, background .18s ease;
+        }
+        .ff-cookie-yes { background: var(--ff-accent-500); color: #fff; font-weight: 700; }
+        .ff-cookie-yes:hover { filter: brightness(1.06); }
+        .ff-cookie-no { background: rgba(var(--ff-fg), .06); border-color: var(--ff-hair); color: var(--ff-ink-2); font-weight: 600; }
+        .ff-cookie-no:hover { background: rgba(var(--ff-fg), .11); }
         @keyframes ff-cookie-in {
           from { opacity: 0; transform: translateY(14px); }
           to   { opacity: 1; transform: none; }
         }
         @media (max-width: 560px) {
-          .ff-cookie { bottom: 5.25rem; }
+          .ff-cookie { bottom: 5.25rem; flex-wrap: wrap; }
+          .ff-cookie-btns { width: 100%; }
+          .ff-cookie-btns button { flex: 1 1 auto; }
         }
         @media (prefers-reduced-motion: reduce) {
           .ff-cookie { animation: none; }
