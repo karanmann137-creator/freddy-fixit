@@ -265,7 +265,18 @@ export default function Home() {
           -webkit-mask-image: radial-gradient(ellipse 60% 54% at 50% 48%, transparent 30%, #000 82%);
                   mask-image: radial-gradient(ellipse 60% 54% at 50% 48%, transparent 30%, #000 82%); }
         .ff-hero-icons span { position: absolute; color: rgb(var(--ff-fg)); opacity: 0.055; }
-        .ff-hero-icons span svg { display: block; }
+        /* Heavier hand for the backdrop. main.tsx gives every 24x24 icon on the
+           site a sketch filter tuned for 16-20px UI glyphs; these run 38-70px,
+           where that same displacement is too small to read as drawn at all.
+           ff-sketch-lg is the same pipeline with a longer wavelength and about
+           double the throw. Specificity: one class plus two elements outranks
+           the global attribute rule in main.tsx, so this replaces it cleanly
+           rather than fighting it. Three variants across the twelve siblings,
+           because a dozen shapes sharing one noise field is precisely what
+           makes a filter look like a filter instead of a hand. */
+        .ff-hero-icons span svg { display: block; filter: url(#ff-sketch-lg); }
+        .ff-hero-icons span:nth-child(3n) svg { filter: url(#ff-sketch-c); }
+        .ff-hero-icons span:nth-child(4n) svg { filter: url(#ff-sketch-b); }
         @media (max-width: 600px) { .ff-hero-icons span.ff-hi-hide { display: none; } }
 
         /* The mark alone, at size. The FREDDYFIXIT word is deliberately gone:

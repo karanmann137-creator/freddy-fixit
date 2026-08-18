@@ -133,6 +133,44 @@ style.textContent = `
     button.ff-tap-auto, [role="button"].ff-tap-auto { min-height: 0; }
   }
 
+  /* ── Hand-drawn icons ──────────────────────────────────────────────
+     Every icon on the site is drawn with a slightly unsteady line, as if
+     someone sketched it rather than exported it. It is done with one SVG
+     displacement filter rather than by redrawing sixty glyphs, which means
+     it is a handful of lines to tune and a single line to remove.
+
+     The selector is the whole trick: EVERY icon we own is a 24x24 stroke
+     drawing — the Ic set, the hero backdrop, the stray inline SVGs in
+     onboarding and the nav — so one attribute selector reaches all of them
+     at once with no edits to sixty call sites. Just as importantly, it
+     reaches nothing it shouldn't: the Freddy logo mark is 80x80 and the
+     Google sign-in "G" is 18x18, so both stay perfectly crisp. A brand mark
+     that wobbles looks like a rendering bug, and a wobbly Google logo is a
+     trademark problem.
+
+     Three seeds exist so icons sitting next to each other don't share the
+     same wobble — identical noise across a row is the tell that reads as
+     "filter" rather than "hand". The large variant is for the oversized
+     hero backdrop icons, where a wobble tuned for 16px would vanish.
+
+     color-interpolation-filters="sRGB" is NOT optional. The default is
+     linearRGB, which silently shifts every icon's colour — orange icons
+     come out washed out and the 60/30/10 accent stops matching the buttons
+     beside it. It is set on all four filters.
+
+     Displacement is in CSS pixels, so a small icon wobbles more relative to
+     its size than a large one. That is deliberate and it is how a real pen
+     behaves: the hand shakes by about the same physical amount whether the
+     drawing is big or small. Keep scale under ~1.5 for the UI filters — the
+     stroke on a 16px icon is only about 1.2px, and a displacement larger
+     than the stroke stops looking drawn and starts looking broken. */
+  svg[viewBox="0 0 24 24"] { filter: url(#ff-sketch-a); }
+  svg[viewBox="0 0 24 24"]:nth-of-type(2n) { filter: url(#ff-sketch-b); }
+  svg[viewBox="0 0 24 24"]:nth-of-type(3n) { filter: url(#ff-sketch-c); }
+  /* Softens the few square joins left in the set, so nothing reads as
+     machined next to a shaky line. */
+  svg[viewBox="0 0 24 24"] * { stroke-linecap: round; stroke-linejoin: round; }
+
   /* One honest global respect for reduced motion. Individual components still
      opt out where they need to; this catches everything that forgot. */
   @media (prefers-reduced-motion: reduce) {
@@ -145,6 +183,54 @@ style.textContent = `
   }
 `;
 document.head.appendChild(style);
+
+// The four filters the rules above point at. They live in one hidden SVG
+// appended to <body> once, because a CSS `filter: url(#id)` resolves against
+// the document, so a single definition serves every icon on every page.
+//
+// Each filter is the same two-primitive pipeline: feTurbulence generates a
+// smooth noise field, and feDisplacementMap pushes each pixel of the icon
+// sideways by the amount of noise underneath it. Low baseFrequency = long,
+// lazy waves (a relaxed hand); higher = tighter jitter. R and G are used as
+// the x and y channels so the horizontal and vertical wobble are independent
+// — using the same channel for both would slide the whole glyph diagonally
+// instead of bending it.
+//
+// x/y/width/height are widened to -15%/130% because displacement moves ink
+// OUTSIDE the element's natural box, and the default filter region would
+// slice the overhang off, leaving flat-shaved edges on round icons.
+//
+// color-interpolation-filters="sRGB" is deliberate and load-bearing: the SVG
+// default is linearRGB, which would silently lighten every icon and stop the
+// orange matching the buttons next to it.
+//
+// The container is width/height 0 and aria-hidden so it can never affect
+// layout, be read aloud, or interact with the overflow-x:clip rules above.
+const defs = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+defs.setAttribute("aria-hidden", "true");
+defs.setAttribute("focusable", "false");
+defs.setAttribute("style", "position:absolute;width:0;height:0;overflow:hidden;pointer-events:none");
+defs.innerHTML = [
+  // Three near-identical UI filters. They differ only in seed and amount so
+  // that icons sitting side by side don't share one wobble — identical noise
+  // across a row is the tell that reads as "filter" rather than "hand".
+  ['ff-sketch-a', '0.07', '2', '3', '1.2'],
+  ['ff-sketch-b', '0.085', '2', '17', '1.05'],
+  ['ff-sketch-c', '0.062', '2', '41', '1.35'],
+  // Oversized variant for the hero backdrop icons (36-70px). A 1.2px shake
+  // is invisible at that size, and those icons are decorative and low-opacity
+  // so a heavier hand costs nothing in legibility.
+  ['ff-sketch-lg', '0.035', '3', '7', '2.6'],
+].map(([id, freq, oct, seed, scale]) =>
+  '<filter id="' + id + '" x="-15%" y="-15%" width="130%" height="130%" ' +
+  'filterUnits="objectBoundingBox" color-interpolation-filters="sRGB">' +
+  '<feTurbulence type="fractalNoise" baseFrequency="' + freq + '" numOctaves="' + oct +
+  '" seed="' + seed + '" result="ff-noise" />' +
+  '<feDisplacementMap in="SourceGraphic" in2="ff-noise" scale="' + scale +
+  '" xChannelSelector="R" yChannelSelector="G" />' +
+  '</filter>'
+).join("");
+document.body.appendChild(defs);
 
 // Apply saved theme + text size before first paint to avoid a flash.
 initPrefs();
