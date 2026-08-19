@@ -220,6 +220,15 @@ export default function Home() {
            is already floating top-left in the fixed TopNav, so repeating it
            here in 6rem type spent the whole first impression on a word the
            visitor cannot act on. Now the largest element is the promise. */
+        /* The nav paints itself navy on every page (main.tsx). Here it opens
+           over a navy hero, and a solid bar on top of a radial glow cuts a hard
+           horizontal seam right through it. So while the page is at the top the
+           bar is transparent and the glow runs unbroken behind it; the moment
+           it lifts, main.tsx's paint takes over and body content never scrolls
+           illegibly underneath. Specificity 0,2,0 beats the 0,1,0 base rule,
+           and living in Home's own <style> means it unmounts with the page —
+           no other route can inherit a transparent nav. */
+        .ff-nav-wrap:not(.ff-nav-lifted) { background-color: transparent; }
         .ff-hero {
           position: relative; overflow: hidden;
           min-height: 100vh;
@@ -426,7 +435,13 @@ export default function Home() {
         .ff-service-desc { font-size: 0.72rem; color: rgba(var(--ff-muted), 0.5); font-weight: 300; line-height: 1.5; }
 
         /* ── How it works ── */
+        /* The page alternates ground / surface band by band so the eye gets a
+           seam to rest on. Before-and-After and FAQ sit on the ground; How It
+           Works and Services sit on the surface between them. .ff-how-surface
+           is the same specificity as .ff-how and simply comes later, so it
+           wins without needing !important. */
         .ff-how { background: var(--ff-bg); position: relative; overflow: hidden; }
+        .ff-how-surface { background: var(--ff-surface); }
         .ff-how::before { content: ''; position: absolute; inset: 0; background-image: repeating-linear-gradient(0deg, transparent, transparent 60px, rgba(var(--ff-fg), 0.01) 60px, rgba(var(--ff-fg), 0.01) 61px), repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(var(--ff-fg), 0.01) 60px, rgba(var(--ff-fg), 0.01) 61px); pointer-events: none; }
         .ff-how-inner { max-width: 1000px; margin: 0 auto; padding: clamp(2.5rem, 7vw, 4rem) clamp(1rem, 4vw, 2rem); position: relative; z-index: 1; }
         .ff-how-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2rem; margin-top: 3rem; }
@@ -632,7 +647,7 @@ export default function Home() {
       </div>
 
       {/* ── How It Works ── */}
-      <div className="ff-how">
+      <div className="ff-how ff-how-surface">
         <div className="ff-how-inner">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
             <p className="ff-about-eyebrow" style={{ textAlign:"center" }}>The Process</p>
@@ -695,8 +710,17 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── Freddy Verified ── */}
-      <div style={{ background:"var(--ff-surface)", padding:"6rem 2rem", position:"relative" as const, overflow:"hidden" as const }}>
+      {/* ── Freddy Verified ──
+           The one navy band between the hero and the footer. Everything inside
+           is already token-driven, so ff-on-dark flips the whole section — its
+           cards, hairlines and muted text — with no per-element change.
+           --ff-bg, NOT --ff-surface: under the scope --ff-surface is #151d2e,
+           which is exactly what a normal surface band already renders as in
+           dark mode, so this band would have vanished into the Services band
+           above it. --ff-bg gives hero navy in both themes and keeps the seam.
+           It is placed here on purpose — the trust claim is the thing worth
+           interrupting the page for. */}
+      <div className="ff-on-dark" style={{ background:"var(--ff-bg)", padding:"6rem 2rem", position:"relative" as const, overflow:"hidden" as const }}>
         <div style={{ maxWidth:"960px", margin:"0 auto", position:"relative" as const, zIndex:1 }}>
           <p style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" as const }}>Our Vetting Standard</p>
           <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:".06em", color:"var(--ff-text)", textAlign:"center" as const, marginBottom:"1rem" }}>The Freddy <span style={{ color:"#ea6b14" }}>Verified</span> Promise.</h2>
@@ -770,8 +794,10 @@ export default function Home() {
 
       {/* ── Footer ── */}
 
-      {/* ── Testimonials ── */}
-      <div style={{ background:"var(--ff-surface)", padding:"6rem 2rem" }}>
+      {/* ── Testimonials ──
+           Ground, so the last band before the navy footer is not the same tone
+           as About directly above it. */}
+      <div style={{ background:"var(--ff-bg)", padding:"6rem 2rem" }}>
         <div style={{ maxWidth:"900px", margin:"0 auto" }}>
           <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" }}>Why Calgary Trusts Us</p>
           <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:".06em", color:"var(--ff-text)", textAlign:"center", marginBottom:"3rem" }}>Built On <span style={{ color:"#ea6b14" }}>Trust.</span></h2>

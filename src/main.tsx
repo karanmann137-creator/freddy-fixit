@@ -154,10 +154,21 @@ style.textContent = `
     --ff-lift-3: 0 22px 60px rgba(0,0,0,0.42);
     color: var(--ff-text);
   }
-  /* Paint the ground only in light mode. In dark mode these elements are
-     already sitting on navy, and painting them would flatten the hero's
-     radial glow where the fixed nav overlaps it. */
-  :root[data-theme="light"] .ff-on-dark { background-color: var(--ff-bg); }
+  /* The fixed nav paints its own ground. Because the wrapper carries
+     .ff-on-dark, var(--ff-bg) resolves to navy in BOTH themes, so the bar is
+     brand-coloured and body text can never scroll illegibly under it.
+     It starts transparent over a dark hero (Home adds the :not() rule) and
+     fades in on scroll, which is what stops it cutting a hard seam across the
+     hero's radial glow. */
+  .ff-nav-wrap {
+    background-color: var(--ff-bg);
+    border-bottom: 1px solid transparent;
+    transition: background-color .25s ease, border-color .25s ease, box-shadow .25s ease;
+  }
+  .ff-nav-wrap.ff-nav-lifted {
+    border-bottom-color: var(--ff-hair);
+    box-shadow: 0 8px 24px rgba(9,13,22,0.28);
+  }
 
   *, *::before, *::after { box-sizing: border-box; }
   html { font-size: calc(100% * var(--ff-font-scale, 1)); }

@@ -38,6 +38,18 @@ export default function TopNav() {
     window.addEventListener("ff:open-settings", open);
     return () => window.removeEventListener("ff:open-settings", open);
   }, []);
+
+  // Scroll state. Home makes the bar transparent while it sits over the hero
+  // (a solid bar there cuts a hard seam across the hero's radial glow), so the
+  // nav needs to know when it has left the top. Run once on mount too — a
+  // refresh restores scroll position without ever firing a scroll event.
+  const [lifted, setLifted] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setLifted(window.scrollY > 12);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -94,16 +106,22 @@ export default function TopNav() {
 
   return (
     // ff-on-dark: the nav is brand chrome, so it stays navy in BOTH themes.
-    // In dark mode the class changes nothing (same values, and the paint rule
-    // is light-only). In light mode it turns the bar navy and flips its ink to
-    // white — which is also what keeps it legible where it floats over the
-    // Home hero, since that is navy in both themes too.
+    // It also makes the .ff-nav-wrap paint rule in main.tsx resolve --ff-bg to
+    // navy rather than the page ground, and flips the ink to white — which is
+    // what keeps it legible where it floats over the Home hero, since that is
+    // navy in both themes too.
     <>
-    <div className="ff-nav-wrap ff-on-dark" style={wrap}>
+    <div className={`ff-nav-wrap ff-on-dark${lifted ? " ff-nav-lifted" : ""}`} style={wrap}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
         .ff-nav-wrap { pointer-events: none; }
         .ff-nav-wrap > * { pointer-events: auto; }
+        /* Once lifted the bar is an opaque slab over real body content, so it
+           has to swallow clicks — otherwise a tap on the navy lands on a link
+           the user cannot see. Unlifted it is transparent (Home), where
+           passing clicks through is exactly right. 0,2,0 beats the rule above
+           regardless of sheet order. */
+        .ff-nav-wrap.ff-nav-lifted { pointer-events: auto; }
         .ff-brand { transition: transform .18s ease; }
         .ff-brand:hover { transform: scale(1.08); }
         .ff-nav-btn { transition: background .2s ease, color .2s ease, border-color .2s ease; }
