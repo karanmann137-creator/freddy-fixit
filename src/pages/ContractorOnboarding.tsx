@@ -7,6 +7,9 @@ import { AVAIL_DAYS, WEEKDAYS, TIME_OPTIONS, DEFAULT_START, DEFAULT_END } from "
 import { trackEvent } from "@/lib/analytics";
 import OAuthButtons from "@/components/OAuthButtons";
 import GuideBubble from "@/components/GuideBubble";
+import ServicePicker from "@/components/ServicePicker";
+import VoiceDictate from "@/components/VoiceDictate";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 import { validateEmail, validatePhone } from "@/lib/emailValidation";
 
 const SPECIALTIES = [
@@ -50,38 +53,54 @@ const WORK_TYPES = [
   { id:"home_services", label:"Cleaning, yard & seasonal",   sub:"Cleaning, landscaping, snow removal, gutters",                     licence:"none",        insurance:"recommended" },
 ];
 
-const STEP_TITLES = ["Your Details", "Your Specialties", "Service Area", "Availability", "Your Trade", "Credentials", "Profile Photo", "Documents"];
+// Five steps, same eight steps' worth of information. Related questions were
+// merged onto one screen rather than dropped — an earlier "sign up now, finish
+// later" shortcut was removed because it produced accounts with almost nothing
+// in them, so fewer SCREENS is the win here, never fewer answers.
+const STEP_TITLES = ["Your Details", "What You Do", "Where & When", "Your Credentials", "Photo & Documents"];
 const STEP_SUBS   = [
   "Just the basics — takes about a minute",
-  "What services do you offer? Select all that apply",
-  "Which areas do you cover?",
-  "When are you generally available?",
-  "What best describes your work? This sets what we'll need from you",
-  "Tell us about your qualifications",
-  "Add a profile photo (optional)",
-  "Upload now, or skip and add them later from your dashboard",
+  "Your services and the kind of work you do",
+  "The areas you cover and the days you work",
+  "Licence, insurance and WCB — whatever applies to you",
+  "Optional now — you can add these later from your dashboard",
 ];
 
 // Plain-language "Freddy walks you through it" copy, one per step (see GuideBubble).
 const CONTRACTOR_GUIDE: { message: string; why?: string; tip?: string }[] = [
-  { message: "Hi, I'm Freddy. I'll walk you through this step by step — it takes about two minutes, and you can stop and pick up later. Let's start with the basics.",
+  { message: "Hi, I'm Freddy. I'll walk you through this — five short steps, about two minutes, and you can stop and pick up later. Let's start with the basics.",
     why: "Your email is your login and how we send you new job leads.",
     tip: "Phone is optional — add it if you'd like clients to reach you faster." },
-  { message: "Now tell me what kind of work you do. Tap everything you're comfortable taking on — you can change this anytime.",
-    why: "We only show you jobs that match your specialties, so your leads stay relevant." },
-  { message: "Which parts of Calgary do you want to work in? Choose every area you'll travel to.",
-    why: "Jobs inside your areas float to the top of your list." },
-  { message: "When are you usually free to work? A rough guide is perfectly fine.",
-    why: "Clients see this so they know when to expect you." },
-  { message: "What best describes your work? This one matters — it decides what paperwork we'll need from you next.",
-    why: "Regulated trades (like electrical or gas) need a certificate; general work needs less." },
-  { message: "Tell me about your qualifications — licence, insurance, WCB. Just fill in what applies to you.",
-    why: "This builds trust with clients and is required for some trades." },
-  { message: "Add a friendly photo of yourself or your logo. It's optional, but pros with a photo get picked more often.",
-    why: "Clients feel more comfortable hiring someone they can see." },
-  { message: "Last step — upload your documents. You can snap a photo with your phone, or add them later from your dashboard.",
-    why: "We verify these so clients know you're the real deal." },
+  { message: "Tell me what you do. Search or tap everything you're comfortable taking on, then pick the line of work that fits you best.",
+    why: "Your services decide which jobs we send you, and your line of work decides what paperwork we'll need.",
+    tip: "You can change both anytime from your dashboard." },
+  { message: "Where do you work, and when? Type your home base and I'll tick the closest area for you — add any others you'll travel to.",
+    why: "Jobs inside your areas float to the top of your list, and clients see your hours so they know when to expect you.",
+    tip: "Out-of-area jobs still show up — they just sit lower down." },
+  { message: "Now your qualifications — licence, insurance, WCB. Just fill in what applies to you.",
+    why: "This builds trust with clients and is required for some trades.",
+    tip: "Working on your own with no employees? Tick the WCB box and we won't ask for it — Alberta exempts solo operators." },
+  { message: "Last step. A photo and your documents are both optional right now — you can add them later from your dashboard.",
+    why: "Pros with a photo get picked more often, and verified documents are what let you start taking jobs." },
 ];
+
+// Turn a picked address into our service zones. Calgary street addresses carry
+// the quadrant ("123 Whiteram Mews NE") and the surrounding towns are zones of
+// their own, so a regex is enough — nothing new is stored and the contractor
+// can untick anything we get wrong.
+function zonesFromAddress(addr: string): string[] {
+  const a = " " + addr.toLowerCase() + " ";
+  const out: string[] = [];
+  if (/\bn\.?w\.?\b/.test(a)) out.push("NW");
+  if (/\bn\.?e\.?\b/.test(a)) out.push("NE");
+  if (/\bs\.?w\.?\b/.test(a)) out.push("SW");
+  if (/\bs\.?e\.?\b/.test(a)) out.push("SE");
+  if (/\bairdrie\b/.test(a)) out.push("Airdrie");
+  if (/\bcochrane\b/.test(a)) out.push("Cochrane");
+  if (/\bchestermere\b/.test(a)) out.push("Chestermere");
+  if (/\bbeltline\b|\bdowntown\b|\beau claire\b/.test(a)) out.push("Downtown / Beltline");
+  return out;
+}
 
 type DocFiles = { insurance: File|null; wcb: File|null; certification: File|null; gov_id: File|null };
 
@@ -105,10 +124,14 @@ function fmtPhone(v: string) {
 export default function ContractorOnboarding() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
-  const TOTAL = 8;
+  const TOTAL = 5;
   const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", companyName:"", password:"", yearsOfExperience:"", photoUrl:"", workType:"", licensed:false, licenseNumber:"", hasInsurance:false, insuranceProvider:"", insuranceExpiry:"", hasWcb:false, operatesAlone:false, workReferences:"" });
   const [selectedSpec,  setSelectedSpec]  = useState<string[]>([]);
   const [selectedArea,  setSelectedArea]  = useState<string[]>([]);
+  // Convenience only — the address is never stored. It exists to pre-tick the
+  // zone chips, which ARE what service_area saves and what the matcher reads.
+  const [baseAddress, setBaseAddress] = useState("");
+  const [zoneHint, setZoneHint] = useState<string[]>([]);
   const [availDays, setAvailDays] = useState<string[]>([...WEEKDAYS]);
   const [availStart, setAvailStart] = useState<string>(DEFAULT_START);
   const [availEnd, setAvailEnd]     = useState<string>(DEFAULT_END);
@@ -159,6 +182,7 @@ export default function ContractorOnboarding() {
         if (d.form) setForm(f => ({ ...f, ...d.form, password: "", email: d.form.email || f.email }));
         if (Array.isArray(d.selectedSpec)) setSelectedSpec(d.selectedSpec);
         if (Array.isArray(d.selectedArea)) setSelectedArea(d.selectedArea);
+        if (typeof d.baseAddress === "string") setBaseAddress(d.baseAddress);
         if (Array.isArray(d.availDays)) setAvailDays(d.availDays);
         if (d.availStart) setAvailStart(d.availStart);
         if (d.availEnd) setAvailEnd(d.availEnd);
@@ -173,11 +197,11 @@ export default function ContractorOnboarding() {
     if (!hydrated || success || verifyEmail) return;
     try {
       localStorage.setItem("ff_contractor_draft", JSON.stringify({
-        form: { ...form, password: "" }, selectedSpec, selectedArea,
+        form: { ...form, password: "" }, selectedSpec, selectedArea, baseAddress,
         availDays, availStart, availEnd, step,
       }));
     } catch {}
-  }, [hydrated, success, verifyEmail, form, selectedSpec, selectedArea, availDays, availStart, availEnd, step]);
+  }, [hydrated, success, verifyEmail, form, selectedSpec, selectedArea, baseAddress, availDays, availStart, availEnd, step]);
 
   const wt = WORK_TYPES.find(w => w.id === form.workType);
   const insuranceRequired = wt?.insurance === "required";
@@ -199,6 +223,20 @@ export default function ContractorOnboarding() {
   const toggleDay = (d: string) => { setAvailDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]); setErrors(e => ({ ...e, avail: "" })); };
   const setDays = (days: string[]) => { setAvailDays(days); setErrors(e => ({ ...e, avail: "" })); };
 
+  // The address box only ever ADDS zones — it never unticks one, so a pro who
+  // deliberately picked SW and then typed an NE address keeps both.
+  const onAddress = (v: string) => {
+    setBaseAddress(v);
+    if (v.trim().length < 3) { setZoneHint([]); return; }
+    const zones = zonesFromAddress(v).filter(z => AREAS.includes(z));
+    if (!zones.length) return;
+    const added = zones.filter(z => !selectedArea.includes(z));
+    if (!added.length) return;
+    setSelectedArea(prev => [...prev, ...added.filter(z => !prev.includes(z))]);
+    setZoneHint(added);
+    setErrors(e => ({ ...e, area: "" }));
+  };
+
   const validate = () => {
     const errs: Record<string,string> = {};
     if (step === 1) {
@@ -208,16 +246,22 @@ export default function ContractorOnboarding() {
       { const pv = validatePhone(form.phone); if (!pv.ok) errs.phone = pv.error!; }
       if (!authedUserId && form.password.length < 8) errs.password = "Minimum 8 characters";
     }
-    if (step === 2 && selectedSpec.length === 0)  errs.spec  = "Select at least one specialty";
-    if (step === 3 && selectedArea.length === 0)  errs.area  = "Select at least one area";
-    if (step === 4) {
+    // Step 2 merges the old Specialties + Trade screens. Work type must be
+    // answered here because it drives the credential copy on step 4 and the
+    // per-document "needed before approval" flags on step 5.
+    if (step === 2) {
+      if (selectedSpec.length === 0) errs.spec = "Select at least one service you offer";
+      if (!form.workType)            errs.workType = "Select what best describes your work";
+    }
+    // Step 3 merges the old Service Area + Availability screens.
+    if (step === 3) {
+      if (selectedArea.length === 0) errs.area = "Select at least one area";
       if (availDays.length === 0) errs.avail = "Pick at least one day you're available";
       else if (availEnd <= availStart) errs.avail = "End time must be after the start time";
     }
-    if (step === 5 && !form.workType)             errs.workType = "Select what best describes your work";
-    // Step 8: documents are OPTIONAL at signup — add now or later from the
-    // dashboard. Approval (and taking jobs) still requires verified docs, and
-    // the dashboard "finish your profile" card collects anything missing.
+    // Step 5: documents and the photo are OPTIONAL at signup — add now or later
+    // from the dashboard. Approval (and taking jobs) still requires verified
+    // docs, and the dashboard "finish your profile" card collects what's missing.
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -477,29 +521,84 @@ export default function ContractorOnboarding() {
             </div>
           )}
 
-          {/* Step 2 — Specialties */}
+          {/* Step 2 — What you do: services + line of work (was steps 2 and 5) */}
           {step === 2 && (
             <div>
-              <p style={s.label}>Select All That Apply</p>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:".7rem" }}>
-                {SPECIALTIES.map(sp => (
-                  <button key={sp.label} style={{ ...s.chip, ...(selectedSpec.includes(sp.label) ? s.chipSel : {}) }} onClick={() => toggleSpec(sp.label)}>
-                    <span style={{ fontSize:"1.1rem", flexShrink:0 }}><Ic name={sp.iconName as any} size={18} color="#ea6b14" style={{ marginRight:6, flexShrink:0 }} /></span>
-                    <span>{sp.label}</span>
-                    {selectedSpec.includes(sp.label) && <span style={{ marginLeft:"auto", color:"#ea6b14" }}>✓</span>}
+              <p style={s.label}>Services You Offer</p>
+              <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"1rem", fontWeight:300, lineHeight:1.6 }}>
+                Search or tap everything you&rsquo;re comfortable taking on. You can change this anytime.
+              </p>
+              {/* allowCustom={false}: an off-list specialty matches no client
+                  request, so inventing one would look like it worked and then
+                  quietly send this pro nothing. */}
+              <ServicePicker
+                items={SPECIALTIES}
+                selected={selectedSpec}
+                onToggle={toggleSpec}
+                allowCustom={false}
+                placeholder="Search your trade (e.g. plumbing, drywall, snow)…"
+              />
+              {errors.spec && <p style={s.err}>{errors.spec}</p>}
+              {selectedSpec.length > 0 && <p style={{ fontSize:".78rem", color:"#ea6b14", marginTop:".75rem" }}>✓ {selectedSpec.length} service{selectedSpec.length > 1 ? "s" : ""} selected</p>}
+
+              <div style={{ marginTop:"1.75rem", paddingTop:"1.5rem", borderTop:"1px solid rgba(var(--ff-fg), .08)" }}>
+                <p style={s.label}>Your Line of Work</p>
+                <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"1.25rem", fontWeight:300, lineHeight:1.6 }}>
+                  Pick the option that fits most of your work. This is how we know what to ask for next — a furniture mover or assembler doesn&rsquo;t need a trade licence, while electrical or plumbing work does.
+                </p>
+                {WORK_TYPES.map(w => (
+                  <button key={w.id} style={{ ...s.availBtn, ...(form.workType === w.id ? s.availBtnSel : {}) }} onClick={() => { setForm(f => ({ ...f, workType: w.id })); setErrors(e => ({ ...e, workType: "" })); }}>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:".95rem", fontWeight:500 }}>{w.label}</div>
+                      <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .5)", marginTop:".15rem", lineHeight:1.45 }}>{w.sub}</div>
+                    </div>
+                    {form.workType === w.id && <span style={{ color:"#ea6b14", fontSize:"1.1rem", flexShrink:0 }}>✓</span>}
                   </button>
                 ))}
+                {errors.workType && <p style={s.err}>{errors.workType}</p>}
+                {wt && (
+                  <div style={{ background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.15)", borderRadius:"8px", padding:".9rem 1rem", fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.6, marginTop:"1rem" }}>
+                    {wt.licence === "required"
+                      ? "This is a regulated trade in Alberta — we'll ask for your provincial trade licence and proof of liability insurance."
+                      : wt.licence === "optional"
+                        ? "No provincial trade licence is required to sign up. Liability insurance is expected for this kind of work; a trade certificate is optional but helps you stand out."
+                        : "No trade licence is required for this kind of work. Liability insurance is recommended — it protects you and reassures clients — but it's optional and you can add it later."}
+                  </div>
+                )}
               </div>
-              {errors.spec && <p style={s.err}>{errors.spec}</p>}
-              {selectedSpec.length > 0 && <p style={{ fontSize:".78rem", color:"#ea6b14", marginTop:".75rem" }}>✓ {selectedSpec.length} specialt{selectedSpec.length > 1 ? "ies" : "y"} selected</p>}
-
             </div>
           )}
 
-          {/* Step 3 — Service Area */}
-          {step === 3 && (
+          {/* Step 3 — Where & when: service area + availability (was steps 3 and 4) */}
+          {step === 3 && (() => {
+            const isWeekdays = availDays.length === 5 && WEEKDAYS.every(d => availDays.includes(d));
+            const isEvery = availDays.length === 7;
+            const presetBtn = (sel: boolean) => ({
+              padding:".5rem 1rem", borderRadius:"99px", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem", fontWeight:600,
+              border: sel ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .14)",
+              background: sel ? "#ea6b14" : "rgba(var(--ff-fg), .05)", color: sel ? "#fff" : "var(--ff-text)",
+            });
+            return (
             <div>
-              <p style={s.label}>Zones You Serve</p>
+              <p style={s.label}>Where You Work</p>
+              <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .55)", marginBottom:".75rem", fontWeight:300, lineHeight:1.6 }}>
+                Type your home base and we&rsquo;ll tick the closest area — then add any others you&rsquo;ll travel to.
+              </p>
+              {/* This address is a shortcut for ticking the zone chips. It is
+                  deliberately never saved: service_area (the chips) is what the
+                  job matcher reads, and storing a pro's home address would be
+                  personal information we have no use for. */}
+              <AddressAutocomplete
+                value={baseAddress}
+                onChange={onAddress}
+                placeholder="Start typing your address or neighbourhood (optional)"
+                style={{ ...inp, marginBottom:".6rem" }}
+              />
+              {zoneHint.length > 0 && (
+                <p style={{ fontSize:".78rem", color:"#ea6b14", marginBottom:".75rem" }}>
+                  ✓ Added {zoneHint.join(" and ")} from your address — tap any others below.
+                </p>
+              )}
               <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:".7rem" }}>
                 {AREAS.map(z => (
                   <button key={z} style={{ ...s.chip, ...(selectedArea.includes(z) ? s.chipSel : {}) }} onClick={() => toggleArea(z)}>
@@ -510,20 +609,13 @@ export default function ContractorOnboarding() {
               </div>
               {errors.area && <p style={s.err}>{errors.area}</p>}
               {selectedArea.length > 0 && <p style={{ fontSize:".78rem", color:"#ea6b14", marginTop:".75rem" }}>✓ {selectedArea.length} area{selectedArea.length > 1 ? "s" : ""} selected</p>}
-            </div>
-          )}
+              <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .45)", marginTop:".5rem", lineHeight:1.5 }}>
+                Jobs outside your areas still reach you — they just sit lower in your list.
+              </p>
 
-          {/* Step 4 — Availability: which days + typical hours */}
-          {step === 4 && (() => {
-            const isWeekdays = availDays.length === 5 && WEEKDAYS.every(d => availDays.includes(d));
-            const isEvery = availDays.length === 7;
-            const presetBtn = (sel: boolean) => ({
-              padding:".5rem 1rem", borderRadius:"99px", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem", fontWeight:600,
-              border: sel ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .14)",
-              background: sel ? "#ea6b14" : "rgba(var(--ff-fg), .05)", color: sel ? "#fff" : "var(--ff-text)",
-            });
-            return (
-            <div>
+              <div style={{ marginTop:"1.75rem", paddingTop:"1.5rem", borderTop:"1px solid rgba(var(--ff-fg), .08)" }}>
+                <p style={s.label}>When You Work</p>
+              </div>
               <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .5)", marginBottom:"1.25rem", fontWeight:300, lineHeight:1.6 }}>
                 Which days do you usually work? You can fine-tune this anytime from your dashboard.
               </p>
@@ -572,36 +664,8 @@ export default function ContractorOnboarding() {
             );
           })()}
 
-          {/* Step 5 — Trade / work type */}
-          {step === 5 && (
-            <div>
-              <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"1.5rem", fontWeight:300, lineHeight:1.6 }}>
-                Pick the option that best fits most of your work. This is how we know what to ask for next — for example, a furniture mover or assembler doesn&rsquo;t need a trade licence, while electrical or plumbing work does.
-              </p>
-              {WORK_TYPES.map(w => (
-                <button key={w.id} style={{ ...s.availBtn, ...(form.workType === w.id ? s.availBtnSel : {}) }} onClick={() => { setForm(f => ({ ...f, workType: w.id })); setErrors(e => ({ ...e, workType: "" })); }}>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:".95rem", fontWeight:500 }}>{w.label}</div>
-                    <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .5)", marginTop:".15rem", lineHeight:1.45 }}>{w.sub}</div>
-                  </div>
-                  {form.workType === w.id && <span style={{ color:"#ea6b14", fontSize:"1.1rem", flexShrink:0 }}>✓</span>}
-                </button>
-              ))}
-              {errors.workType && <p style={s.err}>{errors.workType}</p>}
-              {wt && (
-                <div style={{ background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.15)", borderRadius:"8px", padding:".9rem 1rem", fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.6, marginTop:"1rem" }}>
-                  {wt.licence === "required"
-                    ? "This is a regulated trade in Alberta — we'll ask for your provincial trade licence and proof of liability insurance."
-                    : wt.licence === "optional"
-                      ? "No provincial trade licence is required to sign up. Liability insurance is expected for this kind of work; a trade certificate is optional but helps you stand out."
-                      : "No trade licence is required for this kind of work. Liability insurance is recommended — it protects you and reassures clients — but it's optional and you can add it later."}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Step 6 — Credentials */}
-          {step === 6 && (
+          {/* Step 4 — Credentials (was step 6) */}
+          {step === 4 && (
             <div>
               <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"1.5rem", fontWeight:300, lineHeight:1.6 }}>
                 {wt && wt.licence === "none"
@@ -672,15 +736,34 @@ export default function ContractorOnboarding() {
                 </label>
               )}
               <div style={{ marginTop:"1rem" }}>
-                <label style={s.label}>References or past-work links <span style={{ color:"rgba(var(--ff-muted), .45)", fontWeight:300 }}>(optional)</span></label>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".75rem", marginBottom:".6rem" }}>
+                  <label style={{ ...s.label, marginBottom:0 }}>References or past-work links <span style={{ color:"rgba(var(--ff-muted), .45)", fontWeight:300 }}>(optional)</span></label>
+                  {/* Renders null where the Web Speech API is unavailable, so
+                      there's nothing to feature-detect here. */}
+                  <VoiceDictate onAppend={t => setForm(f => ({ ...f, workReferences: f.workReferences ? f.workReferences.trimEnd() + " " + t : t }))} />
+                </div>
                 <textarea style={{ ...inp, minHeight:"70px", resize:"vertical", fontFamily:"inherit" }} placeholder="Links to past work, or names/numbers of references" value={form.workReferences} onChange={e=>setF("workReferences",e.target.value)} />
               </div>
             </div>
           )}
 
-          {/* Step 8 — Documents */}
-          {step === 8 && (
+          {/* Step 5 — Photo + documents (was steps 7 and 8). Both are optional
+              at signup; this screen also carries the terms checkbox, the
+              newsletter opt-in and the submit error, so it must stay last. */}
+          {step === 5 && (
             <div>
+              <p style={s.label}>Profile Photo <span style={{ color:"rgba(var(--ff-muted), .45)", fontWeight:300 }}>(optional)</span></p>
+              <div style={{ border:"2px dashed rgba(var(--ff-fg), .12)", borderRadius:"12px", padding:"1.5rem", textAlign:"center", marginBottom:"1.75rem" }}>
+                <div style={{ marginBottom:".75rem" }}><Ic name="camera" size={40} color="#ea6b14" /></div>
+                <p style={{ color:"rgba(var(--ff-muted), .6)", fontSize:".88rem", marginBottom:".25rem" }}>Pros with a photo get picked more often</p>
+                <label htmlFor="co-photo-upload" style={{ display:"inline-flex", alignItems:"center", gap:".5rem", marginTop:".75rem", padding:".6rem 1.25rem", background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.3)", borderRadius:"8px", cursor:"pointer", fontSize:".85rem", color:"#ea6b14", fontWeight:500 }}>
+                  <Ic name="camera" size={16} color="#ea6b14" />
+                  {photoFile ? photoFile.name : "Choose a photo"}
+                  <input id="co-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB. Please choose a smaller one."); e.target.value = ""; return; } setSubmitError(""); setPhotoFile(f); }} style={{ display:"none" }} />
+                </label>
+              </div>
+
+              <p style={s.label}>Verification Documents</p>
               <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"1rem", fontWeight:300, lineHeight:1.6 }}>
                 Snap a photo or upload now — or skip this and add them later from your dashboard. You&rsquo;ll need them verified before you can take jobs, but they won&rsquo;t hold up your signup.
               </p>
@@ -759,22 +842,6 @@ export default function ContractorOnboarding() {
             </div>
           )}
 
-          {/* Step 7 — Photo */}
-          {step === 7 && (
-            <div>
-              <div style={{ border:"2px dashed rgba(var(--ff-fg), .12)", borderRadius:"12px", padding:"2rem 1.5rem", textAlign:"center", marginBottom:"1rem" }}>
-                <div style={{ marginBottom:"1rem" }}><Ic name="camera" size={48} color="#ea6b14" /></div>
-                <p style={{ color:"rgba(var(--ff-muted), .6)", fontSize:".9rem", marginBottom:".5rem" }}>A profile photo builds trust with clients</p>
-                <label htmlFor="co-photo-upload" style={{ display:"inline-flex", alignItems:"center", gap:".5rem", marginTop:".75rem", padding:".6rem 1.25rem", background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.3)", borderRadius:"8px", cursor:"pointer", fontSize:".85rem", color:"#ea6b14", fontWeight:500 }}>
-                  <Ic name="camera" size={16} color="#ea6b14" />
-                  {photoFile ? photoFile.name : "Choose a photo"}
-                  <input id="co-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB. Please choose a smaller one."); e.target.value = ""; return; } setSubmitError(""); setPhotoFile(f); }} style={{ display:"none" }} />
-                </label>
-              </div>
-              {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"var(--ff-danger)", marginBottom:"1rem" }}>{submitError}</div>}
-              <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .4)", textAlign:"center" }}>This step is optional — you can add a photo later from your dashboard.</p>
-            </div>
-          )}
         </div>
 
         <div style={{ display:"flex", gap:".75rem", marginTop:"2rem" }}>
