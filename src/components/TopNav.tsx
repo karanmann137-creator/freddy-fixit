@@ -93,7 +93,13 @@ export default function TopNav() {
     "/client-dashboard";
 
   return (
-    <div className="ff-nav-wrap" style={wrap}>
+    // ff-on-dark: the nav is brand chrome, so it stays navy in BOTH themes.
+    // In dark mode the class changes nothing (same values, and the paint rule
+    // is light-only). In light mode it turns the bar navy and flips its ink to
+    // white — which is also what keeps it legible where it floats over the
+    // Home hero, since that is navy in both themes too.
+    <>
+    <div className="ff-nav-wrap ff-on-dark" style={wrap}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
         .ff-nav-wrap { pointer-events: none; }
@@ -214,8 +220,15 @@ export default function TopNav() {
         )}
       </div>
 
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} role={(authed ? (role as any) : null)} />
     </div>
+
+    {/* Deliberately OUTSIDE ff-on-dark. It lives in the nav only because the
+        gear that opens it does; it is a full-screen page-level modal, and
+        inheriting the nav's dark tokens would render it navy while the rest
+        of the page is light. The dropdown menu above stays inside on purpose
+        — that one really is nav chrome. */}
+    <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} role={(authed ? (role as any) : null)} />
+    </>
   );
 }
 

@@ -491,7 +491,12 @@ export default function Home() {
           button and not three, and why the brand is a lockup rather than the
           headline. The whole entrance is CSS, not framer-motion, so the text
           paints on the HTML/CSS pass instead of waiting for the JS bundle. */}
-      <div className="ff-hero">
+      {/* Navy in both themes. The hero's whole design — the warm glow, the
+          near-black bottom gradient, the ink watermark icons — assumes a dark
+          ground; on light mode's white it read as a smudge. It is also the
+          first screen a visitor sees, so it is where the brand colour earns
+          the most. */}
+      <div className="ff-hero ff-on-dark">
         <div className="ff-hero-glow" aria-hidden="true" />
         {/* Watermark texture. Ink, not orange — the accent budget is spent on
             the button, and these used to be eight competing orange shapes. */}

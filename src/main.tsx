@@ -67,8 +67,8 @@ style.textContent = `
     --ff-fg: 30,41,59;           /* slate ink replaces white */
     --ff-muted: 71,85,105;
     --ff-text: #0f172a;
-    --ff-bg: #eef1f8;
-    --ff-bg-rgb: 238,241,248;
+    --ff-bg: #e9eef8;
+    --ff-bg-rgb: 233,238,248;
     --ff-surface: #ffffff;
     --ff-surface-141: #ffffff;
     --ff-surface-2: #e4e9f2;
@@ -92,6 +92,73 @@ style.textContent = `
     --ff-lift-2: 0 8px 28px rgba(15,23,42,0.10);
     --ff-lift-3: 0 22px 60px rgba(15,23,42,0.16);
   }
+
+  /* ── Navy in light mode ─────────────────────────────────────────────
+     Light mode had almost no brand colour in it. The reason is above:
+     --ff-bg (#e9eef8) and --ff-surface (#ffffff) both read as white, so
+     the 60 and the 30 of the 60/30/10 collapsed into a single value and
+     what was left was white, near-black and orange. Dark mode does not
+     have this problem because its 60 AND its 30 are both navy — that is
+     the ONLY reason it looks like the brand.
+
+     Tinting the page ground blue is the wrong fix: light mode exists so
+     someone can read a contract or an invoice in daylight, and a coloured
+     ground is what makes that unpleasant. So navy becomes the 30% here —
+     it moves into the chrome (nav, hero, footer) and the page ground
+     stays light.
+
+     This is a scope class rather than a rewrite because every component
+     on the site already reads its colour from these variables. Custom
+     properties resolve at the point of USE, so re-declaring the dark
+     values on a wrapper makes that entire subtree — its cards, its
+     hairlines, its rgba(var(--ff-fg)) overlays, everything — render
+     exactly as it does in dark mode, with no per-component changes.
+
+     In dark mode every value below is already the value in effect, so
+     the class is a no-op and dark mode cannot regress. */
+  .ff-on-dark {
+    --ff-fg: 255,255,255;
+    --ff-muted: 190,205,235;
+    --ff-text: #f0f4ff;
+    --ff-bg: #1a2236;
+    --ff-bg-rgb: 26,34,54;
+    --ff-surface: #151d2e;
+    --ff-surface-141: #141d2e;
+    --ff-surface-2: #111827;
+    --ff-surface-0e: #0e1422;
+    --ff-surface-1f: #1f2937;
+    --ff-success: #86efac;
+    --ff-warn: #fbbf24;
+    --ff-danger: #f87171;
+    --ff-info: #93c5fd;
+    /* These five are spelled out as literals rather than left to alias
+       --ff-bg / --ff-surface / --ff-text. A var() inside a custom-property
+       DECLARATION is substituted where it is declared, not where it is used,
+       so --ff-c60: var(--ff-bg) froze to the light value at :root and would
+       have inherited into here still white. */
+    --ff-c60: #1a2236;
+    --ff-c30: #151d2e;
+    --ff-c10: #ea6b14;
+    --ff-ink-1: #f0f4ff;
+    --ff-accent-600: #c9560c;
+    --ff-accent-500: #ea6b14;
+    --ff-accent-400: #f78b3d;
+    --ff-accent-soft: rgba(234,107,20,0.12);
+    --ff-accent-line: rgba(234,107,20,0.32);
+    --ff-ink-2: rgba(255,255,255,0.82);
+    --ff-ink-3: rgba(190,205,235,0.68);
+    --ff-ink-4: rgba(190,205,235,0.45);
+    --ff-hair: rgba(255,255,255,0.09);
+    --ff-lift-1: 0 1px 2px rgba(0,0,0,0.18);
+    --ff-lift-2: 0 8px 28px rgba(0,0,0,0.28);
+    --ff-lift-3: 0 22px 60px rgba(0,0,0,0.42);
+    color: var(--ff-text);
+  }
+  /* Paint the ground only in light mode. In dark mode these elements are
+     already sitting on navy, and painting them would flatten the hero's
+     radial glow where the fixed nav overlaps it. */
+  :root[data-theme="light"] .ff-on-dark { background-color: var(--ff-bg); }
+
   *, *::before, *::after { box-sizing: border-box; }
   html { font-size: calc(100% * var(--ff-font-scale, 1)); }
   html, body { margin: 0; padding: 0; background: var(--ff-bg); }

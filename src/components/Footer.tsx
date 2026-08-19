@@ -109,7 +109,11 @@ export default function Footer() {
   const link: React.CSSProperties = { color: "rgba(var(--ff-muted), .45)", textDecoration: "underline" };
 
   return (
-    <div style={bar}>
+    // Navy in both themes — the footer is the site's largest uninterrupted
+    // block of brand colour, and in light mode it was --ff-surface-2 (#e4e9f2),
+    // i.e. another shade of white. `bar.background` still reads
+    // var(--ff-surface-2); ff-on-dark just re-points that at #111827.
+    <div className="ff-on-dark" style={bar}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       {!onOnboarding && <NewsletterSignup />}
       <div style={{ fontSize: "1rem", fontWeight: 500, color: "rgba(var(--ff-muted), 0.6)", marginBottom: "0.5rem", display: "flex", flexWrap: "wrap", gap: ".2rem .55rem", justifyContent: "center", alignItems: "center" }}>

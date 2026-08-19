@@ -43,6 +43,14 @@ CI: `.github/workflows/typecheck.yml` runs `npm run typecheck` non-blocking on p
 Navy `#1a2236` · section navy `#151d2e` · footer `#111827` · orange `#ea6b14` · text `#f0f4ff`.
 Fonts: Bebas Neue (headings), DM Sans (body), loaded per-page via a Google Fonts `<link>`.
 
+**`.ff-on-dark` is how navy survives light mode (2026-08-19).** Light mode had almost no brand colour in it: `--ff-bg` and `--ff-surface` were both effectively white, so the 60 and the 30 of the 60/30/10 collapsed into one value and the site read as white + near-black + orange. Dark mode only looks like the brand because its 60 AND its 30 are both navy.
+
+The fix is a scope class in `main.tsx` that re-declares the whole dark token block. **Custom properties resolve at the point of use**, so wrapping a subtree in `ff-on-dark` makes it — its cards, its hairlines, every `rgba(var(--ff-fg), …)` overlay — render exactly as it does in dark mode, with no per-component changes. In dark mode every value is already in effect, so **the class is a no-op and dark mode cannot regress**; `check_tokens.js` asserts that mechanically (30/30 properties identical) rather than trusting that 25 copied lines are right by eye.
+
+**The catch that makes it subtle: a `var()` inside a custom-property DECLARATION is substituted where it is declared, not where it is used.** `--ff-c60: var(--ff-bg)` therefore froze to the light value on `:root` and would have inherited into `.ff-on-dark` still white. The seven aliased tokens (`--ff-c60`, `--ff-c30`, `--ff-ink-1..4`, `--ff-hair`) are spelled out as literals inside the class for exactly that reason — add a new alias at `:root` without a literal here and it will silently render the wrong theme.
+
+Mounted on **TopNav** (navy in both themes — which is also what keeps it legible where it floats over the hero), the **Home hero** (its warm glow, near-black bottom gradient and ink watermark icons all assume a dark ground and read as a smudge on white) and the **Footer**. `SettingsModal` is deliberately rendered OUTSIDE the nav's wrapper: it lives in that component only because the gear that opens it does, and inheriting the nav's tokens would render a full-screen navy modal over a light page. The dropdown menu stays inside on purpose — that one really is nav chrome. Page ground stays light: light mode exists so someone can read a contract or an invoice in daylight, and a tinted ground is what makes that unpleasant.
+
 ---
 
 # Gotchas (hard-won — read before changing anything)
