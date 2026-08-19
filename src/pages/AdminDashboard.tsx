@@ -190,6 +190,10 @@ export default function AdminDashboard() {
           headline: String(n.headline ?? DEFAULT_NOTICE.headline),
           body:     String(n.body     ?? DEFAULT_NOTICE.body),
           cta:      String(n.cta      ?? DEFAULT_NOTICE.cta),
+          // `??` and not `||` on purpose: a saved empty string means the owner
+          // switched the detail panel off, and `||` would keep resurrecting the
+          // default copy they had just cleared.
+          details:  String(n.details  ?? DEFAULT_NOTICE.details),
         });
       }
     } catch { /* leave the defaults — the tab still renders */ }
@@ -468,7 +472,11 @@ export default function AdminDashboard() {
   const applyMode = async (mode: PlatformMode, notice: PlatformNotice) => {
     const { data, error } = await supabase.rpc("set_platform_mode", {
       p_mode: mode,
-      p_notice: { headline: notice.headline, body: notice.body, cta: notice.cta },
+      // `details` MUST be listed. set_platform_mode overwrites the whole
+      // pause_notice blob, so any key missing here is deleted from the DB — and
+      // changeMode() passes the live draft through this same path, meaning a
+      // simple Open/Paused toggle would otherwise erase the panel copy.
+      p_notice: { headline: notice.headline, body: notice.body, cta: notice.cta, details: notice.details },
     });
     if (error) throw error;
     clearPlatformStatusCache();
@@ -480,6 +488,7 @@ export default function AdminDashboard() {
         headline: String(n.headline ?? notice.headline),
         body:     String(n.body     ?? notice.body),
         cta:      String(n.cta      ?? notice.cta),
+        details:  String(n.details  ?? notice.details),
       });
     }
     return data;
@@ -514,6 +523,13 @@ export default function AdminDashboard() {
         headline: noticeDraft.headline.trim(),
         body:     noticeDraft.body.trim(),
         cta:      noticeDraft.cta.trim(),
+        // Deliberately NOT in the required check above. An empty details box is
+        // a real choice — it turns the "why are you paused?" panel off and the
+        // strip goes back to being unpressable. It must still be SENT, though:
+        // set_platform_mode replaces the whole notice blob, so omitting this key
+        // would silently wipe the panel copy every time the owner touched a
+        // headline.
+        details:  noticeDraft.details.trim(),
       });
       alert("Saved. Anyone who loads the site from now on sees the new wording.");
     } catch (e: any) {
@@ -1363,6 +1379,26 @@ export default function AdminDashboard() {
                   style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .05)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"6px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", resize:"vertical" as const }}
                 />
               </label>
+
+              {/* ── "Why are you paused?" panel ───────────────────────────── */}
+              <label style={{ display:"block", marginBottom:".9rem" }}>
+                <span style={{ display:"block", fontSize:".76rem", color:"rgba(var(--ff-muted), .6)", marginBottom:".3rem" }}>
+                  The &ldquo;why?&rdquo; panel — what people see when they press the banner
+                </span>
+                <span style={{ display:"block", fontSize:".74rem", color:"rgba(var(--ff-muted), .45)", marginBottom:".35rem", lineHeight:1.5 }}>
+                  Same formatting as the newsletter: <code>## </code>starts a heading, <code>- </code>starts a bullet,
+                  and <code>**text**</code> makes it bold. Leave this empty to switch the panel off — the banner
+                  goes back to being a plain strip nobody can press.
+                </span>
+                <textarea
+                  value={noticeDraft.details}
+                  onChange={e => setNoticeDraft(d => ({ ...d, details: e.target.value }))}
+                  rows={12}
+                  placeholder={"## Why we're paused\nWe'd rather fix things before you feel them.\n\n## What we're improving\n- **Your money, held safely.** Released only when you confirm the work is done."}
+                  style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .05)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"6px", color:"var(--ff-text)", fontFamily:"ui-monospace, SFMono-Regular, Menlo, monospace", fontSize:".78rem", lineHeight:1.6, resize:"vertical" as const }}
+                />
+              </label>
+
               <button
                 onClick={saveNotice}
                 disabled={busyPlatform}

@@ -26,6 +26,14 @@ type Props = {
   source?: string;
   /** Rendered above the form; defaults to the notice configured in the DB. */
   compact?: boolean;
+  /**
+   * Drop the headline + body. For surfaces that have ALREADY said all of this
+   * above the form — the overhaul detail panel opens with the same headline, and
+   * printing it twice makes the panel read like it lost its place.
+   */
+  hideIntro?: boolean;
+  /** Removes the card's own border/background when the host already provides one. */
+  bare?: boolean;
 };
 
 export default function WaitlistForm({
@@ -35,6 +43,8 @@ export default function WaitlistForm({
   initialName = "",
   source = "paused_onboarding",
   compact = false,
+  hideIntro = false,
+  bare = false,
 }: Props) {
   const { status } = usePlatformStatus();
 
@@ -78,10 +88,10 @@ export default function WaitlistForm({
   }
 
   const card: React.CSSProperties = {
-    background: "rgba(var(--ff-fg), .04)",
-    border: "1px solid rgba(234,107,20,.3)",
-    borderRadius: "16px",
-    padding: compact ? "1.2rem 1.1rem" : "1.6rem 1.5rem",
+    background: bare ? "transparent" : "rgba(var(--ff-fg), .04)",
+    border: bare ? "none" : "1px solid rgba(234,107,20,.3)",
+    borderRadius: bare ? 0 : "16px",
+    padding: bare ? 0 : (compact ? "1.2rem 1.1rem" : "1.6rem 1.5rem"),
     fontFamily: "'DM Sans', sans-serif",
     color: "var(--ff-text)",
     maxWidth: "560px",
@@ -115,12 +125,16 @@ export default function WaitlistForm({
 
   return (
     <form onSubmit={submit} style={card}>
-      <h3 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: compact ? "1.5rem" : "1.8rem", letterSpacing: ".02em", margin: "0 0 .5rem" }}>
-        {status.notice.headline}
-      </h3>
-      <p style={{ fontSize: ".9rem", color: "rgb(var(--ff-muted))", lineHeight: 1.6, margin: "0 0 1.2rem" }}>
-        {status.notice.body}
-      </p>
+      {!hideIntro && (
+        <>
+          <h3 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: compact ? "1.5rem" : "1.8rem", letterSpacing: ".02em", margin: "0 0 .5rem" }}>
+            {status.notice.headline}
+          </h3>
+          <p style={{ fontSize: ".9rem", color: "rgb(var(--ff-muted))", lineHeight: 1.6, margin: "0 0 1.2rem" }}>
+            {status.notice.body}
+          </p>
+        </>
+      )}
 
       <div style={field}>
         <label style={label} htmlFor="wl-name">Your name <span style={{ fontWeight: 400 }}>(optional)</span></label>
