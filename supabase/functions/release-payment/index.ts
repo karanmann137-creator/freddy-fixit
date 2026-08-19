@@ -60,6 +60,14 @@ async function payoutAccount(admin: any, stripe: Stripe, contractorId: string): 
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  // Kept outside the try so a failure alert can name what it failed on. The
+  // alert used to be a bare String(err) with no identifiers at all, and
+  // reconcile-payouts retries every 15 minutes — so a single contractor whose
+  // payout account isn't ready produced ~96 identical, unidentifiable emails a
+  // day and there was no way to tell which job any of them was about.
+  let whichJob: string | null = null;
+  let whichStage: string | null = null;
+  let whichPool: string | null = null;
   try {
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, { apiVersion: "2024-06-20" });
     const supabase = createClient(
@@ -82,6 +90,9 @@ Deno.serve(async (req) => {
     }
 
     const { job_id, milestone_id, prepayment_id } = await req.json();
+    whichJob = job_id ?? null;
+    whichStage = milestone_id ?? null;
+    whichPool = prepayment_id ?? null;
 
     // ---------- MILESTONE MODE ----------
     if (milestone_id) {
@@ -242,7 +253,10 @@ Deno.serve(async (req) => {
     return json({ ok: true, transfer_id: transfer.id });
   } catch (err) {
     console.error("release-payment:", String(err));
-    await alertAdmin("Payout failed in release-payment", String(err));
+    await alertAdmin(
+      `Payout failed${whichJob ? ` on job ${whichJob.slice(0, 8).toUpperCase()}` : ""}`,
+      `A payout could not be completed.\n\nJob: ${whichJob ?? "n/a"}\nStage: ${whichStage ?? "n/a"}\nPrepay pool: ${whichPool ?? "n/a"}\n\n${String(err)}\n\nreconcile-payouts retries every 15 minutes, so this will repeat until the cause is fixed. The most common cause is the contractor not having finished payout setup.`,
+    );
     return json({ error: String(err) }, 500);
   }
 });

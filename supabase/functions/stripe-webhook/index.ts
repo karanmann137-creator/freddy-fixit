@@ -214,6 +214,37 @@ Deno.serve(async (req) => {
           try { await admin.rpc("consume_referral_waiver", { p_client: clientId, p_job_id: jobId }); }
           catch (_) { /* best-effort */ }
         }
+        if (!rows?.length) {
+          // The processing -> held guard matched nothing. Two very different
+          // things look identical here:
+          //   * a webhook REPLAY of the charge we already recorded — ignore it,
+          //     double-counting would mark a job fully funded that isn't;
+          //   * a SECOND checkout that got paid, because nothing stopped the
+          //     client opening one while the first was still open. That is real
+          //     money, and it used to be recorded in no column at all, which
+          //     made it invisible to the dashboard and unrefundable by
+          //     adjust-payment and resolve-dispute (both of which walk
+          //     extra_charge_intent_ids).
+          // Telling them apart is just "have we seen this intent id before".
+          const { data: j2 } = await admin.from("jobs")
+            .select("id, funded_amount, stripe_payment_intent_id, extra_charge_intent_ids")
+            .eq("id", jobId).maybeSingle();
+          if (j2) {
+            const already = (j2.extra_charge_intent_ids as string[] | null) ?? [];
+            const seen = j2.stripe_payment_intent_id === pi.id || already.includes(pi.id);
+            if (!seen) {
+              const paid = (pi.amount_received ?? 0) / 100;
+              await admin.from("jobs").update({
+                funded_amount: r2((Number(j2.funded_amount) || 0) + paid),
+                extra_charge_intent_ids: [...already, pi.id],
+              }).eq("id", jobId);
+              await alertAdmin(
+                "Duplicate deposit charge — refund owed",
+                `A second deposit charge succeeded on a job that was already paid. The money HAS been recorded against the job (so it is refundable), but the client has almost certainly paid twice and should be refunded.\n\nJob: ${jobId}\nPaymentIntent: ${pi.id}\nAmount: $${((pi.amount_received ?? 0) / 100).toFixed(2)}\n\nRefund this intent in Stripe, then reduce jobs.funded_amount by the same amount.`,
+              );
+            }
+          }
+        }
       } else if (jobId) {
         // A charge tagged with a `kind` we don't handle. Deliberately does NOT
         // touch payment_status — the old catch-all here would flip any such
@@ -223,6 +254,25 @@ Deno.serve(async (req) => {
           "Unhandled Stripe charge kind",
           `A succeeded PaymentIntent carried a metadata.kind this webhook doesn't handle, so nothing was recorded against the job.\n\nJob: ${jobId}\nKind: ${pi.metadata?.kind}\nPaymentIntent: ${pi.id}\nAmount: $${((pi.amount_received ?? 0) / 100).toFixed(2)}`,
         );
+      }
+    } else if (event.type === "checkout.session.expired") {
+      // The client opened checkout and never finished. Without this the job sat
+      // in 'processing' with nothing to move it, which is a state the dashboard
+      // has no words for. Guarded on 'processing' so it can never undo a job
+      // that was actually paid, and only the deposit charge owns job-level
+      // payment_status (a lapsed balance or milestone session must not touch it).
+      //
+      // Requires "checkout.session.expired" to be enabled on the Stripe webhook
+      // destination. If it isn't, nothing breaks — sessions are created with a
+      // 2h expiry and job_money_block() stops treating the job as mid-payment
+      // after 3h regardless.
+      const cs = event.data.object as Stripe.Checkout.Session;
+      const jobId = cs.metadata?.job_id;
+      const kind = cs.metadata?.kind;
+      if (jobId && (!kind || kind === "deposit")) {
+        await admin.from("jobs")
+          .update({ payment_status: "unpaid", checkout_started_at: null })
+          .eq("id", jobId).eq("payment_status", "processing");
       }
     } else if (event.type === "payment_intent.payment_failed") {
       const pi = event.data.object as Stripe.PaymentIntent;

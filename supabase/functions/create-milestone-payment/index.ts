@@ -51,8 +51,6 @@ Deno.serve(async (req) => {
     if (m.status !== "pending")
       return json({ error: "This stage is already funded" }, 409);
 
-    // Milestone jobs require a signed service agreement before any stage is
-    // funded. Fail-open: a check error never blocks funding.
     // Every job requires a signed service agreement before any money is collected.
     // Fail-CLOSED: unsigned OR a check error blocks funding and asks for a refresh.
     try {
@@ -74,9 +72,16 @@ Deno.serve(async (req) => {
     if (disputed && disputed.length > 0)
       return json({ error: "A stage is under dispute — funding is paused until it is resolved" }, 409);
 
-    // Strict order: every earlier stage must already be released.
+    // Strict order: every earlier stage must already be finished with.
+    //
+    // 'released' AND 'refunded' are BOTH terminal. This used to test only
+    // 'released', so refunding stage 1 — the one remedy an admin has for a
+    // stage that went wrong — permanently blocked stages 2..N with "Fund the
+    // earlier stages first" and there was no way to unblock it. release-payment
+    // already gets this right; the two now agree.
     const { data: earlier } = await admin.from("job_milestones")
-      .select("id, seq, status").eq("job_id", m.job_id).lt("seq", m.seq).neq("status", "released");
+      .select("id, seq, status").eq("job_id", m.job_id).lt("seq", m.seq)
+      .not("status", "in", "(released,refunded)");
     if (earlier && earlier.length > 0)
       return json({ error: "Fund the earlier stages first" }, 409);
 
@@ -105,8 +110,10 @@ Deno.serve(async (req) => {
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
-      success_url: `${SITE}/client?payment=success`,
-      cancel_url: `${SITE}/client?payment=cancelled`,
+      // /client is not a route — it used to redirect to the marketing homepage.
+      success_url: `${SITE}/client-dashboard?payment=success&job=${job.id}`,
+      cancel_url: `${SITE}/client-dashboard?payment=cancelled&job=${job.id}`,
+      expires_at: Math.floor(Date.now() / 1000) + 2 * 60 * 60,
       customer_email: receiptEmail,
       line_items: [{
         quantity: 1,

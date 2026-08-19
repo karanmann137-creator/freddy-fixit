@@ -119,8 +119,18 @@ Deno.serve(async (req) => {
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
-      success_url: `${SITE}/client?payment=success`,
-      cancel_url: `${SITE}/client?payment=cancelled`,
+      // These used to point at /client, which is not a route on this site — the
+      // catch-all redirected it to the marketing homepage, so every client who
+      // paid landed on the front page with no confirmation and no reason to
+      // believe the payment had worked.
+      success_url: `${SITE}/client-dashboard?payment=success&job=${job.id}`,
+      cancel_url: `${SITE}/client-dashboard?payment=cancelled&job=${job.id}`,
+      // Bound the life of the session. A job sits in 'processing' while a
+      // checkout is open, and the deletion guards (job_money_block) refuse to
+      // destroy it for 3h from checkout_started_at — so the session must not
+      // outlive that window, or a client could pay for a job that had since
+      // been withdrawn.
+      expires_at: Math.floor(Date.now() / 1000) + 2 * 60 * 60,
       customer_email: receiptEmail,
       line_items: [{
         quantity: 1,
@@ -160,6 +170,11 @@ Deno.serve(async (req) => {
       client_fee: clientFee, platform_fee: platformFee, total_charged: total,
       contractor_payout: payout, payment_status: "processing",
       deposit_rate: depositRate,
+      // Stamps when this checkout opened. job_money_block() reads it to decide
+      // whether the job is mid-payment and must not be destroyed; without it
+      // the guard would have to block 'processing' forever and an abandoned
+      // checkout would strand the job.
+      checkout_started_at: new Date().toISOString(),
     }).eq("id", job.id);
 
     return json({

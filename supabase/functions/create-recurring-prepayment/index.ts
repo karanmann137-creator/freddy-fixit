@@ -104,8 +104,11 @@ Deno.serve(async (req) => {
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
-      success_url: `${SITE}/client?payment=success`,
-      cancel_url: `${SITE}/client?payment=cancelled`,
+      // /client is not a route — it used to redirect to the marketing homepage.
+      // A prepay pool has no job yet, so this lands on the Recurring Plans tab.
+      success_url: `${SITE}/client-dashboard?payment=success&tab=recurring`,
+      cancel_url: `${SITE}/client-dashboard?payment=cancelled&tab=recurring`,
+      expires_at: Math.floor(Date.now() / 1000) + 2 * 60 * 60,
       customer_email: receiptEmail,
       line_items: [{
         quantity: 1,
