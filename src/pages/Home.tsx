@@ -339,6 +339,14 @@ export default function Home() {
           font-size: clamp(3rem, 11.5vw, 5.6rem); line-height: 0.9; letter-spacing: 0.02em;
           color: var(--ff-ink-1); margin: 0; }
         .ff-h1 em { font-style: normal; color: var(--ff-c10); }
+        /* The three steps. Bebas so it reads as a continuation of the headline
+           rather than as body copy, but a third of its size and widely tracked
+           so it can't compete with it. Deliberately NOT orange: the 10 of
+           60/30/10 is spent on the h1 accent and the CTA, and a third orange
+           thing in a 400px-tall hero is what turns an accent into wallpaper. */
+        .ff-steps { font-family: 'Bebas Neue', sans-serif; font-weight: 400;
+          font-size: clamp(1.05rem, 3.4vw, 1.5rem); line-height: 1.1; letter-spacing: 0.14em;
+          color: var(--ff-ink-2); margin: 0; }
         .ff-sub { font-size: clamp(1rem, 2.5vw, 1.15rem); font-weight: 300; line-height: 1.62;
           color: var(--ff-ink-3); max-width: 33rem; margin: 0; }
         .ff-sub strong { color: var(--ff-ink-2); font-weight: 500; }
@@ -551,16 +559,29 @@ export default function Home() {
             </svg>
           </div>
 
+          {/* Says what the visitor GETS, not what we are like. "Fix it once,
+              fix it right" was a promise about workmanship we cannot make on a
+              contractor's behalf; this is a description of the mechanism, and
+              every word of it is enforced in code. "You pick the price" rather
+              than "your price" on purpose — the client does not name a number,
+              they choose among the ones pros send back, and a headline that
+              overstates that is the first thing a disappointed user quotes. */}
           <h1 className="ff-h1 ff-anim-lcp">
-            Fix it once.<br /><em>Fix it right.</em>
+            Pros come to you.<br /><em>You pick the price.</em>
           </h1>
+
+          {/* The whole product in three words each. It sits between the
+              headline and the sentence that explains it, so a visitor who
+              reads nothing else still leaves knowing the shape of the thing. */}
+          <p className="ff-steps ff-anim ff-d1">
+            Describe it. Compare it. Book it.
+          </p>
 
           {/* Short on purpose. The old version spent three lines listing things
               the tick row underneath already says, and a subheading nobody
-              finishes reading is a subheading that isn't working. Calgary stays
-              in it because the eyebrow that used to carry the city is gone. */}
-          <p className="ff-sub ff-anim ff-d1">
-            Tell us what needs doing. Compare prices from local pros.
+              finishes reading is a subheading that isn't working. */}
+          <p className="ff-sub ff-anim ff-d2">
+            One request goes out to pros near you. You choose.
           </p>
 
           <button className="ff-cta ff-anim ff-d2" onClick={() => setLocation("/client-onboarding")}>
