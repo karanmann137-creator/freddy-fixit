@@ -338,6 +338,21 @@ Private **`message-media`** bucket (image/jpeg,png,webp,gif,heic,heif + video/mp
 
 # Notifications & email
 
+## Pausing outbound email (2026-08-19)
+**There is ONE switch, not two.** `public.outbound_paused()` = `platform_mode() in ('paused','waitlist')` — it owns no flag of its own, it reads the site pause the admin Platform tab already sets. So **`set_platform_mode('open')` turns every emitter back on by itself**; there is nothing to remember to flip back, which is the whole point (a second switch is one somebody forgets, and then the site reopens silently and nobody hears from us).
+
+Gated with an early return: `trg_dispatch_new_request`, `send_contractor_welcome`, `kick_newsletter`, `kick_visit_reminders`, `run_reminders` and the job-thread branch of `notify_new_message`. The two Database Webhook triggers — `"send-notification-email"` on `notifications` and `"notify-admin-client "` on `client_requests` (**trailing space, load-bearing**) — were **recreated with a `WHEN` clause** rather than `ALTER TABLE … DISABLE TRIGGER`, because a WHEN clause is self-re-arming and a disabled trigger needs a manual, forgettable reversal. A trigger WHEN clause may **call a function but may not contain a subquery**, which is why the health-check exemption is keyed on `NEW.type = 'health_alert'` and not on a `profiles` lookup of the admin recipients.
+
+**The in-app 🔔 survives the pause** — the `notifications` ROW is still inserted, only the email fan-out is suppressed. Unread counts, badges and `my_conversations()` are untouched.
+
+**Gate placement is deliberate.** In `notify_new_message` it sits *before* the `message_email_log` upsert so the 15-minute throttle isn't burned on a message nobody was told about. In `run_reminders` it's the very first statement so `reminder_log` and `visit_reminder_sent_at` are never stamped — nothing is permanently skipped, the nudges just resume.
+
+**Not gated, on purpose:** `enqueue_admin_alert` and the `health_alert` type (the owner's only warning system while the site is dark — his call); payment receipts and the money sweeps `reconcile-payouts` / `auto-confirm-stale-jobs` / `release-unconfirmed-visits` (a payout that is owed is owed whether or not we're open — also his call); and **GoTrue auth mail**, since silencing signup confirmation and password reset reproduces the Aug 2026 lockout incident exactly.
+
+Cron stand-down is belt-and-braces — the real guarantee is `outbound_paused()` **inside** each emitter, so hand-re-arming a cron job still can't send mail while the site is paused. While paused, 4 jobs run (`reconcile-payouts`, `auto-confirm-stale-jobs`, `release-unconfirmed-visits`, `platform-health-check`) and 6 are stood down (`daily-reminders`, `visit-reminders`, `newsletter-client`, `newsletter-contractor`, `refire-stale-requests`, `escalate-unbid-requests`).
+
+**`set_platform_mode`'s quiet-list had a gap** — it named only three cron jobs, so `newsletter-contractor` stayed armed for the entire pause and kept firing every Tuesday 16:00 UTC at 25 subscribers with 8 issues queued. It now names all six. If you add an outbound cron job, add it to that list *and* gate its `kick_*` function; the list alone is not the guarantee.
+
 ## The duplicate-email rule
 A **Database Webhook fires on EVERY `public.notifications` INSERT** → `send-notification`. Some notification types are ALSO emailed by a richer, dedicated function. When that happens the type goes in **`EMAIL_HANDLED_ELSEWHERE`** in `send-notification` — the in-app 🔔 still writes and shows, only the generic email is skipped.
 
