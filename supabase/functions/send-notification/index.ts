@@ -1,4 +1,4 @@
-// Supabase Edge Function: send-notification  (v15)
+// Supabase Edge Function: send-notification  (v16)
 //
 // Fired by the `send-notification-email` Database Webhook on every
 // public.notifications INSERT. Turns an in-app bell into an email.
@@ -42,6 +42,23 @@
 // so it wins. Verified single-emitter before suppressing, per the rule in
 // CLAUDE.md: `bid_received` is written by `place_bid` and nothing else, and
 // only ever to the client — the admin's copy uses a different type.
+//
+// WHAT CHANGED IN v16 — this function is now the ONLY emitter for the thirteen
+// types that route through the `notify_user` DB helper. notify_user used to
+// write the bell row (firing this webhook) AND separately post the same title
+// and body to the `send-reminder` edge function, which emailed a second, thinner
+// copy from the same address. None of its types are in the suppression set
+// above, so all thirteen double-sent. That post is gone, and send-reminder — an
+// unauthenticated relay that took recipient, subject and HTML body straight off
+// the request — has no callers left.
+//
+// notify_user carried a per-call CTA that this function had no way to see,
+// because the notifications table does not store one. Eleven of the thirteen
+// pointed at the same dashboard dashboardFor() already resolves, so nothing is
+// lost there. Two did not: `recurring_due` and `seasonal` are re-booking nudges
+// that pointed at /new-request, the actual booking form. Sending those to the
+// dashboard instead would put an extra click between the nudge and the thing it
+// is nudging you to do, so they get an explicit override below.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
@@ -98,6 +115,20 @@ function dashboardFor(role: string | null): string {
   return "https://freddyfixit.ca/client-dashboard";
 }
 
+// Types whose email should NOT point at the recipient's dashboard. Keep this
+// small and justified — the dashboard is the right destination for almost
+// everything, because it is where the thing being notified about actually
+// lives. These two are re-booking prompts: there is nothing waiting on the
+// dashboard to look at, the point is to start a new request.
+const CTA_OVERRIDE: Record<string, { href: string; label: string }> = {
+  recurring_due: { href: "https://freddyfixit.ca/new-request", label: "Book again" },
+  seasonal:      { href: "https://freddyfixit.ca/new-request", label: "Get a free quote" },
+};
+
+function ctaFor(type: string, role: string | null): { href: string; label: string } {
+  return CTA_OVERRIDE[type] ?? { href: dashboardFor(role), label: "Open My Dashboard →" };
+}
+
 serve(async (req) => {
   try {
     const payload = await req.json();
@@ -142,11 +173,12 @@ serve(async (req) => {
       return new Response("no recipient", { status: 200 });
     }
 
+    const cta = ctaFor(n.type, role);
     const html = wrap(`
       <h1 style="font-size:1.6rem;color:#ea6b14;margin-bottom:1rem;">${n.title}</h1>
       <p style="line-height:1.6;">Hi ${firstName},</p>
       <p style="line-height:1.6;">${n.body ?? ""}</p>
-      ${button(dashboardFor(role), "Open My Dashboard →")}
+      ${button(cta.href, cta.label)}
     `);
     const result = await sendEmail(to, n.title, html);
     return new Response(JSON.stringify({ sent: true, result }), { status: 200 });
