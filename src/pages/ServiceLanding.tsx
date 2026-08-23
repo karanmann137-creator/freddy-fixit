@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { Ic } from "@/components/Ic";
 import type { IconName } from "@/components/Ic";
+import { upsertMeta } from "@/lib/seo";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Per-trade SEO landing pages. Each entry targets the searches people actually
@@ -475,16 +476,6 @@ export const SERVICES: Record<string, Svc> = {
 };
 
 export const SERVICE_SLUGS = Object.keys(SERVICES);
-
-function upsertMeta(selector: string, attr: "name" | "property" | "rel", key: string, content: string, valueAttr: "content" | "href" = "content") {
-  let el = document.head.querySelector(selector) as HTMLElement | null;
-  if (!el) {
-    el = document.createElement(selector.startsWith("link") ? "link" : "meta");
-    el.setAttribute(attr, key);
-    document.head.appendChild(el);
-  }
-  el.setAttribute(valueAttr, content);
-}
 
 const NAVY = "var(--ff-bg)";
 const ORANGE = "#ea6b14";

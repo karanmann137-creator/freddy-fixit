@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { getDbPost, fmtDate, readTime, MdBody, type DbPost } from "../lib/blogDb";
+import { upsertMeta } from "@/lib/seo";
 
 // ── Chart component ──────────────────────────────────────────────────────────
 
@@ -690,16 +691,6 @@ const POST_DESCRIPTIONS: Record<string, string> = {
 
 // Create or update a meta/link tag in <head> so each article has its own
 // title, description and Open Graph data when shared or crawled.
-function upsertMeta(selector: string, attr: "name" | "property" | "rel", key: string, content: string, valueAttr: "content" | "href" = "content") {
-  let el = document.head.querySelector(selector) as HTMLElement | null;
-  if (!el) {
-    el = document.createElement(selector.startsWith("link") ? "link" : "meta");
-    el.setAttribute(attr, key);
-    document.head.appendChild(el);
-  }
-  el.setAttribute(valueAttr, content);
-}
-
 // Free stock photos (Unsplash License) keyed by tag — used as a darkened hero image
 // behind each article header. Photos: workbench tools by Sparsh Paliwal, suburban
 // house by Jeff James. Swap in a Higgsfield/custom image by editing the URL.

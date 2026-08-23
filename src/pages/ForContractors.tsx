@@ -1,16 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { Ic } from "@/components/Ic";
-
-function upsertMeta(selector: string, attr: "name" | "property" | "rel", key: string, content: string, valueAttr: "content" | "href" = "content") {
-  let el = document.head.querySelector(selector) as HTMLElement | null;
-  if (!el) {
-    el = document.createElement(selector.startsWith("link") ? "link" : "meta");
-    el.setAttribute(attr, key);
-    document.head.appendChild(el);
-  }
-  el.setAttribute(valueAttr, content);
-}
+import { upsertMeta } from "@/lib/seo";
 
 const META_TITLE = "Get More Local Jobs in Calgary | Join Freddy Fix It Contractors";
 const META_DESC = "Calgary contractors & handymen: get matched with local home and vehicle jobs. No monthly fees, no upfront cost, no lead-buying. You're paid securely when the work's done. Apply free.";

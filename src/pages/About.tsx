@@ -1,16 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { Ic } from "@/components/Ic";
-
-function upsertMeta(selector: string, attr: "name" | "property" | "rel", key: string, content: string, valueAttr: "content" | "href" = "content") {
-  let el = document.head.querySelector(selector) as HTMLElement | null;
-  if (!el) {
-    el = document.createElement(selector.startsWith("link") ? "link" : "meta");
-    el.setAttribute(attr, key);
-    document.head.appendChild(el);
-  }
-  el.setAttribute(valueAttr, content);
-}
+import { upsertMeta } from "@/lib/seo";
 
 const META_TITLE = "About Freddy Fix It | Calgary's Vetted Home & Vehicle Repair Marketplace";
 const META_DESC =

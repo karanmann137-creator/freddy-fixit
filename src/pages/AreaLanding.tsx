@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { Ic } from "@/components/Ic";
+import { upsertMeta } from "@/lib/seo";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Location SEO landing pages. Each entry targets local searches people type
@@ -139,16 +140,6 @@ const POPULAR: { label: string; slug: string }[] = [
   { label: "Landscaping", slug: "landscaping" },
   { label: "Snow Removal", slug: "snow-removal" },
 ];
-
-function upsertMeta(selector: string, attr: "name" | "property" | "rel", key: string, content: string, valueAttr: "content" | "href" = "content") {
-  let el = document.head.querySelector(selector) as HTMLElement | null;
-  if (!el) {
-    el = document.createElement(selector.startsWith("link") ? "link" : "meta");
-    el.setAttribute(attr, key);
-    document.head.appendChild(el);
-  }
-  el.setAttribute(valueAttr, content);
-}
 
 const ORANGE = "#ea6b14";
 const TEXT = "var(--ff-text)";
