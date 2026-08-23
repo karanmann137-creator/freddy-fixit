@@ -544,6 +544,11 @@ export default function ClientDashboard() {
           reason === "self"             ? "That's your own code — send it to a friend instead."
           : reason === "already_referred" ? "This account has already used a referral code."
           : reason === "empty"            ? "Enter a code first."
+          // A code invites one friend. These two say which way it's unavailable,
+          // because "invalid code" would send someone off hunting for a typo in
+          // a code that is perfectly real.
+          : reason === "code_retired"     ? "That code has already been used by a friend — each code is good for one person."
+          : reason === "code_in_use"      ? "Someone else is already using that code. If they don't book within 30 days it frees up, so it's worth asking your friend again later."
           :                                 "We don't recognise that code. Check it and try again." });
       }
     } catch {
@@ -1415,20 +1420,53 @@ export default function ClientDashboard() {
           </div>
         ))}
 
-        {activeTab === "requests" && referral?.code && (
-          <div style={{ ...s.card, background:"linear-gradient(135deg, rgba(234,107,20,.10), rgba(var(--ff-fg),.03))", borderColor:"rgba(234,107,20,.28)" }}>
+        {/* A code invites ONE friend and then becomes a badge. code_status comes
+            from get_my_referral and is the single source of truth for which of
+            the three states this card is in — the same rule apply_referral_code
+            enforces server-side, so the card and the code can't disagree.
+              active  — share it
+              in_use  — a friend has taken it; it frees up 30 days after they did
+              retired — a friend booked and paid; the badge replaces the code
+            The copy button is hidden in the last two states on purpose: sharing
+            a code that will be refused is a dead end the sharer can't see. */}
+        {activeTab === "requests" && referral?.code && (() => {
+          const codeStatus = String(referral.code_status ?? "active");
+          const retired    = codeStatus === "retired";
+          const inUse      = codeStatus === "in_use";
+          let rewardedOn = "";
+          try { if (referral.rewarded_at) rewardedOn = new Date(referral.rewarded_at).toLocaleDateString("en-CA", { month:"long", day:"numeric", year:"numeric" }); } catch {}
+          return (
+          <div style={{ ...s.card,
+            background: retired ? "linear-gradient(135deg, rgba(34,197,94,.10), rgba(var(--ff-fg),.03))" : "linear-gradient(135deg, rgba(234,107,20,.10), rgba(var(--ff-fg),.03))",
+            borderColor: retired ? "rgba(34,197,94,.32)" : "rgba(234,107,20,.28)" }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".75rem", flexWrap:"wrap" as const }}>
-              <div>
-                <div style={{ ...s.cardTitle, marginBottom:".2rem" }}>Invite a friend, they save</div>
+              <div style={{ minWidth:0 }}>
+                <div style={{ ...s.cardTitle, marginBottom:".2rem" }}>{retired ? "Friend referred" : "Invite a friend, they save"}</div>
                 <div style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.5 }}>
-                  Friends who join with your code get the <strong>3% service fee waived on their first job</strong>.
-                  {referral.invited ? ` You've invited ${referral.invited}${referral.rewarded ? `, ${referral.rewarded} booked` : ""}.` : ""}
+                  {retired ? (
+                    <>You referred a friend and they booked their first job{rewardedOn ? ` on ${rewardedOn}` : ""} — we covered their <strong>3% service fee</strong>. Your code has done its job, so it's retired. Thanks for the introduction.</>
+                  ) : inUse ? (
+                    <>A friend has your code right now. Each code is good for <strong>one friend</strong>, so it's on hold until they book — and if they haven't within 30 days it frees up on its own.</>
+                  ) : (
+                    <>Your code waives the <strong>3% service fee on a friend's first job</strong>. It's good for <strong>one friend</strong> — once they book, the code retires and you keep the badge.</>
+                  )}
                 </div>
               </div>
-              <div style={{ textAlign:"center" }}>
-                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.8rem", letterSpacing:".12em", color:"#ea6b14", border:"1px dashed rgba(234,107,20,.5)", borderRadius:"10px", padding:".35rem .9rem" }}>{referral.code}</div>
-                <button style={{ ...s.tab, marginTop:".45rem", fontSize:".78rem", ...(refCopied ? { color:"#22c55e", borderColor:"rgba(34,197,94,.4)", background:"rgba(34,197,94,.1)" } : {}) }} onClick={copyReferral}>{refCopied ? "Copied ✓" : "Copy invite link"}</button>
-              </div>
+              {retired ? (
+                <div style={{ textAlign:"center", padding:".6rem 1.1rem", border:"1px solid rgba(34,197,94,.42)", background:"rgba(34,197,94,.12)", borderRadius:"12px" }}>
+                  <div style={{ marginBottom:".2rem" }}><Ic name="user-check" size={26} color="#22c55e" /></div>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.05rem", letterSpacing:".08em", color:"#22c55e", lineHeight:1.1 }}>Friend Referred</div>
+                </div>
+              ) : (
+                <div style={{ textAlign:"center" }}>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.8rem", letterSpacing:".12em", color:"#ea6b14", border:"1px dashed rgba(234,107,20,.5)", borderRadius:"10px", padding:".35rem .9rem", ...(inUse ? { opacity:.45 } : {}) }}>{referral.code}</div>
+                  {inUse ? (
+                    <div style={{ marginTop:".5rem", fontSize:".74rem", color:"rgba(var(--ff-muted), .55)" }}>On hold with a friend</div>
+                  ) : (
+                    <button style={{ ...s.tab, marginTop:".45rem", fontSize:".78rem", ...(refCopied ? { color:"#22c55e", borderColor:"rgba(34,197,94,.4)", background:"rgba(34,197,94,.1)" } : {}) }} onClick={copyReferral}>{refCopied ? "Copied ✓" : "Copy invite link"}</button>
+                  )}
+                </div>
+              )}
             </div>
             {/* Only offered to someone who hasn't been referred yet. Once
                 apply_referral_code succeeds it refuses a second code, so
@@ -1460,7 +1498,8 @@ export default function ClientDashboard() {
               </div>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {activeTab === "recurring" && (plans.length > 0 ? (
           <div style={{ ...s.card }}>
