@@ -14,11 +14,42 @@ import BudgetPicker from "@/components/BudgetPicker";
 import { isPerKmService, freqLabel, SLIDER_STOPS, SLIDER_SHORT } from "@/lib/recurrence";
 import WaitlistForm from "@/components/WaitlistForm";
 import { usePlatformStatus, acceptingRequests } from "@/lib/platformStatus";
+import { detectFromText } from "@/lib/serviceTags";
+import { questionsFor, answerSummary, type JobAnswers } from "@/lib/jobQuestions";
+import { trackEvent } from "@/lib/analytics";
+
+const TOTAL = 4;
+const STEP_TITLES = ["What Needs Fixing?", "Did We Get That Right?", "A Few Quick Questions", "Where & When"];
+const STEP_SUBS   = [
+  "Describe it in your own words — we'll work out the rest",
+  "Check the service we picked and the details we spotted",
+  "Tap the answers — no typing, and you can skip any of them",
+  "Where, when, and roughly what you'd like to spend",
+];
+// Stable machine names for the drop-off funnel in PostHog (do not rename —
+// insights key off these). The flow value is deliberately DIFFERENT from the
+// signup flow's "client", so the two funnels can never be mixed together.
+const STEP_NAMES  = ["describe", "confirm", "questions", "details"];
+const RETURN_GUIDE: { message: string; why?: string; tip?: string }[] = [
+  { message: "Welcome back. Just tell me what's wrong in your own words — no need to know what the trade is called.",
+    why: "Pros quote far more accurately when they can read the problem in your words.",
+    tip: "In a hurry? Tap the microphone and say it out loud." },
+  { message: "Here's what I picked up. Tap anything that's wrong to remove it, or add a service I missed.",
+    why: "Getting the service right is what decides which pros see your job.",
+    tip: "You can pick more than one — plenty of jobs need two trades." },
+  { message: "A few quick taps so your estimates come back accurate instead of \"it depends\".",
+    why: "These are the questions a pro would phone you to ask anyway.",
+    tip: "Not sure on any of them? Skip it — a pro can confirm on site." },
+  { message: "Last bit: where the job is, when you'd like it done, and roughly what you'd like to spend.",
+    why: "Location and timing decide which pros are free to take it on." },
+];
 
 // Shown when an already-signed-in client starts another request. Unlike the
 // first-time onboarding flow, this never creates an account — it reuses the
-// session + saved details and only asks what's actually new: the service,
-// timing, address (defaulting to "same as last time"), description, and photo.
+// session + saved details and only asks what's actually new. It mirrors the
+// signup flow's describe-first shape (describe → confirm → questions →
+// details), minus the account step, so a returning client gets the same
+// plain-English start as a first-timer.
 export default function NewRequest() {
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState(true);
@@ -46,6 +77,13 @@ export default function NewRequest() {
   const [vehModel, setVehModel] = useState("");
   const [saveNewVehicle, setSaveNewVehicle] = useState(true);
   const [description, setDescription] = useState("");
+  // Describe-first scaffolding: which screen we're on, what the description
+  // read as, and the answers to the follow-up questions.
+  const [step, setStep] = useState(1);
+  const [tags, setTags] = useState<string[]>([]);
+  const [answers, setAnswers] = useState<JobAnswers>({});
+  const [detectedFor, setDetectedFor] = useState("");
+  const [showAllServices, setShowAllServices] = useState(false);
   const [budgetMin, setBudgetMin]           = useState("");
   const [budgetMax, setBudgetMax]           = useState("");
   const [budgetFlexible, setBudgetFlexible] = useState(false);
@@ -172,33 +210,112 @@ export default function NewRequest() {
     setErrors(e => ({ ...e, services: "" }));
   };
 
+  const removeTag = (t: string) => setTags(prev => prev.filter(x => x !== t));
+
+  // The questions shown are driven by the FIRST selected service, so if that
+  // changes the recorded answers belong to a different question set and must go.
+  // Keeping them would attach (say) a plumbing answer to an electrical job.
+  const primaryService = selectedServices[0] || "";
+  useEffect(() => { setAnswers({}); }, [primaryService]);
+  const activeQuestions = questionsFor(primaryService);
+
+  const setAnswer = (q: { id: string; multi?: boolean }, option: string) => {
+    setAnswers(prev => {
+      if (!q.multi) {
+        // Tapping the chosen answer again clears it — every question is skippable.
+        return prev[q.id] === option ? { ...prev, [q.id]: "" } : { ...prev, [q.id]: option };
+      }
+      const cur = Array.isArray(prev[q.id]) ? (prev[q.id] as string[]) : [];
+      const nextVals = cur.includes(option) ? cur.filter(v => v !== option) : [...cur, option];
+      return { ...prev, [q.id]: nextVals };
+    });
+  };
+  const isAnswered = (q: { id: string; multi?: boolean }, option: string) => {
+    const v = answers[q.id];
+    return Array.isArray(v) ? v.includes(option) : v === option;
+  };
+  const answeredCount = activeQuestions.filter(q => {
+    const v = answers[q.id];
+    return Array.isArray(v) ? v.length > 0 : !!v;
+  }).length;
+
+  // Read the description and pre-fill services + descriptive tags. Runs when the
+  // client leaves the description screen, never on every keystroke — and never
+  // overwrites services they picked themselves (or a ?service= deep link).
+  const runDetect = () => {
+    const text = description.trim();
+    if (!text || text === detectedFor) return;
+    const d = detectFromText(text);
+    setDetectedFor(text);
+    setTags(d.tags);
+    if (d.services.length) setSelectedServices(prev => prev.length ? prev : d.services);
+  };
+
+  // What the contractor actually reads. The answers and tags are folded into the
+  // description text itself so pros see them today without a schema change.
+  const composedDescription = () => {
+    const parts = [description.trim()];
+    const sum = answerSummary(primaryService, answers);
+    if (sum) parts.push(sum);
+    if (tags.length) parts.push("Details: " + tags.join(", "));
+    return parts.join("\n\n");
+  };
+
+  // Drop-off funnel. Distinct flow value so it can never be confused with the
+  // signup funnel (see STEP_NAMES).
+  useEffect(() => {
+    if (loading) return;
+    trackEvent("onboarding_step_view", { flow: "returning_client", step, step_name: STEP_NAMES[step - 1] });
+  }, [step, loading]);
+
   const validate = () => {
     const e: Record<string, string> = {};
-    if (selectedServices.length === 0) e.services = "Please select at least one service";
-    if (!schedule) e.schedule = "Please choose a timeframe";
-    const loc = resolveLocation();
-    if (!loc) e.location = addrChoice === "new" ? "Address required" : "No address on file — please enter one";
-    if (description.trim().length < 10) e.description = "Please add a few more details (min 10 characters)";
-    // Budget is optional, but if given it has to make sense.
-    if (!budgetFlexible) {
-      const bLo = budgetMin.trim() === "" ? null : Number(budgetMin);
-      const bHi = budgetMax.trim() === "" ? null : Number(budgetMax);
-      if ((bLo != null && (!isFinite(bLo) || bLo < 0)) || (bHi != null && (!isFinite(bHi) || bHi < 0))) {
-        e.budget = "Budget must be a positive number";
-      } else if (bLo != null && bHi != null && bHi < bLo) {
-        e.budget = "Budget maximum must be at least the minimum";
+    // 1 describe · 2 confirm · 3 questions (nothing required — every one is
+    // skippable) · 4 details.
+    if (step === 1) {
+      if (description.trim().length < 10) e.description = "Please add a few more details (min 10 characters)";
+    }
+    if (step === 2) {
+      if (selectedServices.length === 0) e.services = "Please select at least one service";
+    }
+    if (step === 4) {
+      if (!schedule) e.schedule = "Please choose a timeframe";
+      const loc = resolveLocation();
+      if (!loc) e.location = addrChoice === "new" ? "Address required" : "No address on file — please enter one";
+      // Budget is optional, but if given it has to make sense.
+      if (!budgetFlexible) {
+        const bLo = budgetMin.trim() === "" ? null : Number(budgetMin);
+        const bHi = budgetMax.trim() === "" ? null : Number(budgetMax);
+        if ((bLo != null && (!isFinite(bLo) || bLo < 0)) || (bHi != null && (!isFinite(bHi) || bHi < 0))) {
+          e.budget = "Budget must be a positive number";
+        } else if (bLo != null && bHi != null && bHi < bLo) {
+          e.budget = "Budget maximum must be at least the minimum";
+        }
       }
     }
     setErrors(e);
     // Scroll the first problem into view — on a long form the submit button is
     // at the bottom and an error near the top is otherwise invisible.
-    const first = ["services", "budget", "schedule", "location", "description"].find(k => e[k]);
+    const first = ["description", "services", "budget", "schedule", "location"].find(k => e[k]);
     if (first) {
       setTimeout(() => {
         document.getElementById("nr-err-" + first)?.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 60);
     }
     return Object.keys(e).length === 0;
+  };
+
+  const next = () => {
+    if (!validate()) return;
+    // Read the description on the way out of screen 1 so screen 2 has something
+    // to confirm.
+    if (step === 1) runDetect();
+    setStep(s => s + 1);
+    window.scrollTo(0, 0);
+  };
+  const back = () => {
+    if (step === 1) setLocation("/client-dashboard");
+    else { setStep(s => s - 1); window.scrollTo(0, 0); }
   };
 
   const submit = async () => {
@@ -250,7 +367,7 @@ export default function NewRequest() {
         preferred_contractor_id: preferredPro,
         preferred_schedule: schedule,
         location,
-        job_description: description.trim(),
+        job_description: composedDescription(),
         photo_path: photoPath,
         status: "pending",
         budget_flexible: budgetFlexible,
@@ -338,20 +455,27 @@ export default function NewRequest() {
     <div style={s.wrap}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       <div style={s.inner}>
-        <button onClick={() => setLocation("/client-dashboard")} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".82rem", textTransform:"uppercase", letterSpacing:".08em", padding:0, marginBottom:"2rem", display:"block" }}>
-          ← Dashboard
+        <button onClick={back} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".82rem", textTransform:"uppercase", letterSpacing:".08em", padding:0, marginBottom:"2rem", display:"block" }}>
+          {step === 1 ? "← Dashboard" : "← Back"}
         </button>
-        <p style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".15em", color:"#ea6b14", marginBottom:".4rem" }}>New Request</p>
-        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:".4rem" }}>
-          Welcome back{profile?.first_name ? ", " + profile.first_name : ""}
-        </h1>
-        <p style={{ color:"rgba(var(--ff-muted), .6)", fontSize:".9rem", marginBottom:"2rem" }}>
-          We've got your details on file — just tell us about this job.
+        <p style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".15em", color:"#ea6b14", marginBottom:".4rem" }}>Step {step} of {TOTAL}</p>
+        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:".4rem" }}>{STEP_TITLES[step-1]}</h1>
+        <p style={{ color:"rgba(var(--ff-muted), .6)", fontSize:".9rem", marginBottom:".5rem" }}>{STEP_SUBS[step-1]}</p>
+        <p style={{ color:"rgba(var(--ff-muted), .4)", fontSize:".8rem", marginBottom:"2rem" }}>
+          {step === 1 && profile?.first_name
+            ? "Welcome back, " + profile.first_name + " — we've still got your details on file."
+            : "Takes about a minute · posting is free"}
         </p>
+        <div style={{ display:"flex", gap:"6px", marginBottom:"2.5rem" }}>
+          {Array.from({ length: TOTAL }, (_, i) => (
+            <div key={i} style={{ height:"3px", flex:1, borderRadius:"99px", background: i+1===step ? "#ea6b14" : i+1<step ? "rgba(234,107,20,.45)" : "rgba(var(--ff-fg), .1)" }} />
+          ))}
+        </div>
 
-        <GuideBubble step={1} total={1}
-          message="Good to see you again. Just tell me about this job — the service, when you need it, and where. A few details and photos help your pro give an accurate estimate."
-          why="You pay when you approve an estimate — we hold it safely and only release it to your pro after you confirm the work is done." />
+        <GuideBubble step={step} total={TOTAL}
+          message={RETURN_GUIDE[step-1]?.message || ""}
+          why={RETURN_GUIDE[step-1]?.why}
+          tip={RETURN_GUIDE[step-1]?.tip} />
 
         {preferredPro && (
           <div style={{ ...s.card, marginBottom:"1rem", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.07)", display:"flex", alignItems:"center", gap:".6rem" }}>
@@ -361,42 +485,143 @@ export default function NewRequest() {
         )}
 
         <div style={s.card}>
-          {/* Contact summary (read-only) */}
-          <div style={{ marginBottom:"1.75rem", paddingBottom:"1.25rem", borderBottom:"1px solid rgba(var(--ff-fg), .08)" }}>
-            <div style={s.label}>Submitting as</div>
-            <div style={{ fontSize:".95rem", fontWeight:500 }}>
-              {[profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Your account"}
-              {isBusiness && lastReq?.business_name ? <span style={{ color:"rgba(var(--ff-muted), .6)", fontWeight:400 }}> · {lastReq.business_name}</span> : null}
+          {/* ---------- 1 · Describe it in your own words ---------- */}
+          {step === 1 && (<>
+            {/* Contact summary (read-only) */}
+            <div style={{ marginBottom:"1.75rem", paddingBottom:"1.25rem", borderBottom:"1px solid rgba(var(--ff-fg), .08)" }}>
+              <div style={s.label}>Submitting as</div>
+              <div style={{ fontSize:".95rem", fontWeight:500 }}>
+                {[profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Your account"}
+                {isBusiness && lastReq?.business_name ? <span style={{ color:"rgba(var(--ff-muted), .6)", fontWeight:400 }}> · {lastReq.business_name}</span> : null}
+              </div>
+              <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .55)", marginTop:".2rem" }}>
+                {[profile?.email, profile?.phone].filter(Boolean).join(" · ")}
+              </div>
+              <p style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .4)", marginTop:".5rem" }}>Need to change your name or phone? Update it in your profile.</p>
             </div>
-            <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .55)", marginTop:".2rem" }}>
-              {[profile?.email, profile?.phone].filter(Boolean).join(" · ")}
+
+            {/* The description drives everything downstream — the service we pick,
+                the questions we ask, and what the pro reads. So it comes first and
+                nothing is asked before it. */}
+            <div style={{ marginBottom:"1.2rem" }}>
+              <label style={s.label}>What&rsquo;s going on?</label>
+              <textarea
+                style={{ ...inp, resize:"vertical", minHeight:"140px", lineHeight:1.6, borderColor: errors.description ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }}
+                placeholder="e.g. The kitchen tap drips constantly and the cupboard underneath is damp — it's been getting worse for a couple of weeks."
+                value={description}
+                onChange={e => { setDescription(e.target.value); setErrors(er => ({ ...er, description:"" })); }} />
+              <VoiceDictate onAppend={(t) => { setDescription(d => (d.trim() ? d.trim() + " " : "") + t); setErrors(er => ({ ...er, description:"" })); }} />
+              {errors.description && <p id="nr-err-description" style={s.err}>{errors.description}</p>}
             </div>
-            <p style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .4)", marginTop:".5rem" }}>Need to change your name or phone? Update it in your profile.</p>
-          </div>
 
-          {/* Services */}
-          <p style={s.label}>What do you need? <span style={{ color:"rgba(var(--ff-muted), .4)", textTransform:"none", letterSpacing:0 }}>(select all that apply)</span></p>
-          <div style={{ marginBottom:".5rem" }}>
-            <ServicePicker items={SERVICES} selected={selectedServices} onToggle={toggleService} pricing={pricing} />
-          </div>
-          {errors.services && <p id="nr-err-services" style={s.err}>{errors.services}</p>}
+            {/* Photo */}
+            <div style={{ marginBottom:"1.2rem" }}>
+              <label style={s.label}>Photo of the problem <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
+              <p style={{ margin:"0 0 .5rem", fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.45 }}>A clear photo helps contractors give you a faster, more accurate estimate — and means fewer surprises on the day.</p>
+              <label htmlFor="nr-photo-upload" style={{ display:"flex", alignItems:"center", gap:".75rem", border:"2px dashed " + (photoFile ? "rgba(234,107,20,.5)" : "rgba(var(--ff-fg), .12)"), borderRadius:"10px", padding:"1rem 1.25rem", cursor:"pointer", background: photoFile ? "rgba(234,107,20,.05)" : "transparent", transition:"border-color .2s,background .2s" }}>
+                <Ic name="camera" size={22} color="#ea6b14" style={{ flexShrink:0 }} />
+                <div>
+                  <p style={{ margin:0, fontSize:".85rem", color: photoFile ? "#ea6b14" : "rgba(var(--ff-muted), .7)", fontWeight:500 }}>
+                    {photoFile ? photoFile.name : "Attach a photo"}
+                  </p>
+                  <p style={{ margin:".2rem 0 0", fontSize:".74rem", color:"rgba(var(--ff-muted), .4)" }}>
+                    {photoFile ? "Tap to change" : "Tap to choose — max 5 MB"}
+                  </p>
+                </div>
+                <input id="nr-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB. Please choose a smaller one."); e.target.value = ""; return; } setSubmitError(""); setPhotoFile(f); }} style={{ display:"none" }} />
+              </label>
+            </div>
+          </>)}
 
-          {/* Budget — anchored to the category average so the number is informed. */}
-          <BudgetPicker
-            services={selectedServices}
-            pricing={pricing}
-            min={budgetMin}
-            max={budgetMax}
-            flexible={budgetFlexible}
-            onMin={v => { setBudgetMin(v); setErrors(e => ({ ...e, budget: "" })); }}
-            onMax={v => { setBudgetMax(v); setErrors(e => ({ ...e, budget: "" })); }}
-            onFlexible={v => { setBudgetFlexible(v); setErrors(e => ({ ...e, budget: "" })); }}
-            error={errors.budget}
-            errorId="nr-err-budget"
-          />
+          {/* ---------- 2 · Confirm what we read ---------- */}
+          {step === 2 && (<>
+            <p style={s.label}>The service we picked</p>
+            {selectedServices.length > 0 ? (
+              <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginBottom:".6rem" }}>
+                {selectedServices.map(sv => (
+                  <button key={sv} type="button" onClick={() => toggleService(sv)}
+                    style={{ display:"inline-flex", alignItems:"center", gap:".5rem", padding:".6rem 1rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer", background:"rgba(234,107,20,.15)", border:"1px solid #ea6b14", color:"var(--ff-text)" }}>
+                    {sv}
+                    <span style={{ color:"#ea6b14", fontSize:"1.05rem", lineHeight:1 }}>×</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p style={{ fontSize:".88rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".8rem", lineHeight:1.5 }}>
+                We couldn&rsquo;t tell which trade this needs — pick one below and we&rsquo;ll take it from there.
+              </p>
+            )}
+            {selectedServices.length > 0 && (
+              <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .5)", marginBottom:"1.25rem" }}>
+                Tap one to remove it. Wrong trade? Add the right one below.
+              </p>
+            )}
+            {errors.services && <p id="nr-err-services" style={s.err}>{errors.services}</p>}
 
+            {tags.length > 0 && (
+              <div style={{ marginBottom:"1.5rem" }}>
+                <p style={s.label}>Details we spotted</p>
+                <div style={{ display:"flex", gap:".45rem", flexWrap:"wrap" as const }}>
+                  {tags.map(t => (
+                    <button key={t} type="button" onClick={() => removeTag(t)}
+                      style={{ display:"inline-flex", alignItems:"center", gap:".4rem", padding:".4rem .75rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".8rem", cursor:"pointer", background:"rgba(var(--ff-fg), .05)", border:"1px solid rgba(var(--ff-fg), .14)", color:"rgba(var(--ff-muted), .85)" }}>
+                      {t}
+                      <span style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".95rem", lineHeight:1 }}>×</span>
+                    </button>
+                  ))}
+                </div>
+                <p style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .45)", marginTop:".5rem" }}>
+                  These go to the pro with your description. Remove anything that isn&rsquo;t right.
+                </p>
+              </div>
+            )}
+
+            {showAllServices || selectedServices.length === 0 ? (
+              <div style={{ marginBottom:".5rem" }}>
+                <p style={s.label}>All services <span style={{ color:"rgba(var(--ff-muted), .4)", textTransform:"none", letterSpacing:0 }}>(select all that apply)</span></p>
+                <ServicePicker items={SERVICES} selected={selectedServices} onToggle={toggleService} pricing={pricing} />
+              </div>
+            ) : (
+              <button type="button" onClick={() => setShowAllServices(true)}
+                style={{ width:"100%", padding:".8rem 1rem", borderRadius:"10px", fontFamily:"inherit", fontSize:".88rem", cursor:"pointer", background:"rgba(var(--ff-fg), .04)", border:"1px dashed rgba(var(--ff-fg), .2)", color:"rgba(var(--ff-muted), .8)" }}>
+                + Add or change the service
+              </button>
+            )}
+          </>)}
+
+          {/* ---------- 3 · Tap-only follow-ups ---------- */}
+          {step === 3 && (<>
+            <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", marginBottom:"1.5rem" }}>
+              {answeredCount} of {activeQuestions.length} answered · every one is optional
+            </p>
+            {activeQuestions.map(q => (
+              <div key={q.id} style={{ marginBottom:"1.75rem" }}>
+                <p style={{ fontSize:".95rem", fontWeight:500, color:"var(--ff-text)", marginBottom:".7rem", lineHeight:1.45 }}>
+                  {q.prompt}
+                  {q.multi && <span style={{ fontWeight:400, color:"rgba(var(--ff-muted), .55)", fontSize:".82rem" }}> · pick any that apply</span>}
+                </p>
+                <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
+                  {q.options.map(opt => {
+                    const on = isAnswered(q, opt);
+                    return (
+                      <button key={opt} type="button" onClick={() => setAnswer(q, opt)}
+                        style={{ padding:".6rem 1rem", borderRadius:"10px", fontFamily:"inherit", fontSize:".88rem", fontWeight: on ? 500 : 400, cursor:"pointer",
+                          background: on ? "rgba(234,107,20,.15)" : "rgba(var(--ff-fg), .04)",
+                          border: on ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .12)",
+                          color: on ? "var(--ff-text)" : "rgba(var(--ff-muted), .8)" }}>
+                        {opt}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </>)}
+
+          {/* ---------- 4 · Where & when ---------- */}
+          {step === 4 && (<>
           {/* Schedule */}
-          <p style={{ ...s.label, marginTop:"1.75rem" }}>When do you need it?</p>
+          <p style={s.label}>When do you need it?</p>
           {SCHEDULES.map(sc => (
             <button key={sc.label} style={{ ...s.schedBtn, ...(schedule === sc.label ? s.schedBtnSel : {}) }} onClick={() => { setSchedule(sc.label); setErrors(e => ({ ...e, schedule:"" })); }}>
               <span style={{ fontSize:"1.5rem" }}><Ic name={sc.iconName as any} size={22} color="#ea6b14" /></span>
@@ -615,31 +840,19 @@ export default function NewRequest() {
             </label>
           )}
 
-          {/* Description */}
-          <div style={{ marginTop:"1.75rem", marginBottom:"1.2rem" }}>
-            <label style={s.label}>Describe the job</label>
-            <textarea style={{ ...inp, resize:"vertical", minHeight:"120px", borderColor: errors.description ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="Tell us what's broken or what you need done." value={description} onChange={e => { setDescription(e.target.value); setErrors(er => ({ ...er, description:"" })); }} />
-            <VoiceDictate onAppend={(t) => { setDescription(d => (d.trim() ? d.trim() + " " : "") + t); setErrors(er => ({ ...er, description:"" })); }} />
-            {errors.description && <p id="nr-err-description" style={s.err}>{errors.description}</p>}
-          </div>
-
-          {/* Photo */}
-          <div style={{ marginBottom:"1.2rem" }}>
-            <label style={s.label}>Photo of the problem <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
-            <p style={{ margin:"0 0 .5rem", fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.45 }}>A clear photo helps contractors give you a faster, more accurate estimate — and means fewer surprises on the day.</p>
-            <label htmlFor="nr-photo-upload" style={{ display:"flex", alignItems:"center", gap:".75rem", border:"2px dashed " + (photoFile ? "rgba(234,107,20,.5)" : "rgba(var(--ff-fg), .12)"), borderRadius:"10px", padding:"1rem 1.25rem", cursor:"pointer", background: photoFile ? "rgba(234,107,20,.05)" : "transparent", transition:"border-color .2s,background .2s" }}>
-              <Ic name="camera" size={22} color="#ea6b14" style={{ flexShrink:0 }} />
-              <div>
-                <p style={{ margin:0, fontSize:".85rem", color: photoFile ? "#ea6b14" : "rgba(var(--ff-muted), .7)", fontWeight:500 }}>
-                  {photoFile ? photoFile.name : "Attach a photo"}
-                </p>
-                <p style={{ margin:".2rem 0 0", fontSize:".74rem", color:"rgba(var(--ff-muted), .4)" }}>
-                  {photoFile ? "Tap to change" : "Tap to choose — max 5 MB"}
-                </p>
-              </div>
-              <input id="nr-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB. Please choose a smaller one."); e.target.value = ""; return; } setSubmitError(""); setPhotoFile(f); }} style={{ display:"none" }} />
-            </label>
-          </div>
+          {/* Budget — anchored to the category average so the number is informed. */}
+          <BudgetPicker
+            services={selectedServices}
+            pricing={pricing}
+            min={budgetMin}
+            max={budgetMax}
+            flexible={budgetFlexible}
+            onMin={v => { setBudgetMin(v); setErrors(e => ({ ...e, budget: "" })); }}
+            onMax={v => { setBudgetMax(v); setErrors(e => ({ ...e, budget: "" })); }}
+            onFlexible={v => { setBudgetFlexible(v); setErrors(e => ({ ...e, budget: "" })); }}
+            error={errors.budget}
+            errorId="nr-err-budget"
+          />
 
           <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", marginTop:"1.5rem", padding:"1rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
             <input
@@ -656,15 +869,21 @@ export default function NewRequest() {
               <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>Privacy Policy</a>.
             </label>
           </div>
+          </>)}
 
-          {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"var(--ff-danger)", marginTop:"1rem" }}>{submitError}</div>}
+          {/* Deliberately OUTSIDE the step blocks: the photo-size guard on screen 1
+              and submit() on screen 4 both write here. */}
+          {submitError &&<div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"var(--ff-danger)", marginTop:"1rem" }}>{submitError}</div>}
         </div>
 
         <div style={{ display:"flex", gap:".75rem", marginTop:"2rem" }}>
-          <button style={{ ...s.navBtn, background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"1px solid rgba(var(--ff-fg), .1)" }} onClick={() => setLocation("/client-dashboard")}>← Cancel</button>
-          <button style={{ ...s.navBtn, background:"linear-gradient(135deg,#ea6b14,#f09020)", color:"#fff", opacity: submitting ? .6 : 1 }} onClick={submit} disabled={submitting}>
-            {submitting ? "Submitting…" : "Submit Request →"}
-          </button>
+          <button style={{ ...s.navBtn, background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"1px solid rgba(var(--ff-fg), .1)" }} onClick={back}>{step === 1 ? "← Dashboard" : "← Back"}</button>
+          {step < TOTAL
+            ? <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff" }} onClick={next}>Next →</button>
+            : <button style={{ ...s.navBtn, background:"linear-gradient(135deg,#ea6b14,#f09020)", color:"#fff", opacity: submitting ? .6 : 1 }} onClick={submit} disabled={submitting}>
+                {submitting ? "Submitting…" : "Submit Request →"}
+              </button>
+          }
         </div>
       </div>
     </div>
