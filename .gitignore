@@ -22,21 +22,43 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-apply-auth-oauth.sh
-AUTH_SETUP.md
-apply-bugfixes.sh
-apply-legal-pages.sh
-apply-ui-improvements.sh
-apply-blog-liability.sh
-apply-contractor-trade.sh
-apply-profile-bar.sh
-apply-contractor-view.sh
-apply-global-footer.sh
-apply-contractor-cleanup.sh
-apply-contact-privacy.sh
-apply-before-after.sh
+
+# Environment. The repo is PUBLIC — nothing named .env belongs in it.
+# Only VITE_* vars are used and they ship in the JS bundle anyway, but the
+# rule has to exist so the day a real secret lands here it is not published.
+# See .env.example for the shape.
+.env
+.env.*
+!.env.example
+
+# Installer scripts. These are one-shot deploy artifacts, not source.
+# Previously 13 were listed BY NAME, which is why 52 of them ended up tracked.
+apply-*.sh
+cleanup-freddy-folders.sh
+install-skills.sh
+
+# Local agent tooling — machine-specific, regenerated, not project source.
+.claude/
+.claude-flow/
+.swarm/
+*.db
+
+# Supabase CLI scratch
+supabase/.temp/
+
+# Load testing artifacts
+loadtest-*.js
+loadtest-*.json
+
+# Marketing / owner deliverables. Binary, unreviewable in a diff, and they
+# live on the owner's Desktop as the working copy.
+*.docx
+*.pages
+
+# Contractor / client contact lists. PII must never reach a public repo.
+*.csv
 
 # private security audit - never commit to the public repo
 SECURITY-AUDIT-PRIVATE.md
-apply-security-audit.sh
+AUTH_SETUP.md
 _skills-to-install/

@@ -555,7 +555,17 @@ Consumer-facing wording: say **"held securely"**, never "escrow" — the Stripe 
 
 **`src/lib/contractCopy.ts`** — `sendContractCopy(jobId)` retries the Alberta written-copy email 3× (the edge update is write-once, so retrying can't double-send) and returns false only if all attempts fail; `CONTRACT_COPY_FAILED` is the copy to show then.
 
-**Owner-only, still open:** leaked-password protection (Dashboard → Authentication → Policies), and six deployed edge functions with **no source in the repo** (`analyze-repair`, `remind-contractor`, `resend-domains`, `send-bid-email`, `send-reminder`, `send-welcome`) — all but `resend-domains` are `verify_jwt=false`.
+**Owner-only, still open:** leaked-password protection (Dashboard → Authentication → Policies).
+
+**The source-less edge functions were recovered on 2026-08-23** and now live in `supabase/functions/`. There were **five**, not six — `send-bid-email` is no longer deployed. Reading them confirmed what the audit could only suspect:
+
+- **`send-reminder` (v1, `verify_jwt=false`) is an open mail relay on our sending domain.** It takes `subject`, `title`, `body` and an arbitrary `email` **straight from the request body** and sends that HTML as `noreply@freddyfixit.ca`. It is **LIVE** — `notify_user` calls it — so it can't simply be deleted; it needs the `x-ff-internal` token treatment described above.
+- **`send-welcome` (v10, `verify_jwt=false`) is the same hole plus Twilio.** Arbitrary `email` *and* arbitrary `phone` from the body, sending paid SMS. Superseded by `contractor-welcome` v2, no caller — delete it.
+- **`remind-contractor` (v8, `verify_jwt=false`)** emails a contractor a "upload your documents" nudge from a body-supplied `contractor_id`. No caller; copy is stale ("Step 6 of your profile" — onboarding is 5 steps). Delete it.
+- **`resend-domains` (v2)** is already a 410 tombstone. Delete it.
+- **`analyze-repair` (v3, `verify_jwt=false`) is NOT junk** — it's the AI Repair Scanner, a real public lead-gen tool with CORS locked to our origins, per-IP rate limiting, prompt-injection screening, and server-side filtering of its recommendations to the 23 known service labels. **It is the only caller of `scan_rate_check`, and it calls it over REST** — which is exactly why a repo grep made that RPC look dead. It also writes to a **`repair_scans`** table. Don't delete either without first checking for a frontend entry point.
+
+Their DKIM reputation is shared with every transactional email we send, and a DKIM fault has already taken all platform email down once.
 
 The full ranked findings live in `SECURITY-AUDIT-PRIVATE.md`, which is **gitignored** — the repo is public and must never carry a map of holes.
 
@@ -564,7 +574,7 @@ The full ranked findings live in `SECURITY-AUDIT-PRIVATE.md`, which is **gitigno
 # Open / queued
 
 - **Owner action: leaked-password protection** — Supabase Dashboard → Authentication → Policies. Can't be set over MCP.
-- **Six deployed edge functions have no source in the repo** — see the security section. Either recover their source or delete the ones that are dead.
+- **Gate `send-reminder` behind an internal token, then delete `send-welcome`, `remind-contractor` and `resend-domains`** — see the security section. Their source is now in the repo; `send-reminder` is a live open mail relay and is the one that actually matters.
 - **Prepaid-contracting licensing** (contractor licence + bond; whether the platform needs its own) — lawyer + Service Alberta. Blocking-risk item.
 - **One real end-to-end live payment run** — no job has ever reached `held`, so the held→dispute→release path is production-untested.
 - Balance-owed client reminders in `run_reminders()`; admin escalation for health check 5.
