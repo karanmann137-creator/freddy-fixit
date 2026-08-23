@@ -31,9 +31,13 @@ dist-ssr
 .env.*
 !.env.example
 
-# Installer scripts. These are one-shot deploy artifacts, not source.
+# Installer and repair scripts. These are one-shot deploy artifacts, not source.
 # Previously 13 were listed BY NAME, which is why 52 of them ended up tracked.
+# fix-*.sh is here because the first script written after that cleanup was
+# fix-github-login.sh, which the apply-*.sh glob did not catch — a `git add -A`
+# would have published it on the very next commit.
 apply-*.sh
+fix-*.sh
 cleanup-freddy-folders.sh
 install-skills.sh
 
