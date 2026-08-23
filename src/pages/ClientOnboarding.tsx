@@ -110,6 +110,19 @@ function fmtPhone(v: string) {
   return d.slice(0,3) + "-" + d.slice(3,6) + "-" + d.slice(6);
 }
 
+// A referral code can arrive two ways: in the ?ref= link, or typed in by hand
+// because the friend was told it in person. App.tsx stashes the link version to
+// localStorage, but it does that in an effect, so on a cold load of
+// /client-onboarding?ref=CODE it may not have run yet — read the URL directly
+// too rather than depending on which effect fires first.
+function stashedRefCode(): string {
+  try {
+    const fromUrl = new URLSearchParams(window.location.search).get("ref");
+    if (fromUrl) return fromUrl.trim().toUpperCase();
+    return (localStorage.getItem("ff_ref_code") ?? "").trim().toUpperCase();
+  } catch { return ""; }
+}
+
 // Derive a display name from the email local-part so clients don't have to type
 // their name (reduces last-step drop-off). "alex.johnson@x.com" -> Alex / Johnson.
 function namesFromEmail(email: string): { first: string; last: string } {
@@ -156,7 +169,7 @@ export default function ClientOnboarding() {
   const [answers, setAnswers]             = useState<JobAnswers>({});
   const [detectedFor, setDetectedFor]     = useState("");
   const [showAllServices, setShowAllServices] = useState(false);
-  const [form, setForm] = useState({ email:"", phone:"", password:"", preferredSchedule:"", location:"", postalCode:"", jobDescription:"", businessName:"", businessType:"", locations:"", billingPreference:"" });
+  const [form, setForm] = useState(() => ({ email:"", phone:"", password:"", preferredSchedule:"", location:"", postalCode:"", jobDescription:"", businessName:"", businessType:"", locations:"", billingPreference:"", referralCode: stashedRefCode() }));
   const [clientType, setClientType] = useState<"individual"|"business">("individual");
   const [recurring, setRecurring] = useState(false);
   const [recurringFrequency, setRecurringFrequency] = useState<string>("");
@@ -396,6 +409,12 @@ export default function ClientOnboarding() {
         try { await supabase.rpc("newsletter_subscribe", { p_email: form.email, p_audience: "client", p_name: derivedName.first, p_source: "signup_checkbox" }); } catch {}
       }
       const userId = authData.user.id;
+      // A TYPED code has to survive the email-confirmation detour. There is no
+      // session yet, so apply_referral_code (keyed on auth.uid()) can't run — and
+      // AuthCallback, which runs it after they click the link, only ever reads
+      // localStorage. Without this line a code entered by hand is silently lost
+      // for exactly the people who take the long way round.
+      try { if (form.referralCode.trim()) localStorage.setItem("ff_ref_code", form.referralCode.trim().toUpperCase()); } catch {}
       // No session => email confirmation required. The trigger saved their
       // request already; show the verify screen.
       if (!authData.session) { trackEvent("sign_up", { method: "client" }); trackEvent("post_job"); requestGoogleReview("signup"); requestGoogleReview("job_posted"); setVerifyEmail(true); window.scrollTo(0,0); setLoading(false); return; }
@@ -412,9 +431,13 @@ export default function ClientOnboarding() {
           setPhotoWarn(true); // surface on the success screen instead of failing silently
         }
       }
-      // Apply a stashed referral code now that the client has an active session.
+      // Apply the referral code now that the client has an active session. The
+      // TYPED code wins over the stashed one: if they arrived on a ?ref= link but
+      // then deliberately typed a different code, the one they typed is the one
+      // they meant. A bad code must never block a signup — apply_referral_code
+      // returns {ok:false,reason} rather than throwing, and the catch covers the rest.
       try {
-        const ref = localStorage.getItem("ff_ref_code");
+        const ref = (form.referralCode || localStorage.getItem("ff_ref_code") || "").trim().toUpperCase();
         if (ref) { await supabase.rpc("apply_referral_code", { p_code: ref }); localStorage.removeItem("ff_ref_code"); }
       } catch {}
       trackEvent("sign_up", { method: "client" }); trackEvent("post_job"); requestGoogleReview("signup"); requestGoogleReview("job_posted");
@@ -572,6 +595,19 @@ export default function ClientOnboarding() {
                 <input autoComplete="new-password" style={{ ...inp, borderColor: errors.password ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="password" placeholder="Min 8 characters" value={form.password} onChange={e => set("password",e.target.value)} />
                 <p style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .55)", margin:".3rem 0 0", lineHeight:1.4 }}>At least 8 characters. A mix of letters, numbers and symbols is strongest.</p>
                 {errors.password && <p id="co-err-password" style={s.err}>{errors.password}</p>}
+              </div>
+              <div style={{ marginBottom:"1.2rem" }}>
+                <label style={s.label}>Referral code <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
+                <input
+                  style={{ ...inp, letterSpacing:".08em" }}
+                  type="text" placeholder="A friend's code"
+                  autoCapitalize="characters" autoCorrect="off" spellCheck={false} maxLength={24}
+                  value={form.referralCode}
+                  onChange={e => set("referralCode", e.target.value.toUpperCase())}
+                />
+                <p style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .55)", margin:".3rem 0 0", lineHeight:1.4 }}>
+                  Referred by someone? Enter their code and we&rsquo;ll waive the 3% service fee on your first job. Prefilled automatically if you arrived from an invite link.
+                </p>
               </div>
               <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", margin:"1.5rem 0 .5rem", padding:"1rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
                 <input

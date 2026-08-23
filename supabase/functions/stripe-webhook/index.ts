@@ -88,9 +88,26 @@ Deno.serve(async (req) => {
         const { data: prows } = await admin.from("recurring_prepayments")
           .update({ status: "held", stripe_payment_intent: pi.id })
           .eq("id", pi.metadata.prepay_id).eq("status", "pending")
-          .select("id, client_id, contractor_id, occurrences_total, plan_request_id");
+          .select("id, client_id, contractor_id, occurrences_total, plan_request_id, fee_waived");
         const rp = prows?.[0];
         if (rp) {
+          // Referral 3% waiver: create-recurring-prepayment already charged this
+          // pool one fee short, so mark the reward spent now that the money has
+          // actually landed. Doing it here rather than at checkout means an
+          // abandoned session can't burn it, and doing it here rather than when
+          // the first visit is linked closes the window where a client could
+          // spend the same waiver again on a separate one-off job.
+          if (rp.fee_waived) {
+            try {
+              const { data: pj } = await admin.from("jobs").select("id")
+                .eq("request_id", rp.plan_request_id)
+                .order("created_at", { ascending: true }).limit(1);
+              const planJobId = pj?.[0]?.id;
+              const clientId = pi.metadata?.client_id ?? rp.client_id;
+              if (clientId && planJobId)
+                await admin.rpc("consume_referral_waiver", { p_client: clientId, p_job_id: planJobId });
+            } catch (_) { /* best-effort — the discount is already given either way */ }
+          }
           try {
             await admin.rpc("_notify", {
               p_user: rp.client_id, p_type: "prepay_funded",

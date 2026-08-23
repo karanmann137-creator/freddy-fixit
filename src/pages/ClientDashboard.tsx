@@ -163,6 +163,9 @@ export default function ClientDashboard() {
   const [referral, setReferral]     = useState<any>(null);
   const [rewindOpen, setRewindOpen] = useState(false);
   const [refCopied, setRefCopied]   = useState(false);
+  const [refInput, setRefInput]     = useState("");        // a friend's code, typed in by hand
+  const [refBusy, setRefBusy]       = useState(false);
+  const [refMsg, setRefMsg]         = useState<{ ok: boolean; text: string } | null>(null);
   const [plans, setPlans]           = useState<any[]>([]);
   const [busyPlan, setBusyPlan]     = useState<string|null>(null);
   const [newVisitTime, setNewVisitTime] = useState<string>("");
@@ -504,6 +507,48 @@ export default function ClientDashboard() {
       await navigator.clipboard.writeText(`Get your first Freddy Fix It service fee waived with my code ${code}: https://freddyfixit.ca/?ref=${code}`);
       setRefCopied(true); setTimeout(() => setRefCopied(false), 2000);
     } catch { notify("Couldn't copy automatically — your code is " + code + " (shown on the card)."); }
+  };
+
+  // Apply a friend's code by hand. Until now the ONLY way a code could be used
+  // was clicking a ?ref= link, so a code heard in person — or a link pasted
+  // somewhere that strips the query string — was silently unusable. That is why
+  // no referral had ever been recorded.
+  //
+  // Every rule (unknown code, your own code, already referred) is enforced in
+  // apply_referral_code, which is SECURITY DEFINER and keyed on auth.uid(); this
+  // only translates its reason codes into English. Nothing here decides
+  // eligibility, so a client cannot talk their way into a waived fee.
+  const applyReferral = async () => {
+    const code = refInput.trim().toUpperCase();
+    if (!code || refBusy) return;
+    setRefBusy(true); setRefMsg(null);
+    try {
+      const { data, error } = await supabase.rpc("apply_referral_code", { p_code: code });
+      if (error) throw error;
+      const res = data as any;
+      if (res?.ok === true) {
+        setRefInput("");
+        setRefMsg({ ok: true, text: "Code applied — your 3% service fee is waived on your first job." });
+        // Refresh the card so the entry box disappears, then re-check the live
+        // fee line so an unpaid job's total drops without needing a reload.
+        try { const { data: r } = await supabase.rpc("get_my_referral"); setReferral(r ?? null); } catch {}
+        if (activeJob && activeJob.payment_status !== "released" && activeJob.total_charged == null && activeReq?.user_id) {
+          try {
+            const { data: elig } = await supabase.rpc("referral_waiver_eligible", { p_client: activeReq.user_id, p_job_id: activeJob.id });
+            setWaivedForJob(elig === true ? activeJob.id : null);
+          } catch { /* the fee line just stays as it was until the next load */ }
+        }
+      } else {
+        const reason = String(res?.reason ?? "");
+        setRefMsg({ ok: false, text:
+          reason === "self"             ? "That's your own code — send it to a friend instead."
+          : reason === "already_referred" ? "This account has already used a referral code."
+          : reason === "empty"            ? "Enter a code first."
+          :                                 "We don't recognise that code. Check it and try again." });
+      }
+    } catch {
+      setRefMsg({ ok: false, text: "Couldn't apply that code just now. Please try again." });
+    } finally { setRefBusy(false); }
   };
 
   const startEdit = (r: any) => {
@@ -1385,6 +1430,35 @@ export default function ClientDashboard() {
                 <button style={{ ...s.tab, marginTop:".45rem", fontSize:".78rem", ...(refCopied ? { color:"#22c55e", borderColor:"rgba(34,197,94,.4)", background:"rgba(34,197,94,.1)" } : {}) }} onClick={copyReferral}>{refCopied ? "Copied ✓" : "Copy invite link"}</button>
               </div>
             </div>
+            {/* Only offered to someone who hasn't been referred yet. Once
+                apply_referral_code succeeds it refuses a second code, so
+                leaving the box up would just be a button that always fails. */}
+            {!referral.i_was_referred && (
+              <div style={{ marginTop:".9rem", paddingTop:".85rem", borderTop:"1px solid rgba(var(--ff-fg), .1)" }}>
+                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".5rem", lineHeight:1.5 }}>
+                  Got a code from a friend? Enter it before your first job and we'll waive your 3% service fee.
+                </div>
+                <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
+                  <input
+                    value={refInput}
+                    onChange={e => { setRefInput(e.target.value.toUpperCase()); setRefMsg(null); }}
+                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void applyReferral(); } }}
+                    placeholder="Friend's code"
+                    aria-label="Friend's referral code"
+                    autoCapitalize="characters" autoCorrect="off" spellCheck={false} maxLength={24}
+                    style={{ flex:"1 1 9rem", minWidth:0, padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", letterSpacing:".08em", boxSizing:"border-box" as const }}
+                  />
+                  <button
+                    onClick={() => void applyReferral()}
+                    disabled={refBusy || !refInput.trim()}
+                    style={{ ...s.tab, fontSize:".8rem", ...(refBusy || !refInput.trim() ? { opacity:.5, cursor:"not-allowed" } : {}) }}
+                  >{refBusy ? "Applying…" : "Apply"}</button>
+                </div>
+                {refMsg && (
+                  <div style={{ marginTop:".5rem", fontSize:".8rem", lineHeight:1.5, color: refMsg.ok ? "#22c55e" : "#f87171" }}>{refMsg.text}</div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

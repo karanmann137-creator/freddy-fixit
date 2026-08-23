@@ -50,6 +50,10 @@ Deno.serve(async (req) => {
     // Recurring plans require a signed service agreement on the plan's job before
     // any money is collected. Fail-CLOSED: unsigned, a check error, or an
     // unresolvable job all block the pre-payment and ask the client to refresh.
+    // Hoisted out of the gate below because the referral check needs it too: the
+    // plan's first job is the only job id that exists at this point, and
+    // referral_waiver_eligible needs one to exclude the job being paid for.
+    let planJobId: string | null = null;
     try {
       const { data: pj, error: pjErr } = await admin.from("jobs")
         .select("id").eq("request_id", plan_request_id)
@@ -57,6 +61,7 @@ Deno.serve(async (req) => {
       if (pjErr) throw pjErr;
       const jobId = Array.isArray(pj) && pj[0]?.id ? pj[0].id : null;
       if (!jobId) throw new Error("no job for plan");
+      planJobId = jobId;
       const { data: needs, error: needErr } = await admin.rpc("contract_required", { p_job_id: jobId });
       if (needErr) throw needErr;
       if (needs === true) {
@@ -87,14 +92,33 @@ Deno.serve(async (req) => {
     const payoutPer = r2(Number(quote.payout_per));
     const commissionPer = r2(Number(quote.commission_per));
     const perCharge = r2(basePer + feePer);
-    const total = r2(perCharge * occ);
+
+    // A referred client's 3% service fee is waived on their FIRST job, and until
+    // now the pool ignored that entirely — which didn't merely skip the discount,
+    // it destroyed it: linking the first prepaid visit sets that job to 'held',
+    // and referral_waiver_eligible then returns false forever after. Same
+    // first-only rule as milestones. read-only check; consume-referral_waiver runs
+    // in stripe-webhook once the money has actually landed, so an abandoned
+    // checkout can't burn the reward.
+    let feeWaived = false;
+    if (planJobId) {
+      try {
+        const { data: elig } = await admin.rpc("referral_waiver_eligible", { p_client: user.id, p_job_id: planJobId });
+        feeWaived = elig === true;
+      } catch (_) { /* best-effort — never block a payment on the perk */ }
+    }
+    // Charge one fee short. consume_prepaid_occurrence reads recurring_prepayments
+    // .fee_waived and zeroes client_fee on occurrence 1 only, so the linked jobs'
+    // funded_amount sums to exactly this number and no visit ends up under-funded.
+    const total = r2(basePer * occ + feePer * (feeWaived ? occ - 1 : occ));
     const contractorId = plan.assigned_contractor_id || plan.preferred_contractor_id || null;
 
     // Record a pending pool up front; the webhook flips it to 'held' once paid.
     const { data: rp, error: rpErr } = await admin.from("recurring_prepayments").insert({
       plan_request_id, client_id: user.id, contractor_id: contractorId,
       occurrences_total: occ, amount_per_occurrence: basePer, client_fee_per: feePer,
-      payout_per: payoutPer, commission_per: commissionPer, total_charged: total, status: "pending",
+      payout_per: payoutPer, commission_per: commissionPer, total_charged: total,
+      fee_waived: feeWaived, status: "pending",
     }).select("id").single();
     if (rpErr || !rp) return json({ error: `Could not start prepayment: ${rpErr?.message ?? "unknown"}` }, 500);
 
@@ -117,7 +141,9 @@ Deno.serve(async (req) => {
           unit_amount: Math.round(total * 100),
           product_data: {
             name: `Freddy Fix It — ${occ}x prepaid ${svc}`,
-            description: `${occ} visits x ($${basePer.toFixed(2)} + 3% service fee $${feePer.toFixed(2)}). Held securely; each visit is released to your pro as it's completed.`,
+            description: feeWaived
+              ? `${occ} visits x $${basePer.toFixed(2)}, plus a 3% service fee of $${feePer.toFixed(2)} on all but the first (referral perk — first visit's fee waived). Held securely; each visit is released to your pro as it's completed.`
+              : `${occ} visits x ($${basePer.toFixed(2)} + 3% service fee $${feePer.toFixed(2)}). Held securely; each visit is released to your pro as it's completed.`,
           },
         },
       }],
@@ -129,7 +155,9 @@ Deno.serve(async (req) => {
       metadata: { kind: "recurring_prepay", prepay_id: rp.id, plan_request_id },
     });
 
-    return json({ url: session.url, prepay_id: rp.id, occurrences: occ, per_occurrence: perCharge, total });
+    // per_occurrence is the standing price; with a waiver the FIRST visit costs
+    // basePer alone, which is why total is returned separately rather than derived.
+    return json({ url: session.url, prepay_id: rp.id, occurrences: occ, per_occurrence: perCharge, fee_waived: feeWaived, total });
   } catch (err) {
     console.error("create-recurring-prepayment:", String(err));
     return json({ error: String(err) }, 500);
