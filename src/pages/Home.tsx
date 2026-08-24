@@ -702,6 +702,89 @@ export default function Home() {
         </div>
       </div>
 
+      {/* ── About ── */}
+      <div className="ff-about">
+        <div className="ff-about-inner">
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
+            <p className="ff-about-eyebrow">Why Freddy Fix It</p>
+            <h2 className="ff-about-headline">Build Strong.<br /><span>Maintain Stronger.</span></h2>
+            <p className="ff-about-body">
+              We connect <strong>busy Calgarians</strong> with trusted local tradespeople for business, home repairs and vehicle maintenance —{" "}
+              <strong>compare estimates without calling.</strong>
+            </p>
+            <p className="ff-about-tagline">
+              Honest local pros, fair prices, and work you can count on.
+            </p>
+          </motion.div>
+          <motion.div className="ff-stats" initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7, delay: 0.2 }}>
+            <div className="ff-stat">
+              <div className="ff-stat-num">24/7</div>
+              <div className="ff-stat-label">Post your job request online anytime — no phone tag</div>
+            </div>
+            <div className="ff-stat">
+              <div className="ff-stat-num">100%</div>
+              <div className="ff-stat-label">Vetted and verified local tradespeople</div>
+            </div>
+            <div className="ff-stat">
+              <div className="ff-stat-num">$0</div>
+              <div className="ff-stat-label">No booking fees — pay only for the work done</div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* ── Freddy Verified ──
+           The one navy band between the hero and the footer. Everything inside
+           is already token-driven, so ff-on-dark flips the whole section — its
+           cards, hairlines and muted text — with no per-element change.
+           --ff-bg, NOT --ff-surface: under the scope --ff-surface is #151d2e,
+           which is exactly what a normal surface band already renders as in
+           dark mode, so this band would have vanished into the About band
+           above it. --ff-bg gives hero navy in both themes and keeps the seam.
+           Placed right after Before & After on purpose — the trust claim and
+           the "why us" story lead the page, ahead of the process/FAQ/services
+           detail bands. */}
+      <div className="ff-on-dark" style={{ background:"var(--ff-bg)", padding:"6rem 2rem", position:"relative" as const, overflow:"hidden" as const }}>
+        <div style={{ maxWidth:"960px", margin:"0 auto", position:"relative" as const, zIndex:1 }}>
+          <p style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" as const }}>Our Vetting Standard</p>
+          <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:".06em", color:"var(--ff-text)", textAlign:"center" as const, marginBottom:"1rem" }}>The Freddy <span style={{ color:"#ea6b14" }}>Verified</span> Promise.</h2>
+          <p style={{ textAlign:"center" as const, fontSize:"1rem", color:"rgba(var(--ff-muted), .7)", fontWeight:300, maxWidth:"620px", margin:"0 auto 3rem", lineHeight:1.7 }}>
+            Anyone can call themselves a handyman. Before a pro can take a single job on Freddy, they clear our verification checklist — and every job is payment-protected on top of it.
+          </p>
+          <div style={{ display:"flex", justifyContent:"center" as const, marginBottom:"3rem" }}>
+            <div style={{ display:"inline-flex", alignItems:"center", gap:".7rem", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.4)", borderRadius:"999px", padding:".7rem 1.4rem", boxShadow:"0 0 32px rgba(234,107,20,.18)" }}>
+              <svg width="30" height="30" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink:0 }}>
+                <polygon points="65.9,50.7 50.7,65.9 29.3,65.9 14.1,50.7 14.1,29.3 29.3,14.1 50.7,14.1 65.9,29.3" fill="rgba(234,107,20,0.08)" stroke="#ea6b14" strokeWidth="2"/>
+                <path d="M28 54 L28 38 L40 28 L52 38 L52 54 Z" stroke="var(--ff-text)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                <path d="M36 54 L36 43 L44 43 L44 54" stroke="#ea6b14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              </svg>
+              <span style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"1.4rem", letterSpacing:".08em", color:"#ea6b14" }}>Freddy Verified</span>
+            </div>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(min(250px, 100%), 1fr))", gap:"1rem", maxWidth:"820px", margin:"0 auto" }}>
+            {[
+              { t:"Licence & trade certification", d:"We confirm the right trade licence or certification for the work they do." },
+              { t:"Liability insurance", d:"Active coverage on file, so you're protected if something goes wrong." },
+              { t:"WCB coverage", d:"Workers' Compensation on file — no liability landing on you." },
+              { t:"Reference & work history checks", d:"We review past work and references before approving a pro." },
+              { t:"Admin background review", d:"A real person on our team reviews and approves every contractor." },
+              { t:"Payment held until you approve", d:"Your money stays protected and is only released once you're happy." },
+            ].map((it) => (
+              <div key={it.t} style={{ display:"flex", gap:".85rem", alignItems:"flex-start" as const, background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.15rem 1.3rem" }}>
+                <span style={{ flexShrink:0, marginTop:"1px" }}><Ic name="check-circle" size={22} color="#ea6b14" /></span>
+                <div>
+                  <div style={{ fontSize:".96rem", fontWeight:500, color:"var(--ff-text)", marginBottom:".25rem" }}>{it.t}</div>
+                  <div style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .65)", fontWeight:300, lineHeight:1.55 }}>{it.d}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p style={{ textAlign:"center" as const, marginTop:"2.5rem", fontSize:".9rem", color:"rgba(var(--ff-muted), .6)", fontWeight:300 }}>
+            A verified badge means our review process was completed — not a guarantee of outcome. You always pick your own pro.
+          </p>
+        </div>
+      </div>
+
       {/* ── How It Works ── */}
       <div className="ff-how ff-how-surface">
         <div className="ff-how-inner">
@@ -763,88 +846,6 @@ export default function Home() {
               </motion.div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* ── Freddy Verified ──
-           The one navy band between the hero and the footer. Everything inside
-           is already token-driven, so ff-on-dark flips the whole section — its
-           cards, hairlines and muted text — with no per-element change.
-           --ff-bg, NOT --ff-surface: under the scope --ff-surface is #151d2e,
-           which is exactly what a normal surface band already renders as in
-           dark mode, so this band would have vanished into the Services band
-           above it. --ff-bg gives hero navy in both themes and keeps the seam.
-           It is placed here on purpose — the trust claim is the thing worth
-           interrupting the page for. */}
-      <div className="ff-on-dark" style={{ background:"var(--ff-bg)", padding:"6rem 2rem", position:"relative" as const, overflow:"hidden" as const }}>
-        <div style={{ maxWidth:"960px", margin:"0 auto", position:"relative" as const, zIndex:1 }}>
-          <p style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" as const }}>Our Vetting Standard</p>
-          <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:".06em", color:"var(--ff-text)", textAlign:"center" as const, marginBottom:"1rem" }}>The Freddy <span style={{ color:"#ea6b14" }}>Verified</span> Promise.</h2>
-          <p style={{ textAlign:"center" as const, fontSize:"1rem", color:"rgba(var(--ff-muted), .7)", fontWeight:300, maxWidth:"620px", margin:"0 auto 3rem", lineHeight:1.7 }}>
-            Anyone can call themselves a handyman. Before a pro can take a single job on Freddy, they clear our verification checklist — and every job is payment-protected on top of it.
-          </p>
-          <div style={{ display:"flex", justifyContent:"center" as const, marginBottom:"3rem" }}>
-            <div style={{ display:"inline-flex", alignItems:"center", gap:".7rem", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.4)", borderRadius:"999px", padding:".7rem 1.4rem", boxShadow:"0 0 32px rgba(234,107,20,.18)" }}>
-              <svg width="30" height="30" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink:0 }}>
-                <polygon points="65.9,50.7 50.7,65.9 29.3,65.9 14.1,50.7 14.1,29.3 29.3,14.1 50.7,14.1 65.9,29.3" fill="rgba(234,107,20,0.08)" stroke="#ea6b14" strokeWidth="2"/>
-                <path d="M28 54 L28 38 L40 28 L52 38 L52 54 Z" stroke="var(--ff-text)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                <path d="M36 54 L36 43 L44 43 L44 54" stroke="#ea6b14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-              </svg>
-              <span style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"1.4rem", letterSpacing:".08em", color:"#ea6b14" }}>Freddy Verified</span>
-            </div>
-          </div>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(min(250px, 100%), 1fr))", gap:"1rem", maxWidth:"820px", margin:"0 auto" }}>
-            {[
-              { t:"Licence & trade certification", d:"We confirm the right trade licence or certification for the work they do." },
-              { t:"Liability insurance", d:"Active coverage on file, so you're protected if something goes wrong." },
-              { t:"WCB coverage", d:"Workers' Compensation on file — no liability landing on you." },
-              { t:"Reference & work history checks", d:"We review past work and references before approving a pro." },
-              { t:"Admin background review", d:"A real person on our team reviews and approves every contractor." },
-              { t:"Payment held until you approve", d:"Your money stays protected and is only released once you're happy." },
-            ].map((it) => (
-              <div key={it.t} style={{ display:"flex", gap:".85rem", alignItems:"flex-start" as const, background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.15rem 1.3rem" }}>
-                <span style={{ flexShrink:0, marginTop:"1px" }}><Ic name="check-circle" size={22} color="#ea6b14" /></span>
-                <div>
-                  <div style={{ fontSize:".96rem", fontWeight:500, color:"var(--ff-text)", marginBottom:".25rem" }}>{it.t}</div>
-                  <div style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .65)", fontWeight:300, lineHeight:1.55 }}>{it.d}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p style={{ textAlign:"center" as const, marginTop:"2.5rem", fontSize:".9rem", color:"rgba(var(--ff-muted), .6)", fontWeight:300 }}>
-            A verified badge means our review process was completed — not a guarantee of outcome. You always pick your own pro.
-          </p>
-        </div>
-      </div>
-
-      {/* ── About ── */}
-      <div className="ff-about">
-        <div className="ff-about-inner">
-          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
-            <p className="ff-about-eyebrow">Why Freddy Fix It</p>
-            <h2 className="ff-about-headline">Build Strong.<br /><span>Maintain Stronger.</span></h2>
-            <p className="ff-about-body">
-              We connect <strong>busy Calgarians</strong> with trusted local tradespeople for business, home repairs and vehicle maintenance —{" "}
-              <strong>compare estimates without calling.</strong>
-            </p>
-            <p className="ff-about-tagline">
-              Honest local pros, fair prices, and work you can count on.
-            </p>
-          </motion.div>
-          <motion.div className="ff-stats" initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7, delay: 0.2 }}>
-            <div className="ff-stat">
-              <div className="ff-stat-num">24/7</div>
-              <div className="ff-stat-label">Post your job request online anytime — no phone tag</div>
-            </div>
-            <div className="ff-stat">
-              <div className="ff-stat-num">100%</div>
-              <div className="ff-stat-label">Vetted and verified local tradespeople</div>
-            </div>
-            <div className="ff-stat">
-              <div className="ff-stat-num">$0</div>
-              <div className="ff-stat-label">No booking fees — pay only for the work done</div>
-            </div>
-          </motion.div>
         </div>
       </div>
 
