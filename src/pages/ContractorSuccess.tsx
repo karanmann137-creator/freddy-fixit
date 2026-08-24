@@ -87,7 +87,7 @@ export default function ContractorSuccess() {
           </div>
 
           <div className="ff-notice">
-            <div className="ff-notice-title"><Ic name="bell" size={14} style={{ marginRight:6 }} /> Check Your Dashboard</div>
+            <div className="ff-notice-title"><Ic name="info" size={14} style={{ marginRight:6 }} /> Check Your Dashboard</div>
             <div className="ff-notice-text">New jobs in your area show up in your dashboard, and we'll email you when one's available. Accept, schedule, and complete every job right from your dashboard.</div>
           </div>
 

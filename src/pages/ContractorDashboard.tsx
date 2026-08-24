@@ -821,7 +821,7 @@ export default function ContractorDashboard() {
               </div>
             ) : (
               <div style={{ display:"flex", alignItems:"flex-start", gap:".5rem", padding:".6rem .7rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .1)" }}>
-                <Ic name="bell" size={14} color="#f59e0b" style={{ marginTop:2, flexShrink:0 }} />
+                <Ic name="info" size={14} color="#f59e0b" style={{ marginTop:2, flexShrink:0 }} />
                 <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
                   The client has already paid on this job, so they can't hand it to another pro. But they can decline the change — you'd finish at the agreed price. Give the specific reason and message them first.
                 </div>
@@ -1487,7 +1487,7 @@ export default function ContractorDashboard() {
                     <div style={{ display:"flex", flexDirection:"column", gap:".7rem", marginBottom:"1.25rem" }}>
                       {job.request?.recurring && (
                         <div style={{ display:"flex", gap:".55rem", alignItems:"flex-start", padding:".7rem .8rem", borderRadius:"10px", background:"rgba(234,107,20,.10)", border:"1px solid rgba(234,107,20,.28)", marginBottom:".3rem" }}>
-                          <Ic name="refresh" size={16} color="#ea6b14" style={{ marginTop:1, flexShrink:0 }} />
+                          <Ic name="repeat" size={16} color="#ea6b14" style={{ marginTop:1, flexShrink:0 }} />
                           <div style={{ fontSize:".8rem", color:"var(--ff-text)", lineHeight:1.5 }}>
                             <strong>Recurring job{job.request?.recurring_frequency ? " — " + freqLabel(job.request.recurring_frequency) : ""}.</strong> This client wants a regular pro. Taking it on means committing to show up at the agreed times each visit — reliable recurring work, but please only accept if you can keep the schedule.
                           </div>
@@ -1751,7 +1751,7 @@ export default function ContractorDashboard() {
                 )}
                 {r.is_recurring && (
                   <div style={{ display:"flex", gap:".5rem", alignItems:"flex-start", padding:".6rem .7rem", borderRadius:"10px", background:"rgba(234,107,20,.10)", border:"1px solid rgba(234,107,20,.28)", marginBottom:".6rem" }}>
-                    <Ic name="refresh" size={15} color="#ea6b14" style={{ marginTop:1, flexShrink:0 }} />
+                    <Ic name="repeat" size={15} color="#ea6b14" style={{ marginTop:1, flexShrink:0 }} />
                     <div style={{ fontSize:".78rem", color:"var(--ff-text)", lineHeight:1.5 }}>
                       <strong>Recurring{r.recurring_frequency ? " · " + freqLabel(r.recurring_frequency) : ""}.</strong> Winning this makes you the client's go-to pro — you'll be expected to return at the agreed times each visit.
                     </div>
@@ -1917,7 +1917,7 @@ export default function ContractorDashboard() {
               return (
                 <div style={done ? s.card : { ...s.card, border:"1px solid rgba(234,107,20,.35)", background:"rgba(234,107,20,.06)" }}>
                   <div style={{ ...s.cardTitle, display:"flex", alignItems:"center", gap:".5rem" }}>
-                    <Ic name="bell" size={18} color="#ea6b14" /> {done ? "Your profile details" : "Finish setting up your profile"}
+                    <Ic name="info" size={18} color="#ea6b14" /> {done ? "Your profile details" : "Finish setting up your profile"}
                   </div>
                   <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.55, marginBottom:"1.25rem" }}>
                     {done

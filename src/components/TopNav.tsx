@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import NotificationBell from "@/components/NotificationBell";
 import SettingsModal from "@/components/SettingsModal";
+import { Ic } from "@/components/Ic";
 
 const CONTACT_EMAIL = "hello@freddyfixit.ca";
 
@@ -171,9 +172,7 @@ export default function TopNav() {
               className="ff-nav-btn ff-nav-btn-accent"
               style={{ ...btn, ...accentBtn, display: "inline-flex", alignItems: "center", gap: ".45rem" }}
             >
-              <span style={{ display: "inline-flex", flexDirection: "column", gap: "3px" }}>
-                <span style={hbar} /><span style={hbar} /><span style={hbar} />
-              </span>
+              <Ic name="menu" size={16} />
               Menu
             </button>
             {menuOpen && (
@@ -266,7 +265,6 @@ const btn: React.CSSProperties = {
 };
 const accentBtn: React.CSSProperties = { background: "#ea6b14", color: "#fff", borderColor: "#ea6b14" };
 const ghostBtn: React.CSSProperties = { background: "rgba(var(--ff-fg), .05)", color: "rgba(var(--ff-fg), .8)", borderColor: "rgba(var(--ff-fg), .12)" };
-const hbar: React.CSSProperties = { width: "16px", height: "2px", borderRadius: "2px", background: "currentColor", display: "block" };
 const menuPanel: React.CSSProperties = {
   position: "absolute", top: "calc(100% + .5rem)", right: 0, minWidth: "200px",
   background: "var(--ff-surface)", border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: "14px",

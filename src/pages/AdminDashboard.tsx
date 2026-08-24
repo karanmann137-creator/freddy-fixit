@@ -917,7 +917,7 @@ export default function AdminDashboard() {
                                 <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginTop:".25rem" }}>
                                   {docKeys.map(k => (
                                     <button key={k} style={{ ...s.btn, fontSize:".76rem", padding:".35rem .7rem" }} onClick={() => openDoc(docs[k])}>
-                                      <Ic name="download" size={12} style={{ marginRight:4 }} />{DOC_LABELS[k] || k} ↗
+                                      <Ic name="file" size={12} style={{ marginRight:4 }} />{DOC_LABELS[k] || k} ↗
                                     </button>
                                   ))}
                                 </div>

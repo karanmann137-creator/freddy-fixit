@@ -268,7 +268,7 @@ export default function ContractorProfile() {
                   {Object.entries(admin.doc_urls as Record<string, string | null>).map(([k, path]) => path ? (
                     <button key={k} onClick={() => openDoc(path)}
                       style={{ padding:".45rem .9rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".8rem", cursor:"pointer" }}>
-                      <Ic name="download" size={13} style={{ marginRight:5 }} />{DOC_LABELS[k] ?? k}
+                      <Ic name="file" size={13} style={{ marginRight:5 }} />{DOC_LABELS[k] ?? k}
                     </button>
                   ) : null)}
                 </div>

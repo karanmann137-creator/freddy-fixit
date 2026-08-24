@@ -1552,7 +1552,7 @@ export default function ClientDashboard() {
           </div>
         ) : (
           <div style={{ textAlign:"center", padding:"3.5rem 2rem" }}>
-            <div style={{ marginBottom:"1rem" }}><Ic name="refresh" size={44} color="#ea6b14" /></div>
+            <div style={{ marginBottom:"1rem" }}><Ic name="repeat" size={44} color="#ea6b14" /></div>
             <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".03em", lineHeight:1.1, marginBottom:".4rem" }}>No recurring plans</h2>
             <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".9rem" }}>Book a job as recurring and we'll line up each visit automatically — you can manage and prepay them here.</p>
           </div>
@@ -1958,7 +1958,7 @@ export default function ClientDashboard() {
                                 )}
                                 {depositSplit(activeJob) && <PaySplit job={activeJob} />}
                                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".6rem", lineHeight:1.5, padding:".6rem .75rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .09)" }}>
-                                  <Ic name="bell" size={13} color="#ea6b14" style={{ marginRight:5 }} /><strong>Your pro isn't dispatched until the deposit is paid.</strong> Paying is what books them in and sends them the job — until then the visit isn't locked. Nothing to worry about: we <strong>hold your money</strong> the whole time and only release it to the contractor once you've confirmed the work is done.
+                                  <Ic name="info" size={13} color="#ea6b14" style={{ marginRight:5 }} /><strong>Your pro isn't dispatched until the deposit is paid.</strong> Paying is what books them in and sends them the job — until then the visit isn't locked. Nothing to worry about: we <strong>hold your money</strong> the whole time and only release it to the contractor once you've confirmed the work is done.
                                 </div>
                                 {contractBlocked && (
                                   <div style={{ fontSize:".82rem", color:"var(--ff-warn)", marginBottom:".6rem", lineHeight:1.5 }}>

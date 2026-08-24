@@ -50,7 +50,6 @@ export default function DashboardSidebar({
     return next;
   });
 
-  const bar: React.CSSProperties = { display:"block", height:"2px", width:"100%", background:"currentColor", borderRadius:"2px" };
 
   const rowBase = (labels: boolean): React.CSSProperties => ({
     position:"relative" as const,
@@ -161,9 +160,7 @@ export default function DashboardSidebar({
           onClick={() => setExpanded(e => !e)} aria-label="Toggle menu" title="Menu"
           style={{ display:"flex", alignItems:"center", justifyContent: labels ? "flex-start" : "center", gap:".7rem", padding: labels ? ".55rem .8rem" : ".55rem 0", background:"transparent", border:"none", cursor:"pointer", marginBottom:".35rem", color:"rgba(var(--ff-muted), .85)" }}
         >
-          <span style={{ display:"inline-flex", flexDirection:"column" as const, gap:"3px", width:"18px" }}>
-            <span style={bar} /><span style={bar} /><span style={bar} />
-          </span>
+          <Ic name="menu" size={18} />
           {labels && <span style={{ fontWeight:600 }}>Menu</span>}
         </button>
       )}

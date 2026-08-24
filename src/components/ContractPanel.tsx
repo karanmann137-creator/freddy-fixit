@@ -251,7 +251,7 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
           Signed by both parties{contract?.signed_at ? ` on ${fmt(contract.signed_at)}` : ""}. This agreement is now in effect.
         </div>
         <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
-          <button style={{ ...btn, background: "#22c55e", color: "#06210f" }} onClick={viewSigned}><Ic name="download" size={13} style={{ marginRight: 5 }} />View signed copy</button>
+          <button style={{ ...btn, background: "#22c55e", color: "#06210f" }} onClick={viewSigned}><Ic name="file" size={13} style={{ marginRight: 5 }} />View signed copy</button>
           {contract?.source === "uploaded" && contract?.uploaded_path && (
             <button style={{ ...btn, background: "rgba(var(--ff-fg), .08)", color: "var(--ff-text)" }} onClick={viewUpload}>View attached document</button>
           )}
@@ -354,7 +354,7 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
 
         {contract?.source === "uploaded" && (
           <div style={{ marginBottom: ".8rem" }}>
-            <button style={{ ...btn, background: "rgba(var(--ff-fg), .08)", color: "var(--ff-text)" }} onClick={viewUpload}><Ic name="download" size={13} style={{ marginRight: 5 }} />View the contractor's document</button>
+            <button style={{ ...btn, background: "rgba(var(--ff-fg), .08)", color: "var(--ff-text)" }} onClick={viewUpload}><Ic name="file" size={13} style={{ marginRight: 5 }} />View the contractor's document</button>
             <div style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .7)", marginTop: ".4rem" }}>Freddy Fix It's standard terms and your Alberta cancellation rights (below) also apply.</div>
           </div>
         )}
