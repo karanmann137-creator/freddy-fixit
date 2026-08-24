@@ -3,7 +3,7 @@ import VoiceDictate from "@/components/VoiceDictate";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
-import GuideBubble from "@/components/GuideBubble";
+import OnboardingProgress from "@/components/OnboardingProgress";
 import { trackEvent } from "@/lib/analytics";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
 import { useServicePricing, fromText } from "@/lib/servicePricing";
@@ -66,34 +66,14 @@ export const SCHEDULES = [
   { iconName: "refresh", label: "Recurring",       sub: "Regular maintenance" },
 ];
 
-const STEP_TITLES = ["What Needs Fixing?", "Did We Get That Right?", "A Few Quick Questions", "Job Details", "Almost Done"];
-const STEP_SUBS   = [
-  "Describe it in your own words — we'll work out the rest",
-  "Check the service we picked and the details we spotted",
-  "Tap the answers — no typing, and you can skip any of them",
-  "Where, when, and roughly what you'd like to spend",
-  "Create a free account to track your request",
-];
+// One short, plain-language line per step — replaces both the old
+// STEP_TITLES/STEP_SUBS pair and the Freddy speech-bubble reframe
+// (see OnboardingProgress for the numbered bar that carries the step count).
+const STEP_TITLES = ["Describe your problem", "Confirm what we found", "Answer a few quick questions", "Add the job details", "Create your free account"];
 // Stable machine names for the drop-off funnel in PostHog (do not rename — insights
 // key off these). "details" and "account" are deliberately unchanged so the existing
 // funnel keeps working; "service" is gone because that screen no longer exists.
 const STEP_NAMES  = ["describe", "confirm", "questions", "details", "account"];
-// Plain-language "Freddy walks you through it" copy, one per step (see GuideBubble).
-const CLIENT_GUIDE: { message: string; why?: string; tip?: string }[] = [
-  { message: "Hi, I'm Freddy. Just tell me what's wrong in your own words — no need to know what the trade is called. I'll figure out which pro you need.",
-    why: "Pros quote far more accurately when they can read the problem in your words.",
-    tip: "In a hurry? Tap the microphone and say it out loud." },
-  { message: "Here's what I picked up. Tap anything that's wrong to remove it, or add a service I missed.",
-    why: "Getting the service right is what decides which pros see your job.",
-    tip: "You can pick more than one — plenty of jobs need two trades." },
-  { message: "A few quick taps so your estimates come back accurate instead of \"it depends\".",
-    why: "These are the questions a pro would phone you to ask anyway.",
-    tip: "Not sure on any of them? Skip it — a pro can confirm on site." },
-  { message: "Now the practical bits: where the job is, when you'd like it done, and roughly what you'd like to spend.",
-    why: "Location and timing decide which pros are free to take it on." },
-  { message: "Last step — create a quick free account so you can track your request and message your pro.",
-    why: "There's no charge now. You pay when you approve an estimate — we hold it safely and only release it to your pro after you confirm the work is done." },
-];
 
 const HOME_TO_SERVICE: Record<string,string> = {
   "General Repairs": "General Handyman",
@@ -562,18 +542,8 @@ export default function ClientOnboarding() {
         <button onClick={back} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".82rem", textTransform:"uppercase", letterSpacing:".08em", padding:0, marginBottom:"2rem", display:"block" }}>
           {step === 1 ? "← Home" : "← Back"}
         </button>
-        <p style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".15em", color:"#ea6b14", marginBottom:".4rem" }}>Step {step} of {TOTAL}</p>
-        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:".4rem" }}>{STEP_TITLES[step-1]}</h1>
-        <p style={{ color:"rgba(var(--ff-muted), .6)", fontSize:".9rem", marginBottom:".5rem" }}>{STEP_SUBS[step-1]}</p>
-        <p style={{ color:"rgba(var(--ff-muted), .4)", fontSize:".8rem", marginBottom:"2rem" }}>Takes about 2 minutes · posting is free</p>
-        <div style={{ display:"flex", gap:"6px", marginBottom:"2.5rem" }}>
-          {Array.from({length:TOTAL},(_,i) => <div key={i} style={{ height:"3px", flex:1, borderRadius:"99px", background: i+1===step ? "#ea6b14" : i+1<step ? "rgba(234,107,20,.45)" : "rgba(var(--ff-fg), .1)" }} />)}
-        </div>
-
-        <GuideBubble step={step} total={TOTAL}
-          message={CLIENT_GUIDE[step-1]?.message || ""}
-          why={CLIENT_GUIDE[step-1]?.why}
-          tip={CLIENT_GUIDE[step-1]?.tip} />
+        <OnboardingProgress step={step} total={TOTAL} />
+        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:"2rem" }}>{STEP_TITLES[step-1]}</h1>
 
         <div style={s.card}>
           {/* ── 5 · Account ─────────────────────────────────────────────── */}

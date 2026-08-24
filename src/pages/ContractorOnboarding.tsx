@@ -6,7 +6,7 @@ import { compressImage } from "@/lib/imageCompress";
 import { AVAIL_DAYS, WEEKDAYS, TIME_OPTIONS, DEFAULT_START, DEFAULT_END } from "@/lib/availability";
 import { trackEvent } from "@/lib/analytics";
 import OAuthButtons from "@/components/OAuthButtons";
-import GuideBubble from "@/components/GuideBubble";
+import OnboardingProgress from "@/components/OnboardingProgress";
 import ServicePicker from "@/components/ServicePicker";
 import VoiceDictate from "@/components/VoiceDictate";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
@@ -57,32 +57,10 @@ const WORK_TYPES = [
 // merged onto one screen rather than dropped — an earlier "sign up now, finish
 // later" shortcut was removed because it produced accounts with almost nothing
 // in them, so fewer SCREENS is the win here, never fewer answers.
-const STEP_TITLES = ["Your Details", "What You Do", "Where & When", "Your Credentials", "Photo & Documents"];
-const STEP_SUBS   = [
-  "Just the basics — takes about a minute",
-  "Your services and the kind of work you do",
-  "The areas you cover and the days you work",
-  "Licence, insurance and WCB — whatever applies to you",
-  "Optional now — you can add these later from your dashboard",
-];
-
-// Plain-language "Freddy walks you through it" copy, one per step (see GuideBubble).
-const CONTRACTOR_GUIDE: { message: string; why?: string; tip?: string }[] = [
-  { message: "Hi, I'm Freddy. I'll walk you through this — five short steps, about two minutes, and you can stop and pick up later. Let's start with the basics.",
-    why: "Your email is your login and how we send you new job leads.",
-    tip: "Phone is optional — add it if you'd like clients to reach you faster." },
-  { message: "Tell me what you do. Search or tap everything you're comfortable taking on, then pick the line of work that fits you best.",
-    why: "Your services decide which jobs we send you, and your line of work decides what paperwork we'll need.",
-    tip: "You can change both anytime from your dashboard." },
-  { message: "Where do you work, and when? Type your home base and I'll tick the closest area for you — add any others you'll travel to.",
-    why: "Jobs inside your areas float to the top of your list, and clients see your hours so they know when to expect you.",
-    tip: "Out-of-area jobs still show up — they just sit lower down." },
-  { message: "Now your qualifications — licence, insurance, WCB. Just fill in what applies to you.",
-    why: "This builds trust with clients and is required for some trades.",
-    tip: "Working on your own with no employees? Tick the WCB box and we won't ask for it — Alberta exempts solo operators." },
-  { message: "Last step. A photo and your documents are both optional right now — you can add them later from your dashboard.",
-    why: "Pros with a photo get picked more often, and verified documents are what let you start taking jobs." },
-];
+// One short, plain-language line per step — replaces both the old
+// STEP_TITLES/STEP_SUBS pair and the Freddy speech-bubble reframe
+// (see OnboardingProgress for the numbered bar that carries the step count).
+const STEP_TITLES = ["Let's start with the basics", "Tell us what you do", "Set your area and availability", "Add your credentials", "Upload your photo and documents"];
 
 // Turn a picked address into our service zones. Calgary street addresses carry
 // the quadrant ("123 Whiteram Mews NE") and the surrounding towns are zones of
@@ -440,20 +418,8 @@ export default function ContractorOnboarding() {
         <button onClick={back} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".82rem", textTransform:"uppercase", letterSpacing:".08em", padding:0, marginBottom:"2rem", display:"block" }}>
           {step === 1 ? "← Home" : "← Back"}
         </button>
-        <p style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".15em", color:"#ea6b14", marginBottom:".4rem" }}>Contractor Registration · Step {step} of {TOTAL}</p>
-        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:".4rem" }}>{STEP_TITLES[step-1]}</h1>
-        <p style={{ color:"rgba(var(--ff-muted), .6)", fontSize:".9rem", marginBottom:".5rem" }}>{STEP_SUBS[step-1]}</p>
-        <p style={{ color:"rgba(var(--ff-muted), .4)", fontSize:".8rem", marginBottom:"2rem" }}>Takes about 2 minutes · free to join, no monthly fees</p>
-        <div style={{ display:"flex", gap:"6px", marginBottom:"2.5rem" }}>
-          {Array.from({length:TOTAL},(_,i) => (
-            <div key={i} style={{ height:"3px", flex:1, borderRadius:"99px", background: i+1===step ? "#ea6b14" : i+1<step ? "rgba(234,107,20,.45)" : "rgba(var(--ff-fg), .1)" }} />
-          ))}
-        </div>
-
-        <GuideBubble step={step} total={TOTAL}
-          message={CONTRACTOR_GUIDE[step-1]?.message || ""}
-          why={CONTRACTOR_GUIDE[step-1]?.why}
-          tip={CONTRACTOR_GUIDE[step-1]?.tip} />
+        <OnboardingProgress step={step} total={TOTAL} />
+        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:"2rem" }}>{STEP_TITLES[step-1]}</h1>
 
         {restored && (
           <div style={{ display:"flex", alignItems:"center", gap:".75rem", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.25)", borderRadius:"8px", padding:".7rem 1rem", marginBottom:"1.5rem", fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
