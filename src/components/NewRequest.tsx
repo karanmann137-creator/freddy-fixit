@@ -6,7 +6,7 @@ import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/imageCompress";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
-import GuideBubble from "@/components/GuideBubble";
+import OnboardingProgress from "@/components/OnboardingProgress";
 import { SERVICES, SCHEDULES } from "@/pages/ClientOnboarding";
 import { useServicePricing, fromText } from "@/lib/servicePricing";
 import ServicePicker from "@/components/ServicePicker";
@@ -19,30 +19,15 @@ import { questionsFor, answerSummary, type JobAnswers } from "@/lib/jobQuestions
 import { trackEvent } from "@/lib/analytics";
 
 const TOTAL = 4;
+// One short, plain-language line per step — matches ClientOnboarding's
+// STEP_TITLES pattern. Replaces the old STEP_SUBS pair and the Freddy
+// speech-bubble reframe (see OnboardingProgress for the numbered bar that
+// carries the step count).
 const STEP_TITLES = ["What Needs Fixing?", "Did We Get That Right?", "A Few Quick Questions", "Where & When"];
-const STEP_SUBS   = [
-  "Describe it in your own words — we'll work out the rest",
-  "Check the service we picked and the details we spotted",
-  "Tap the answers — no typing, and you can skip any of them",
-  "Where, when, and roughly what you'd like to spend",
-];
 // Stable machine names for the drop-off funnel in PostHog (do not rename —
 // insights key off these). The flow value is deliberately DIFFERENT from the
 // signup flow's "client", so the two funnels can never be mixed together.
 const STEP_NAMES  = ["describe", "confirm", "questions", "details"];
-const RETURN_GUIDE: { message: string; why?: string; tip?: string }[] = [
-  { message: "Welcome back. Just tell me what's wrong in your own words — no need to know what the trade is called.",
-    why: "Pros quote far more accurately when they can read the problem in your words.",
-    tip: "In a hurry? Tap the microphone and say it out loud." },
-  { message: "Here's what I picked up. Tap anything that's wrong to remove it, or add a service I missed.",
-    why: "Getting the service right is what decides which pros see your job.",
-    tip: "You can pick more than one — plenty of jobs need two trades." },
-  { message: "A few quick taps so your estimates come back accurate instead of \"it depends\".",
-    why: "These are the questions a pro would phone you to ask anyway.",
-    tip: "Not sure on any of them? Skip it — a pro can confirm on site." },
-  { message: "Last bit: where the job is, when you'd like it done, and roughly what you'd like to spend.",
-    why: "Location and timing decide which pros are free to take it on." },
-];
 
 // Shown when an already-signed-in client starts another request. Unlike the
 // first-time onboarding flow, this never creates an account — it reuses the
@@ -458,24 +443,8 @@ export default function NewRequest() {
         <button onClick={back} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".82rem", textTransform:"uppercase", letterSpacing:".08em", padding:0, marginBottom:"2rem", display:"block" }}>
           {step === 1 ? "← Dashboard" : "← Back"}
         </button>
-        <p style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".15em", color:"#ea6b14", marginBottom:".4rem" }}>Step {step} of {TOTAL}</p>
-        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:".4rem" }}>{STEP_TITLES[step-1]}</h1>
-        <p style={{ color:"rgba(var(--ff-muted), .6)", fontSize:".9rem", marginBottom:".5rem" }}>{STEP_SUBS[step-1]}</p>
-        <p style={{ color:"rgba(var(--ff-muted), .4)", fontSize:".8rem", marginBottom:"2rem" }}>
-          {step === 1 && profile?.first_name
-            ? "Welcome back, " + profile.first_name + " — we've still got your details on file."
-            : "Takes about a minute · posting is free"}
-        </p>
-        <div style={{ display:"flex", gap:"6px", marginBottom:"2.5rem" }}>
-          {Array.from({ length: TOTAL }, (_, i) => (
-            <div key={i} style={{ height:"3px", flex:1, borderRadius:"99px", background: i+1===step ? "#ea6b14" : i+1<step ? "rgba(234,107,20,.45)" : "rgba(var(--ff-fg), .1)" }} />
-          ))}
-        </div>
-
-        <GuideBubble step={step} total={TOTAL}
-          message={RETURN_GUIDE[step-1]?.message || ""}
-          why={RETURN_GUIDE[step-1]?.why}
-          tip={RETURN_GUIDE[step-1]?.tip} />
+        <OnboardingProgress step={step} total={TOTAL} />
+        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:"2rem" }}>{STEP_TITLES[step-1]}</h1>
 
         {preferredPro && (
           <div style={{ ...s.card, marginBottom:"1rem", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.07)", display:"flex", alignItems:"center", gap:".6rem" }}>
