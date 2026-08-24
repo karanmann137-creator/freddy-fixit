@@ -17,10 +17,10 @@ type HomeReview = {
 
 const BEFORE_AFTER = [
   { label:"Bathroom Renovation", before:"/before-after/bathroom-before.webp", after:"/before-after/bathroom-after.webp" },
-  { label:"Kitchen Remodel",     before:"/before-after/kitchen-before.webp",  after:"/before-after/kitchen-after.webp" },
   { label:"Landscaping",         before:"/before-after/landscaping-before.webp", after:"/before-after/landscaping-after.webp" },
-  { label:"Appliance Install",   before:"/before-after/appliance-before.webp",   after:"/before-after/appliance-after.webp" },
   { label:"Furniture Assembly",  before:"/before-after/furniture-before.webp",   after:"/before-after/furniture-after.webp" },
+  { label:"Kitchen Remodel",     before:"/before-after/kitchen-before.webp",  after:"/before-after/kitchen-after.webp" },
+  { label:"Appliance Install",   before:"/before-after/appliance-before.webp",   after:"/before-after/appliance-after.webp" },
   { label:"Auto / Tires & PPF",  before:"/before-after/auto-before.webp",        after:"/before-after/auto-after.webp" },
 ];
 
@@ -35,6 +35,9 @@ function BeforeAfter() {
   const [pct, setPct] = useState(55);
   const wrap = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
+  const axis = useRef<"x" | "y" | null>(null);
+  const start = useRef({ x: 0, y: 0 });
+  const wheelLock = useRef(0);
 
   const moveTo = (clientX: number) => {
     const el = wrap.current;
@@ -45,20 +48,62 @@ function BeforeAfter() {
     if (p > 100) p = 100;
     setPct(p);
   };
-  const clientXOf = (e: any) => (e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX);
-  const onDown = (e: any) => { dragging.current = true; moveTo(clientXOf(e)); };
-  const onMove = (e: any) => { if (dragging.current) moveTo(clientXOf(e)); };
-  const onUp = () => { dragging.current = false; };
+  // Works for mousedown/mousemove/mouseup (clientX/Y), touchstart/touchmove
+  // (touches[0]) and touchend (changedTouches[0], since touches is empty by then).
+  const pointOf = (e: any) => {
+    if (e.changedTouches && e.changedTouches[0]) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+    if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    return { x: e.clientX, y: e.clientY };
+  };
+  const step = (dir: 1 | -1) => {
+    setIdx((i) => (i + dir + BEFORE_AFTER.length) % BEFORE_AFTER.length);
+    setPct(55);
+  };
+
+  const onDown = (e: any) => {
+    dragging.current = true;
+    axis.current = null;
+    start.current = pointOf(e);
+  };
+  const onMove = (e: any) => {
+    if (!dragging.current) return;
+    const p = pointOf(e);
+    const dx = p.x - start.current.x;
+    const dy = p.y - start.current.y;
+    if (!axis.current) {
+      // Wait for a small, deliberate movement before committing to an axis,
+      // so a light tap or a slightly wobbly swipe doesn't misfire the other gesture.
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      axis.current = Math.abs(dy) > Math.abs(dx) ? "y" : "x";
+    }
+    // Horizontal = live-drag the reveal slider. Vertical = tracked but only
+    // committed on release, so a swipe that changes its mind mid-gesture can
+    // still cancel by not crossing the threshold in onUp.
+    if (axis.current === "x") moveTo(p.x);
+  };
+  const onUp = (e: any) => {
+    if (dragging.current && axis.current === "y") {
+      const dy = pointOf(e).y - start.current.y;
+      if (dy < -32) step(1);
+      else if (dy > 32) step(-1);
+    }
+    dragging.current = false;
+    axis.current = null;
+  };
+  const onWheel = (e: any) => {
+    const now = Date.now();
+    if (now - wheelLock.current < 500 || Math.abs(e.deltaY) < 24) return;
+    wheelLock.current = now;
+    step(e.deltaY > 0 ? 1 : -1);
+  };
 
   const pair = BEFORE_AFTER[idx];
 
   return (
     <div style={{ maxWidth:"900px", margin:"0 auto" }}>
-      <div className="ff-ba-tabs">
+      <div className="ff-ba-dots">
         {BEFORE_AFTER.map((p, i) => (
-          <button key={p.label} className={"ff-ba-tab" + (i === idx ? " ff-ba-tab-on" : "")} onClick={() => { setIdx(i); setPct(55); }}>
-            {p.label}
-          </button>
+          <span key={p.label} className={"ff-ba-dot" + (i === idx ? " ff-ba-dot-on" : "")} />
         ))}
       </div>
 
@@ -72,8 +117,9 @@ function BeforeAfter() {
         onTouchStart={onDown}
         onTouchMove={onMove}
         onTouchEnd={onUp}
+        onWheel={onWheel}
       >
-        {/* Below the fold and behind a tab, so nothing here competes with the
+        {/* Below the fold and behind a swipe, so nothing here competes with the
             hero for bandwidth. The wrapper already fixes a 16/9 aspect ratio,
             so lazy-loading costs no layout shift. */}
         <img className="ff-ba-img" src={pair.after} srcSet={baSrcSet(pair.after)} sizes={BA_SIZES}
@@ -82,8 +128,18 @@ function BeforeAfter() {
           alt={pair.label + " before"} draggable={false} decoding="async" loading="lazy"
           style={{ clipPath: "inset(0 " + (100 - pct) + "% 0 0)" }} />
 
+        <span className="ff-ba-label">{pair.label}</span>
         <span className="ff-ba-badge ff-ba-badge-before" style={{ opacity: pct > 12 ? 1 : 0 }}>Before</span>
         <span className="ff-ba-badge ff-ba-badge-after" style={{ opacity: pct < 88 ? 1 : 0 }}>After</span>
+
+        <div className="ff-ba-vhint">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="18 15 12 9 6 15" />
+          </svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </div>
 
         <div className="ff-ba-handle" style={{ left: pct + "%" }}>
           <div className="ff-ba-knob">
@@ -96,7 +152,7 @@ function BeforeAfter() {
           </div>
         </div>
       </div>
-      <p className="ff-ba-note">Illustrative examples. Drag the slider to reveal the transformation.</p>
+      <p className="ff-ba-note">Illustrative examples. Swipe up or down to browse projects, drag left or right to reveal the transformation.</p>
     </div>
   );
 }
@@ -460,15 +516,16 @@ export default function Home() {
         .ff-reviews-grid > div { min-width: 0; }
 
         /* ── Before / After ── */
-        .ff-ba-tabs { display: flex; justify-content: center; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-        .ff-ba-tab { font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 500; letter-spacing: 0.04em; color: rgba(var(--ff-muted), 0.7); background: rgba(var(--ff-fg), 0.04); border: 1px solid rgba(var(--ff-fg), 0.1); border-radius: 999px; padding: 0.55rem 1.25rem; cursor: pointer; transition: all 0.2s; }
-        .ff-ba-tab:hover { color: var(--ff-text); border-color: rgba(234,107,20,0.4); }
-        .ff-ba-tab-on { color: var(--ff-text); background: rgba(234,107,20,0.18); border-color: rgba(234,107,20,0.6); }
-        .ff-ba-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; border: 1px solid rgba(var(--ff-fg), 0.08); cursor: ew-resize; user-select: none; touch-action: none; box-shadow: 0 14px 44px rgba(0,0,0,0.4); background: var(--ff-surface-0e); }
+        .ff-ba-dots { display: flex; justify-content: center; gap: 0.4rem; margin-bottom: 1.25rem; }
+        .ff-ba-dot { width: 7px; height: 7px; border-radius: 4px; background: rgba(var(--ff-fg), 0.18); transition: all 0.25s; }
+        .ff-ba-dot-on { width: 20px; background: #ea6b14; }
+        .ff-ba-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; border: 1px solid rgba(var(--ff-fg), 0.08); cursor: grab; user-select: none; touch-action: none; box-shadow: 0 14px 44px rgba(0,0,0,0.4); background: var(--ff-surface-0e); }
         .ff-ba-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; -webkit-user-drag: none; }
+        .ff-ba-label { position: absolute; top: 1rem; left: 50%; transform: translateX(-50%); font-family: 'Bebas Neue', sans-serif; font-size: 0.85rem; letter-spacing: 0.08em; color: var(--ff-text); background: rgba(var(--ff-bg-rgb), 0.7); backdrop-filter: blur(4px); border: 1px solid rgba(var(--ff-fg), 0.12); padding: 0.3rem 0.85rem; border-radius: 999px; pointer-events: none; white-space: nowrap; }
         .ff-ba-badge { position: absolute; top: 1rem; font-family: 'Bebas Neue', sans-serif; font-size: 0.95rem; letter-spacing: 0.1em; color: var(--ff-text); background: rgba(var(--ff-bg-rgb), 0.7); backdrop-filter: blur(4px); border: 1px solid rgba(var(--ff-fg), 0.12); padding: 0.3rem 0.85rem; border-radius: 999px; pointer-events: none; transition: opacity 0.2s; }
         .ff-ba-badge-before { left: 1rem; }
         .ff-ba-badge-after { right: 1rem; color: #ea6b14; border-color: rgba(234,107,20,0.4); }
+        .ff-ba-vhint { position: absolute; right: 0.85rem; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 0.35rem; color: var(--ff-text); opacity: 0.5; pointer-events: none; }
         .ff-ba-handle { position: absolute; top: 0; bottom: 0; width: 3px; background: rgba(var(--ff-fg), 0.9); transform: translateX(-50%); pointer-events: none; box-shadow: 0 0 12px rgba(0,0,0,0.5); }
         .ff-ba-knob { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 44px; height: 44px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; gap: 1px; box-shadow: 0 2px 12px rgba(0,0,0,0.4); }
         .ff-ba-note { text-align: center; margin-top: 1.25rem; font-size: 0.8rem; color: rgba(var(--ff-muted), 0.45); font-weight: 300; letter-spacing: 0.02em; }
