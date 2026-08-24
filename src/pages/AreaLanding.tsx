@@ -26,11 +26,11 @@ export const AREAS: Record<string, Area> = {
     region: "Northwest Calgary, AB",
     kind: "zone",
     metaTitle: "Handyman & Trades in NW Calgary | Vetted Local Pros — Freddy Fix It",
-    metaDesc: "Need a handyman, plumber or electrician in Northwest Calgary? Post your job free and get up to 5 fixed-price estimates from vetted local pros. Payment held until the work is done right.",
+    metaDesc: "Need a handyman, plumber or electrician in Northwest Calgary? Post your job free and get up to 5 written estimates from vetted local pros. Payment held until the work is done right.",
     h1: "Home Services in Northwest Calgary",
     intro: [
       "Freddy Fix It connects Northwest Calgary homeowners with vetted, licensed and insured local tradespeople — for everything from a quick handyman fix to plumbing, electrical, HVAC and full renovations.",
-      "Post your job in a couple of minutes, get up to five fixed-price estimates from pros who work your area, and book the one you like best. You pay a 40% deposit to book and the balance when the job is finished — both held securely, and only released once you confirm the work is done right.",
+      "Post your job in a couple of minutes, get up to five written estimates from pros who work your area, and book the one you like best. You pay a 40% deposit to book and the balance when the job is finished — both held securely, and only released once you confirm the work is done right.",
     ],
     places: ["Tuscany", "Royal Oak", "Ranchlands", "Varsity", "Brentwood", "Bowness", "Arbour Lake", "Silver Springs"],
   },
@@ -39,11 +39,11 @@ export const AREAS: Record<string, Area> = {
     region: "Northeast Calgary, AB",
     kind: "zone",
     metaTitle: "Handyman & Trades in NE Calgary | Vetted Local Pros — Freddy Fix It",
-    metaDesc: "Looking for a handyman, plumber or electrician in Northeast Calgary? Get up to 5 fixed-price estimates from vetted local pros. Free to post, payment protected until you approve.",
+    metaDesc: "Looking for a handyman, plumber or electrician in Northeast Calgary? Get up to 5 written estimates from vetted local pros. Free to post, payment protected until you approve.",
     h1: "Home Services in Northeast Calgary",
     intro: [
       "From Saddle Ridge to Marlborough, Freddy Fix It matches Northeast Calgary homeowners with vetted, licensed and insured pros for repairs, installs, seasonal work and bigger projects.",
-      "Describe what you need, compare up to five fixed-price estimates from local tradespeople, and choose your pro. Funds are held safely and released only when you confirm the job is complete.",
+      "Describe what you need, compare up to five written estimates from local tradespeople, and choose your pro. Funds are held safely and released only when you confirm the job is complete.",
     ],
     places: ["Saddle Ridge", "Martindale", "Falconridge", "Marlborough", "Skyview Ranch", "Redstone", "Cityscape", "Coral Springs"],
   },
@@ -52,11 +52,11 @@ export const AREAS: Record<string, Area> = {
     region: "Southwest Calgary, AB",
     kind: "zone",
     metaTitle: "Handyman & Trades in SW Calgary | Vetted Local Pros — Freddy Fix It",
-    metaDesc: "Need home repairs in Southwest Calgary? Post your job free and get up to 5 fixed-price estimates from vetted, insured local pros. Payment held until you are satisfied.",
+    metaDesc: "Need home repairs in Southwest Calgary? Post your job free and get up to 5 written estimates from vetted, insured local pros. Payment held until you are satisfied.",
     h1: "Home Services in Southwest Calgary",
     intro: [
       "Freddy Fix It connects Southwest Calgary homeowners with vetted, licensed and insured local tradespeople — handyman work, plumbing, electrical, painting, landscaping and more.",
-      "Post your job, get up to five fixed-price estimates from pros who work the southwest, and book with confidence. You pay a 40% deposit to book and the balance when the job is finished — both held securely until you confirm the work is done right.",
+      "Post your job, get up to five written estimates from pros who work the southwest, and book with confidence. You pay a 40% deposit to book and the balance when the job is finished — both held securely until you confirm the work is done right.",
     ],
     places: ["Signal Hill", "Aspen Woods", "Springbank Hill", "Killarney", "Marda Loop", "Lakeview", "Bridlewood", "Evergreen"],
   },
@@ -65,11 +65,11 @@ export const AREAS: Record<string, Area> = {
     region: "Southeast Calgary, AB",
     kind: "zone",
     metaTitle: "Handyman & Trades in SE Calgary | Vetted Local Pros — Freddy Fix It",
-    metaDesc: "Find a handyman, plumber or electrician in Southeast Calgary. Get up to 5 fixed-price estimates from vetted local pros. Free to post, payment protected until you approve.",
+    metaDesc: "Find a handyman, plumber or electrician in Southeast Calgary. Get up to 5 written estimates from vetted local pros. Free to post, payment protected until you approve.",
     h1: "Home Services in Southeast Calgary",
     intro: [
       "From Seton to Inglewood, Freddy Fix It matches Southeast Calgary homeowners with vetted, licensed and insured pros for repairs, installs and renovations of every size.",
-      "Tell us what you need, compare up to five fixed-price estimates from local tradespeople, and pick the pro you like. Payment is held safely and released only when you confirm the job is complete.",
+      "Tell us what you need, compare up to five written estimates from local tradespeople, and pick the pro you like. Payment is held safely and released only when you confirm the job is complete.",
     ],
     places: ["Seton", "Auburn Bay", "Mahogany", "Cranston", "McKenzie Towne", "Douglasdale", "Inglewood", "Copperfield"],
   },
@@ -78,11 +78,11 @@ export const AREAS: Record<string, Area> = {
     region: "Airdrie, AB",
     kind: "town",
     metaTitle: "Handyman & Trades in Airdrie | Vetted Local Pros — Freddy Fix It",
-    metaDesc: "Need a handyman, plumber or electrician in Airdrie? Post your job free and get up to 5 fixed-price estimates from vetted, insured local pros. Payment held until the work is done right.",
+    metaDesc: "Need a handyman, plumber or electrician in Airdrie? Post your job free and get up to 5 written estimates from vetted, insured local pros. Payment held until the work is done right.",
     h1: "Home Services in Airdrie",
     intro: [
       "Freddy Fix It connects Airdrie homeowners with vetted, licensed and insured local tradespeople — for handyman jobs, plumbing, electrical, HVAC, landscaping, snow removal and full renovations.",
-      "Post your job in a couple of minutes, get up to five fixed-price estimates from pros who serve Airdrie, and book the one you like best. You pay a 40% deposit to book and the balance when the job is finished — both held securely until you confirm the work is done.",
+      "Post your job in a couple of minutes, get up to five written estimates from pros who serve Airdrie, and book the one you like best. You pay a 40% deposit to book and the balance when the job is finished — both held securely until you confirm the work is done.",
     ],
     places: ["Bayside", "Kings Heights", "Cooper's Crossing", "Sagewood", "Windsong", "Luxstone", "Ravenswood", "Prairie Springs"],
   },
@@ -91,11 +91,11 @@ export const AREAS: Record<string, Area> = {
     region: "Cochrane, AB",
     kind: "town",
     metaTitle: "Handyman & Trades in Cochrane | Vetted Local Pros — Freddy Fix It",
-    metaDesc: "Looking for a handyman, plumber or electrician in Cochrane? Get up to 5 fixed-price estimates from vetted local pros. Free to post, payment protected until you approve.",
+    metaDesc: "Looking for a handyman, plumber or electrician in Cochrane? Get up to 5 written estimates from vetted local pros. Free to post, payment protected until you approve.",
     h1: "Home Services in Cochrane",
     intro: [
       "From Sunset Ridge to Heartland, Freddy Fix It matches Cochrane homeowners with vetted, licensed and insured pros for repairs, installs, seasonal work and bigger projects.",
-      "Describe what you need, compare up to five fixed-price estimates from local tradespeople, and choose your pro. Funds are held safely and released only when you confirm the job is complete.",
+      "Describe what you need, compare up to five written estimates from local tradespeople, and choose your pro. Funds are held safely and released only when you confirm the job is complete.",
     ],
     places: ["Sunset Ridge", "Heartland", "Fireside", "Riversong", "The Willows", "Bow Ridge", "GlenEagles", "Cochrane Lake"],
   },
@@ -104,11 +104,11 @@ export const AREAS: Record<string, Area> = {
     region: "Okotoks, AB",
     kind: "town",
     metaTitle: "Handyman & Trades in Okotoks | Vetted Local Pros — Freddy Fix It",
-    metaDesc: "Need home repairs in Okotoks? Post your job free and get up to 5 fixed-price estimates from vetted, insured local pros. Payment held until you are satisfied.",
+    metaDesc: "Need home repairs in Okotoks? Post your job free and get up to 5 written estimates from vetted, insured local pros. Payment held until you are satisfied.",
     h1: "Home Services in Okotoks",
     intro: [
       "Freddy Fix It connects Okotoks homeowners with vetted, licensed and insured local tradespeople — handyman work, plumbing, electrical, painting, landscaping and more.",
-      "Post your job, get up to five fixed-price estimates from pros who serve Okotoks, and book with confidence. You pay a 40% deposit to book and the balance when the job is finished — both held securely until you confirm the work is done right.",
+      "Post your job, get up to five written estimates from pros who serve Okotoks, and book with confidence. You pay a 40% deposit to book and the balance when the job is finished — both held securely until you confirm the work is done right.",
     ],
     places: ["Drake Landing", "Air Ranch", "Cimarron", "Sheep River", "Crystal Shores", "Wedderburn", "Suntree", "Mountainview"],
   },
@@ -117,11 +117,11 @@ export const AREAS: Record<string, Area> = {
     region: "Chestermere, AB",
     kind: "town",
     metaTitle: "Handyman & Trades in Chestermere | Vetted Local Pros — Freddy Fix It",
-    metaDesc: "Find a handyman, plumber or electrician in Chestermere. Get up to 5 fixed-price estimates from vetted local pros. Free to post, payment protected until you approve.",
+    metaDesc: "Find a handyman, plumber or electrician in Chestermere. Get up to 5 written estimates from vetted local pros. Free to post, payment protected until you approve.",
     h1: "Home Services in Chestermere",
     intro: [
       "From Westmere to Rainbow Falls, Freddy Fix It matches Chestermere homeowners with vetted, licensed and insured pros for repairs, installs and renovations of every size.",
-      "Tell us what you need, compare up to five fixed-price estimates from local tradespeople, and pick the pro you like. Payment is held safely and released only when you confirm the job is complete.",
+      "Tell us what you need, compare up to five written estimates from local tradespeople, and pick the pro you like. Payment is held safely and released only when you confirm the job is complete.",
     ],
     places: ["Westmere", "Rainbow Falls", "Kinniburgh", "The Cove", "Dawson's Landing", "Lakepointe", "Sunset", "Clearwater"],
   },
@@ -147,7 +147,7 @@ const MUTED = "rgba(var(--ff-muted), .82)";
 
 function areaFaqs(a: Area): FAQ[] {
   return [
-    { q: "How much does a handyman cost in " + a.name + "?", a: "Most work is estimated by the job rather than the hour, so you see one fixed price before you book. You get up to five estimates from local pros to compare, with no obligation." },
+    { q: "How much does a handyman cost in " + a.name + "?", a: "Most work is estimated by the job rather than the hour, so you see the price before you book and it cannot change afterwards without your approval. You get up to five estimates from local pros to compare, with no obligation. Some pros will ask to see the space first before quoting a firm number." },
     { q: "Are the contractors in " + a.name + " vetted?", a: "Yes. Every contractor on Freddy Fix It is reviewed for licensing, insurance and WCB coverage where it applies, and you can read real reviews on their profile before you book." },
     { q: "What if the work isn't done right?", a: "Your payment is held until you confirm the job is complete. If something's wrong, you can file a claim and our team helps resolve it — including a refund where warranted." },
   ];
@@ -276,7 +276,7 @@ export default function AreaLanding() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(160px, 100%), 1fr))", gap: ".8rem", marginBottom: "2.6rem" }}>
           {[
             { n: "1", t: "Post your job", d: "Tell us what you need — it takes a couple of minutes." },
-            { n: "2", t: "Compare estimates", d: "Get up to 5 fixed-price estimates from vetted local pros." },
+            { n: "2", t: "Compare estimates", d: "Get up to 5 written estimates from vetted local pros." },
             { n: "3", t: "Book & relax", d: "Payment is held until you confirm the work is done right." },
           ].map((s) => (
             <div key={s.n} className="al-card">
@@ -299,7 +299,7 @@ export default function AreaLanding() {
 
         <div style={{ background: "linear-gradient(135deg,rgba(234,107,20,.16),rgba(234,107,20,.04))", border: "1px solid rgba(234,107,20,.25)", borderRadius: 16, padding: "1.8rem", textAlign: "center" }}>
           <h2 style={{ fontSize: "1.7rem", marginBottom: ".5rem" }}>Ready to get started in {area.name}?</h2>
-          <p style={{ color: MUTED, fontWeight: 300, marginBottom: "1.2rem" }}>Post your job free and get up to 5 fixed-price estimates from vetted local pros.</p>
+          <p style={{ color: MUTED, fontWeight: 300, marginBottom: "1.2rem" }}>Post your job free and get up to 5 written estimates from vetted local pros.</p>
           <button className="al-btn" onClick={book}>Get my free estimates →</button>
         </div>
       </div>
@@ -353,7 +353,7 @@ export function AreasIndex() {
         {grid(towns)}
         <div style={{ background: "linear-gradient(135deg,rgba(234,107,20,.16),rgba(234,107,20,.04))", border: "1px solid rgba(234,107,20,.25)", borderRadius: 16, padding: "1.8rem", textAlign: "center", marginTop: "1rem" }}>
           <h2 style={{ fontSize: "1.7rem", marginBottom: ".5rem" }}>Not sure where to start?</h2>
-          <p style={{ color: MUTED, fontWeight: 300, marginBottom: "1.2rem" }}>Post your job free and get up to 5 fixed-price estimates from vetted local pros.</p>
+          <p style={{ color: MUTED, fontWeight: 300, marginBottom: "1.2rem" }}>Post your job free and get up to 5 written estimates from vetted local pros.</p>
           <button className="al-btn" onClick={() => setLocation("/client-onboarding")}>Get my free estimates →</button>
         </div>
       </div>

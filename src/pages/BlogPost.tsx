@@ -88,11 +88,11 @@ function ArticleComparison() {
       <h2>What to Compare</h2>
       <p><strong>Speed.</strong> If you need someone quickly, active-dispatch platforms generally connect you faster than browsing a directory and waiting for replies.</p>
       <p><strong>Vetting.</strong> This is where platforms differ most. Some, like Freddy Fix It, require contractors to submit a trade licence and proof of insurance before they can accept work. Others leave verification up to you. Whatever platform you use, confirm a contractor is licensed and insured before they start.</p>
-      <p><strong>Pricing transparency.</strong> Look for fixed-price estimates before any work begins, so you aren't surprised by the final invoice.</p>
+      <p><strong>Pricing transparency.</strong> Look for written estimates before any work begins, so you aren't surprised by the final invoice.</p>
       <p><strong>Protection if something goes wrong.</strong> Check whether the platform offers any recourse, guarantee, or support if a job doesn't go as planned.</p>
 
       <h2>How Freddy Fix It Works</h2>
-      <p>Freddy Fix It is built specifically for Calgary. Every contractor must submit their trade licence and proof of insurance before they can accept a job. You post once, receive up to five fixed-price bids from vetted contractors, and reviews are only unlocked after a job is completed and confirmed by both parties. We also offer recurring and seasonal scheduling for ongoing maintenance.</p>
+      <p>Freddy Fix It is built specifically for Calgary. Every contractor must submit their trade licence and proof of insurance before they can accept a job. You post once, receive up to five written bids from vetted contractors, and reviews are only unlocked after a job is completed and confirmed by both parties. We also offer recurring and seasonal scheduling for ongoing maintenance.</p>
       <p>Whichever platform you choose, the same fundamentals protect you: hire licensed, insured contractors, get the price in writing first, and keep records of the work.</p>
 
       <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
@@ -138,7 +138,7 @@ function ArticlePricing() {
       <p>Calgary's strong economy and competitive labour market push contractor rates above national averages. The city also has strict building code enforcement, which means licensed trades command a premium — and you should be wary of bids that seem unusually low. Unlicensed or unpermitted work can create insurance and resale complications down the road, so it's worth confirming a contractor's credentials before hiring.</p>
 
       <h2>How to Know If You're Getting a Fair Price</h2>
-      <p>On Freddy Fix It, you receive up to 5 bids from vetted contractors before committing. This gives you real market data for your specific job — not just estimates pulled from the internet. All bids are fixed-price: no surprise invoices at the end.</p>
+      <p>On Freddy Fix It, you receive up to 5 bids from vetted contractors before committing. This gives you real market data for your specific job — not just estimates pulled from the internet. Every bid is a written estimate for the whole job, not an hourly rate — and the price cannot change after you book without your approval.</p>
     </article>
   );
 }
@@ -232,10 +232,10 @@ function ArticlePlumberCost() {
       <p><strong>Permit requirements</strong>: In Calgary, any work on the main water line or water heater requires a permit through the City. Licensed plumbers handle this automatically; unlicensed ones skip it — putting you at risk when you sell.</p>
 
       <h2>Red Flags to Watch For</h2>
-      <p>Be cautious of any plumber who gives you a rock-bottom estimate over the phone without seeing the job, asks for full payment upfront, or can't provide a trade licence number. All plumbers on Freddy Fix It are licensed and insured — you get a fixed-price estimate before anyone touches your pipes.</p>
+      <p>Be cautious of any plumber who gives you a rock-bottom estimate over the phone without seeing the job, asks for full payment upfront, or can't provide a trade licence number. All plumbers on Freddy Fix It are licensed and insured — you get a written estimate before anyone touches your pipes.</p>
 
       <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
-        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Need a plumber in Calgary? Get 5 fixed-price estimates from licensed pros.</p>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Need a plumber in Calgary? Get 5 written estimates from licensed pros.</p>
         <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
@@ -346,10 +346,10 @@ function ArticleElectricianCost() {
       <p><strong>Permits and inspection</strong>: In Alberta, most electrical work requires a permit and an inspection by a Safety Codes Officer. Licensed electricians pull the permit and book the inspection as part of the job. Skipping it can void your home insurance and create problems when you sell.</p>
 
       <h2>Red Flags to Watch For</h2>
-      <p>Be wary of anyone who offers to do panel or service work "without a permit to save you money," can't provide a Master Electrician or journeyman certification, or estimates a major job sight-unseen. Electrical mistakes cause fires — this is the wrong place to gamble. Every electrician on Freddy Fix It is licensed and insured, and you get a fixed-price estimate before any work starts.</p>
+      <p>Be wary of anyone who offers to do panel or service work "without a permit to save you money," can't provide a Master Electrician or journeyman certification, or estimates a major job sight-unseen. Electrical mistakes cause fires — this is the wrong place to gamble. Every electrician on Freddy Fix It is licensed and insured, and you get a written estimate before any work starts.</p>
 
       <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
-        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Need an electrician in Calgary? Get fixed-price estimates from licensed pros.</p>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Need an electrician in Calgary? Get written estimates from licensed pros.</p>
         <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
@@ -389,10 +389,10 @@ function ArticleFurnaceCost() {
       <p>Federal and provincial efficiency rebate programs change year to year. Before you replace, ask your contractor whether your chosen unit qualifies for any current rebate — it can offset hundreds of dollars. Confirm any rebate directly with the program, as eligibility and amounts change often.</p>
 
       <h2>Red Flags to Watch For</h2>
-      <p>Be cautious of a technician who pushes a full replacement on the first visit without showing you the failed part, or who can't provide a gas fitter licence. A cracked heat exchanger is a legitimate reason to replace — but ask to see it. Every HVAC pro on Freddy Fix It is licensed and insured, and you get a fixed-price estimate before any work begins.</p>
+      <p>Be cautious of a technician who pushes a full replacement on the first visit without showing you the failed part, or who can't provide a gas fitter licence. A cracked heat exchanger is a legitimate reason to replace — but ask to see it. Every HVAC pro on Freddy Fix It is licensed and insured, and you get a written estimate before any work begins.</p>
 
       <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
-        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Furnace trouble? Get fixed-price estimates from licensed Calgary HVAC pros.</p>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Furnace trouble? Get written estimates from licensed Calgary HVAC pros.</p>
         <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
@@ -423,7 +423,7 @@ function ArticleHiringContractor() {
       <p>Walk away from anyone who pressures you to decide on the spot, only takes cash, won't put anything in writing, can't show a licence or insurance, or estimates a complex job without seeing it. These aren't quirks — they're how the costliest contractor horror stories start.</p>
 
       <h2>How Freddy Fix It Helps</h2>
-      <p>Every contractor on Freddy Fix It submits a trade licence and proof of insurance before they can accept work, you get fixed-price estimates before anyone starts, and there's a built-in process if a job doesn't go as planned. It takes the screening work off your plate.</p>
+      <p>Every contractor on Freddy Fix It submits a trade licence and proof of insurance before they can accept work, you get written estimates before anyone starts, and there's a built-in process if a job doesn't go as planned. It takes the screening work off your plate.</p>
 
       <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
         <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Skip the screening — get estimates from licensed, insured Calgary contractors.</p>
@@ -468,7 +468,7 @@ function ArticleBasementCost() {
       <p>Be cautious of any estimate that skips permits to "save you money," lumps everything into one vague number with no breakdown, or asks for a large deposit before drawings exist. Unpermitted basement work is the classic problem that surfaces at resale — a home inspector flags it, and you pay to fix it twice. Every contractor on Freddy Fix It is licensed and insured, and pulls the permits the job needs.</p>
 
       <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
-        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Planning a basement? Get fixed-price estimates from licensed Calgary contractors.</p>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Planning a basement? Get written estimates from licensed Calgary contractors.</p>
         <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
