@@ -163,11 +163,18 @@ style.textContent = `
   .ff-nav-wrap {
     background-color: var(--ff-bg);
     border-bottom: 1px solid transparent;
-    transition: background-color .25s ease, border-color .25s ease, box-shadow .25s ease;
+    transition: background-color .25s ease, border-color .25s ease, box-shadow .25s ease, transform .25s ease;
   }
   .ff-nav-wrap.ff-nav-lifted {
     border-bottom-color: var(--ff-hair);
     box-shadow: 0 8px 24px rgba(9,13,22,0.28);
+  }
+  /* Dashboards only (TopNav gates this via onSidebarDash) — slides the bar
+     out of view on scroll-down, back in on scroll-up. The 3.75rem spacer
+     the dashboards render stays in place so content never reflows/jumps;
+     only the bar itself moves. */
+  .ff-nav-wrap.ff-nav-hidden {
+    transform: translateY(-100%);
   }
 
   *, *::before, *::after { box-sizing: border-box; }

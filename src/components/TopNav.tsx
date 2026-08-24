@@ -45,12 +45,33 @@ export default function TopNav() {
   // nav needs to know when it has left the top. Run once on mount too — a
   // refresh restores scroll position without ever firing a scroll event.
   const [lifted, setLifted] = useState(false);
+  // On the dashboards only, the bar also hides itself on scroll-down and
+  // reappears on scroll-up — dashboards are long lists (jobs, messages,
+  // earnings) where the logo/About us/Blog row is the least useful thing on
+  // screen once you're scrolling through content, and the left sidebar
+  // already carries the account actions. Elsewhere (marketing pages) the bar
+  // stays put the whole time, since it's the primary way to navigate the site.
+  const [navHidden, setNavHidden] = useState(false);
+  const lastScrollY = useRef(0);
   useEffect(() => {
-    const onScroll = () => setLifted(window.scrollY > 12);
+    lastScrollY.current = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      setLifted(y > 12);
+      if (onSidebarDash) {
+        const dy = y - lastScrollY.current;
+        if (y < 40) setNavHidden(false);
+        else if (dy > 4) setNavHidden(true);
+        else if (dy < -4) setNavHidden(false);
+      } else {
+        setNavHidden(false);
+      }
+      lastScrollY.current = y;
+    };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [onSidebarDash]);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -112,7 +133,7 @@ export default function TopNav() {
     // what keeps it legible where it floats over the Home hero, since that is
     // navy in both themes too.
     <>
-    <div className={`ff-nav-wrap ff-on-dark${lifted ? " ff-nav-lifted" : ""}`} style={wrap}>
+    <div className={`ff-nav-wrap ff-on-dark${lifted ? " ff-nav-lifted" : ""}${navHidden ? " ff-nav-hidden" : ""}`} style={wrap}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
         .ff-nav-wrap { pointer-events: none; }
