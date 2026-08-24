@@ -114,6 +114,9 @@ const CLIENT_TAB: Record<string, string> = {
 
   recurring_generated: "recurring",
 
+  // The referral card only lives on the Requests tab.
+  referral_rewarded: "requests",
+
   // Finished work has moved out of the active list by the time these land.
   job_confirmed:  "history",
   review_received: "history",

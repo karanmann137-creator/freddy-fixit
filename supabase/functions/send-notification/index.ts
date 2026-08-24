@@ -1,4 +1,11 @@
-// Supabase Edge Function: send-notification  (v16)
+// Supabase Edge Function: send-notification  (v17)
+//
+// WHAT CHANGED IN v17 — `referral_rewarded` gets a CTA override. It's a new
+// type with exactly one emitter (consume_referral_waiver, which inserts the
+// bell directly on the 'rewarded' transition), so it was never added to
+// EMAIL_HANDLED_ELSEWHERE — this generic email IS the referral reward email.
+// Left it out of the dashboard-root default because the referral card lives
+// specifically on the Requests tab.
 //
 // Fired by the `send-notification-email` Database Webhook on every
 // public.notifications INSERT. Turns an in-app bell into an email.
@@ -119,10 +126,14 @@ function dashboardFor(role: string | null): string {
 // small and justified — the dashboard is the right destination for almost
 // everything, because it is where the thing being notified about actually
 // lives. These two are re-booking prompts: there is nothing waiting on the
-// dashboard to look at, the point is to start a new request.
+// dashboard to look at, the point is to start a new request. referral_rewarded
+// points at the Requests tab specifically, because that's the only place the
+// referral card renders — the plain dashboard root would leave the badge to
+// be hunted for.
 const CTA_OVERRIDE: Record<string, { href: string; label: string }> = {
-  recurring_due: { href: "https://freddyfixit.ca/new-request", label: "Book again" },
-  seasonal:      { href: "https://freddyfixit.ca/new-request", label: "Get a free quote" },
+  recurring_due:     { href: "https://freddyfixit.ca/new-request", label: "Book again" },
+  seasonal:          { href: "https://freddyfixit.ca/new-request", label: "Get a free quote" },
+  referral_rewarded: { href: "https://freddyfixit.ca/client-dashboard?tab=requests", label: "See your referral badge →" },
 };
 
 function ctaFor(type: string, role: string | null): { href: string; label: string } {

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
+import { requestReferralShare } from "@/lib/referralPrompt";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import ProfileBar from "@/components/ProfileBar";
 import JobChat from "@/components/JobChat";
@@ -502,6 +503,10 @@ export default function ClientDashboard() {
   };
 
   const rehire = (pro: any) => {
+    // Fallback moment for the referral-share ask: requestReferralShare no-ops
+    // on its own if job-done already asked, the user opted out, or the code
+    // is no longer 'active' (a friend already applied it since then).
+    requestReferralShare("rehire", { code: referral?.code, codeStatus: referral?.code_status });
     const q = new URLSearchParams();
     q.set("pro", pro.contractor_id);
     if (pro.last_service) q.set("service", pro.last_service);
@@ -901,7 +906,18 @@ export default function ClientDashboard() {
     const { error } = await supabase.rpc("confirm_job_completion", { p_job_id: activeJob.id });
     setBusyReq(false);
     if (error) { notify("Couldn't confirm: " + error.message); return; }
-    requestGoogleReview("job_done", { jobId: activeJob.id });
+    // First-ever completed job is the best goodwill moment to ask for a
+    // referral share, so it takes this one slot instead of the Google review
+    // ask -- stacking two "please help us" prompts on the same click would
+    // hurt both. Every completion after the first falls back to the review
+    // ask exactly as before. If the referral ask doesn't fire (no code, or
+    // nothing to share), requestReferralShare no-ops and nothing is shown.
+    const isFirstCompletion = !requests.some(r => r.status === "completed");
+    if (isFirstCompletion) {
+      requestReferralShare("job_done", { code: referral?.code, codeStatus: referral?.code_status });
+    } else {
+      requestGoogleReview("job_done", { jobId: activeJob.id });
+    }
     setActiveJob({ ...activeJob, status: "completed", client_confirmed_at: new Date().toISOString() });
     setRequests(prev => prev.map(r => r.id === activeJob.request_id ? { ...r, status: "completed" } : r));
     if (activeJob.payment_status === "held") {

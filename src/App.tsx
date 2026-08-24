@@ -13,6 +13,7 @@ import AuthCallback from "@/pages/AuthCallback";
 import TopNav from "@/components/TopNav";
 import ChatWidget from "@/components/ChatWidget";
 import GoogleReviewModal from "@/components/GoogleReviewModal";
+import ReferralShareModal from "@/components/ReferralShareModal";
 import FinishSignupBanner from "@/components/FinishSignupBanner";
 import CookieConsent from "@/components/CookieConsent";
 import OverhaulNotice from "@/components/OverhaulNotice";
@@ -172,6 +173,7 @@ export default function App() {
       <TopNav />
       <ChatWidget />
       <GoogleReviewModal />
+      <ReferralShareModal />
       <FinishSignupBanner />
       <CookieConsent />
       <OverhaulNotice />
