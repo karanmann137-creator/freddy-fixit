@@ -71,9 +71,9 @@ style.textContent = `
     --ff-lift-3: 0 22px 60px rgba(0,0,0,0.42);
   }
   :root[data-theme="light"] {
-    --ff-fg: 30,41,59;           /* slate ink replaces white */
+    --ff-fg: 55,96,153;           /* slate ink replaces white */
     --ff-muted: 71,85,105;
-    --ff-text: #0f172a;
+    --ff-text: #284e88;
     --ff-bg: #e9eef8;
     --ff-bg-rgb: 233,238,248;
     --ff-surface: #dbe2f2;
@@ -96,7 +96,7 @@ style.textContent = `
     --ff-ink-4: rgba(var(--ff-muted), 0.58);
     --ff-hair: rgba(var(--ff-fg), 0.12);
     --ff-card-bg: #dfe6f3;
-    --ff-card-border: rgba(30,58,138,.16);
+    --ff-card-border: rgba(40,78,136,.16);
     --ff-lift-1: 0 1px 2px rgba(15,23,42,0.06);
     --ff-lift-2: 0 8px 28px rgba(15,23,42,0.10);
     --ff-lift-3: 0 22px 60px rgba(15,23,42,0.16);
