@@ -76,11 +76,11 @@ style.textContent = `
     --ff-text: #0f172a;
     --ff-bg: #e9eef8;
     --ff-bg-rgb: 233,238,248;
-    --ff-surface: #c9d4ee;
-    --ff-surface-141: #c9d4ee;
-    --ff-surface-2: #b9c7e6;
-    --ff-surface-0e: #c2cfea;
-    --ff-surface-1f: #c9d4ee;
+    --ff-surface: #dbe2f2;
+    --ff-surface-141: #dbe2f2;
+    --ff-surface-2: #dbe2f2;
+    --ff-surface-0e: #e1e7f4;
+    --ff-surface-1f: #dbe2f2;
     --ff-success: #15803d;
     --ff-warn: #b45309;
     --ff-danger: #dc2626;
@@ -95,37 +95,53 @@ style.textContent = `
     --ff-ink-3: rgba(var(--ff-muted), 0.78);
     --ff-ink-4: rgba(var(--ff-muted), 0.58);
     --ff-hair: rgba(var(--ff-fg), 0.12);
-    --ff-card-bg: #dae1f1;
+    --ff-card-bg: #dfe6f3;
     --ff-card-border: rgba(30,58,138,.16);
     --ff-lift-1: 0 1px 2px rgba(15,23,42,0.06);
     --ff-lift-2: 0 8px 28px rgba(15,23,42,0.10);
     --ff-lift-3: 0 22px 60px rgba(15,23,42,0.16);
   }
 
-  /* ── Navy in light mode ─────────────────────────────────────────────
-     Light mode had almost no brand colour in it. The reason is above:
-     --ff-bg (#e9eef8) and --ff-surface (#ffffff) both read as white, so
-     the 60 and the 30 of the 60/30/10 collapsed into a single value and
-     what was left was white, near-black and orange. Dark mode does not
-     have this problem because its 60 AND its 30 are both navy — that is
-     the ONLY reason it looks like the brand.
+  /* ── Navy in dark mode; off-white in light mode ─────────────────────
+     Light mode used to have almost no brand colour in it, because --ff-bg
+     and --ff-surface both read as near-white. The first fix (2026-08-19)
+     was to force navy chrome (nav, hero, footer, the Freddy Verified band)
+     in BOTH themes via this .ff-on-dark class, unconditionally.
 
-     Tinting the page ground blue is the wrong fix: light mode exists so
-     someone can read a contract or an invoice in daylight, and a coloured
-     ground is what makes that unpleasant. So navy becomes the 30% here —
-     it moves into the chrome (nav, hero, footer) and the page ground
-     stays light.
+     2026-08-24: the owner reviewed the live site and asked for the opposite
+     in light mode — off-white basically everywhere, navy reserved for text,
+     icons, borders and small accents, not full-bleed section backgrounds.
+     So .ff-on-dark's forced-navy values are now scoped to dark mode by
+     default (see the selector below); nav, hero, footer AND the Freddy
+     Verified band all fall through to the ordinary light-mode tokens
+     (off-white ground) when data-theme="light".
 
-     This is a scope class rather than a rewrite because every component
-     on the site already reads its colour from these variables. Custom
+     The .ff-anchor modifier below (opt back into forced navy under light
+     mode) briefly existed as a one-off exception for the Freddy Verified
+     band specifically, then was removed the same day once the owner
+     confirmed the preference is truly "everywhere" and not "everywhere
+     except this one band" — see Home.tsx. Nothing currently applies
+     .ff-anchor, so that half of the selector is dormant. It's left in
+     place rather than deleted in case a future band genuinely needs a
+     forced-navy exception; deleting it costs nothing today but re-adding
+     it correctly (typo-free selector, byte-identical dark values) later
+     is easy to get subtly wrong under time pressure.
+
+     This is still a scope class rather than a rewrite because every
+     component already reads its colour from these variables: custom
      properties resolve at the point of USE, so re-declaring the dark
      values on a wrapper makes that entire subtree — its cards, its
      hairlines, its rgba(var(--ff-fg)) overlays, everything — render
      exactly as it does in dark mode, with no per-component changes.
 
      In dark mode every value below is already the value in effect, so
-     the class is a no-op and dark mode cannot regress. */
-  .ff-on-dark {
+     the class is a no-op there and dark mode cannot regress. */
+  /* :root:not([data-theme="light"]) matches exactly what plain :root used
+     to match, since dark is the default (no data-theme attribute at all —
+     see src/lib/theme.ts), and the property list below is byte-identical
+     to before, so dark mode cannot regress. */
+  :root:not([data-theme="light"]) .ff-on-dark,
+  :root[data-theme="light"] .ff-on-dark.ff-anchor {
     --ff-fg: 255,255,255;
     --ff-muted: 190,205,235;
     --ff-text: #f0f4ff;
@@ -165,12 +181,12 @@ style.textContent = `
     --ff-lift-3: 0 22px 60px rgba(0,0,0,0.42);
     color: var(--ff-text);
   }
-  /* The fixed nav paints its own ground. Because the wrapper carries
-     .ff-on-dark, var(--ff-bg) resolves to navy in BOTH themes, so the bar is
-     brand-coloured and body text can never scroll illegibly under it.
-     It starts transparent over a dark hero (Home adds the :not() rule) and
-     fades in on scroll, which is what stops it cutting a hard seam across the
-     hero's radial glow. */
+  /* The fixed nav paints its own ground with var(--ff-bg) directly (not
+     through .ff-on-dark any more — 2026-08-24) so it's navy in dark mode and
+     off-white in light mode, matching the rest of the page. Either way body
+     text can never scroll illegibly under it. It starts transparent over the
+     hero (Home adds the :not() rule) and fades in on scroll, which is what
+     stops it cutting a hard seam across the hero's radial glow. */
   .ff-nav-wrap {
     background-color: var(--ff-bg);
     border-bottom: 1px solid transparent;

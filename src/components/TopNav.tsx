@@ -127,11 +127,11 @@ export default function TopNav() {
     "/client-dashboard";
 
   return (
-    // ff-on-dark: the nav is brand chrome, so it stays navy in BOTH themes.
-    // It also makes the .ff-nav-wrap paint rule in main.tsx resolve --ff-bg to
-    // navy rather than the page ground, and flips the ink to white — which is
-    // what keeps it legible where it floats over the Home hero, since that is
-    // navy in both themes too.
+    // ff-on-dark: navy in dark mode (unchanged), off-white in light mode
+    // (2026-08-24 — the class's forced-navy values are now dark-mode-only in
+    // main.tsx, so in light mode this is a no-op and the bar just paints
+    // var(--ff-bg), matching the page ground). Kept on the wrapper anyway so
+    // dark mode's cascade is untouched and nothing has to change here.
     <>
     <div className={`ff-nav-wrap ff-on-dark${lifted ? " ff-nav-lifted" : ""}${navHidden ? " ff-nav-hidden" : ""}`} style={wrap}>
       <style>{`

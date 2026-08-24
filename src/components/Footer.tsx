@@ -109,10 +109,11 @@ export default function Footer() {
   const link: React.CSSProperties = { color: "rgba(var(--ff-muted), .45)", textDecoration: "underline" };
 
   return (
-    // Navy in both themes — the footer is the site's largest uninterrupted
-    // block of brand colour, and in light mode it was --ff-surface-2 (#e4e9f2),
-    // i.e. another shade of white. `bar.background` still reads
-    // var(--ff-surface-2); ff-on-dark just re-points that at #111827.
+    // Navy in dark mode (ff-on-dark re-points --ff-surface-2 at #111827,
+    // unchanged), off-white in light mode (2026-08-24 — ff-on-dark's forced
+    // navy is now dark-mode-only, so `bar.background`'s var(--ff-surface-2)
+    // falls through to the ordinary light-mode token, tightened to sit close
+    // to --ff-bg rather than reading as its own block of blue).
     <div className="ff-on-dark" style={bar}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       {!onOnboarding && <NewsletterSignup />}

@@ -309,10 +309,29 @@ export default function Home() {
           min-height: 100svh;   /* iOS counts the URL bar in vh, which pushed the button under the fold */
           display: flex; flex-direction: column;
           background: var(--ff-c60);
-          background-image: radial-gradient(ellipse 85% 55% at 50% 118%, rgba(9,13,22,0.92) 0%, transparent 72%);
           /* Top padding clears the fixed TopNav (~4.5rem tall incl. its own
              padding) so the eyebrow never sits under the wordmark. */
           padding: 5rem clamp(1.15rem, 5vw, 2rem) clamp(2rem, 7vh, 3.5rem);
+        }
+        /* Bottom vignette. Dark mode keeps the exact original near-black
+           glow — rgba(9,13,22,0.92), byte-identical — because that's what
+           makes the navy hero read as premium/moody rather than flat; this
+           rule must never change dark mode's rendering. Light mode's hero
+           now falls through to an off-white ground (.ff-on-dark, see
+           main.tsx), so the same near-black value would render as a dark
+           smudge across the bottom of it. Light gets a much subtler
+           equivalent in the same ink used for text (#0f172a, --ff-text in
+           light mode) at 6% instead of 92% — just enough depth behind the
+           button/tick-row area to keep the hero from reading perfectly flat,
+           without introducing a tinted ground (the page-ground rule
+           elsewhere in this codebase exists for exactly that reason). Scoped
+           by data-theme rather than a token because this gradient is a
+           one-off decorative value nothing else references. */
+        :root:not([data-theme="light"]) .ff-hero {
+          background-image: radial-gradient(ellipse 85% 55% at 50% 118%, rgba(9,13,22,0.92) 0%, transparent 72%);
+        }
+        :root[data-theme="light"] .ff-hero {
+          background-image: radial-gradient(ellipse 85% 55% at 50% 118%, rgba(15,23,42,0.06) 0%, transparent 72%);
         }
         /* One warm glow behind the headline instead of two in the corners, and
            it drifts over 22s — slow enough to read as light rather than motion. */
@@ -561,11 +580,18 @@ export default function Home() {
           button and not three, and why the brand is a lockup rather than the
           headline. The whole entrance is CSS, not framer-motion, so the text
           paints on the HTML/CSS pass instead of waiting for the JS bundle. */}
-      {/* Navy in both themes. The hero's whole design — the warm glow, the
-          near-black bottom gradient, the ink watermark icons — assumes a dark
-          ground; on light mode's white it read as a smudge. It is also the
-          first screen a visitor sees, so it is where the brand colour earns
-          the most. */}
+      {/* Navy in dark mode, off-white in light mode (2026-08-24 — owner
+          direction: light mode should read off-white almost everywhere, navy
+          reserved for text/icons/borders/accents, not full-bleed section
+          backgrounds — see the .ff-on-dark rewrite in main.tsx). .ff-hero's
+          own background is var(--ff-c60), which already resolves per-theme
+          with no change needed here.
+          FOLLOW-UP RESOLVED (2026-08-24): the bottom radial-gradient — on
+          .ff-hero itself, not ::before, which is actually the diagonal
+          weave texture below — is now theme-scoped instead of one literal
+          rgba(9,13,22,0.92). Dark mode's rule is byte-identical to before;
+          light mode gets a much subtler ink-tinted equivalent. See the two
+          data-theme rules just above .ff-hero-glow. */}
       <div className="ff-hero ff-on-dark">
         <div className="ff-hero-glow" aria-hidden="true" />
         {/* Watermark texture. Ink, not orange — the accent budget is spent on
@@ -734,9 +760,15 @@ export default function Home() {
       </div>
 
       {/* ── Freddy Verified ──
-           The one navy band between the hero and the footer. Everything inside
-           is already token-driven, so ff-on-dark flips the whole section — its
-           cards, hairlines and muted text — with no per-element change.
+           2026-08-24: the owner reviewed again and asked for off-white
+           consistently everywhere, this band included — the earlier
+           .ff-anchor exception (forcing navy here even in light mode) is
+           removed, so it now falls through to the same light-mode-off-white
+           behavior as TopNav/hero/Footer via the scoping mechanism in
+           main.tsx. Navy in dark mode, off-white ground in light mode.
+           Everything inside is already token-driven, so ff-on-dark flips the
+           whole section — its cards, hairlines and muted text — with no
+           per-element change.
            --ff-bg, NOT --ff-surface: under the scope --ff-surface is #151d2e,
            which is exactly what a normal surface band already renders as in
            dark mode, so this band would have vanished into the About band
