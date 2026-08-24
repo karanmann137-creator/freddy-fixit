@@ -6,6 +6,8 @@ import { trackEvent } from "@/lib/analytics";
 import { SERVICES } from "@/pages/ClientOnboarding";
 import { useServicePricing, rangeText } from "@/lib/servicePricing";
 import { validateEmail, validatePhone } from "@/lib/emailValidation";
+import WaitlistForm from "@/components/WaitlistForm";
+import { usePlatformStatus, acceptingRequests } from "@/lib/platformStatus";
 
 // Public, no-signup lead capture. A visitor can request a ballpark quote with
 // just their contact details + what they need — we store it as a quote_lead
@@ -13,6 +15,7 @@ import { validateEmail, validatePhone } from "@/lib/emailValidation";
 // follows up. After submitting we nudge them to create an account to track it.
 export default function GetQuote() {
   const [, setLocation] = useLocation();
+  const { status: platform, ready: platformReady } = usePlatformStatus();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -89,6 +92,37 @@ export default function GetQuote() {
           <button style={s.btn} onClick={() => setLocation("/client-onboarding")}>Create a free account →</button>
           <button onClick={() => setLocation("/")} style={{ background:"none", border:"none", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", marginTop:"1.25rem" }}>← Back home</button>
         </div>
+      </div>
+    </div>
+  );
+
+  // Waitlist / paused mode. This page is a public, un-gated lead form, so
+  // without this it went on promising "we'll reach out shortly with a ballpark
+  // price" while every other entry point on the site said we are closed. The
+  // DB is not the gate here: `enforce_platform_pause` guards client_requests,
+  // and submit_quote_lead writes to quote_leads, which it does not cover — so
+  // this branch is the only thing that stops the promise. Placed AFTER the
+  // `done` return so someone who submitted moments before the owner flipped the
+  // switch still sees their confirmation instead of a pause screen.
+  if (platformReady && !acceptingRequests(platform.mode)) return (
+    <div style={s.wrap}>
+      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+      <div style={{ height:"3.75rem" }} />
+      <div style={s.inner}>
+        <button onClick={() => setLocation("/")} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".82rem", textTransform:"uppercase", letterSpacing:".08em", padding:0, marginBottom:"1.5rem", display:"block" }}>
+          &larr; Home
+        </button>
+        <WaitlistForm
+          initialName={name}
+          initialEmail={email}
+          initialService={service}
+          initialDescription={details}
+          source="get_a_quote"
+        />
+        <p style={{ textAlign:"center", fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.6, margin:"1.5rem auto 0", maxWidth:"460px" }}>
+          Are you a contractor? We&rsquo;re still onboarding pros while we rebuild &mdash;{" "}
+          <a href="/contractor-onboarding" style={{ color:"#ea6b14", textDecoration:"none", fontWeight:600 }}>join Freddy&rsquo;s team &rarr;</a>
+        </p>
       </div>
     </div>
   );
