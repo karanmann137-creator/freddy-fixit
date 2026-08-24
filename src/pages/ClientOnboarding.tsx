@@ -14,6 +14,7 @@ import AddressAutocomplete from "@/components/AddressAutocomplete";
 import ServicePicker from "@/components/ServicePicker";
 import BudgetPicker from "@/components/BudgetPicker";
 import { validateEmail, validatePhone } from "@/lib/emailValidation";
+import { stashReferralCode, stashedReferralCode, applyReferralAtSignup } from "@/lib/referralCode";
 import WaitlistForm from "@/components/WaitlistForm";
 import { usePlatformStatus, acceptingRequests } from "@/lib/platformStatus";
 import { detectFromText } from "@/lib/serviceTags";
@@ -119,7 +120,7 @@ function stashedRefCode(): string {
   try {
     const fromUrl = new URLSearchParams(window.location.search).get("ref");
     if (fromUrl) return fromUrl.trim().toUpperCase();
-    return (localStorage.getItem("ff_ref_code") ?? "").trim().toUpperCase();
+    return stashedReferralCode();
   } catch { return ""; }
 }
 
@@ -414,7 +415,7 @@ export default function ClientOnboarding() {
       // AuthCallback, which runs it after they click the link, only ever reads
       // localStorage. Without this line a code entered by hand is silently lost
       // for exactly the people who take the long way round.
-      try { if (form.referralCode.trim()) localStorage.setItem("ff_ref_code", form.referralCode.trim().toUpperCase()); } catch {}
+      stashReferralCode(form.referralCode);
       // No session => email confirmation required. The trigger saved their
       // request already; show the verify screen.
       if (!authData.session) { trackEvent("sign_up", { method: "client" }); trackEvent("post_job"); requestGoogleReview("signup"); requestGoogleReview("job_posted"); setVerifyEmail(true); window.scrollTo(0,0); setLoading(false); return; }
@@ -434,12 +435,10 @@ export default function ClientOnboarding() {
       // Apply the referral code now that the client has an active session. The
       // TYPED code wins over the stashed one: if they arrived on a ?ref= link but
       // then deliberately typed a different code, the one they typed is the one
-      // they meant. A bad code must never block a signup — apply_referral_code
-      // returns {ok:false,reason} rather than throwing, and the catch covers the rest.
-      try {
-        const ref = (form.referralCode || localStorage.getItem("ff_ref_code") || "").trim().toUpperCase();
-        if (ref) { await supabase.rpc("apply_referral_code", { p_code: ref }); localStorage.removeItem("ff_ref_code"); }
-      } catch {}
+      // they meant. A bad code must never block a signup — applyReferralAtSignup
+      // cannot throw, and a refusal is now STASHED rather than discarded, so the
+      // dashboard prints it directly above the box that retries it.
+      await applyReferralAtSignup(form.referralCode || stashedReferralCode());
       trackEvent("sign_up", { method: "client" }); trackEvent("post_job"); requestGoogleReview("signup"); requestGoogleReview("job_posted");
       try { const { data: refData } = await supabase.rpc("get_my_referral"); const rc = Array.isArray(refData) ? refData[0]?.code : (refData as any)?.code; if (rc) setReferral({ code: rc }); } catch {}
       setSuccess(true); window.scrollTo(0,0);

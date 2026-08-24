@@ -18,6 +18,7 @@ import ReportProblem from "@/components/ReportProblem";
 import FileClaimModal, { type ClaimJob } from "@/components/FileClaimModal";
 import RequestHelpModal from "@/components/RequestHelpModal";
 import { jobCode } from "@/lib/jobCode";
+import { referralReasonText, takeReferralError } from "@/lib/referralCode";
 import { sendContractCopy, CONTRACT_COPY_FAILED } from "@/lib/contractCopy";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
@@ -232,6 +233,15 @@ export default function ClientDashboard() {
     supabase.auth.getSession().then(({ data }) => {
       if (!data.session) setLocation("/login");
     });
+  }, []);
+
+  // A code typed at signup that the DB refused. Neither signup surface can show
+  // it — ClientOnboarding is mid-submit and AuthCallback is a redirect — so the
+  // reason is stashed and read exactly once, here, where it renders immediately
+  // above the manual entry box. The explanation and the retry arrive together.
+  useEffect(() => {
+    const t = takeReferralError();
+    if (t) setRefMsg({ ok: false, text: t });
   }, []);
 
   useEffect(() => {
@@ -539,17 +549,10 @@ export default function ClientDashboard() {
           } catch { /* the fee line just stays as it was until the next load */ }
         }
       } else {
-        const reason = String(res?.reason ?? "");
-        setRefMsg({ ok: false, text:
-          reason === "self"             ? "That's your own code — send it to a friend instead."
-          : reason === "already_referred" ? "This account has already used a referral code."
-          : reason === "empty"            ? "Enter a code first."
-          // A code invites one friend. These two say which way it's unavailable,
-          // because "invalid code" would send someone off hunting for a typo in
-          // a code that is perfectly real.
-          : reason === "code_retired"     ? "That code has already been used by a friend — each code is good for one person."
-          : reason === "code_in_use"      ? "Someone else is already using that code. If they don't book within 30 days it frees up, so it's worth asking your friend again later."
-          :                                 "We don't recognise that code. Check it and try again." });
+        // Same wording the signup path stashes, from the same map — a code
+        // refused at signup and the same code refused here must not be
+        // explained two different ways.
+        setRefMsg({ ok: false, text: referralReasonText(String(res?.reason ?? "")) });
       }
     } catch {
       setRefMsg({ ok: false, text: "Couldn't apply that code just now. Please try again." });

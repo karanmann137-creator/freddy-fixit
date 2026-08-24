@@ -3,6 +3,7 @@ import { useEffect, useState, lazy, Suspense } from "react";
 import { supabase } from "@/lib/supabase";
 import type { UserRole } from "@/lib/supabase";
 import { trackPageView } from "@/lib/analytics";
+import { REF_CODE_KEY } from "@/lib/referralCode";
 
 // Eager: tiny, always-needed shell + the landing/login pages.
 import Home from "@/pages/Home";
@@ -88,7 +89,7 @@ function ScrollToTop() {
     // until the visitor signs up. Persist so it survives the email-confirm hop.
     try {
       const ref = new URLSearchParams(window.location.search).get("ref");
-      if (ref && !localStorage.getItem("ff_ref_code")) localStorage.setItem("ff_ref_code", ref.trim().toUpperCase());
+      if (ref && !localStorage.getItem(REF_CODE_KEY)) localStorage.setItem(REF_CODE_KEY, ref.trim().toUpperCase());
     } catch {}
   }, [location]);
   return null;

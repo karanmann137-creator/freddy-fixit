@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { stashedReferralCode, applyReferralAtSignup } from "@/lib/referralCode";
 
 // Lands here after (a) a Google/Apple OAuth round-trip, or (b) an email
 // confirmation link. Supabase parses the session out of the URL automatically.
@@ -62,11 +63,11 @@ export default function AuthCallback() {
       if (wantedRole === "client") {
         // role stays/clamps to client; new homeowners can post a request next.
         if (profile?.role === "admin" || profile?.role === "contractor") { routeByRole(profile.role); return; }
-        // Apply a referral code stashed before the email-confirm hop.
-        try {
-          const ref = localStorage.getItem("ff_ref_code");
-          if (ref) { await supabase.rpc("apply_referral_code", { p_code: ref }); localStorage.removeItem("ff_ref_code"); }
-        } catch {}
+        // Apply a referral code stashed before the email-confirm hop. A refusal
+        // is stashed, not shown: this is a redirect page with nowhere to put a
+        // message, and holding up a sign-in over a referral code would be absurd.
+        // The dashboard we're about to send them to reads it.
+        await applyReferralAtSignup(stashedReferralCode());
         setLocation("/client-dashboard");
         return;
       }
