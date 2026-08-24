@@ -139,7 +139,7 @@ export default function JobsCalendar({ jobs, statusColors, onOpen }: {
       )}
 
       {/* Selected day detail */}
-      <div style={{ marginTop: "1.25rem", background: "rgba(var(--ff-fg), .055)", border: "1px solid rgba(var(--ff-fg), .05)", borderRadius: "14px", padding: "1.25rem" }}>
+      <div style={{ marginTop: "1.25rem", background: "var(--ff-card-bg)", border: "1px solid var(--ff-card-border)", borderRadius: "14px", padding: "1.25rem" }}>
         <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.1rem", letterSpacing: ".05em", lineHeight: 1.1, color: "#ea6b14", marginBottom: ".8rem" }}>
           <Ic name="calendar" size={15} style={{ marginRight: 6 }} />{selLabel}
         </div>

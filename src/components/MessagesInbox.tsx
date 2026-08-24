@@ -34,8 +34,8 @@ export default function MessagesInbox({
   meId?: string | null;
 }) {
   const card: React.CSSProperties = {
-    background: "rgba(var(--ff-fg), .055)",
-    border: "1px solid rgba(var(--ff-fg), .05)",
+    background: "var(--ff-card-bg)",
+    border: "1px solid var(--ff-card-border)",
     borderRadius: "12px",
     padding: "clamp(1rem, 4vw, 1.5rem)",
   };
@@ -101,8 +101,8 @@ export default function MessagesInbox({
               display: "flex", alignItems: "flex-start", gap: ".75rem", width: "100%",
               textAlign: "left", cursor: "pointer", fontFamily: "inherit",
               padding: "clamp(.7rem, 3vw, .9rem)", borderRadius: "12px",
-              background: unread ? "rgba(234,107,20,.08)" : "rgba(var(--ff-fg), .055)",
-              border: unread ? "1px solid rgba(234,107,20,.18)" : "1px solid rgba(var(--ff-fg), .05)",
+              background: unread ? "rgba(234,107,20,.08)" : "var(--ff-card-bg)",
+              border: unread ? "1px solid rgba(234,107,20,.18)" : "1px solid var(--ff-card-border)",
             }}
           >
             <div style={{

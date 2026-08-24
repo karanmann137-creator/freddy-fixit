@@ -87,7 +87,7 @@ export default function PickPro() {
         .ff-pk-sub { text-align: center; color: rgba(var(--ff-muted), .7); font-size: .95rem; margin: 0 0 1.75rem; line-height: 1.5; }
         .ff-pk-job { background: rgba(var(--ff-fg), .04); border: 1px solid rgba(var(--ff-fg), .08);
           border-radius: 14px; padding: 1rem 1.15rem; margin-bottom: 1.5rem; }
-        .ff-pk-card { background: rgba(var(--ff-fg), .055); border: 1px solid rgba(var(--ff-fg), .08);
+        .ff-pk-card { background: var(--ff-card-bg); border: 1px solid var(--ff-card-border);
           border-radius: 14px; padding: 1.1rem; margin-bottom: .9rem; transition: border-color .15s, transform .12s; }
         .ff-pk-card:hover { border-color: rgba(234,107,20,.35); }
         .ff-pk-btn { width: 100%; margin-top: .9rem; padding: .8rem 1rem; border: none; border-radius: 10px;

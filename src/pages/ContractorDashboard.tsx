@@ -966,11 +966,11 @@ export default function ContractorDashboard() {
     // Fluid padding: on a ~276px-wide phone column a flat 1.5rem/1.75rem ate
     // ~20% of the usable width before any content was drawn.
     content: { maxWidth:"900px", margin:"0 auto", padding:"clamp(1rem, 4vw, 2rem) clamp(.75rem, 3vw, 1.5rem)" },
-    card: { background:"rgba(var(--ff-fg), .055)", border:"1px solid rgba(var(--ff-fg), .05)", borderRadius:"14px", padding:"clamp(1rem, 4vw, 1.75rem)", marginBottom:"1.5rem" },
+    card: { background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"14px", padding:"clamp(1rem, 4vw, 1.75rem)", marginBottom:"1.5rem" },
     cardTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", lineHeight:1.1, color:"#ea6b14", marginBottom:"1.25rem" },
-    jobCard: { background:"rgba(var(--ff-fg), .055)", border:"1px solid rgba(var(--ff-fg), .05)", borderRadius:"12px", padding:"clamp(.9rem, 3.5vw, 1.5rem)", marginBottom:"1rem", cursor:"pointer" },
+    jobCard: { background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"12px", padding:"clamp(.9rem, 3.5vw, 1.5rem)", marginBottom:"1rem", cursor:"pointer" },
     btn: { padding:".5rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"6px", color:"rgba(var(--ff-muted), .7)", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer" },
-    earnCard: { background:"rgba(var(--ff-fg), .055)", border:"1px solid rgba(var(--ff-fg), .05)", borderRadius:"12px", padding:"1.25rem", textAlign:"center" as const },
+    earnCard: { background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"12px", padding:"1.25rem", textAlign:"center" as const },
     chip: { padding:".3rem .75rem", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.18)", borderRadius:"99px", fontSize:".78rem", color:"rgba(var(--ff-muted), .8)", display:"inline-block", margin:".2rem" },
     slot: { padding:".38rem .85rem", borderRadius:"99px", fontSize:".78rem", cursor:"pointer", border:"1px solid rgba(var(--ff-fg), .1)", background:"rgba(var(--ff-fg), .04)", color:"rgba(var(--ff-muted), .7)", fontFamily:"inherit", margin:".2rem" },
     slotSel: { background:"rgba(234,107,20,.15)", borderColor:"rgba(234,107,20,.5)", color:"var(--ff-text)" },

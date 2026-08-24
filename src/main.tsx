@@ -58,6 +58,13 @@ style.textContent = `
     --ff-ink-3: rgba(var(--ff-muted), 0.68);
     --ff-ink-4: rgba(var(--ff-muted), 0.45);
     --ff-hair: rgba(var(--ff-fg), 0.09);
+    /* Card/panel surface — a dedicated pair so dashboard "cards" can be
+       given a real, distinct backdrop in light mode without touching the
+       ink-opacity overlays text and hairlines rely on. Dark keeps the
+       original rgba(var(--ff-fg)) expression byte-for-byte, so dark mode
+       is pixel-identical. */
+    --ff-card-bg: rgba(var(--ff-fg), .055);
+    --ff-card-border: rgba(var(--ff-fg), .05);
     /* One shadow scale, so "raised" means the same thing everywhere. */
     --ff-lift-1: 0 1px 2px rgba(0,0,0,0.18);
     --ff-lift-2: 0 8px 28px rgba(0,0,0,0.28);
@@ -69,11 +76,11 @@ style.textContent = `
     --ff-text: #0f172a;
     --ff-bg: #e9eef8;
     --ff-bg-rgb: 233,238,248;
-    --ff-surface: #ffffff;
-    --ff-surface-141: #ffffff;
-    --ff-surface-2: #e4e9f2;
-    --ff-surface-0e: #dfe5f0;
-    --ff-surface-1f: #ffffff;
+    --ff-surface: #c9d4ee;
+    --ff-surface-141: #c9d4ee;
+    --ff-surface-2: #b9c7e6;
+    --ff-surface-0e: #c2cfea;
+    --ff-surface-1f: #c9d4ee;
     --ff-success: #15803d;
     --ff-warn: #b45309;
     --ff-danger: #dc2626;
@@ -88,6 +95,8 @@ style.textContent = `
     --ff-ink-3: rgba(var(--ff-muted), 0.78);
     --ff-ink-4: rgba(var(--ff-muted), 0.58);
     --ff-hair: rgba(var(--ff-fg), 0.12);
+    --ff-card-bg: #dae1f1;
+    --ff-card-border: rgba(30,58,138,.16);
     --ff-lift-1: 0 1px 2px rgba(15,23,42,0.06);
     --ff-lift-2: 0 8px 28px rgba(15,23,42,0.10);
     --ff-lift-3: 0 22px 60px rgba(15,23,42,0.16);
@@ -149,6 +158,8 @@ style.textContent = `
     --ff-ink-3: rgba(190,205,235,0.68);
     --ff-ink-4: rgba(190,205,235,0.45);
     --ff-hair: rgba(255,255,255,0.09);
+    --ff-card-bg: rgba(255,255,255,.055);
+    --ff-card-border: rgba(255,255,255,.05);
     --ff-lift-1: 0 1px 2px rgba(0,0,0,0.18);
     --ff-lift-2: 0 8px 28px rgba(0,0,0,0.28);
     --ff-lift-3: 0 22px 60px rgba(0,0,0,0.42);

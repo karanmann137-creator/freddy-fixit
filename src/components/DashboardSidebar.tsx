@@ -176,7 +176,7 @@ export default function DashboardSidebar({
 
   const asideBase: React.CSSProperties = {
     position:"sticky", top:"3.75rem", alignSelf:"flex-start", height:"calc(100vh - 3.75rem)",
-    overflowY:"auto" as const, borderRight:"1px solid rgba(var(--ff-fg), .08)", background:"rgba(var(--ff-fg), .025)",
+    overflowY:"auto" as const, borderRight:"1px solid rgba(var(--ff-fg), .08)", background:"var(--ff-card-bg)",
     transition:"width .18s ease",
   };
 

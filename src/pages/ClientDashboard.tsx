@@ -1150,7 +1150,7 @@ export default function ClientDashboard() {
     // Fluid padding: a flat 1.5rem on each side ate ~24% of the usable width
     // once the sidebar rail is subtracted on a phone.
     content: { maxWidth:"800px", margin:"0 auto", padding:"clamp(1rem, 4vw, 1.5rem)" },
-    card: { background:"rgba(var(--ff-fg), .055)", border:"1px solid rgba(var(--ff-fg), .05)", borderRadius:"14px", padding:"clamp(1rem, 4vw, 1.5rem)", marginBottom:"1.5rem" },
+    card: { background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"14px", padding:"clamp(1rem, 4vw, 1.5rem)", marginBottom:"1.5rem" },
     cardTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", lineHeight:1.1, color:"#ea6b14", marginBottom:"1.25rem" },
     btn: { padding:".5rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"6px", color:"rgba(var(--ff-muted), .7)", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer" },
     primaryBtn: { padding:".75rem 1.5rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer" },
