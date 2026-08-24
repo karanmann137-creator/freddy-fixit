@@ -324,7 +324,6 @@ export default function Home() {
         /* Group breaks, expressed in modules rather than eyeballed pixels. */
         .ff-hero-body > .ff-h1       { margin-top: var(--ff-mod); }
         .ff-hero-body > .ff-cta      { margin-top: calc(var(--ff-mod) * 2); }
-        .ff-hero-body > .ff-proof    { margin-top: calc(var(--ff-mod) * 2); }
         .ff-hero-body > .ff-hero-alt { margin-top: calc(var(--ff-mod) * 2); }
         /* One column, so the flex-era justify-content that used to push the
            body into the thumb arc becomes align-content. The "safe" keyword
@@ -365,35 +364,6 @@ export default function Home() {
         .ff-cta:active { transform: translateY(0) scale(0.994); }
         .ff-cta:focus-visible { outline: 2px solid var(--ff-accent-400); outline-offset: 3px; }
         .ff-cta-note { margin: 0; font-size: 0.8rem; letter-spacing: 0.04em; color: var(--ff-ink-4); }
-
-        /* The proof line. It answers the question a first-time visitor is
-           actually asking under the button — "who are these people and what
-           stops one of them taking my money?" — and every clause of it is a
-           mechanism that exists in the code, not a boast:
-             · "passed our review"   → a contractor is inert until an admin
-                                        sets status='active'.
-             · "verified their ID"   → contract_ready() refuses to let an
-                                        agreement be sent unless Stripe has
-                                        completed identity verification, and
-                                        the payment functions refuse to charge
-                                        without a signed agreement. So the ID
-                                        check gates the money BY CONSTRUCTION.
-             · "signed agreement"    → contract_required() is true for every
-                                        job, and the charge endpoints 428.
-           What it deliberately does NOT say is anything about volume. We have
-           11 active pros, no completed jobs and no reviews yet, so "trusted by
-           hundreds" would be a lie, and the one thing a marketplace cannot
-           afford to be caught doing early is inventing its own traction.
-
-           It is set as plain text on the axis — no box, no tinted panel, no
-           border. A card here would have been a fourth bordered thing on a
-           screen whose whole job is to feel calm, and the sentence does not
-           need a container to be believed. The single small mark carries it. */
-        .ff-proof { display: flex; align-items: flex-start; justify-content: center; gap: 0.45rem;
-          max-width: 31rem; margin: 0; padding: 0;
-          font-size: 0.82rem; line-height: 1.55; color: var(--ff-ink-4); text-align: left; }
-        .ff-proof svg { flex-shrink: 0; margin-top: 0.22rem; }
-        .ff-proof strong { color: var(--ff-ink-2); font-weight: 500; }
 
         /* A notch larger than the contractor line's neighbours, so a tradesperson
            scanning the page actually registers it — but still well under the
@@ -559,6 +529,13 @@ export default function Home() {
             </svg>
           </div>
 
+          {/* Tagline sits directly under the mark and above the headline — a
+              short trust line read before anything else on the page. Reuses
+              .ff-sub so the type size matches the rest of the hero body. */}
+          <p className="ff-sub ff-anim">
+            A Canadian and Family-Owned business.
+          </p>
+
           {/* Says what the visitor GETS, not what we are like. "Fix it once,
               fix it right" was a promise about workmanship we cannot make on a
               contractor's behalf; this is a description of the mechanism, and
@@ -571,35 +548,16 @@ export default function Home() {
           </h1>
 
           {/* The whole product in three words each. It sits between the
-              headline and the sentence that explains it, so a visitor who
-              reads nothing else still leaves knowing the shape of the thing. */}
+              headline and the button, so a visitor who reads nothing else
+              still leaves knowing the shape of the thing. */}
           <p className="ff-steps ff-anim ff-d1">
             Describe it. Compare it. Book it.
-          </p>
-
-          {/* Short on purpose. The old version spent three lines listing things
-              the tick row underneath already says, and a subheading nobody
-              finishes reading is a subheading that isn't working. */}
-          <p className="ff-sub ff-anim ff-d2">
-            One request goes out to pros near you. You choose.
           </p>
 
           <button className="ff-cta ff-anim ff-d2" onClick={() => setLocation("/client-onboarding")}>
             Get Free Estimates
           </button>
           <div className="ff-cta-note ff-anim ff-d2">No signup to start · Takes about 2 minutes</div>
-
-          {/* Credibility by mechanism, not by claimed volume — see .ff-proof.
-              Every clause here is enforced in code and can be shown to anyone
-              who asks. Do not "strengthen" this into a numbers claim until the
-              numbers exist. */}
-          <p className="ff-proof ff-anim ff-d3">
-            <Ic name="user-check" size={15} color="var(--ff-c10)" />
-            <span>
-              <strong>No pro can charge you</strong> until they've passed our review, verified
-              their ID, and signed an agreement with you.
-            </span>
-          </p>
 
           {/* Contractor sign-up sits ABOVE the tick row, not buried under it.
               Supply is the harder side of a marketplace to fill, and a pro who
