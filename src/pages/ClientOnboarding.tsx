@@ -549,6 +549,8 @@ export default function ClientOnboarding() {
           {/* ── 5 · Account ─────────────────────────────────────────────── */}
           {step === 5 && (
             <div>
+              <OAuthButtons role="client" label="sign up in one tap with" />
+              <p style={{ textAlign:"center", fontSize:".78rem", color:"rgba(var(--ff-muted), .4)", margin:"1.25rem 0" }}>or create your account with email</p>
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Email</label>
                 <input autoComplete="email" style={{ ...inp, borderColor: errors.email ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="email" placeholder="alex@email.com" value={form.email} onChange={e => set("email",e.target.value)} />
@@ -612,8 +614,6 @@ export default function ClientOnboarding() {
           {/* ── 1 · Describe ────────────────────────────────────────────── */}
           {step === 1 && (
             <div>
-              <OAuthButtons role="client" label="sign up in one tap with" />
-              <p style={{ textAlign:"center", fontSize:".78rem", color:"rgba(var(--ff-muted), .4)", margin:"1.25rem 0" }}>or tell us what's wrong</p>
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>What needs fixing?</label>
                 <textarea
