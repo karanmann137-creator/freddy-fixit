@@ -1,4 +1,5 @@
 import { Ic } from "@/components/Ic";
+import PasswordField from "@/components/PasswordField";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
@@ -104,6 +105,9 @@ export default function ContractorOnboarding() {
   const [step, setStep] = useState(1);
   const TOTAL = 5;
   const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", companyName:"", password:"", yearsOfExperience:"", photoUrl:"", workType:"", licensed:false, licenseNumber:"", hasInsurance:false, insuranceProvider:"", insuranceExpiry:"", hasWcb:false, operatesAlone:false, workReferences:"" });
+  // True only when Have I Been Pwned definitively matched the typed password.
+  // An unreachable HIBP reports false, so a flaky network can never block a signup.
+  const [pwBreached, setPwBreached] = useState(false);
   const [selectedSpec,  setSelectedSpec]  = useState<string[]>([]);
   const [selectedArea,  setSelectedArea]  = useState<string[]>([]);
   // Convenience only — the address is never stored. It exists to pre-tick the
@@ -223,6 +227,7 @@ export default function ContractorOnboarding() {
       if (!authedUserId) { const ev = validateEmail(form.email); if (!ev.ok) errs.email = ev.error!; }
       { const pv = validatePhone(form.phone); if (!pv.ok) errs.phone = pv.error!; }
       if (!authedUserId && form.password.length < 8) errs.password = "Minimum 8 characters";
+      else if (!authedUserId && pwBreached) errs.password = "This password has appeared in public data breaches. Please choose a different one.";
     }
     // Step 2 merges the old Specialties + Trade screens. Work type must be
     // answered here because it drives the credential copy on step 4 and the
@@ -468,8 +473,8 @@ export default function ContractorOnboarding() {
               {!authedUserId && (
                 <div style={{ marginBottom:"1.2rem" }}>
                   <label style={s.label}>Password (for your account)</label>
-                  <input autoComplete="new-password" style={{ ...inp, borderColor: errors.password ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="password" placeholder="Min 8 characters" value={form.password} onChange={e => setF("password",e.target.value)} />
-                <p style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .55)", margin:".3rem 0 0", lineHeight:1.4 }}>At least 8 characters. A mix of letters, numbers and symbols is strongest.</p>
+                  <PasswordField meter autoComplete="new-password" style={{ ...inp, borderColor: errors.password ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="Min 8 characters" value={form.password} onChange={v => setF("password",v)} onBreachChange={setPwBreached} />
+                <p style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .55)", margin:".3rem 0 0", lineHeight:1.4 }}>At least 8 characters. Length beats symbols &mdash; four random words is stronger than one word with punctuation.</p>
                   {errors.password && <p style={s.err}>{errors.password}</p>}
                 </div>
               )}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import PasswordField from "@/components/PasswordField";
 
 export default function UpdatePassword() {
   const [, setLocation] = useLocation();
@@ -9,6 +10,8 @@ export default function UpdatePassword() {
   const [pw2, setPw2] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  // Set only when Have I Been Pwned definitively matched this password.
+  const [breached, setBreached] = useState(false);
 
   useEffect(() => {
     let settled = false;
@@ -32,6 +35,7 @@ export default function UpdatePassword() {
     setError("");
     if (pw.length < 8) { setError("Password must be at least 8 characters."); return; }
     if (pw !== pw2) { setError("Passwords do not match."); return; }
+    if (breached) { setError("That password has appeared in public data breaches. Please choose a different one."); return; }
     setSaving(true);
     const { error } = await supabase.auth.updateUser({ password: pw });
     setSaving(false);
@@ -66,8 +70,8 @@ export default function UpdatePassword() {
                 Enter a new password for your account.
               </p>
               {error && <div style={s.err}>{error}</div>}
-              <input type="password" placeholder="New password" value={pw} onChange={e => setPw(e.target.value)} style={{ ...inp, marginBottom: ".75rem" }} />
-              <input type="password" placeholder="Confirm new password" value={pw2} onChange={e => setPw2(e.target.value)} onKeyDown={e => { if (e.key === "Enter") submit(); }} style={{ ...inp, marginBottom: "1.25rem" }} />
+              <PasswordField meter autoComplete="new-password" placeholder="New password" value={pw} onChange={setPw} onBreachChange={setBreached} style={inp} wrapStyle={{ marginBottom: ".75rem" }} />
+              <PasswordField autoComplete="new-password" placeholder="Confirm new password" value={pw2} onChange={setPw2} onKeyDown={e => { if (e.key === "Enter") submit(); }} style={inp} wrapStyle={{ marginBottom: "1.25rem" }} />
               {/* No scoped stylesheet on this page, so the busy state is inline. */}
               <button style={{ ...s.btn, opacity: saving ? .6 : 1, cursor: saving ? "not-allowed" : "pointer" }} onClick={submit} disabled={saving}>{saving ? "Updating..." : "Update password"}</button>
             </div>

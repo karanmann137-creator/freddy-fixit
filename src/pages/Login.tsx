@@ -1,4 +1,5 @@
 import { Ic } from "@/components/Ic";
+import PasswordField from "@/components/PasswordField";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
@@ -125,7 +126,7 @@ export default function Login() {
                 </div>
                 <div style={{ marginBottom:".75rem" }}>
                   <label style={s.label}>Password</label>
-                  <input style={inp} type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" />
+                  <PasswordField style={inp} placeholder="••••••••" value={password} onChange={setPassword} autoComplete="current-password" />
                 </div>
                 <div style={{ textAlign:"right", marginBottom:"1.25rem" }}>
                   <button type="button" style={s.textBtn} onClick={() => { setMode("forgot"); setError(""); }}>

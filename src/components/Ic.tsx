@@ -13,7 +13,8 @@ export type IconName =
   | "user" | "user-check" | "radio-on" | "radio-off" | "wave"
   | "building2" | "garage-door" | "pipe"
   | "key" | "refrigerator" | "trowel" | "download"
-  | "star" | "check" | "menu" | "info" | "repeat" | "file";
+  | "star" | "check" | "menu" | "info" | "repeat" | "file"
+  | "eye" | "eye-off";
 
 type IcProps = {
   name: IconName;
@@ -89,6 +90,8 @@ const ICONS: Record<IconName, React.ReactNode> = {
   info: <><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></>,
   repeat: <><path d="m17 2 4 4-4 4" /><path d="M3 11v-1a4 4 0 0 1 4-4h14" /><path d="m7 22-4-4 4-4" /><path d="M21 13v1a4 4 0 0 1-4 4H3" /></>,
   file: <><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /><path d="M14 2v5a1 1 0 0 0 1 1h5" /></>,
+  eye: <><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" /><circle cx="12" cy="12" r="3" /></>,
+  "eye-off": <><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" /><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" /><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" /><path d="m2 2 20 20" /></>,
 };
 
 export function Ic({ name, size = 18, color = "currentColor", style }: IcProps) {
