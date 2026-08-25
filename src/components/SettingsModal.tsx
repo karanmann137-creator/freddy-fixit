@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import DeleteAccount from "@/components/DeleteAccount";
+import TwoStepPanel from "@/components/TwoStepPanel";
 import {
   getTheme, setTheme, getTextScale, setTextScale,
   TEXT_SCALES, SCALE_LABELS, type Theme,
@@ -127,6 +128,8 @@ export function SettingsPanel({ role }: { role: Role }) {
       {/* Payment + account — only when signed in */}
       {role && (
         <>
+          <TwoStepPanel />
+
           <div style={card}>
             <p style={sectionTitle}>Payment method</p>
             {role === "contractor" ? (

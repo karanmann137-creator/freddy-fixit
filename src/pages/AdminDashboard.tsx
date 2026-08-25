@@ -60,6 +60,7 @@ export default function AdminDashboard() {
   const [busyStatus, setBusyStatus] = useState<string|null>(null); // contractor id whose status is toggling
   const [busyDelete, setBusyDelete] = useState(false);
   const [busyDeleteAccount, setBusyDeleteAccount] = useState<string|null>(null);
+  const [busyMfa, setBusyMfa] = useState<string|null>(null); // user id whose two-step is being cleared
   const [busyNudge, setBusyNudge] = useState(false);
   const [busyRefire, setBusyRefire] = useState<string|null>(null); // request id being re-sent
   // Live Stripe payout diagnosis, keyed by contractor id. Fetched on demand
@@ -327,6 +328,25 @@ export default function AdminDashboard() {
       try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
       alert("Couldn't delete account: " + msg);
     } finally { setBusyDeleteAccount(null); }
+  };
+
+  // Break glass: turn two-step sign-in OFF for someone who has lost both their
+  // email and their recovery codes. This is the whole reason the feature can be
+  // switched on safely -- without it, a lost mailbox is a permanently dead
+  // account and the only remedy would be raw SQL. It clears the setting; it does
+  // not sign anyone in, and it is logged by admin_clear_mfa itself.
+  const clearMfa = async (a: any) => {
+    const who = [a.first_name, a.last_name].filter(Boolean).join(" ") || a.email || a.id.slice(0, 8);
+    if (!window.confirm(`Turn OFF two-step sign-in for ${who}? They'll be able to sign in with just their password until they switch it back on. Only do this once you're sure who you're talking to.`)) return;
+    setBusyMfa(a.id);
+    try {
+      const { data, error } = await supabase.rpc("admin_clear_mfa", { p_user_id: a.id });
+      if (error) throw error;
+      if (!(data as any)?.ok) throw new Error((data as any)?.reason || "unknown");
+      alert(`Two-step sign-in is now off for ${who}.`);
+    } catch (e: any) {
+      alert("Couldn't turn off two-step: " + (e?.message || String(e)));
+    } finally { setBusyMfa(null); }
   };
 
   const setContractorStatus = async (contractorId: string, status: "active"|"inactive") => {
@@ -987,6 +1007,10 @@ export default function AdminDashboard() {
                         {busyStatus === a.id ? "…" : "Deactivate"}
                       </button>
                     )}
+                    <button style={s.btn} disabled={busyMfa === a.id} onClick={() => clearMfa(a)}
+                      title="Use only when someone has lost both their email and their recovery codes">
+                      <Ic name="key" size={13} style={{ marginRight:4 }} />{busyMfa === a.id ? "…" : "Turn off two-step"}
+                    </button>
                     <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)", marginLeft:"auto" }}
                       disabled={busyDeleteAccount === a.id} onClick={() => deleteAccount(a)}>
                       <Ic name="trash" size={13} style={{ marginRight:4 }} />{busyDeleteAccount === a.id ? "Deleting…" : "Delete account"}
