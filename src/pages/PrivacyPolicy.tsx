@@ -8,7 +8,7 @@ export default function PrivacyPolicy() {
       <div style={{ maxWidth:"800px", margin:"0 auto" }}>
 
         <h1 style={{ fontSize:"clamp(2.5rem,6vw,4rem)", color:"var(--ff-text)", marginBottom:".5rem" }}>Privacy Policy</h1>
-        <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)", marginBottom:"3rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 4, 2026 &nbsp;·&nbsp; Last Updated: August 14, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
+        <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)", marginBottom:"3rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 4, 2026 &nbsp;·&nbsp; Last Updated: August 25, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
 
         <section style={{ marginBottom:"2.5rem" }}>
           <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>1. Introduction</h2>
@@ -153,6 +153,7 @@ export default function PrivacyPolicy() {
             <li><strong>Chat messages and uploaded photos/videos:</strong> Media you upload to your own profile or portfolio is deleted when your account is deleted (on a best-effort basis, within 90 days). Messages and media attached to a <em>job</em> (including chat photos/videos, completion photos, and claim photos) are part of that job&rsquo;s record and are retained with the related transaction records &mdash; up to 7 years where they evidence a payment, dispute, or contract &mdash; even if an account is later deleted, because we may need them to meet legal and audit obligations.</li>
             <li><strong>Contractor compliance declarations:</strong> Retained for the duration of the contractor relationship and for up to <strong>2 years</strong> thereafter.</li>
           </ul>
+          <p>The same schedule applies where <em>we</em> close or delete an account rather than you &mdash; see Section 13 of the User Agreement. Deleting an account removes your access to the data; it does not shorten a retention period we are required to observe.</p>
           <p>When personal information is no longer required, we will destroy, erase, or de-identify it in a secure manner.</p>
         </section>
 

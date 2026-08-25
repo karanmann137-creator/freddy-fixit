@@ -7,7 +7,7 @@ export default function UserAgreement() {
 
         {/* ─── PART I: GENERAL USER AGREEMENT ─── */}
         <h1 style={{ fontSize:"clamp(2.5rem,6vw,4rem)", color:"var(--ff-text)", marginBottom:".5rem" }}>User Agreement</h1>
-        <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)", marginBottom:"3rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 26, 2026 &nbsp;·&nbsp; Last Updated: July 22, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
+        <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)", marginBottom:"3rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 26, 2026 &nbsp;·&nbsp; Last Updated: August 25, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
 
         <section style={{ marginBottom:"2.5rem" }}>
           <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>1. Agreement to Terms</h2>
@@ -103,17 +103,28 @@ export default function UserAgreement() {
         </section>
 
         <section style={{ marginBottom:"2.5rem" }}>
-          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>13. Governing Law</h2>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>13. Suspension and Termination</h2>
+          <p><strong>13.1 Termination by You.</strong> You may close your account at any time from your account settings, or by emailing <a href="mailto:hello@freddyfixit.ca">hello@freddyfixit.ca</a>. Closing your account does not by itself cancel a job that is already underway or amounts already owed &mdash; see Section 13.4.</p>
+          <p><strong>13.2 Suspension or Termination by Us.</strong> <strong>We may suspend, restrict, deactivate, or permanently delete your account, your listings, your User Content, and your access to the Platform at any time, for any reason or for no reason, with or without cause, and with or without prior notice.</strong> Reasons may include a breach or suspected breach of this Agreement, conduct described in Section 8, a risk to the safety of another user, a payment problem, suspected fraud or misuse, a legal or regulatory requirement, or a decision to change or discontinue the Platform in whole or in part. We are not required to give reasons, and we are not liable to you or to any third party for any suspension, termination, or deletion. Contractors are additionally subject to Section 8 of the Contractor Professional Terms.</p>
+          <p><strong>13.3 Deletion of Content and Data.</strong> On termination we may delete your account, profile, listings, messages, photos, and other User Content, and you may permanently lose access to them. We may retain records where we are required or permitted to do so; the retention schedule is set out in Section 8 of the Privacy Policy (for example, payment and transaction records are kept for seven years). Retained records are not accessible to you through the Platform. We recommend keeping your own copies of anything you may need.</p>
+          <p><strong>13.4 Money and Jobs in Progress.</strong> Termination does not forfeit money. Funds the Company is holding for a job at the time of termination remain subject to Sections 6.9 and 6.10 and will be released, refunded, or otherwise dealt with as those Sections require. Amounts you already owe, including fees, remain payable. Where a job is live at the moment of termination, we may complete, cancel, or reassign it as reasonably necessary to protect the other party to that job.</p>
+          <p><strong>13.5 Your Consumer Rights Are Not Affected.</strong> Nothing in this Section waives, limits, or reduces any right you have under the <em>Consumer Protection Act</em> (Alberta) or any other applicable consumer protection law, including the cancellation and refund rights described in Section 6.10.</p>
+          <p><strong>13.6 Re-registration.</strong> If we terminate your account, we may decline to let you open a new one, and we may close any account we reasonably believe you opened to circumvent a termination.</p>
+          <p><strong>13.7 Survival.</strong> Sections 5, 7, 9, 10, 11, 13, 14, and 15, and any other provision that by its nature should survive, remain in effect after your account ends.</p>
+        </section>
+
+        <section style={{ marginBottom:"2.5rem" }}>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>14. Governing Law</h2>
           <p>This Agreement is governed by the laws of the <strong>Province of Alberta</strong> and the federal laws of Canada. Any dispute shall be submitted exclusively to the courts of <strong>Calgary, Alberta</strong>.</p>
         </section>
 
         <section style={{ marginBottom:"3rem" }}>
-          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>14. General Provisions</h2>
-          <p><strong>14.1 Entire Agreement.</strong> This Agreement, together with the Privacy Policy, constitutes the entire agreement between you and the Company and supersedes all prior agreements.</p>
-          <p><strong>14.2 Severability.</strong> If any provision is found invalid or unenforceable, the remaining provisions continue in full force.</p>
-          <p><strong>14.3 No Waiver.</strong> The Company&rsquo;s failure to enforce any right shall not constitute a waiver.</p>
-          <p><strong>14.4 Assignment.</strong> You may not assign your rights without prior written consent. The Company may assign its rights freely.</p>
-          <p><strong>14.5 Language.</strong> This Agreement is written in English. In any conflict with a translation, the English version prevails.</p>
+          <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>15. General Provisions</h2>
+          <p><strong>15.1 Entire Agreement.</strong> This Agreement, together with the Privacy Policy, constitutes the entire agreement between you and the Company and supersedes all prior agreements.</p>
+          <p><strong>15.2 Severability.</strong> If any provision is found invalid or unenforceable, the remaining provisions continue in full force.</p>
+          <p><strong>15.3 No Waiver.</strong> The Company&rsquo;s failure to enforce any right shall not constitute a waiver.</p>
+          <p><strong>15.4 Assignment.</strong> You may not assign your rights without prior written consent. The Company may assign its rights freely.</p>
+          <p><strong>15.5 Language.</strong> This Agreement is written in English. In any conflict with a translation, the English version prevails.</p>
         </section>
 
         <hr className="divider" />
