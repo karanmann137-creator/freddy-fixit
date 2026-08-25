@@ -283,6 +283,133 @@ style.textContent = `
      machined next to a shaky line. */
   svg[viewBox="0 0 24 24"] * { stroke-linecap: round; stroke-linejoin: round; }
 
+  /* -- Skeleton loaders & entrance motion --------------------------------
+     One shimmer, one entrance, one image fade, shared by every surface that
+     loads. They live here rather than in a component because the dashboards,
+     the panels and the lazy-route fallback all need them and a second copy is
+     how upsertMeta ended up pasted into six files and then drifted.
+
+     Everything below is deliberately token-driven: .ff-sk paints with
+     rgba(var(--ff-fg), ...), so it is a pale grey on the light ground and a
+     pale white-on-navy in dark mode with no per-theme rule, and it inherits
+     .ff-on-dark correctly wherever a skeleton sits inside a navy scope.
+
+     The reduced-motion block at the bottom of this sheet already flattens
+     every animation here to 0.001ms, so a skeleton degrades to a plain static
+     block and an entrance degrades to an instant appearance. Nothing below
+     needs its own prefers-reduced-motion rule. */
+
+  @keyframes ff-shimmer {
+    from { background-position: -340px 0; }
+    to   { background-position: calc(340px + 100%) 0; }
+  }
+  .ff-sk {
+    background-color: rgba(var(--ff-fg), 0.08);
+    background-image: linear-gradient(90deg,
+      rgba(var(--ff-fg), 0) 0,
+      rgba(var(--ff-fg), 0.10) 50%,
+      rgba(var(--ff-fg), 0) 100%);
+    background-size: 340px 100%;
+    background-repeat: no-repeat;
+    animation: ff-shimmer 1.45s linear infinite;
+    border-radius: 6px;
+    /* A skeleton is scenery, never content. Screen readers and text selection
+       both skip it, so a shell does not read out as a wall of blank rows. */
+    user-select: none;
+  }
+  .ff-sk-circle { border-radius: 50%; }
+
+  /* The entrance. 220ms and 10px, applied once when a subtree mounts.
+     'both' matters: without it the element is briefly painted at its natural
+     opacity before the animation's first frame lands, which reads as a flash. */
+  @keyframes ff-enter {
+    from { opacity: 0; transform: translate3d(0, 10px, 0); }
+    to   { opacity: 1; transform: none; }
+  }
+  .ff-enter { animation: ff-enter 0.22s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+  /* Fade with no movement, for anything already in its final position -- a
+     skeleton handing over to real content in the same box, where 10px of
+     travel would look like the layout moving rather than settling. */
+  /* ff-enter-b is a byte-identical twin of ff-enter, and it exists so a tab
+     switch can REPLAY the animation without remounting anything. Swapping
+     between two classes that name the SAME keyframes changes nothing as far as
+     the engine is concerned, so the animation just keeps running; swapping the
+     animation-name is what restarts it. The alternative -- keying the content
+     div on the active tab -- would unmount the whole subtree on every click,
+     which re-fires mount effects and would pop the dismissed profile modal
+     back up. Cheaper to duplicate five lines of CSS. */
+  @keyframes ff-enter-b {
+    from { opacity: 0; transform: translate3d(0, 10px, 0); }
+    to   { opacity: 1; transform: none; }
+  }
+  .ff-enter-b { animation: ff-enter-b 0.22s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+
+  @keyframes ff-fade { from { opacity: 0; } to { opacity: 1; } }
+  .ff-fade { animation: ff-fade 0.22s ease both; }
+
+  /* Images. The pattern is opacity 0 until data-ff-in is set, and the three
+     ways that attribute gets set (ref callback for an already-complete image,
+     onLoad, onError) are all in FadeImg -- see src/components/FadeImg.tsx.
+     An image that somehow reaches none of them would be invisible, so the
+     safety animation forces it visible after 4s no matter what. A slightly
+     late image is a cosmetic miss; an image that never appears is a bug. */
+  @keyframes ff-img-safety { from { opacity: 0; } to { opacity: 1; } }
+  img[data-ff-fade] {
+    opacity: 0;
+    transition: opacity 0.22s ease;
+    animation: ff-img-safety 0.01s linear 4s both;
+  }
+  img[data-ff-fade][data-ff-in="1"] {
+    opacity: 1;
+    animation: none;
+  }
+
+  /* Toast. The inline style on the toast carries translateX(-50%) for
+     centring; an animation overrides inline styles while it runs and 'both'
+     holds the final frame, so translate(-50%, 0) is where it comes to rest --
+     identical to what the inline rule asked for. */
+  @keyframes ff-toast-in {
+    from { opacity: 0; transform: translate(-50%, 14px); }
+    to   { opacity: 1; transform: translate(-50%, 0); }
+  }
+  .ff-toast-in { animation: ff-toast-in 0.22s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+
+  /* Inline button spinner, sized in em so it tracks the button's own font
+     size and needs no per-button tuning. */
+  @keyframes ff-btn-spin { to { transform: rotate(360deg); } }
+  .ff-btn-spin {
+    display: inline-block;
+    width: 0.85em; height: 0.85em;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    opacity: 0.85;
+    animation: ff-btn-spin 0.7s linear infinite;
+    vertical-align: -0.1em;
+    margin-right: 0.45em;
+  }
+
+  /* Card lift. Hover only, and gated to fine pointers -- on a touch screen
+     :hover sticks after a tap, so a phone would leave whichever card was last
+     touched permanently raised. */
+  @media (hover: hover) and (pointer: fine) {
+    .ff-lift { transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; }
+    .ff-lift:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(9, 13, 22, 0.18); }
+  }
+
+  /* Screen-reader-only. A skeleton is aria-hidden, so without this a person on
+     a screen reader gets total silence while the page loads. Not display:none --
+     that would hide it from assistive tech too, which is the whole point. */
+  .ff-sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
   /* One honest global respect for reduced motion. Individual components still
      opt out where they need to; this catches everything that forgot. */
   @media (prefers-reduced-motion: reduce) {

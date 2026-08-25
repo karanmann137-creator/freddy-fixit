@@ -1,4 +1,5 @@
 import { Ic } from "@/components/Ic";
+import { Sk, SkCard, StalledNotice, useEnterAnim } from "@/components/Skeleton";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
@@ -15,6 +16,7 @@ import { jobCode } from "@/lib/jobCode";
 import { DASH_NAV_EVENT, readDashNavFromUrl, clearDashNavFromUrl, type DashNavDetail } from "@/lib/notificationRoutes";
 import { needsFor, pendingText, disabledText } from "@/lib/stripeRequirements";
 import { clearPlatformStatusCache, DEFAULT_NOTICE, type PlatformMode, type PlatformNotice } from "@/lib/platformStatus";
+import FadeImg from "@/components/FadeImg";
 
 // Re-signup flagging is computed server-side by admin_resignup_matches().
 // The Accounts tab lists every auth user (via admin_list_accounts) so the admin
@@ -40,6 +42,7 @@ export default function AdminDashboard() {
   const [jobs, setJobs] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [tab, setTab] = useState<"health"|"platform"|"requests"|"jobs"|"picks"|"accounts"|"flagged"|"disputes"|"prepaid"|"leads">("requests");
+  const tabAnim = useEnterAnim(tab); // replays a 220ms fade+rise on tab change; nothing remounts
   const [prepays, setPrepays] = useState<any[]>([]);
   const [busyRefund, setBusyRefund] = useState<string|null>(null);
   const [disputes, setDisputes] = useState<any[]>([]);
@@ -565,7 +568,22 @@ export default function AdminDashboard() {
 
   const s = { wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" }, header: { background:"var(--ff-card-bg)", borderBottom:"1px solid rgba(var(--ff-fg), .07)", padding:"1rem 1.5rem", display:"flex", justifyContent:"space-between", alignItems:"center" }, logo: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.4rem", letterSpacing:".1em" }, content: { maxWidth:"1000px", margin:"0 auto", padding:"clamp(1rem, 4vw, 2rem) clamp(.75rem, 3vw, 1.5rem)" }, tabs: { display:"flex", gap:".5rem", marginBottom:"1.5rem", flexWrap:"wrap" as const }, tab: { padding:".6rem 1.2rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px", color:"rgba(var(--ff-muted), .6)", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem" }, activeTab: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.4)", color:"var(--ff-text)" }, card: { background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"12px", padding:"1.25rem", marginBottom:"1rem" }, title: { fontSize:".95rem", fontWeight:500, color:"var(--ff-text)", marginBottom:".35rem" }, meta: { fontSize:".78rem", color:"rgba(var(--ff-muted), .5)", marginBottom:".2rem" }, badge: { fontSize:".75rem", fontWeight:500, color:"#ea6b14" }, btn: { padding:".5rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"6px", color:"rgba(var(--ff-muted), .7)", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer" } };
 
-  if (loading) return <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>Loading…</div>;
+  // Shaped like the admin chrome: header bar, tab strip, then the 1000px
+  // content column of cards. Same reason as the other two dashboards -- the
+  // real tabs land where the placeholder chips are, so nothing jumps.
+  if (loading) return (
+    <div style={s.wrap}>
+      <div style={s.header} aria-hidden="true"><Sk w={150} h={20} /><Sk w={96} h={30} r={8} /></div>
+      <div style={s.content} aria-busy="true">
+        <span className="ff-sr-only">Loading the admin dashboard</span>
+        <div style={{ ...s.tabs, gap:".5rem" }} aria-hidden="true">
+          {Array.from({ length: 8 }).map((_, i) => <Sk key={i} w={92} h={36} r={8} />)}
+        </div>
+        <div style={{ display:"grid", gap:"1rem" }}><SkCard /><SkCard /><SkCard /></div>
+        <StalledNotice />
+      </div>
+    </div>
+  );
 
   const roleChip = (role?: string) => {
     const r = role || "—";
@@ -654,7 +672,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      <div style={s.content}>
+      <div style={s.content} className={tabAnim}>
         <ProfileBar role="admin" />
 
         {tab === "requests" && (
@@ -928,13 +946,13 @@ export default function AdminDashboard() {
                                 <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .6)", fontWeight:500, marginTop:".5rem" }}>Photos</div>
                                 <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginTop:".25rem" }}>
                                   {a.photo_url && (
-                                    <img src={a.photo_url} alt="Profile" onClick={() => window.open(a.photo_url, "_blank")}
+                                    <FadeImg src={a.photo_url} alt="Profile" onClick={() => window.open(a.photo_url, "_blank")}
                                       style={{ width:60, height:60, objectFit:"cover", borderRadius:8, cursor:"pointer", border:"1px solid rgba(var(--ff-fg), .12)" }} />
                                   )}
                                   {portfolio.map((p:any, i:number) => {
                                     const url = pubUrl("portfolio-photos", p.path);
                                     return (
-                                      <img key={i} src={url} alt={p.title || "Portfolio"} title={p.title || ""} onClick={() => window.open(url, "_blank")}
+                                      <FadeImg key={i} src={url} alt={p.title || "Portfolio"} title={p.title || ""} onClick={() => window.open(url, "_blank")}
                                         style={{ width:60, height:60, objectFit:"cover", borderRadius:8, cursor:"pointer", border:"1px solid rgba(var(--ff-fg), .12)" }} />
                                     );
                                   })}
@@ -1155,7 +1173,7 @@ export default function AdminDashboard() {
                     <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginTop:".6rem" }}>
                       {disputePhotos[d.id].map((url, i) => (
                         <a key={i} href={url} target="_blank" rel="noreferrer">
-                          <img src={url} alt={"Evidence " + (i+1)} style={{ width:"110px", height:"110px", objectFit:"cover", borderRadius:"8px", border:"1px solid rgba(var(--ff-fg), .12)" }} />
+                          <FadeImg src={url} alt={"Evidence " + (i+1)} style={{ width:"110px", height:"110px", objectFit:"cover", borderRadius:"8px", border:"1px solid rgba(var(--ff-fg), .12)" }} />
                         </a>
                       ))}
                     </div>
@@ -1180,7 +1198,7 @@ export default function AdminDashboard() {
                           <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginTop:".5rem" }}>
                             {disputeRespPhotos[d.id].map((url, i) => (
                               <a key={i} href={url} target="_blank" rel="noreferrer">
-                                <img src={url} alt={"Response " + (i+1)} style={{ width:"90px", height:"90px", objectFit:"cover" as const, borderRadius:"8px", border:"1px solid rgba(var(--ff-fg), .12)" }} />
+                                <FadeImg src={url} alt={"Response " + (i+1)} style={{ width:"90px", height:"90px", objectFit:"cover" as const, borderRadius:"8px", border:"1px solid rgba(var(--ff-fg), .12)" }} />
                               </a>
                             ))}
                           </div>
@@ -1263,7 +1281,10 @@ export default function AdminDashboard() {
             </p>
             {!health && (healthFailed
               ? <p style={{ color:"var(--ff-warn)" }}>Couldn&rsquo;t load the health checks. <button style={s.btn} onClick={() => loadAll()}>Retry</button></p>
-              : <p style={{ color:"rgba(var(--ff-muted), .45)" }}>Loading…</p>)}
+              : <div aria-busy="true" style={{ display:"grid", gap:".75rem" }}>
+                  <span className="ff-sr-only">Loading the health checks</span>
+                  <Sk h={54} r={10} /><Sk h={54} r={10} /><Sk h={54} r={10} />
+                </div>)}
             {health && (() => {
               const buckets: { key:string; title:string; hint:string; count:number; items:any[] }[] = [
                 { key:"no_bid", title:"Requests with no bids", hint:"Pending & unassigned for over 24h — may need a contractor invited.", count: health.no_bid_count||0, items: health.no_bid||[] },

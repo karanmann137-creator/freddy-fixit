@@ -175,7 +175,7 @@ export default function GetQuote() {
 
           <div style={{ marginTop:"1.75rem" }}>
             <button style={{ ...s.btn, opacity: submitting ? .6 : 1 }} onClick={submit} disabled={submitting}>
-              {submitting ? "Sending…" : "Get my free estimate →"}
+              {submitting ? <><span className="ff-btn-spin" aria-hidden="true" />Sending…</> : "Get my free estimate →"}
             </button>
           </div>
           <p style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .45)", marginTop:"1rem", textAlign:"center", lineHeight:1.5 }}>

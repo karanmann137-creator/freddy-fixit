@@ -5,6 +5,8 @@ import { blockedReason, BLOCKED_HELP, detectDateTime, formatWhen } from "@/lib/c
 import { markJobRead, announceChatChange, messageTime, daySeparator, isNewDay } from "@/lib/chatUnread";
 import { jobCode } from "@/lib/jobCode";
 import { Ic, type IconName } from "@/components/Ic";
+import FadeImg from "@/components/FadeImg";
+import { Sk } from "@/components/Skeleton";
 
 type Msg = {
   id: string; job_id: string; sender_id: string; content: string; created_at: string;
@@ -469,14 +471,18 @@ export default function JobChat({
                               style={{ maxWidth: "100%", maxHeight: 280, borderRadius: 8, display: "block" }} />
                           ) : (
                             <a href={url} target="_blank" rel="noreferrer">
-                              <img src={url} alt="attachment"
+                              <FadeImg src={url} alt="attachment"
                                 style={{ maxWidth: "100%", maxHeight: 280, borderRadius: 8, display: "block" }} />
                             </a>
                           )
                         ) : (
-                          <div style={{
-                            padding: ".8rem 1rem", fontSize: ".8rem", opacity: .7,
-                          }}>Loading {m.attachment_type === "video" ? "video" : "image"}…</div>
+                          // A signed URL is still being minted. Reserve a block
+                          // the rough shape of the attachment so the bubble does
+                          // not resize under the reader when the picture lands.
+                          <div aria-busy="true">
+                            <span className="ff-sr-only">Loading attachment</span>
+                            <Sk w={200} h={140} r={8} />
+                          </div>
                         )}
                       </div>
                     )}

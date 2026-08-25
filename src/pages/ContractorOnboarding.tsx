@@ -817,7 +817,7 @@ export default function ContractorOnboarding() {
           {step < TOTAL
             ? <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff" }} onClick={next}>Next →</button>
             : <button style={{ ...s.navBtn, background:"linear-gradient(135deg,#ea6b14,#f09020)", color:"#fff", opacity: loading ? .6 : 1 }} onClick={handleSubmit} disabled={loading}>
-                {loading ? "Uploading your details…" : "Complete Registration →"}
+                {loading ? <><span className="ff-btn-spin" aria-hidden="true" />Uploading your details…</> : "Complete Registration →"}
               </button>
           }
 

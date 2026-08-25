@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/imageCompress";
+import FadeImg from "@/components/FadeImg";
 
 // Editors for the profile fields we moved OFF the fast-track signup
 // ("Name + specialties only"). A contractor who signed up quickly finishes
@@ -184,7 +185,7 @@ export default function ContractorProfileCompletion({
             background: "rgba(234,107,20,.14)", border: "1px solid rgba(var(--ff-fg), .12)",
             display: "flex", alignItems: "center", justifyContent: "center" }}>
             {(photoPreview || contractor?.photo_url)
-              ? <img src={photoPreview || contractor.photo_url} alt="Your profile photo" style={{ width: "100%", height: "100%", objectFit: "cover" as const }} />
+              ? <FadeImg src={photoPreview || contractor.photo_url} alt="Your profile photo" style={{ width: "100%", height: "100%", objectFit: "cover" as const }} />
               : <span style={{ fontSize: "1.4rem", fontWeight: 700, color: "#ea6b14" }}>
                   {((profile?.first_name?.[0] ?? "") + (profile?.last_name?.[0] ?? "")).toUpperCase() || "?"}
                 </span>}

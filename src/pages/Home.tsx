@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Ic } from "@/components/Ic";
 import { supabase } from "@/lib/supabase";
+import FadeImg from "@/components/FadeImg";
 
 type HomeReview = {
   id: string;
@@ -122,9 +123,9 @@ function BeforeAfter() {
         {/* Below the fold and behind a swipe, so nothing here competes with the
             hero for bandwidth. The wrapper already fixes a 16/9 aspect ratio,
             so lazy-loading costs no layout shift. */}
-        <img className="ff-ba-img" src={pair.after} srcSet={baSrcSet(pair.after)} sizes={BA_SIZES}
+        <FadeImg className="ff-ba-img" src={pair.after} srcSet={baSrcSet(pair.after)} sizes={BA_SIZES}
           alt={pair.label + " after"} draggable={false} decoding="async" loading="lazy" />
-        <img className="ff-ba-img" src={pair.before} srcSet={baSrcSet(pair.before)} sizes={BA_SIZES}
+        <FadeImg className="ff-ba-img" src={pair.before} srcSet={baSrcSet(pair.before)} sizes={BA_SIZES}
           alt={pair.label + " before"} draggable={false} decoding="async" loading="lazy"
           style={{ clipPath: "inset(0 " + (100 - pct) + "% 0 0)" }} />
 

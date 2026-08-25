@@ -1,4 +1,5 @@
 import { Ic } from "@/components/Ic";
+import { Sk, SkText, SkCard, StalledNotice } from "@/components/Skeleton";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import VoiceDictate from "@/components/VoiceDictate";
 import { useEffect, useState } from "react";
@@ -398,8 +399,17 @@ export default function NewRequest() {
   };
 
   if (loading) return (
-    <div style={{ minHeight:"100vh", background:"var(--ff-bg)", display:"flex", alignItems:"center", justifyContent:"center", color:"rgba(var(--ff-muted), .6)", fontFamily:"'DM Sans', sans-serif" }}>
-      Loading…
+    <div style={{ minHeight:"100vh", background:"var(--ff-bg)", fontFamily:"'DM Sans', sans-serif" }}>
+      <div style={{ height:"3.75rem" }} />
+      <div style={{ maxWidth:"680px", margin:"0 auto", padding:"clamp(1rem, 4vw, 2rem)" }} aria-busy="true">
+        <span className="ff-sr-only">Loading your details</span>
+        <Sk w="58%" h={26} />
+        <div style={{ height: 18 }} />
+        <SkText lines={2} />
+        <div style={{ height: 26 }} />
+        <div style={{ display:"grid", gap:"1rem" }}><SkCard /><SkCard /></div>
+        <StalledNotice />
+      </div>
     </div>
   );
   if (loadError) return (
@@ -850,7 +860,7 @@ export default function NewRequest() {
           {step < TOTAL
             ? <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff" }} onClick={next}>Next →</button>
             : <button style={{ ...s.navBtn, background:"linear-gradient(135deg,#ea6b14,#f09020)", color:"#fff", opacity: submitting ? .6 : 1 }} onClick={submit} disabled={submitting}>
-                {submitting ? "Submitting…" : "Submit Request →"}
+                {submitting ? <><span className="ff-btn-spin" aria-hidden="true" />Submitting…</> : "Submit Request →"}
               </button>
           }
         </div>

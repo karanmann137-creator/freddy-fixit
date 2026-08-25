@@ -10,6 +10,7 @@
 // `mark_job_read` clears — one id the whole feature agrees on.
 
 import { Ic } from "@/components/Ic";
+import { SkRow } from "@/components/Skeleton";
 import { inboxTime, type Conversation } from "@/lib/chatUnread";
 
 /** "Sam R." / a company name / a sensible fallback — never a blank row. */
@@ -41,7 +42,12 @@ export default function MessagesInbox({
   };
 
   if (loading) {
-    return <div style={{ ...card, color: "rgba(var(--ff-muted), .6)", fontSize: ".9rem" }}>Loading your messages…</div>;
+    return (
+      <div style={card} aria-busy="true">
+        <span className="ff-sr-only">Loading your messages</span>
+        <SkRow /><SkRow /><SkRow />
+      </div>
+    );
   }
 
   if (error) {

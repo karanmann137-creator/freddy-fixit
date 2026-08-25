@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { Ic } from "@/components/Ic";
+import { SkCard, SkRow, StalledNotice } from "@/components/Skeleton";
+import FadeImg from "@/components/FadeImg";
 
 /**
  * Pick-your-pro, without an account.
@@ -90,6 +92,9 @@ export default function PickPro() {
         .ff-pk-card { background: var(--ff-card-bg); border: 1px solid var(--ff-card-border);
           border-radius: 14px; padding: 1.1rem; margin-bottom: .9rem; transition: border-color .15s, transform .12s; }
         .ff-pk-card:hover { border-color: rgba(234,107,20,.35); }
+        @media (hover: hover) and (pointer: fine) {
+          .ff-pk-card:hover { transform: translateY(-2px); }
+        }
         .ff-pk-btn { width: 100%; margin-top: .9rem; padding: .8rem 1rem; border: none; border-radius: 10px;
           background: #22c55e; color: #06210f; font-family: inherit; font-size: .95rem; font-weight: 700;
           cursor: pointer; transition: filter .12s, transform .08s; }
@@ -107,13 +112,17 @@ export default function PickPro() {
         .ff-pk-mid p { color: rgba(var(--ff-muted), .7); font-size: .92rem; line-height: 1.6; margin: 0 auto; max-width: 400px; }
         .ff-pk-link { background: none; border: none; color: #ea6b14; font-family: inherit; font-size: .9rem;
           font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0; margin-top: 1.25rem; }
-        @keyframes ff-pk-spin { to { transform: rotate(360deg); } }
-        .ff-pk-spin { width: 30px; height: 30px; border: 3px solid rgba(234,107,20,.2);
-          border-top-color: #ea6b14; border-radius: 50%; animation: ff-pk-spin .8s linear infinite; margin: 0 auto; }
       `}</style>
 
       <div className="ff-pk-wrap">
-        {loading && <div className="ff-pk-mid"><div className="ff-pk-spin" /></div>}
+        {loading && (
+          <div aria-busy="true" style={{ padding: "1.5rem 0" }}>
+            <span className="ff-sr-only">Loading your estimates</span>
+            <div style={{ marginBottom: "1.5rem" }}><SkCard /></div>
+            <SkRow /><SkRow /><SkRow />
+            <StalledNotice />
+          </div>
+        )}
 
         {!loading && loadErr === "bad-link" && (
           <div className="ff-pk-mid">
@@ -204,7 +213,7 @@ export default function PickPro() {
                 <div style={{ display: "flex", gap: ".8rem", alignItems: "flex-start" }}>
                   <div className="ff-pk-avatar">
                     {b.photo_url
-                      ? <img src={b.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ? <FadeImg src={b.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       : <span style={{ fontSize: ".9rem", fontWeight: 700, color: "#ea6b14" }}>
                           {who(b).split(/\s+/).map((w: string) => w[0] ?? "").join("").slice(0, 2).toUpperCase()}
                         </span>}

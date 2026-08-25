@@ -1,4 +1,5 @@
 import { Ic } from "@/components/Ic";
+import { DashboardSkeleton, useEnterAnim } from "@/components/Skeleton";
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
@@ -36,6 +37,7 @@ import NotificationBell from "@/components/NotificationBell";
 import { SettingsPanel } from "@/components/SettingsModal";
 import MessagesInbox, { partyName } from "@/components/MessagesInbox";
 import { useConversations, chatReadOnly, chatClosedReason, type Conversation } from "@/lib/chatUnread";
+import FadeImg from "@/components/FadeImg";
 
 type ClientTab = "requests" | "messages" | "pros" | "recurring" | "history" | "profile" | "settings";
 
@@ -175,6 +177,7 @@ export default function ClientDashboard() {
   const [selAddons, setSelAddons]   = useState<number[]>([]); // optional add-on indexes ticked on the approval card
   const [toast, setToast]           = useState<{ kind:"err"|"ok"; text:string }|null>(null);
   const [activeTab, setActiveTab]   = useState<ClientTab>("requests");
+  const tabAnim = useEnterAnim(activeTab); // replays a 220ms fade+rise on tab change; nothing remounts
   const toastTimer = useRef<number | null>(null);
   const notify = (text: string, kind: "err" | "ok" = "err") => {
     setToast({ kind, text });
@@ -1173,11 +1176,13 @@ export default function ClientDashboard() {
     && new Date(activeJob.chat_time_at).getTime() > Date.now()) ? activeJob : null;
   const timePromptJob = (chatTimeJob && !timeDismissed.has(chatTimeJob.id)) ? chatTimeJob : null;
 
+  // A layout-matched shell rather than a centred spinner: the sidebar, header
+  // strip and content column land where the real ones are about to, so nothing
+  // jumps when the data arrives. DashboardSkeleton renders NOTHING for its
+  // first 120ms, so a warm load still looks instant.
   if (loading) return (
-    <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ textAlign:"center", color:"rgba(var(--ff-muted), .5)" }}>
-        <div style={{ marginBottom:"1rem" }}><Ic name="settings" size={36} color="#ea6b14" /></div>Loading your dashboard…
-      </div>
+    <div style={s.wrap}>
+      <DashboardSkeleton />
     </div>
   );
 
@@ -1216,7 +1221,7 @@ export default function ClientDashboard() {
         + " .ffdash .ff-pulse{outline:2px solid rgba(234,107,20,.75); outline-offset:6px; border-radius:12px; animation:ff-pulse-ring 1.5s ease-out 3}"
         + " @media (prefers-reduced-motion: reduce){.ffdash .ff-pulse{animation:none; background:rgba(234,107,20,.12)}}"}</style>
       {toast && (
-        <div onClick={() => setToast(null)} style={{ position:"fixed", left:"50%", bottom:"1.5rem", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
+        <div onClick={() => setToast(null)} className="ff-toast-in" style={{ position:"fixed", left:"50%", bottom:"1.5rem", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
       )}
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 
@@ -1249,7 +1254,7 @@ export default function ClientDashboard() {
         </div>
       </div>
 
-      <div style={s.content}>
+      <div style={s.content} className={tabAnim}>
         {(() => {
           const missing: string[] = [];
           if (!profile?.first_name || !profile?.last_name) missing.push("your name");
@@ -1685,7 +1690,7 @@ export default function ClientDashboard() {
                               background:"rgba(234,107,20,.14)", border:"1px solid rgba(var(--ff-fg), .1)",
                               display:"flex", alignItems:"center", justifyContent:"center" }}>
                               {bidPhoto[b.contractor_id]
-                                ? <img src={bidPhoto[b.contractor_id]} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" as const }} />
+                                ? <FadeImg src={bidPhoto[b.contractor_id]} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" as const }} />
                                 : <span style={{ fontSize:".85rem", fontWeight:700, color:"#ea6b14" }}>
                                     {(bidNames[b.contractor_id] ?? "Contractor").split(/\s+/).map((w: string) => w[0] ?? "").join("").slice(0,2).toUpperCase()}
                                   </span>}

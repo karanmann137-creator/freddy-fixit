@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/imageCompress";
+import FadeImg from "@/components/FadeImg";
 
 interface Props {
   requestId: string;
@@ -80,7 +81,7 @@ export default function RequestPhotoQuote({ requestId, photoPath, estimatedQuote
       {photoUrl && (
         <div>
           <div style={s.label}>Job photo</div>
-          <img src={photoUrl} alt="Job photo" style={s.photo} />
+          <FadeImg src={photoUrl} alt="Job photo" style={s.photo} />
         </div>
       )}
 

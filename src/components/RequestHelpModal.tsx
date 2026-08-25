@@ -105,7 +105,7 @@ export default function RequestHelpModal({
 
             <div style={{ display: "flex", gap: ".6rem" }}>
               <button onClick={submit} disabled={busy} style={{ flex: 1, padding: ".75rem 1rem", background: "#ea6b14", color: "#fff", border: "none", borderRadius: "8px", fontFamily: "inherit", fontSize: ".9rem", fontWeight: 500, cursor: busy ? "default" : "pointer", opacity: busy ? .7 : 1 }}>
-                {busy ? "Sending…" : "Send to our team"}
+                {busy ? <><span className="ff-btn-spin" aria-hidden="true" />Sending…</> : "Send to our team"}
               </button>
               <button onClick={onClose} disabled={busy} style={{ padding: ".75rem 1.1rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .1)", borderRadius: "8px", color: "rgba(var(--ff-muted), .7)", fontFamily: "inherit", fontSize: ".9rem", cursor: "pointer" }}>Cancel</button>
             </div>

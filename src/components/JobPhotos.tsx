@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Ic } from "@/components/Ic";
 import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/imageCompress";
+import FadeImg from "@/components/FadeImg";
 
 // Before / after job photos. Both are mandatory for the contractor: the "after"
 // photo is what unlocks marking the job complete (and therefore payment), and
@@ -149,7 +150,7 @@ export default function JobPhotos({ job, role, onSaved, onError }: {
 
         {url ? (
           <a href={url} target="_blank" rel="noopener noreferrer" style={{ display: "block" }}>
-            <img src={url} alt={label} style={{ width: "100%", maxWidth: "100%", height: "132px", objectFit: "cover" as const, borderRadius: "10px", border: "1px solid rgba(var(--ff-fg), .12)", display: "block" }} />
+            <FadeImg src={url} alt={label} style={{ width: "100%", maxWidth: "100%", height: "132px", objectFit: "cover" as const, borderRadius: "10px", border: "1px solid rgba(var(--ff-fg), .12)", display: "block" }} />
           </a>
         ) : p && failed[p] ? (
           <div style={{ height: "132px", display: "flex", flexDirection: "column" as const, alignItems: "center", justifyContent: "center", gap: ".3rem", textAlign: "center" as const, padding: ".5rem", borderRadius: "10px", background: "rgba(var(--ff-fg), .03)", border: "1px dashed rgba(var(--ff-fg), .16)" }}>

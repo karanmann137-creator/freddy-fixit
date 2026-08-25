@@ -11,6 +11,7 @@
 // (intent + consent + identity + tamper-evident timestamp/IP audit trail).
 import { useCallback, useEffect, useState } from "react";
 import { Ic } from "@/components/Ic";
+import { Sk, SkText } from "@/components/Skeleton";
 import { supabase } from "@/lib/supabase";
 
 type Role = "contractor" | "client" | "admin";
@@ -221,7 +222,16 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
     window.open(data.signedUrl, "_blank");
   };
 
-  if (loading) return <div {...anchor} style={{ ...cardBase, fontSize: ".85rem", color: "rgba(var(--ff-muted), .7)" }}>Loading the agreement…</div>;
+  if (loading) return (
+    <div {...anchor} style={cardBase} aria-busy="true">
+      <span className="ff-sr-only">Loading the agreement</span>
+      <Sk w="42%" h={15} />
+      <div style={{ height: 14 }} />
+      <SkText lines={3} />
+      <div style={{ height: 16 }} />
+      <Sk w={148} h={36} r={8} />
+    </div>
+  );
 
   // A failed read left `contract` null, which every branch below reads as "no
   // agreement yet" — the client was told their contractor was still preparing it

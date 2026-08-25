@@ -52,7 +52,7 @@ export default function OAuthButtons({ role, label = "or continue with" }: { rol
             <path fill="#FBBC05" d="M3.97 10.72A5.41 5.41 0 0 1 3.68 9c0-.6.1-1.18.29-1.72V4.94H.96A9 9 0 0 0 0 9c0 1.45.35 2.82.96 4.06l3.01-2.34z"/>
             <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.94l3.01 2.34C4.68 5.16 6.66 3.58 9 3.58z"/>
           </svg>
-          {busy === "google" ? "Redirecting…" : "Continue with Google"}
+          {busy === "google" ? <><span className="ff-btn-spin" aria-hidden="true" />Redirecting…</> : "Continue with Google"}
         </button>
       </div>
     </div>

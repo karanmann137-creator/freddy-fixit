@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Ic } from "@/components/Ic";
+import { Sk } from "@/components/Skeleton";
 
 // Admin compose box for emailing one or many contractors a custom message.
 // Sends through the admin-message edge fn (admin-gated; looks up recipient
@@ -155,7 +156,12 @@ export default function AdminMessageModal({ recipients, onClose, onSent }: {
 
             {showLog && (
               <div style={{ marginTop: "1rem", borderTop: "1px solid rgba(240,244,255,.1)", paddingTop: ".9rem", maxHeight: 260, overflowY: "auto" }}>
-                {log === null && <div style={{ fontSize: ".8rem", color: "#9aa4bf" }}>Loading…</div>}
+                {log === null && (
+                  <div className="ff-on-dark" aria-busy="true" style={{ display: "grid", gap: ".7rem", padding: ".3rem 0" }}>
+                    <span className="ff-sr-only">Loading the send history</span>
+                    <Sk h={26} /><Sk h={26} /><Sk h={26} />
+                  </div>
+                )}
                 {log !== null && log.length === 0 && <div style={{ fontSize: ".8rem", color: "#9aa4bf" }}>No messages sent yet.</div>}
                 {log !== null && log.map((m: any) => (
                   <div key={m.id} style={{ padding: ".55rem 0", borderBottom: "1px solid rgba(240,244,255,.06)" }}>

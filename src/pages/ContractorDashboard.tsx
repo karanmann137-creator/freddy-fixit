@@ -1,4 +1,5 @@
 import { Ic } from "@/components/Ic";
+import { DashboardSkeleton, useEnterAnim } from "@/components/Skeleton";
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
@@ -86,6 +87,7 @@ import { freqLabel } from "@/lib/recurrence";
 import { respShort } from "@/lib/respTime";
 import { DASH_NAV_EVENT, readDashNavFromUrl, clearDashNavFromUrl, type DashNavDetail } from "@/lib/notificationRoutes";
 import { needsFor, pendingText, disabledText } from "@/lib/stripeRequirements";
+import FadeImg from "@/components/FadeImg";
 
 const ffInp = { width:"100%", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const };
 const ffLbl = { fontSize:".66rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .45)", marginBottom:".2rem" };
@@ -166,6 +168,7 @@ export default function ContractorDashboard() {
   const [confirmState, setConfirmState] = useState<ConfirmState|null>(null);
   const [loading, setLoading]         = useState(true);
   const [activeTab, setActiveTab]     = useState<"jobs"|"available"|"messages"|"calendar"|"profile"|"earnings"|"reviews">("jobs");
+  const tabAnim = useEnterAnim(activeTab); // replays a 220ms fade+rise on tab change; nothing remounts
   const [jobFilter, setJobFilter]     = useState<string|null>(null); // pipeline-strip stage filter for the My Jobs list
   const [pendingJobId, setPendingJobId] = useState<string|null>(null); // job a notification pointed at, waiting for the list to load
   const [bidsCount, setBidsCount]     = useState(0); // lifetime bids — drives the "place your first bid" setup step
@@ -976,11 +979,13 @@ export default function ContractorDashboard() {
     slotSel: { background:"rgba(234,107,20,.15)", borderColor:"rgba(234,107,20,.5)", color:"var(--ff-text)" },
   };
 
+  // A layout-matched shell rather than a centred spinner: the sidebar, header
+  // strip and content column land where the real ones are about to, so nothing
+  // jumps when the data arrives. DashboardSkeleton renders NOTHING for its
+  // first 120ms, so a warm load still looks instant.
   if (loading) return (
-    <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ textAlign:"center", color:"rgba(var(--ff-muted), .5)" }}>
-        <div style={{ marginBottom:"1rem" }}><Ic name="settings" size={36} color="#ea6b14" /></div>Loading your dashboard…
-      </div>
+    <div style={s.wrap}>
+      <DashboardSkeleton />
     </div>
   );
 
@@ -1028,7 +1033,7 @@ export default function ContractorDashboard() {
         + " .ffdash .ff-pulse{outline:2px solid rgba(234,107,20,.75); outline-offset:6px; border-radius:10px; animation:ff-pulse-ring 1.5s ease-out 3}"
         + " @media (prefers-reduced-motion: reduce){.ffdash .ff-pulse{animation:none; background:rgba(234,107,20,.12)}}"}</style>
       {toast && (
-        <div onClick={() => setToast(null)} style={{ position:"fixed", left:"50%", bottom:"1.5rem", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
+        <div onClick={() => setToast(null)} className="ff-toast-in" style={{ position:"fixed", left:"50%", bottom:"1.5rem", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
       )}
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       <div style={{ height: "3.75rem" }} />
@@ -1070,7 +1075,7 @@ export default function ContractorDashboard() {
         />
       )}
 
-      <div style={s.content}>
+      <div style={s.content} className={tabAnim}>
         <ProfileCompletionModal role="contractor" profile={profile} contractor={contractor} onSetupPayouts={setupPayouts} />
 
         {contractor && !contractor.stripe_payouts_enabled && (() => {
@@ -1460,7 +1465,7 @@ export default function ContractorDashboard() {
                             <div style={{ display:"flex", flexWrap:"wrap" as const, gap:".4rem", marginBottom:".7rem" }}>
                               {(d.photo_paths ?? []).map((p: string) => claimPhotos[p] ? (
                                 <a key={p} href={claimPhotos[p]} target="_blank" rel="noopener noreferrer">
-                                  <img src={claimPhotos[p]} alt="Claim photo" style={{ width:"68px", height:"68px", objectFit:"cover" as const, borderRadius:"8px", border:"1px solid rgba(var(--ff-fg), .12)" }} />
+                                  <FadeImg src={claimPhotos[p]} alt="Claim photo" style={{ width:"68px", height:"68px", objectFit:"cover" as const, borderRadius:"8px", border:"1px solid rgba(var(--ff-fg), .12)" }} />
                                 </a>
                               ) : null)}
                             </div>
@@ -1994,7 +1999,7 @@ export default function ContractorDashboard() {
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(min(140px, 100%), 1fr))", gap:".75rem", marginBottom:"1rem" }}>
                   {portfolio.map(item => (
                     <div key={item.id} style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"10px", overflow:"hidden" }}>
-                      {item.photo_path && <img src={pfUrl(item.photo_path)} alt={item.title || "Past job"} style={{ width:"100%", height:"100px", objectFit:"cover" as const, display:"block" }} />}
+                      {item.photo_path && <FadeImg src={pfUrl(item.photo_path)} alt={item.title || "Past job"} style={{ width:"100%", height:"100px", objectFit:"cover" as const, display:"block" }} />}
                       <div style={{ padding:".5rem .6rem" }}>
                         {item.title && <div style={{ fontSize:".8rem", fontWeight:600, color:"var(--ff-text)" }}>{item.title}</div>}
                         {item.description && <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .6)", marginTop:".15rem" }}>{item.description}</div>}

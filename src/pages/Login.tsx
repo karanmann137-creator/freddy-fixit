@@ -113,7 +113,7 @@ export default function Login() {
                 <div style={{ marginBottom:"1rem" }}>
                   <button type="button" onClick={resendConfirmation} disabled={loading}
                     style={{ ...s.btn, background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.4)", color:"#ea6b14", ...s.dim(loading) }}>
-                    {loading ? "Sending…" : "Resend confirmation email"}
+                    {loading ? <><span className="ff-btn-spin" aria-hidden="true" />Sending…</> : "Resend confirmation email"}
                   </button>
                   {resendNote && <p style={{ fontSize:".8rem", color:"#22c55e", marginTop:".5rem", textAlign:"center" }}>{resendNote}</p>}
                 </div>
@@ -133,7 +133,7 @@ export default function Login() {
                   </button>
                 </div>
                 <button style={{ ...s.btn, ...s.dim(loading) }} type="submit" disabled={loading}>
-                  {loading ? "Signing in…" : "Sign In →"}
+                  {loading ? <><span className="ff-btn-spin" aria-hidden="true" />Signing in…</> : "Sign In →"}
                 </button>
               </form>
               <OAuthButtons />
@@ -157,7 +157,7 @@ export default function Login() {
                   <input style={inp} type="email" placeholder="your@email.com" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
                 </div>
                 <button style={{ ...s.btn, ...s.dim(loading) }} type="submit" disabled={loading}>
-                  {loading ? "Sending…" : "Send Reset Link →"}
+                  {loading ? <><span className="ff-btn-spin" aria-hidden="true" />Sending…</> : "Send Reset Link →"}
                 </button>
               </form>
               <div style={{ textAlign:"center", marginTop:"1.25rem" }}>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Ic } from "@/components/Ic";
+import { Sk } from "@/components/Skeleton";
 
 type Mode = "contractor" | "client";
 
@@ -137,7 +138,12 @@ export default function FreddyRewind({ mode, onClose }: { mode: Mode; onClose: (
         </div>
 
         {loading ? (
-          <div style={{ padding:"3rem 0", textAlign:"center", color:"rgba(190,205,235,.6)" }}>Loading your year…</div>
+          <div className="ff-on-dark" aria-busy="true" style={{ padding:".5rem 0 1rem" }}>
+            <span className="ff-sr-only">Loading your year</span>
+            <Sk h={196} r={16} />
+            <div style={{ height: 14 }} />
+            <Sk w={148} h={38} r={10} style={{ margin:"0 auto" }} />
+          </div>
         ) : failed ? (
           <div style={{ padding:"2.5rem 1rem", textAlign:"center", color:"rgba(190,205,235,.75)", lineHeight:1.6, fontSize:".9rem" }}>
             We couldn't pull your year together just now. Nothing is missing from your account — please close this and try again in a moment.

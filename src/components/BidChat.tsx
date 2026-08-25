@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { blockedReason, BLOCKED_HELP } from "@/lib/chatParse";
 import { messageTime, daySeparator, isNewDay } from "@/lib/chatUnread";
 import { Ic } from "@/components/Ic";
+import { Sk } from "@/components/Skeleton";
 
 /**
  * Bid-stage chat: a private thread between the client and ONE pro who bid,
@@ -142,7 +143,14 @@ export default function BidChat({
 
         <div style={{ flex: 1, overflowY: "auto", padding: "1rem", display: "flex", flexDirection: "column", gap: ".5rem" }}>
           {loading ? (
-            <div style={{ fontSize: ".85rem", color: "rgba(240,244,255,.5)", textAlign: "center", padding: "1.5rem 0" }}>Loading…</div>
+            <div className="ff-on-dark" aria-busy="true" style={{ padding: ".5rem 0" }}>
+              <span className="ff-sr-only">Loading this conversation</span>
+              <Sk w="58%" h={30} r={10} />
+              <div style={{ height: 10 }} />
+              <Sk w="46%" h={26} r={10} style={{ marginLeft: "auto" }} />
+              <div style={{ height: 10 }} />
+              <Sk w="66%" h={30} r={10} />
+            </div>
           ) : failed ? (
             <div style={{ fontSize: ".85rem", color: "var(--ff-warn)", textAlign: "center", padding: "1.5rem 0", lineHeight: 1.5 }}>
               We couldn't load this conversation. Check your connection and try again.

@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { Ic } from "@/components/Ic";
+import { Sk, SkCard, StalledNotice } from "@/components/Skeleton";
 import PriceGrade from "@/components/PriceGrade";
 import VerifiedMarks from "@/components/VerifiedMarks";
 import type { Grade } from "@/lib/servicePricing";
+import FadeImg from "@/components/FadeImg";
 
 export default function ContractorProfile() {
   const [, params]    = useRoute("/contractors/:id");
@@ -138,10 +140,28 @@ export default function ContractorProfile() {
     scoreCard: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.25rem", textAlign:"center" as const },
   };
 
+  // Shaped like the profile that is coming -- avatar, name, chips, then the
+  // cards -- and inside the SAME 860px `s.inner` column, so the real content
+  // lands on top of it rather than beside it.
   if (loading) return (
-    <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ width:32, height:32, border:"3px solid rgba(234,107,20,.2)", borderTopColor:"#ea6b14", borderRadius:"50%", animation:"spin 0.8s linear infinite" }} />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    <div style={s.wrap}>
+      <div style={s.inner} aria-busy="true">
+        <span className="ff-sr-only">Loading this contractor's profile</span>
+        <div style={{ display:"flex", gap:"1.25rem", alignItems:"center", marginBottom:"1.75rem" }}>
+          <Sk w={84} h={84} circle />
+          <div style={{ flex:1, minWidth:0, display:"grid", gap:10 }}>
+            <Sk w="52%" h={24} />
+            <Sk w="34%" h={12} />
+            <div style={{ display:"flex", gap:8 }}>
+              <Sk w={92} h={22} r={99} /><Sk w={78} h={22} r={99} />
+            </div>
+          </div>
+        </div>
+        <div style={{ display:"grid", gap:"1.5rem" }}>
+          <SkCard /><SkCard />
+        </div>
+        <StalledNotice />
+      </div>
     </div>
   );
 
@@ -283,7 +303,7 @@ export default function ContractorProfile() {
         <div style={{ ...s.card, display:"flex", gap:"1.5rem", alignItems:"flex-start", flexWrap:"wrap" as const }}>
           <div style={{ width:80, height:80, borderRadius:"50%", overflow:"hidden", background:"rgba(234,107,20,.1)", border:"2px solid rgba(234,107,20,.25)", flexShrink:0 }}>
             {contractor.photo_url
-              ? <img src={contractor.photo_url} alt={contractor.first_name} style={{ width:"100%", height:"100%", objectFit:"cover" as const }} />
+              ? <FadeImg src={contractor.photo_url} alt={contractor.first_name} style={{ width:"100%", height:"100%", objectFit:"cover" as const }} />
               : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"2rem" }}>🔧</div>
             }
           </div>
@@ -355,7 +375,7 @@ export default function ContractorProfile() {
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(min(140px, 100%), 1fr))", gap:".75rem" }}>
               {portfolio.map((item: any) => (
                 <div key={item.id} style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"10px", overflow:"hidden" }}>
-                  {item.photo_path && <img src={pfUrl(item.photo_path)} alt={item.title || "Past job"} style={{ width:"100%", height:"110px", objectFit:"cover" as const, display:"block" }} />}
+                  {item.photo_path && <FadeImg src={pfUrl(item.photo_path)} alt={item.title || "Past job"} style={{ width:"100%", height:"110px", objectFit:"cover" as const, display:"block" }} />}
                   {(item.title || item.description) && (
                     <div style={{ padding:".5rem .6rem" }}>
                       {item.title && <div style={{ fontSize:".8rem", fontWeight:600 }}>{item.title}</div>}
