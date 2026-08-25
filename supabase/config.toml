@@ -1,11 +1,219 @@
+# Edge function config, mirrored from LIVE (verified 2026-08-25 via the Supabase API).
+#
+# P1-1. This file previously declared exactly ONE function, notify-admin. The
+# Supabase CLI defaults an undeclared function to verify_jwt = true, so anyone
+# running `supabase functions deploy` would have silently flipped the gate on
+# every public entry point -- stripe-webhook (Stripe cannot present a JWT, so
+# every payment would stop confirming), analyze-repair, both welcome functions
+# and the notification fan-out. Deploys currently go through the Supabase MCP,
+# which is why nobody has been bitten yet; this closes the trap rather than
+# relying on nobody ever typing that command.
+#
+# NOTE: verify_jwt = true is NOT authentication here. The anon key is itself a
+# valid project-signed JWT and ships publicly in the JS bundle, so it satisfies
+# the platform gate. Functions that must know WHO is calling check in code
+# (bearer -> auth.getUser -> profiles), or redeem an x-ff-internal token.
+
+[functions.adjust-payment]
+enabled = true
+verify_jwt = true
+
+[functions.admin-alert]
+enabled = true
+verify_jwt = false
+
+[functions.admin-delete-account]
+enabled = true
+verify_jwt = true
+
+[functions.admin-message]
+enabled = true
+verify_jwt = true
+
+[functions.admin-update-email]
+enabled = true
+verify_jwt = true
+
+[functions.analyze-repair]
+enabled = true
+verify_jwt = false
+
+[functions.chat]
+enabled = true
+verify_jwt = false
+
+[functions.client-welcome]
+enabled = true
+verify_jwt = false
+
+[functions.compress-images]
+enabled = true
+verify_jwt = false
+
+[functions.contract-sign]
+enabled = true
+verify_jwt = true
+
+[functions.contractor-outreach]
+enabled = true
+verify_jwt = false
+
+[functions.contractor-welcome]
+enabled = true
+verify_jwt = false
+
+[functions.create-balance-payment]
+enabled = true
+verify_jwt = true
+
+[functions.create-connect-account]
+enabled = true
+verify_jwt = true
+
+[functions.create-milestone-payment]
+enabled = true
+verify_jwt = true
+
+[functions.create-payment-intent]
+enabled = true
+verify_jwt = true
+
+[functions.create-recurring-prepayment]
+enabled = true
+verify_jwt = true
+
+[functions.delete-account]
+enabled = true
+verify_jwt = true
+
+[functions.dispatch-job]
+enabled = true
+verify_jwt = false
+
+[functions.finish-signup-nudge]
+enabled = true
+verify_jwt = false
+
+[functions.meta-lead-scout]
+enabled = true
+verify_jwt = false
+
+[functions.mfa-code]
+enabled = true
+verify_jwt = false
+
+[functions.newsletter-ai-draft]
+enabled = true
+verify_jwt = true
+
+[functions.newsletter-send]
+enabled = true
+verify_jwt = false
+
+[functions.newsletter-unsubscribe]
+enabled = true
+verify_jwt = false
+
+[functions.notify-accepted]
+enabled = true
+verify_jwt = false
 
 [functions.notify-admin]
 enabled = true
 verify_jwt = false
-import_map = "./functions/notify-admin/deno.json"
-# Uncomment to specify a custom file path to the entrypoint.
-# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
-entrypoint = "./functions/notify-admin/index.ts"
-# Specifies static files to be bundled with the function. Supports glob patterns.
-# For example, if you want to serve static HTML pages in your function:
-# static_files = [ "./functions/notify-admin/*.html" ]
+
+[functions.notify-client]
+enabled = true
+verify_jwt = true
+
+[functions.notify-email]
+enabled = true
+verify_jwt = false
+
+[functions.notify-message]
+enabled = true
+verify_jwt = false
+
+[functions.payment-receipt]
+enabled = true
+verify_jwt = false
+
+[functions.profile-updated]
+enabled = true
+verify_jwt = true
+
+[functions.reconcile-payouts]
+enabled = true
+verify_jwt = false
+
+[functions.reddit-lead-scout]
+enabled = true
+verify_jwt = false
+
+[functions.refresh-connect-status]
+enabled = true
+verify_jwt = true
+
+[functions.refund-milestone]
+enabled = true
+verify_jwt = true
+
+[functions.refund-recurring-prepayment]
+enabled = true
+verify_jwt = true
+
+[functions.release-payment]
+enabled = true
+verify_jwt = true
+
+[functions.remind-contractor]
+enabled = true
+verify_jwt = true
+
+[functions.resend-domains]
+enabled = true
+verify_jwt = true
+
+[functions.resolve-dispute]
+enabled = true
+verify_jwt = true
+
+[functions.review-contractor]
+enabled = true
+verify_jwt = true
+
+[functions.send-bid-email]
+enabled = true
+verify_jwt = false
+
+[functions.send-notification]
+enabled = true
+verify_jwt = false
+
+[functions.send-reminder]
+enabled = true
+verify_jwt = true
+
+[functions.send-welcome]
+enabled = true
+verify_jwt = true
+
+[functions.social-bot-brain]
+enabled = true
+verify_jwt = false
+
+[functions.social-bot-harness]
+enabled = true
+verify_jwt = false
+
+[functions.stripe-webhook]
+enabled = true
+verify_jwt = false
+
+[functions.support-request]
+enabled = true
+verify_jwt = true
+
+[functions.visit-reminder]
+enabled = true
+verify_jwt = false

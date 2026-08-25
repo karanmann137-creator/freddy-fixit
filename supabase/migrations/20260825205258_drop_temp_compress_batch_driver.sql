@@ -1,0 +1,11 @@
+-- A temporary plpgsql driver, public.run_compress_batch, was created during the
+-- image backfill and dropped in the same session. It never worked: it polled
+-- net._http_response in a pg_sleep loop, and MCP execute_sql enforces a
+-- statement timeout that kills any such loop. The backfill was driven instead
+-- by net.http_post followed by a SEPARATE poll of net._http_response.
+--
+-- Its CREATE is deliberately not carried in this repo -- there is no reason to
+-- ship a known-broken function into version control just so a later migration
+-- can drop it. This DROP is idempotent, so replaying the repo is safe either
+-- way.
+drop function if exists public.run_compress_batch(text, boolean, text, int);
