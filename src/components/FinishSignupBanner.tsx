@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { getMyProfile } from "@/lib/myProfile";
 
 // FinishSignupBanner — site-wide nudge for half-finished accounts.
 // Google one-tap (and an abandoned signup) can create an auth login WITHOUT a
@@ -9,10 +10,11 @@ import { supabase } from "@/lib/supabase";
 // account" → the right onboarding flow. Hidden on the onboarding routes
 // themselves (they ARE the fix) and on auth/legal pages.
 //
-// Mounted once in App.tsx. Re-checks on route change (cheap: one profiles
-// head-select, only when a session exists) so it disappears right after the
-// person completes onboarding. Never queries inside onAuthStateChange
-// (auth-lock deadlock rule) — route changes are the refresh trigger.
+// Mounted once in App.tsx. Re-checks on route change, but the profiles read
+// goes through the shared session cache in src/lib/myProfile.ts, so a person
+// clicking around the site no longer pays a query per navigation for an answer
+// that flips exactly once. Never queries inside onAuthStateChange (auth-lock
+// deadlock rule) — route changes are the refresh trigger.
 
 const HIDE_ON = [
   "/client-onboarding", "/contractor-onboarding",
@@ -37,10 +39,13 @@ export default function FinishSignupBanner() {
         const { data: { session } } = await supabase.auth.getSession();
         const user = session?.user;
         if (!user) { if (alive) setShow(false); return; }
-        const { data, error } = await supabase
-          .from("profiles").select("id").eq("id", user.id).maybeSingle();
+        // Shared session-scoped read (src/lib/myProfile.ts). This fired on
+        // EVERY route change to ask a question whose answer only ever flips
+        // once, at the moment onboarding completes — and that path signs the
+        // cache out from under itself, so the banner still disappears on time.
+        const p = await getMyProfile(user.id);
         if (!alive) return;
-        if (!error && !data) {
+        if (p.ok && !p.exists) {
           const meta: any = user.user_metadata || {};
           const r = meta.role === "contractor" || meta.user_type === "contractor" ? "contractor"
             : meta.role === "client" || meta.user_type === "client" ? "client" : null;

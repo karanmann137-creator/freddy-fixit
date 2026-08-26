@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { getMyProfile } from "@/lib/myProfile";
 import NotificationBell from "@/components/NotificationBell";
 import SettingsModal from "@/components/SettingsModal";
 import { Ic } from "@/components/Ic";
@@ -79,10 +80,13 @@ export default function TopNav() {
       setUid(userId);
       if (!userId) { setAuthed(false); setRole(null); return; }
       setAuthed(true);
-      // maybeSingle(): an orphaned account has no profile row, and single() would
-      // error rather than simply leaving the role null (which the nav handles).
-      const { data } = await supabase.from("profiles").select("role").eq("id", userId).maybeSingle();
-      setRole(data?.role ?? null);
+      // Shared session-scoped read (src/lib/myProfile.ts). This used to be a
+      // direct profiles query, which re-ran on every onAuthStateChange —
+      // including the periodic TOKEN_REFRESHED — for an answer that never
+      // changes while you stay signed in. An orphaned account has no profile
+      // row and a failed read leaves role null, which the nav already handles.
+      const p = await getMyProfile(userId);
+      setRole(p.role);
     };
     supabase.auth.getUser().then(({ data }) => sync(data.user?.id ?? null));
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {

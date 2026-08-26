@@ -41,9 +41,22 @@ export default function NotificationBell({ userId, dashboardPath }: { userId: st
         { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
         () => load())
       .subscribe();
-    // Slow poll as a safety net if the socket drops.
-    const t = setInterval(load, 120000);
-    return () => { clearInterval(t); supabase.removeChannel(channel); };
+    // Slow poll as a safety net if the socket drops. Skipped while the tab is
+    // hidden: a backgrounded tab left open all day was firing this query every
+    // two minutes forever, for a badge nobody was looking at, and a person with
+    // several dashboard tabs open multiplied it. Nothing is lost, because a
+    // dropped socket only matters once you can see the badge again — so
+    // becoming visible triggers an immediate catch-up read.
+    const t = setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, 120000);
+    const onVis = () => { if (document.visibilityState === "visible") load(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", onVis);
+      supabase.removeChannel(channel);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 

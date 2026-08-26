@@ -3,6 +3,7 @@ import { DashboardSkeleton, useEnterAnim } from "@/components/Skeleton";
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { clearMyProfile } from "@/lib/myProfile";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
 import { requestReferralShare } from "@/lib/referralPrompt";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
@@ -280,6 +281,7 @@ export default function ClientDashboard() {
         if (!profData) {
           try {
             const { data: role } = await supabase.rpc("ensure_profile", { p_role: "client" });
+            clearMyProfile();  // a profile row now exists where it didn't
             if (role && role !== "client") {
               setLocation(role === "admin" ? "/admin-dashboard" : "/contractor-dashboard");
               return;

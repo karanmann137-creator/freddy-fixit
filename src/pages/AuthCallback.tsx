@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { clearMyProfile } from "@/lib/myProfile";
 import { stashedReferralCode, applyReferralAtSignup } from "@/lib/referralCode";
 
 // Lands here after (a) a Google/Apple OAuth round-trip, or (b) an email
@@ -56,6 +57,7 @@ export default function AuthCallback() {
       // Form-initiated sign-in: honor the chosen role.
       if (wantedRole === "contractor") {
         await supabase.from("profiles").update({ role: "contractor" }).eq("id", user.id);
+        clearMyProfile();  // role just changed — the shared cache must not answer with the old one
         const { data: c } = await supabase.from("contractors").select("id").eq("id", user.id).maybeSingle();
         setLocation(c ? "/contractor-dashboard" : "/contractor-onboarding");
         return;
@@ -95,6 +97,7 @@ export default function AuthCallback() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLocation("/login"); return; }
     await supabase.from("profiles").update({ role }).eq("id", user.id);
+    clearMyProfile();  // role just changed — the shared cache must not answer with the old one
     localStorage.setItem("ff_role_chosen", "1");
     if (role === "contractor") setLocation("/contractor-onboarding");
     else setLocation("/client-dashboard");

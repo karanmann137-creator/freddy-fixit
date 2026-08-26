@@ -3,6 +3,7 @@ import PasswordField from "@/components/PasswordField";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { clearMyProfile } from "@/lib/myProfile";
 import { compressImage } from "@/lib/imageCompress";
 import { AVAIL_DAYS, WEEKDAYS, TIME_OPTIONS, DEFAULT_START, DEFAULT_END } from "@/lib/availability";
 import { trackEvent } from "@/lib/analytics";
@@ -308,6 +309,10 @@ export default function ContractorOnboarding() {
           .update({ role: "contractor", first_name: form.firstName, last_name: form.lastName || null, phone: form.phone || null })
           .eq("id", userId);
         if (profErr) throw profErr;
+        // The row was just created and/or the role just changed — drop the
+        // shared cache so ProtectedRoute doesn't bounce them off the dashboard
+        // they're about to land on, and the finish-signup banner clears.
+        clearMyProfile();
         // Weekly pro-tips opt-in (CASL express consent — checkbox is never pre-checked).
         if (newsletterOptIn) {
           try { await supabase.rpc("newsletter_subscribe", { p_email: form.email, p_audience: "contractor", p_name: form.firstName, p_source: "signup_checkbox" }); } catch {}

@@ -1,6 +1,7 @@
 import { Switch, Route, Redirect, useLocation } from "wouter";
 import { useEffect, useState, lazy, Suspense } from "react";
 import { supabase } from "@/lib/supabase";
+import { getMyProfile } from "@/lib/myProfile";
 import type { UserRole } from "@/lib/supabase";
 import { trackPageView } from "@/lib/analytics";
 import { REF_CODE_KEY } from "@/lib/referralCode";
@@ -139,16 +140,17 @@ function ProtectedRoute({
         if (userError || !user) { setRedirectTo("/login"); setStatus("redirect"); return; }
 
         if (requiredRole) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("role")
-            .eq("id", user.id)
-            .maybeSingle();
+          // Shared, session-scoped read — TopNav and FinishSignupBanner mount
+          // on this same navigation and ask the same question; getMyProfile
+          // collapses all three into one query. See src/lib/myProfile.ts.
+          const profile = await getMyProfile(user.id);
 
           // No profile row yet (half-finished signup, e.g. Google one-tap) —
           // let the dashboard through; it repairs the account via ensure_profile
-          // and walks the user through completing their info.
-          if (profile && profile.role !== requiredRole) {
+          // and walks the user through completing their info. A FAILED read
+          // (ok:false) is treated the same way it was when this queried
+          // directly: pass through rather than redirect on bad information.
+          if (profile.ok && profile.exists && profile.role !== requiredRole) {
             const dest =
               profile.role === "admin" ? "/admin-dashboard" :
               profile.role === "contractor" ? "/contractor-dashboard" :
