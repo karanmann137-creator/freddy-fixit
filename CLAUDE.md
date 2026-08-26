@@ -86,6 +86,16 @@ Freddy Verified uses **`--ff-bg`, not `--ff-surface`** — under the scope `--ff
 - **`supabase.functions.invoke` throws away the response body.** A 409/428 with a plain-English reason is invisible unless you pull it off `error.context`: `try { const j = await (error as any).context?.json?.(); if (j?.error) m = j.error; } catch {}`.
 - **Use `.maybeSingle()`, never `.single()`** for profile/role lookups — `.single()` returns an error object on zero rows, which orphaned accounts hit constantly.
 - **Every upload is compressed in the browser first — `src/lib/imageCompress.ts`, `compressImage(file, profile)`.** Three profiles: `photo` (1600px / q0.82 — completion + milestone photos, request photos, chat images, portfolio), `avatar` (640px / q0.85 — `contractor-photos`), `document` (2400px / q0.92 — `contractor-docs`, kept deliberately gentle because `review-contractor` sends these to Claude to *read* and the owner reads them by eye; over-compressing an insurance certificate destroys the payload). Output is always WebP, which is in `allowed_mime_types` on all six image buckets. **The governing rule is that every failure path returns the ORIGINAL file** — undecodable (HEIC on desktop Chrome), no canvas, `toBlob` null, or a "compressed" result that came back bigger. A completion photo is a payment gate and a dispute exhibit, so a slightly large photo is a rounding error and a lost one is a blocked payout. Videos, PDFs and GIFs pass through untouched (a canvas round-trip would kill GIF animation). **The signed-contract upload in `ContractPanel` is deliberately NOT compressed** — it's a legal instrument. When adding an upload, derive the path extension from the *returned* file and pass its `type` as `contentType`, or you write a `.jpg` path holding WebP bytes.
+- **The role lookup is cached once per session — `src/lib/myProfile.ts` (2026-08-25).** `ProtectedRoute`, `TopNav` and `FinishSignupBanner` each read `profiles` independently; the banner fired on **every route change** and TopNav additionally on every `onAuthStateChange`, **including the periodic TOKEN_REFRESHED**. `getMyProfile(userId)` gives all three one answer.
+
+  **It caches the in-flight PROMISE, not just the resolved value.** All three mount on the same navigation, so caching only the value still lets all three fire before any of them answers; storing the promise collapses the burst into one query.
+
+  **Absence is never cached.** A missing `profiles` row is the half-finished-signup case — the one answer that heals on its own, via `ensure_profile()` or the signup trigger landing a beat late. Caching `exists:false` for a session would pin the finish-signup banner on screen for an account that has already been repaired. Orphans are rare, so re-asking costs nothing. A failed read isn't cached either, and returns `ok:false` so callers can tell "no row" from "couldn't tell" — all three preserve their old behaviour of passing through rather than acting on bad information.
+
+  Invalidate with `clearMyProfile()` **anywhere `profiles.role` is written**: `AuthCallback` (both updates), `ContractorOnboarding`, and after `ensure_profile` in both dashboards. The module also clears itself inside `onAuthStateChange` — that is a **synchronous assignment, not a query**, so the auth-lock deadlock rule is not violated.
+
+- **`NotificationBell`'s 2-minute safety-net poll is visibility-gated.** It is a backstop behind the realtime subscription, and a background tab polling forever is pure waste. It now checks `document.visibilityState === "visible"` inside the interval **and** re-loads once on `visibilitychange`, so a tab returning to the foreground is instantly current rather than up to two minutes stale.
+
 - **HEIC photos often arrive with an empty `f.type`**, so a strict MIME whitelist silently rejects good iPhone photos — fall back to the extension. Related: a cancelled file picker returns no file, so use `if (!f) return;` (**never `?? null`**, which wipes the prior selection), and reset `e.target.value` on reject so re-choosing the same file re-fires `onChange`.
 - **`askConfirm` returns a promise that only settles when `<ConfirmDialog>` closes** — forget to mount the dialog and the button hangs forever with no error.
 - **Only the first three "Needs your attention" rows render** (`attn.slice(0,3)`), so push-order decides what a user sees. Money-gating rows go first. On the contractor side the rows are an `else if` chain — a new overlapping predicate must be inserted *before* the one it overlaps.
@@ -386,7 +396,7 @@ Current set: `job_in_field`, `rehire_request`, `contractor_guide`, `chat_time_pr
 
 **Before adding a type, verify it has exactly one emitter** — suppressing a type with several emitters silently kills legitimate mail. Conversely, a genuinely transactional type (`visit_slot_released`, `contract_signature`) is deliberately left OUT so it does email.
 
-Historical duplicates fixed: the legacy `notify-admin-contractor` trigger duplicated `contractor-welcome` + `admin-alert` (dropped; `notify-admin` v17 reduced to client-confirmation-only — note the sibling trigger name **`"notify-admin-client "` has a trailing space**); `job_in_field` doubled with `dispatch-job`; `rehire_request` doubled with `dispatch-job` inside the 48h reservation window (fixed by making dispatch-job v14 reservation-aware rather than dropping the richer email); `bid_received` doubled with `send-bid-email`, whose copy carries the pro's name, the price and the one-tap `/pick/<token>` link while the generic one only offered a login wall.
+Historical duplicates fixed: the legacy `notify-admin-contractor` trigger duplicated `contractor-welcome` + `admin-alert` (dropped; `notify-admin` v17 reduced to client-confirmation-only — note the sibling trigger name **`"notify-admin-client "` has a trailing space**); `job_in_field` doubled with `dispatch-job`; `rehire_request` doubled with `dispatch-job` inside the 48h reservation window (fixed by making dispatch-job v16 reservation-aware rather than dropping the richer email); `bid_received` doubled with `send-bid-email`, whose copy carries the pro's name, the price and the one-tap `/pick/<token>` link while the generic one only offered a login wall.
 
 **`notify_user` double-sent all thirteen of its types, and it did it in a way the suppression set could never have caught (2026-08-23).** The helper wrote the bell row — firing the webhook, which emails — **and** separately posted the same title and body to the `send-reminder` edge function, which emailed a second, thinner copy from the same address. `EMAIL_HANDLED_ELSEWHERE` was no defence: it suppresses the *webhook's* email in favour of a richer one elsewhere, and here the webhook's copy was the better of the two. **The duplicate emitter has to be found by reading the emitting function, not by reading the type list.** The post is gone, `send-notification` v16 is the sole emitter for those types, and `send-reminder` — the open relay described in the security section — lost its last caller as a result and is now a 410 tombstone.
 
@@ -404,7 +414,7 @@ Because wouter no-ops on same-path navigation, `openNote` dispatches a `ff:dash-
 Sidebar badges render on the collapsed/mobile icon rail too (absolutely-positioned orange pill, `9+` cap).
 
 ## Edge functions that send
-`send-notification` (webhook fan-out) · `notify-email` (v8, `contract_copy` — **write-once**, guarded by `contract_copy_sent_at` with an `.is(...,null)` update so the Alberta 10-day clock can't be reset) · `dispatch-job` (v14, subject **"URGENT — new {service} job in {area}, bid now"**, reservation-aware, `BID_CAP = 7`) · `notify-accepted` · `admin-alert` (new_contractor / new_job to hello@, fired by AFTER INSERT triggers via `net.http_post`, wrapped in `enqueue_admin_alert` so a mail hiccup never blocks the insert) · `contractor-welcome` (v2, leads with the guide; fired by the `contractor_welcome_email` AFTER INSERT trigger → `send_contractor_welcome()`; **no expiry** — a leftover campaign guard in that fn would have silently no-opped from Sept 12) · **`client-welcome`** (v1, 2026-08-23 — see below) · `payment-receipt` · `visit-reminder` (**email OFF**) · `support-request` · `admin-message` · `finish-signup-nudge` · `contractor-outreach` (v13) · `newsletter-send` / `newsletter-unsubscribe` / `newsletter-ai-draft`.
+`send-notification` (webhook fan-out) · `notify-email` (v8, `verify_jwt=false`, `contract_copy` — **write-once**, guarded by `contract_copy_sent_at` with an `.is(...,null)` update so the Alberta 10-day clock can't be reset) · `dispatch-job` (v16, subject **"URGENT — new {service} job in {area}, bid now"**, reservation-aware, `BID_CAP = 7`) · `notify-accepted` · `admin-alert` (new_contractor / new_job to hello@, fired by AFTER INSERT triggers via `net.http_post`, wrapped in `enqueue_admin_alert` so a mail hiccup never blocks the insert) · `contractor-welcome` (v2, leads with the guide; fired by the `contractor_welcome_email` AFTER INSERT trigger → `send_contractor_welcome()`; **no expiry** — a leftover campaign guard in that fn would have silently no-opped from Sept 12) · **`client-welcome`** (v1, 2026-08-23 — see below) · `payment-receipt` · `visit-reminder` (**email OFF**) · `support-request` · `admin-message` · `finish-signup-nudge` · `contractor-outreach` (v13) · `newsletter-send` / `newsletter-unsubscribe` / `newsletter-ai-draft` · **`mfa-code`** (v1, two-step sign-in codes, gated on `x-ff-internal`).
 
 **`client-welcome` (2026-08-23) — clients had never had a welcome email at all.** Contractors have had one since launch; a client signed up and the only thing that ever reached them was a GoTrue confirmation from a sender they don't recognise. Fired by the **`client_welcome_email` AFTER INSERT trigger on `public.profiles`, `WHEN (new.role = 'client')`** → `send_client_welcome()`. On `profiles` rather than `auth.users` because the role lives there and a WHEN clause is the cheapest filter — which also means `ensure_profile()`'s orphan repair sends it, the one case where somebody most needs to hear from us. `verify_jwt=false`, `{test:true}` previews to hello@.
 
@@ -479,7 +489,7 @@ The banner renders each gap as a tappable chip plus an **"Ignore — my profile 
 `ProfileCompleteCelebration.tsx` fires confetti on the incomplete→complete transition.
 
 ## AI document review
-**review-contractor** (v11) fires non-blocking after doc uploads: downloads from the private `contractor-docs` bucket, sends to Claude with a vetting checklist (insurance: valid CoI, not expired, Alberta, $1M+; WCB: clearance ≤90 days; cert: valid trade cert / Red Seal; gov_id: photo ID matching the name), and writes `contractors.review_status` + `review_result` jsonb.
+**review-contractor** (v12) fires non-blocking after doc uploads: downloads from the private `contractor-docs` bucket, sends to Claude with a vetting checklist (insurance: valid CoI, not expired, Alberta, $1M+; WCB: clearance ≤90 days; cert: valid trade cert / Red Seal; gov_id: photo ID matching the name), and writes `contractors.review_status` + `review_result` jsonb.
 
 **Advisory only** — it never touches `contractors.status`. It previously auto-activated contractors on a pass, bypassing the owner. Pass email says "docs passed our automated checks, final review underway", NOT "you're approved". `verify_jwt=true` plus an in-code gate (caller must be that contractor or an admin) — it used to be callable by anyone with a contractor_id. `review_status='pending'` means it never ran (no docs).
 
@@ -565,11 +575,11 @@ Consumer-facing wording: say **"held securely"**, never "escrow" — the Stripe 
 
 # Infrastructure & ops
 
-**pg_cron jobs:** `daily-reminders` (16:30 UTC → `run_reminders()`), `reconcile-payouts` (every 15 min), `platform-health-check` (15:00 UTC), `visit-reminders` (every 10 min), `release_unconfirmed_visits` (every 15 min), `newsletter-contractor` (Tue 16:00), `newsletter-client` (Thu 16:00), plus auto-confirm. DB→edge calls go through `net.http_post` with the anon bearer, wrapped in an exception guard (pattern: `kick_reconcile_payouts()`).
+**pg_cron jobs:** `daily-reminders` (16:30 UTC → `run_reminders()`), `reconcile-payouts` (every 15 min), `platform-health-check` (15:00 UTC), `visit-reminders` (every 10 min), `release_unconfirmed_visits` (every 15 min), `newsletter-contractor` (Tue 16:00), `newsletter-client` (Thu 16:00), `prune-rate-limits` (04:17 UTC daily → `prune_rate_limit_hits()`), plus auto-confirm. **Six of these sit `active=false` right now** because the site is in `waitlist`; `set_platform_mode('open')` re-arms them. DB→edge calls go through `net.http_post` with the anon bearer, wrapped in an exception guard (pattern: `kick_reconcile_payouts()`).
 
 `run_reminders()` steps: 0 recurring generation · 1 recurring-due nudges · 2 seasonal nudges (one per engaged client per season, `reminder_log` dedupe) · 3 day-before visit confirm · 48h stall nudges (estimate owed / approval owed / price change pending).
 
-**Storage buckets:** `contractor-docs` (private; admin SELECT via `contractor_docs_admin_select`), `completion-photos` (private, job-party), `problem-photos` (private, dispute parties), `message-media` (private, job-party), `contracts` (private, job-party), `contractor-photos` + `portfolio-photos` (public — **note: these allow public listing**).
+**Storage buckets:** `contractor-docs` (private; admin SELECT via `contractor_docs_admin_select`), `completion-photos` (private, job-party), `problem-photos` (private, dispute parties), `message-media` (private, job-party), `contracts` (private, job-party), `contractor-photos` + `portfolio-photos` (public — **note: these allow public listing**). Every upload is rate-limited by the `ff_upload_rate_guard` trigger, and **objects cannot be deleted in SQL** (`storage.protect_delete()`) — removal needs the Storage API from a service-role edge function.
 
 **Auth deadlock rule: never call a supabase query inside `onAuthStateChange`.** Do it on route change instead.
 
@@ -595,9 +605,9 @@ Consumer-facing wording: say **"held securely"**, never "escrow" — the Stripe 
 
 **`src/lib/contractCopy.ts`** — `sendContractCopy(jobId)` retries the Alberta written-copy email 3× (the edge update is write-once, so retrying can't double-send) and returns false only if all attempts fail; `CONTRACT_COPY_FAILED` is the copy to show then.
 
-**Owner-only, still open:** leaked-password protection (Dashboard → Authentication → Policies).
+**Leaked-password protection is handled in the browser, because the Supabase setting is Pro-plan only** and this project is on the free plan — see *Passwords* below. The Dashboard toggle is not an available option here, so don't file it as an owner action again.
 
-**The source-less edge functions were recovered on 2026-08-23** and now live in `supabase/functions/`. There were **five**, not six. (**Correction, 2026-08-23:** `send-bid-email` *is* still deployed — v11, ACTIVE, `verify_jwt=false`. An earlier note here said otherwise. It has no source in the repo and has not been read; treat it as unaudited, not as gone.) Reading them confirmed what the audit could only suspect:
+**The source-less edge functions were recovered on 2026-08-23** and now live in `supabase/functions/`. There were **five**, not six. (**Correction, 2026-08-24:** `send-bid-email` is still deployed — v11, ACTIVE — and it has now been read. It is **not** an open relay: v11 gates on the single-use `x-ff-internal` token that `place_bid` mints, exactly like `notify-message` v2, and `verify_jwt` stays false on purpose because the caller is Postgres and has no user JWT. v10 *was* the hole this section describes — arbitrary `to_email`, no gate at all — and v11 closed it while also fixing a copy bug that rendered a walkthrough bid as the literal words "a quote". Its one-tap `/pick/<pick_token>` link is the reason four clients with estimates and no picks became a solvable problem: the token IS the authorization, so there is no login wall between the email and the choice.) Reading them confirmed what the audit could only suspect:
 
 - **`send-reminder` (was v1, `verify_jwt=false`) was an open mail relay on our sending domain.** It took `subject`, `title`, `body` and an arbitrary `email` **straight from the request body** and sent that HTML as `noreply@freddyfixit.ca`. **Closed 2026-08-23 by removing its last caller, not by gating it** — see the duplicate-email rule. `notify_user`'s post to it was a second, thinner copy of an email the notifications webhook already sent, so deleting the caller fixed three things at once: it closed the relay by construction (a gate is a thing that can be got wrong later; an uncalled function is not), it stopped thirteen notification types double-sending, and it closed a bypass of `outbound_paused()`. Now a **410 tombstone, `verify_jwt=true`**.
 - **`send-welcome` (was v10, `verify_jwt=false`) was the same hole plus Twilio.** Arbitrary `email` *and* arbitrary `phone` from the body, sending paid SMS. Superseded by `contractor-welcome` v2, zero callers. Now a **410 tombstone, `verify_jwt=true`**.
@@ -614,9 +624,148 @@ The full ranked findings live in `SECURITY-AUDIT-PRIVATE.md`, which is **gitigno
 
 ---
 
+---
+
+# Account security (2026-08-24/25 audit)
+
+Three things landed together and they lean on each other: a password can't be a
+known-breached one, an admin action needs a second factor, and a stolen session
+can't be used as a firehose. None of them is a Supabase feature — this project
+is on the **free plan**, so every Pro-only control had to be rebuilt in the open.
+
+## Passwords — `src/lib/passwordStrength.ts` + `src/components/PasswordField.tsx`
+
+**The password never leaves the browser.** `checkPwned()` uses Have I Been
+Pwned's k-anonymity range API: SHA-1 the password locally, send only the **first
+five hex characters** of the hash, match the remaining 35 against the list HIBP
+returns. HIBP learns a 5-character prefix shared by roughly 800 other hashes and
+nothing else. **Never replace this with an API that takes the password**, or the
+plaintext — that is the whole reason the substitute is acceptable at all.
+
+Scoring **weights length far above character variety**, per NIST SP 800-63B. A
+meter that rates `P@ssw0rd!` above `correct horse battery staple` teaches
+exactly the wrong lesson: the first is in every crack dictionary published since
+2009 and the second is not. Symbol variety earns at most one point, and only
+once the password is already long. The short built-in `COMMON` list exists only
+so the meter reacts *instantly*, before the network check answers — HIBP covers
+the long tail far better than any list we could ship.
+
+`PasswordField` is **the one password input on the platform**; all four
+password-taking pages (Login, both onboardings, UpdatePassword) go through it so
+the reveal toggle, meter and breach check can't drift. Two modes: `meter` off on
+Login (scoring a password somebody already has is noise and they can't act on
+it), `meter` on wherever a password is being *chosen*. **The eye button is
+`type="button"`** — Login wraps its fields in a real `<form onSubmit>`, and a
+bare `<button>` in a form defaults to `type="submit"`, so without it clicking the
+eye attempts a sign-in with a half-typed password.
+
+## Two-step sign-in — email OTP on Resend, not GoTrue
+
+Built on **our** mailer on purpose. GoTrue's mailer is the path that broke
+silently in Aug 2026 and locked three people out with no error visible to
+anyone; putting a second factor on it would mean a mailer outage locks the owner
+out of his own admin dashboard.
+
+Tables `user_mfa` + `mfa_challenges`. RPCs `mfa_status`, `mfa_request_code`,
+`mfa_verify`, `mfa_disable`, `mfa_use_recovery`, `admin_clear_mfa` (break-glass),
+and `mfa_ok()`. Edge `mfa-code` delivers via Resend, gated on `x-ff-internal`.
+UI: `src/components/TwoStepPanel.tsx` (Settings) + the Login gate; the
+reason→English map has **exactly one copy**, in `src/lib/mfa.ts`.
+
+Details that are load-bearing:
+
+- **`mfa_ok()` returns TRUE for anyone not enrolled.** It answers "is a code
+  owed?", not "is this user protected?" — so adding `mfa_ok()` to a guard can
+  never lock out an account that never opted in. Enrolled users get a **12-hour**
+  verified window.
+- **`admin_guard()` = admin role AND `mfa_ok()`**, and it raises in **plain
+  English** (`Verify your sign-in code first, then try again.`) because it
+  surfaces in the admin dashboard, where "permission denied" would send the
+  owner hunting for a role problem that doesn't exist.
+- **Requesting a code is rate-limited to 5/hour per user** — it is the only
+  thing between a stolen session and using our Resend domain as a mail cannon.
+- **A send failure does not raise.** The code is already stored, so another
+  request recovers; raising on an auth path is the Aug 2026 shape again.
+- Codes are 6 digits from `extensions.gen_random_bytes` (pinned `search_path`,
+  per the pgcrypto incident), hashed with `mfa_hash(code, user)` — never stored
+  plain — expire in **10 minutes**, allow **5 attempts**, and a new request
+  **supersedes** any outstanding code for that purpose so an older email can't
+  be used afterwards. Enrolling mints **10 single-use recovery codes**, returned
+  once and only as hashes thereafter.
+
+## Rate limiting — one primitive, several users
+
+`public.rate_limit_hits(bucket, key, window_start, count)` with
+**`rl_hit_key(bucket, key, limit, window_secs)`** — a single upsert that rolls
+its own window. `rl_hit(bucket, …)` is the IP-keyed convenience wrapper. Cron
+`prune-rate-limits` (04:17 UTC) runs `prune_rate_limit_hits()`.
+
+**`rl_hit_key` returns TRUE when it cannot identify the caller** (null/blank
+key). A rate limiter that fails closed on an unidentifiable caller blocks
+service-role and internal writers, which is a far worse outcome than letting one
+anonymous request through.
+
+Current users: signup availability checks, `mfa_request_code` (its own inline
+count), and storage uploads.
+
+## Upload rate limit at the storage layer
+
+Trigger **`ff_upload_rate_guard`** BEFORE INSERT on `storage.objects` →
+`storage_upload_rate_guard()`: **60 uploads per hour per authenticated user**,
+raising `54000` with a plain-English message. It sits at the *storage* layer
+rather than in each upload call site because there are a dozen call sites and a
+missed one is invisible.
+
+**`auth.uid()` null means service_role or an internal writer, and is let
+through** — the same reasoning as `rl_hit_key`. It also means the guard is not a
+defence against a leaked service-role key; nothing at this layer could be.
+
+## `storage.protect_delete()` — you cannot delete objects in SQL
+
+`delete from storage.objects` raises `42501: Direct deletion from storage tables
+is not allowed. Use the Storage API instead.` This is Supabase's guard and it is
+**correct** — deleting the index row in SQL leaves the S3 blob orphaned, paid
+for, and invisible. Do not try to disable it.
+
+The consequence: **any admin cleanup that removes a file needs an edge function
+with a service-role client**, calling `storage.from(bucket).remove([...])`.
+`admin-delete-portfolio-item` (v1, `verify_jwt=true`) is the first of these — it
+deletes the **storage object first and the `portfolio_items` row second**,
+deliberately. A row pointing at a real file is recoverable and retryable; a
+deleted row pointing at an orphaned file is exactly the state the DB guard
+exists to prevent. It authenticates two ways (an admin JWT resolved through
+`auth.getUser()` → `profiles.role`, or an `x-ff-internal` token), caps at
+`MAX_ITEMS = 25`, and reports per-item results plus `not_found`.
+
+**It also closed a real moderation gap**: before it existed, the owner's only
+tool for one bad portfolio photo was deleting the contractor's entire account.
+
+Watch the result aggregation — **`[].every(…)` is `true`**, so `results.every(r
+=> r.ok)` alone would report success for a call that matched nothing. The check
+is `results.length > 0 && results.every(…) && missing.length === 0`.
+
+## Backfill compression — `compress-images`
+
+Edge function that re-encodes oversized objects already in storage, fed by
+`admin_oversized_objects(bucket, floor, after, limit)`. Two portfolio photos
+were **too large to re-encode server-side at all** and were removed instead
+(2026-08-25), with the contractor emailed to re-upload through the site, where
+`compressImage` handles it in the browser. Storage went 54 MB → 47 MB; largest
+remaining portfolio photo is 861 KB.
+
+## RLS + ACL hygiene pass
+
+Every policy re-scoped to `authenticated` with `auth.uid()` wrapped as `(select
+auth.uid())` for InitPlan hoisting; anon read closed on `reviews`; trigger
+function ACLs locked to `{postgres, service_role}`; full `config.toml` written
+for every edge function. **Remember `revoke … from public` as well as from
+`anon`** — the default grant is to PUBLIC, so revoking from `anon` alone is a
+no-op.
+
+---
+
 # Open / queued
 
-- **Owner action: leaked-password protection** — Supabase Dashboard → Authentication → Policies. Can't be set over MCP.
 - **Owner action, cosmetic: remove the four tombstoned edge functions** (`send-reminder`, `send-welcome`, `remind-contractor`, `resend-domains`) in Supabase Dashboard → Edge Functions → Delete. They already send nothing and hold no secrets; the MCP just has no delete tool.
 - **Prepaid-contracting licensing** (contractor licence + bond; whether the platform needs its own) — lawyer + Service Alberta. Blocking-risk item.
 - **One real end-to-end live payment run** — no job has ever reached `held`, so the held→dispute→release path is production-untested.
@@ -628,6 +777,8 @@ The full ranked findings live in `SECURITY-AUDIT-PRIVATE.md`, which is **gitigno
 - Seed contractors Slone (`a01c49f7-0ba6-4e0a-bc81-aba53baebcb7`) and Justin (`44748517-72d6-440a-ab06-b13e2660cc80`) still have NULL `company_name` + vetting answers — owner to provide.
 - `review-contractor` sometimes records `review_status='rejected'` with an empty `review_result={}`.
 - **Decide the social bot's fate — finish it or delete it whole.** `social-bot-brain` and `social-bot-harness` are deployed and, by design, can only write a PROPOSAL into `social_actions` and wait for a human. `admin_list_social_actions` / `admin_review_social_action` are that human-approval half — and **no UI was ever built for them**, so they read as dead code. They were deliberately spared in the 2026-08-23 cleanup: cherry-picking the approval half out of a human-in-the-loop safety design is the worst of both worlds, because switching the bot on would then pile up proposals with no way to review them. All of `social_actions` / `social_conversations` / `social_messages` / `social_leads` are at **0 rows** — the bot has never run. Either build the admin tab or drop the two RPCs, the two edge functions and the four tables together.
+- **`insurance_on_file` must gain an expiry test** once `insurance_expiry_date` is a real parsed date — showing "insurance on file" for a lapsed policy is worse than showing nothing, because the client relies on it.
+- **Two-step sign-in is opt-in and nobody is enrolled yet.** `admin_guard()` therefore behaves exactly like the old `is_admin()` check until the owner enrols. Enrolling is the point; until then the second factor is inert.
 - Keep this file + `src/CLAUDE.md` + `supabase/CLAUDE.md` current as features land.
 
 # Privacy / safety
