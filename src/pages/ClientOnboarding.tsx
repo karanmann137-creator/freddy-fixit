@@ -1,13 +1,13 @@
 import { Ic } from "@/components/Ic";
 import VoiceDictate from "@/components/VoiceDictate";
 import PasswordField from "@/components/PasswordField";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import OnboardingProgress from "@/components/OnboardingProgress";
 import { trackEvent } from "@/lib/analytics";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
-import { useServicePricing, fromText } from "@/lib/servicePricing";
+import { useServicePricing, fromText, floorFor } from "@/lib/servicePricing";
 import { isPerKmService, freqLabel, SLIDER_STOPS, SLIDER_SHORT } from "@/lib/recurrence";
 import NewRequest from "@/components/NewRequest";
 import OAuthButtons from "@/components/OAuthButtons";
@@ -20,6 +20,7 @@ import WaitlistForm from "@/components/WaitlistForm";
 import { usePlatformStatus, acceptingRequests } from "@/lib/platformStatus";
 import { detectFromText } from "@/lib/serviceTags";
 import { questionsFor, answerSummary, type JobAnswers } from "@/lib/jobQuestions";
+import { useStoredDraft, useDraftAutosave, clearDraft, ONBOARDING_DRAFT_KEY, dStr, dArr, dNum, dBool } from "@/lib/requestDraft";
 
 export const SERVICES = [
   { iconName: "wrench", label: "General Handyman" },
@@ -139,32 +140,77 @@ export default function ClientOnboarding() {
     const raw = new URLSearchParams(window.location.search).get("service");
     if (!raw) return;
     const mapped = HOME_TO_SERVICE[raw] ?? raw;
-    if (SERVICES.some(sv => sv.label === mapped)) setSelectedServices([mapped]);
+    // ADD, never replace. On a fresh visit the list is empty so this is identical
+    // to the old `[mapped]`, but now that a draft can be restored, someone who
+    // picked three services and then tapped a service tile on the home page would
+    // otherwise come back to find the other two silently deleted.
+    if (SERVICES.some(sv => sv.label === mapped)) {
+      setSelectedServices(prev => prev.includes(mapped) ? prev : [...prev, mapped]);
+    }
   }, []);
-  const [step, setStep] = useState(1);
+  /**
+   * A half-finished request, remembered for the length of the browsing session.
+   *
+   * Read ONCE here, above every piece of state that seeds from it, because the
+   * autosave effect below runs on mount too — a later read would see the
+   * freshly-written empty form and hand back nothing. See src/lib/requestDraft.ts
+   * for why this is sessionStorage and why the password and photo are excluded.
+   */
+  const { draft, restored, startOver } = useStoredDraft(ONBOARDING_DRAFT_KEY);
+
+  const [step, setStep] = useState(() => dNum(draft, "step", 1, 1, 5));
   const TOTAL = 5;
   // What the keyword map pulled out of the description, and the exact text it was
   // read from. Storing the text lets us re-run detection only when the description
   // actually changed, so a client who edits their chips then steps back and forward
   // doesn't have their edits silently overwritten.
-  const [tags, setTags]                   = useState<string[]>([]);
-  const [answers, setAnswers]             = useState<JobAnswers>({});
-  const [detectedFor, setDetectedFor]     = useState("");
-  const [showAllServices, setShowAllServices] = useState(false);
-  const [form, setForm] = useState(() => ({ email:"", phone:"", password:"", preferredSchedule:"", location:"", postalCode:"", jobDescription:"", businessName:"", businessType:"", locations:"", billingPreference:"", referralCode: stashedRefCode() }));
+  const [tags, setTags]                   = useState<string[]>(() => dArr(draft, "tags"));
+  const [answers, setAnswers]             = useState<JobAnswers>(() => {
+    // Answers are a free-form id->string map, so there's no fixed key list to
+    // validate against. Keep only the string values and drop anything else.
+    const raw = draft?.answers;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+    const out: JobAnswers = {};
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) if (typeof v === "string") out[k] = v;
+    return out;
+  });
+  const [detectedFor, setDetectedFor]     = useState(() => dStr(draft, "detectedFor"));
+  const [showAllServices, setShowAllServices] = useState(() => dBool(draft, "showAllServices"));
+  // The PASSWORD is deliberately absent from the restore — it is never written to
+  // storage in the first place (requestDraft.ts), and retyping a password you just
+  // chose is trivial next to retyping a job description.
+  const [form, setForm] = useState(() => ({
+    email:             dStr(draft, "email"),
+    phone:             dStr(draft, "phone"),
+    password:          "",
+    preferredSchedule: dStr(draft, "preferredSchedule"),
+    location:          dStr(draft, "location"),
+    postalCode:        dStr(draft, "postalCode"),
+    jobDescription:    dStr(draft, "jobDescription"),
+    businessName:      dStr(draft, "businessName"),
+    businessType:      dStr(draft, "businessType"),
+    locations:         dStr(draft, "locations"),
+    billingPreference: dStr(draft, "billingPreference"),
+    // A code captured from a ?ref= link still wins over a stale draft value of "",
+    // so fall back to the stash rather than letting an empty saved field erase it.
+    referralCode:      dStr(draft, "referralCode") || stashedRefCode(),
+  }));
   // True only when Have I Been Pwned definitively matched the typed password.
   // An unreachable HIBP reports false, so a flaky network can never block a signup.
   const [pwBreached, setPwBreached] = useState(false);
-  const [clientType, setClientType] = useState<"individual"|"business">("individual");
-  const [recurring, setRecurring] = useState(false);
-  const [recurringFrequency, setRecurringFrequency] = useState<string>("");
-  const [sliderIdx, setSliderIdx]                   = useState(3); // default "monthly"
-  const [recurringDates, setRecurringDates]         = useState<string[]>([]);
+  const [clientType, setClientType] = useState<"individual"|"business">(() => dStr(draft, "clientType") === "business" ? "business" : "individual");
+  const [recurring, setRecurring] = useState(() => dBool(draft, "recurring"));
+  const [recurringFrequency, setRecurringFrequency] = useState<string>(() => dStr(draft, "recurringFrequency"));
+  const [sliderIdx, setSliderIdx]                   = useState(() => dNum(draft, "sliderIdx", 3, 0, SLIDER_STOPS.length - 1)); // default "monthly"
+  const [recurringDates, setRecurringDates]         = useState<string[]>(() => dArr(draft, "recurringDates"));
   const [newDate, setNewDate]                       = useState("");
-  const [recurringKm, setRecurringKm]               = useState("");
-  const [prepayPref, setPrepayPref]                 = useState(0);
-  const [recurringStartDate, setRecurringStartDate] = useState("");
-  const [recurringEndDate, setRecurringEndDate]     = useState("");
+  const [recurringKm, setRecurringKm]               = useState(() => dStr(draft, "recurringKm"));
+  // Only 0 / 2 / 3 are offerable below; clamping a range would let a stale 7
+  // restore as a value with no chip selected, which reads as "nothing chosen"
+  // while still being submitted. Anything off the list falls back to 0.
+  const [prepayPref, setPrepayPref]                 = useState(() => { const n = dNum(draft, "prepayPref", 0, 0, 3); return n === 2 || n === 3 ? n : 0; });
+  const [recurringStartDate, setRecurringStartDate] = useState(() => dStr(draft, "recurringStartDate"));
+  const [recurringEndDate, setRecurringEndDate]     = useState(() => dStr(draft, "recurringEndDate"));
 
   const SEASON_PRESETS = [
     { label: "Spring", start: "-04-01", end: "-06-30" },
@@ -209,11 +255,21 @@ export default function ClientOnboarding() {
     if (mode !== "signup") return;
     trackEvent("onboarding_step_view", { flow: "client", step, step_name: STEP_NAMES[step-1] || String(step) });
   }, [step, mode]); // eslint-disable-line react-hooks/exhaustive-deps
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [selectedServices, setSelectedServices] = useState<string[]>(() => dArr(draft, "selectedServices").filter(l => SERVICES.some(sv => sv.label === l)));
   const pricing = useServicePricing();
-  const [budgetMin, setBudgetMin]           = useState("");
-  const [budgetMax, setBudgetMax]           = useState("");
-  const [budgetFlexible, setBudgetFlexible] = useState(false);
+  const [budgetMax, setBudgetMax]           = useState(() => dStr(draft, "budgetMax"));
+  const [budgetFlexible, setBudgetFlexible] = useState(() => dBool(draft, "budgetFlexible"));
+  /**
+   * The platform's starting price for whatever is currently selected. Derived,
+   * never typed — the client picks a maximum only (see BudgetPicker).
+   *
+   * Computed HERE rather than inside BudgetPicker so the number the client is
+   * shown and the number written into `client_requests.budget_min` are the same
+   * value, not two evaluations that could drift apart. Null while `pricing` is
+   * still loading or when nothing selected is in the price book, in which case
+   * the floor is hidden and budget_min is left empty rather than guessed.
+   */
+  const budgetFloor = floorFor(selectedServices.join(", "), pricing);
   const [errors, setErrors] = useState<Record<string,string>>({});
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -225,6 +281,38 @@ export default function ClientOnboarding() {
   const [photoWarn, setPhotoWarn] = useState(false); // photo failed to upload at submit
   const [referral, setReferral] = useState<{ code:string } | null>(null);
   const [refCopied, setRefCopied] = useState(false);
+
+  /**
+   * Autosave, debounced.
+   *
+   * The snapshot is FLAT on purpose — `draftWorthOffering` looks for
+   * `jobDescription` and `selectedServices` at the top level, and a flat shape is
+   * also what the `dStr`/`dArr`/`dNum` accessors above read back.
+   *
+   * Four things are left out, each for its own reason:
+   *   - `form.password` — never in storage, ever (see requestDraft.ts).
+   *   - `photoFile` — a `File` doesn't survive JSON; a stringified one restores as
+   *     `{}`, and the UI would then claim a photo is attached with no bytes to send.
+   *   - `errors` / `loading` / `submitError` — they describe a moment, not an
+   *     intention.
+   *   - `agreedToTerms` / `newsletterOptIn` — consent. Restoring a ticked box means
+   *     the record says they agreed on this visit when they agreed on the last one,
+   *     and the CASL opt-in specifically must be an express act every time.
+   *
+   * `enabled` goes false the instant the account is created, so the pending timer
+   * can't be raced into resurrecting a request that now exists in the database.
+   */
+  useDraftAutosave(ONBOARDING_DRAFT_KEY, {
+    step, tags, answers, detectedFor, showAllServices,
+    email: form.email, phone: form.phone, preferredSchedule: form.preferredSchedule,
+    location: form.location, postalCode: form.postalCode, jobDescription: form.jobDescription,
+    businessName: form.businessName, businessType: form.businessType,
+    locations: form.locations, billingPreference: form.billingPreference,
+    referralCode: form.referralCode,
+    clientType, recurring, recurringFrequency, sliderIdx, recurringDates,
+    recurringKm, prepayPref, recurringStartDate, recurringEndDate,
+    selectedServices, budgetMax, budgetFlexible,
+  }, mode === "signup" && !success && !verifyEmail);
 
   const set = (key: string, val: string) => { setForm(f => ({ ...f, [key]: val })); setErrors(e => ({ ...e, [key]: "" })); };
 
@@ -239,7 +327,17 @@ export default function ClientOnboarding() {
   // changes the recorded answers belong to a different question set and must go.
   // Keeping them would attach (say) a plumbing answer to an electrical job.
   const primaryService = selectedServices[0] || "";
-  useEffect(() => { setAnswers({}); }, [primaryService]);
+  // The FIRST run is skipped, and that skip is what makes draft restore work at
+  // all: this effect fires on mount like any other, so without the ref it would
+  // wipe the answers we just restored before the client ever saw them. Tracking
+  // the last-seen service (rather than a bare "have I run once" flag) also means
+  // a restored service that is still the primary one is correctly a no-op.
+  const answersFor = useRef(primaryService);
+  useEffect(() => {
+    if (answersFor.current === primaryService) return;
+    answersFor.current = primaryService;
+    setAnswers({});
+  }, [primaryService]);
   const activeQuestions = questionsFor(primaryService);
 
   const setAnswer = (q: { id: string; multi?: boolean }, option: string) => {
@@ -299,15 +397,13 @@ export default function ClientOnboarding() {
       if (!form.location.trim() && !form.postalCode.trim()) errs.location = "Enter your address or postal code";
       else if (!form.location.trim() && form.postalCode.trim() && !/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(form.postalCode.trim())) errs.location = "Enter a valid postal code (e.g. T2P 1J9) or your address";
       if (!form.preferredSchedule) errs.preferredSchedule = "Please select a schedule";
-      // Budget is optional, but if given it has to make sense.
+      // Budget is optional, but if given it has to make sense. The minimum is
+      // ours and can't be typed wrong, so only the max is validated — and a max
+      // under our floor is a soft warning inside BudgetPicker, not a hard block:
+      // someone genuinely willing to pay less should still be allowed to ask.
       if (!budgetFlexible) {
-        const bLo = budgetMin.trim() === "" ? null : Number(budgetMin);
         const bHi = budgetMax.trim() === "" ? null : Number(budgetMax);
-        if ((bLo != null && (!isFinite(bLo) || bLo < 0)) || (bHi != null && (!isFinite(bHi) || bHi < 0))) {
-          errs.budget = "Budget must be a positive number";
-        } else if (bLo != null && bHi != null && bHi < bLo) {
-          errs.budget = "Budget maximum must be at least the minimum";
-        }
+        if (bHi != null && (!isFinite(bHi) || bHi < 0)) errs.budget = "Budget must be a positive number";
       }
     }
     if (step === 5) {
@@ -349,7 +445,11 @@ export default function ClientOnboarding() {
         first_name: derivedName.first, last_name: derivedName.last, phone: form.phone,
         service_needed: selectedServices.join(", "),
         budget_flexible: budgetFlexible,
-        budget_min: budgetFlexible || budgetMin.trim() === "" ? "" : String(Number(budgetMin)),
+        // budget_min is OURS now (see BudgetPicker) — the platform starting
+        // price for the chosen services, stored even when the client says
+        // they're flexible, because it describes the work rather than their
+        // preference and it is the anchor the contractor actually wants.
+        budget_min: budgetFloor == null ? "" : String(budgetFloor),
         budget_max: budgetFlexible || budgetMax.trim() === "" ? "" : String(Number(budgetMax)),
         preferred_schedule: form.preferredSchedule,
         location: form.location.trim() || form.postalCode.trim(),
@@ -403,7 +503,11 @@ export default function ClientOnboarding() {
       stashReferralCode(form.referralCode);
       // No session => email confirmation required. The trigger saved their
       // request already; show the verify screen.
-      if (!authData.session) { trackEvent("sign_up", { method: "client" }); trackEvent("post_job"); requestGoogleReview("signup"); requestGoogleReview("job_posted"); setVerifyEmail(true); window.scrollTo(0,0); setLoading(false); return; }
+      // The request row exists now (the signup trigger wrote it), so the draft is
+      // no longer a half-finished request — it's a duplicate waiting to happen.
+      // Cleared at BOTH terminal points, and only after the state flag that
+      // disables autosave, so a pending debounce timer can't write it back.
+      if (!authData.session) { trackEvent("sign_up", { method: "client" }); trackEvent("post_job"); requestGoogleReview("signup"); requestGoogleReview("job_posted"); setVerifyEmail(true); clearDraft(ONBOARDING_DRAFT_KEY); window.scrollTo(0,0); setLoading(false); return; }
 
       // Session exists: attach the optional photo to the request the trigger made.
       if (photoFile) {
@@ -426,7 +530,7 @@ export default function ClientOnboarding() {
       await applyReferralAtSignup(form.referralCode || stashedReferralCode());
       trackEvent("sign_up", { method: "client" }); trackEvent("post_job"); requestGoogleReview("signup"); requestGoogleReview("job_posted");
       try { const { data: refData } = await supabase.rpc("get_my_referral"); const rc = Array.isArray(refData) ? refData[0]?.code : (refData as any)?.code; if (rc) setReferral({ code: rc }); } catch {}
-      setSuccess(true); window.scrollTo(0,0);
+      setSuccess(true); clearDraft(ONBOARDING_DRAFT_KEY); window.scrollTo(0,0);
     } catch (err: any) {
       setSubmitError(err.message?.includes("already registered") ? "An account with this email already exists. Please sign in instead." : err.message ?? "Something went wrong.");
     } finally { setLoading(false); }
@@ -548,6 +652,27 @@ export default function ClientOnboarding() {
           {step === 1 ? "← Home" : "← Back"}
         </button>
         <OnboardingProgress step={step} total={TOTAL} />
+        {/* The form has already filled itself in by the time this renders — it says
+            so rather than asking. A "we found a draft, restore it?" prompt is a
+            decision about something you can't see yet, put to someone who has just
+            come back to finish a job. Same shape as the contractor onboarding
+            banner on purpose; two recovery idioms on two signup forms is a thing
+            only the person who built them would find consistent. */}
+        {restored && (
+          <div style={{ display:"flex", alignItems:"center", gap:".75rem", flexWrap:"wrap" as const, padding:".8rem 1rem", marginBottom:"1.25rem", borderRadius:"10px", background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.3)" }}>
+            <Ic name="check" size={16} color="#22c55e" style={{ flexShrink:0 }} />
+            <span style={{ fontSize:".88rem", color:"var(--ff-text)", flex:"1 1 auto", minWidth:0 }}>We saved your progress.</span>
+            {/* Clear the stored copy, THEN reload. Resetting ~25 pieces of state by
+                hand would be a second copy of the initial values that has to be kept
+                in step with the first one forever, and the first thing anybody would
+                forget is the newest field — leaving one stale answer on a form the
+                client was told is blank. The draft is already gone by the time the
+                page comes back, so the reload genuinely starts from nothing. */}
+            <button type="button" onClick={() => { startOver(); window.location.reload(); }} style={{ background:"none", border:"none", padding:0, cursor:"pointer", fontFamily:"inherit", fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", textDecoration:"underline", flexShrink:0 }}>
+              Start over
+            </button>
+          </div>
+        )}
         <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:"2rem" }}>{STEP_TITLES[step-1]}</h1>
 
         <div style={s.card}>
@@ -936,10 +1061,9 @@ export default function ClientOnboarding() {
               <BudgetPicker
                 services={selectedServices}
                 pricing={pricing}
-                min={budgetMin}
+                floor={budgetFloor}
                 max={budgetMax}
                 flexible={budgetFlexible}
-                onMin={v => { setBudgetMin(v); setErrors(e => ({ ...e, budget: "" })); }}
                 onMax={v => { setBudgetMax(v); setErrors(e => ({ ...e, budget: "" })); }}
                 onFlexible={v => { setBudgetFlexible(v); setErrors(e => ({ ...e, budget: "" })); }}
                 error={errors.budget}

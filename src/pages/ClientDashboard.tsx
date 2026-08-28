@@ -42,15 +42,48 @@ import FadeImg from "@/components/FadeImg";
 
 type ClientTab = "requests" | "messages" | "pros" | "recurring" | "history" | "profile" | "settings";
 
+/**
+ * CLIENT_NAV is the ROUTING truth and must stay complete.
+ *
+ * `applyDashNav` validates an incoming tab against this array, so deleting an
+ * entry silently no-ops every notification that routes to it — `recurring_generated`
+ * to "recurring", `job_confirmed` and `review_received` to "history". What the
+ * client actually SEES is `visibleNav()` below, which is a filter over this list.
+ * Never trim this array to tidy the sidebar; trim the filter instead.
+ *
+ * "settings" has no visible entry of its own — Account renders ProfileBar and
+ * SettingsPanel together — but the key stays routable so an older deep link
+ * still lands somewhere real.
+ */
 const CLIENT_NAV: SidebarItem[] = [
   { key: "requests",  label: "My Requests",    icon: "clipboard-list" },
   { key: "messages",  label: "Messages",       icon: "message-square" },
   { key: "pros",      label: "My Pros",        icon: "user-check" },
   { key: "recurring", label: "Recurring Plans", icon: "refresh" },
   { key: "history",   label: "History",        icon: "clock" },
-  { key: "profile",   label: "Profile",        icon: "user" },
+  { key: "profile",   label: "Account",        icon: "user" },
   { key: "settings",  label: "Settings",       icon: "settings" },
 ];
+
+/**
+ * The sidebar a client actually gets.
+ *
+ * A first-time client had seven items, four of which opened an empty state —
+ * My Pros, Recurring Plans and History are all things you EARN by using the
+ * platform, and showing them on day one is just noise in front of the one thing
+ * that matters, which is choosing a pro. Each one appears the moment it has
+ * something in it.
+ *
+ * My Pros appears only past 3, because up to 3 are already fully rendered on the
+ * home tab and the tab would be a duplicate of a strip they can already see.
+ */
+function visibleNav(opts: { pros: number; plans: number; past: number }): SidebarItem[] {
+  const show = new Set<string>(["requests", "messages", "profile"]);
+  if (opts.pros > 3)  show.add("pros");
+  if (opts.plans > 0) show.add("recurring");
+  if (opts.past > 0)  show.add("history");
+  return CLIENT_NAV.filter(it => show.has(String(it.key)));
+}
 
 function QuoteBreakdownView({ row, assumptionsKey = "assumptions" }: { row: any; assumptionsKey?: string }) {
   const items: [string, any][] = [["Labour", row?.labour_amount], ["Parts & materials", row?.parts_amount], ["Call-out", row?.callout_fee]];
@@ -76,37 +109,18 @@ function QuoteBreakdownView({ row, assumptionsKey = "assumptions" }: { row: any;
 }
 
 
-const VEHICLE_SERVICES = ["Oil Change","Tire Swap / Rotation","Battery / Brakes","Vehicle Maintenance"];
-
-function calcJobScore(r: any): { score: number; max: number; label: string; color: string } {
-  let score = 0;
-  // Description quality
-  const desc = (r.job_description ?? "").trim();
-  if (desc.length >= 50) score += 3;
-  else if (desc.length >= 20) score += 2;
-  else if (desc.length >= 5) score += 1;
-  // Photo
-  if (r.photo_path) score += 2;
-  // Location
-  if ((r.location ?? "").trim().length > 3) score += 1;
-  // Vehicle details (if vehicle job)
-  const isVehicle = VEHICLE_SERVICES.some(s => (r.service_needed ?? "").includes(s));
-  if (isVehicle) {
-    const vd = r.vehicle_details ?? {};
-    if (vd.make) score += 1;
-    if (vd.year) score += 1;
-    if (vd.problem) score += 1;
-  }
-  // Schedule urgency
-  const sched = (r.preferred_schedule ?? "").toLowerCase();
-  if (sched.includes("urgent")) score += 2;
-  else if (sched.includes("week")) score += 1;
-  const max = isVehicle ? 10 : 8;
-  const pct = score / max;
-  const label = pct >= 0.75 ? "Strong listing" : pct >= 0.45 ? "Good listing" : "Add more details";
-  const color = pct >= 0.75 ? "var(--ff-success)" : pct >= 0.45 ? "var(--ff-warn)" : "var(--ff-danger)";
-  return { score, max, label, color };
-}
+/*
+ * calcJobScore + VEHICLE_SERVICES were removed on 2026-08-28 along with the
+ * "6/8 Good listing" chip they fed.
+ *
+ * The score was computed AFTER the request was already submitted, and the
+ * dashboard offered no way to edit a description or add a location — so the
+ * only actionable half of it was "add a photo", which RequestPhotoQuote
+ * already prompts for directly underneath. What was left was a grade on
+ * something the client can no longer change, sitting on the screen where they
+ * are supposed to be choosing a contractor. If a listing-quality nudge comes
+ * back it belongs on the REQUEST FORM, where the fields still exist.
+ */
 
 const STATUS_META: Record<string, { icon: string; label: string; color: string }> = {
   pending:     { icon: "clock", label: "Pending Review",     color: "#f59e0b" },
@@ -167,6 +181,17 @@ export default function ClientDashboard() {
   const [pros, setPros]             = useState<any[]>([]);
   const [referral, setReferral]     = useState<any>(null);
   const [rewindOpen, setRewindOpen] = useState(false);
+  /**
+   * Whether the read-only copy of the request (service/location/schedule grid,
+   * job description, photo panel) is expanded.
+   *
+   * It is only ever COLLAPSED while estimates are on screen — see `showReqDetail`
+   * below. Nothing in that block is editable from here, so once there are pros to
+   * choose between it is 600px of recap standing between the client and the
+   * decision. With no estimates yet it stays open, because then it is the only
+   * thing on the page and folding it away would leave a near-empty screen.
+   */
+  const [reqDetailOpen, setReqDetailOpen] = useState(false);
   const [refCopied, setRefCopied]   = useState(false);
   const [refInput, setRefInput]     = useState("");        // a friend's code, typed in by hand
   const [refBusy, setRefBusy]       = useState(false);
@@ -1230,7 +1255,11 @@ export default function ClientDashboard() {
       <div style={{ height: "3.75rem" }} />
       <div style={{ display:"flex", alignItems:"flex-start" as const }}>
         <DashboardSidebar
-          items={CLIENT_NAV.map(it => (it.key === "messages" && totalUnread > 0 ? { ...it, badge: totalUnread } : it))}
+          items={visibleNav({
+            pros: pros.length,
+            plans: plans.length,
+            past: requests.filter(r => r.status === "completed" || r.status === "cancelled").length,
+          }).map(it => (it.key === "messages" && totalUnread > 0 ? { ...it, badge: totalUnread } : it))}
           active={activeTab}
           onSelect={(k) => setActiveTab(k as ClientTab)}
           title="Dashboard"
@@ -1251,7 +1280,13 @@ export default function ClientDashboard() {
           <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .6)", marginTop:".2rem" }}>Here's what's happening with your requests.</div>
         </div>
         <div style={{ display:"flex", gap:".75rem", flexWrap:"wrap" as const }}>
-          <button style={{ ...s.tab, display:"inline-flex", alignItems:"center", gap:".35rem" }} onClick={() => setRewindOpen(true)}><Ic name="star" size={13} color="#ea6b14" />My Rewind</button>
+          {/* Rewind is a year-in-review of jobs you've had done. For a client on
+              day one it opens on an empty retrospective, which is a worse first
+              impression than not offering it — so it appears once there is
+              something to look back on. */}
+          {requests.some(r => r.status === "completed") && (
+            <button style={{ ...s.tab, display:"inline-flex", alignItems:"center", gap:".35rem" }} onClick={() => setRewindOpen(true)}><Ic name="star" size={13} color="#ea6b14" />My Rewind</button>
+          )}
           <button style={s.primaryBtn} onClick={() => setLocation("/client-onboarding")}>+ New Request</button>
         </div>
       </div>
@@ -1404,14 +1439,15 @@ export default function ClientDashboard() {
           />
         )}
 
-        {activeTab === "profile" && (
+        {/* Account = the old Profile and Settings tabs in one place. They were two
+            sidebar entries rendering 5 and 3 lines of JSX respectively, which is
+            two decisions asked of someone who just wants to change their phone
+            number. Both keys still resolve here so existing deep links work. */}
+        {(activeTab === "profile" || activeTab === "settings") && (
           <>
             <ProfileBar role="client" />
+            <SettingsPanel role="client" />
           </>
-        )}
-
-        {activeTab === "settings" && (
-          <SettingsPanel role="client" />
         )}
 
         {activeTab === "pros" && (pros.length > 0 ? (
@@ -1455,7 +1491,11 @@ export default function ClientDashboard() {
               retired — a friend booked and paid; the badge replaces the code
             The copy button is hidden in the last two states on purpose: sharing
             a code that will be refused is a dead end the sharer can't see. */}
-        {activeTab === "requests" && referral?.code && (() => {
+        {/* Held back until the client has actually finished a job with us. Asking
+            someone to invite a friend while their own request still has no
+            estimates on it is a favour requested before a favour delivered — and
+            it was sitting on the home tab from the moment they signed up. */}
+        {activeTab === "requests" && referral?.code && requests.some(r => r.status === "completed") && (() => {
           const codeStatus = String(referral.code_status ?? "active");
           const retired    = codeStatus === "retired";
           const inUse      = codeStatus === "in_use";
@@ -1583,6 +1623,108 @@ export default function ClientDashboard() {
 
         {activeTab === "requests" && (
         <>
+            {/* THE point of this page. Hoisted out of the Current Request card on
+                2026-08-28 — it used to sit BELOW the metadata grid, the job
+                description, the photo panel and a status badge, so a client who
+                had just been emailed "you have 3 estimates" landed on a screen
+                whose first 600px was a read-only copy of the form they had already
+                filled in. Choosing a pro is the only thing on this page that moves
+                the job forward, so it goes first.
+
+                Keeps {...anchor("ffc-bids")} and anchorPad: the "See bids"
+                attention row still calls focusAnchor("ffc-bids"), and so does the
+                deep link from the bid email. */}
+            {activeReq && activeReq.status === "pending" && clientBids.length > 0 && (
+              <div {...anchor("ffc-bids")} style={{ ...anchorPad, marginBottom:"1.25rem", padding:"1.25rem", borderRadius:"12px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)" }}>
+                <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:".75rem", flexWrap:"wrap" as const, marginBottom:".2rem" }}>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.35rem", letterSpacing:".03em", lineHeight:1.1, color:"var(--ff-text)" }}>Your estimates</div>
+                  {/* Deliberately a bare count, not "N of 5". The bid cap is 7 and the
+                      marketing under-promise is 5, so a denominator here would either
+                      render "6 of 5" or promise a number we don't control. */}
+                  <div style={{ fontSize:".78rem", fontWeight:700, color:"#ea6b14" }}>{clientBids.length} estimate{clientBids.length === 1 ? "" : "s"}</div>
+                </div>
+                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", marginBottom:".75rem", lineHeight:1.5 }}>
+                  For <strong style={{ color:"var(--ff-text)", fontWeight:600 }}>{activeReq.service_needed}</strong>. Pick the pro you want — nothing is charged until you approve their price and sign the agreement.
+                </div>
+                {Object.keys(bidMatch).length > 0 && (
+                  <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .55)", marginBottom:".6rem", display:"flex", alignItems:"center", gap:".35rem" }}>
+                    <Ic name="sparkles" size={12} color="#ea6b14" />Ranked by match quality — rating, jobs done, response speed and area fit.
+                  </div>
+                )}
+                {[...clientBids].sort((a, b) => (Number(bidMatch[b.contractor_id]?.score ?? -1)) - (Number(bidMatch[a.contractor_id]?.score ?? -1)) || (Number(a.amount ?? Infinity)) - (Number(b.amount ?? Infinity))).map((b, bi) => (
+                  <div key={b.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", padding:".6rem .7rem", marginBottom:".5rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px", flexWrap:"wrap" as const }}>
+                    {/* Who you'd be letting into your home. Falls back to initials
+                        rather than a broken image when the pro hasn't added a photo. */}
+                    <div style={{ width:44, height:44, borderRadius:"50%", overflow:"hidden", flex:"0 0 auto", alignSelf:"flex-start",
+                      background:"rgba(234,107,20,.14)", border:"1px solid rgba(var(--ff-fg), .1)",
+                      display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      {bidPhoto[b.contractor_id]
+                        ? <FadeImg src={bidPhoto[b.contractor_id]} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" as const }} />
+                        : <span style={{ fontSize:".85rem", fontWeight:700, color:"#ea6b14" }}>
+                            {(bidNames[b.contractor_id] ?? "Contractor").split(/\s+/).map((w: string) => w[0] ?? "").join("").slice(0,2).toUpperCase()}
+                          </span>}
+                    </div>
+                    <div style={{ flex:"1 1 160px", minWidth:0 }}>
+                      <div style={{ fontSize:".88rem", color:"var(--ff-text)", display:"flex", alignItems:"center", gap:".45rem", flexWrap:"wrap" as const }}>
+                        {/* A walkthrough bid has no b.amount, so without the range fallback the
+                            headline showed a name and no number at all — nothing to compare. */}
+                        {bidNames[b.contractor_id] ?? "Contractor"}{b.amount != null
+                          ? " — $" + b.amount
+                          : (b.price_low != null && b.price_high != null ? " — $" + b.price_low + "–$" + b.price_high : "")}
+                        {bi === 0 && clientBids.length > 1 && bidMatch[b.contractor_id] != null && (
+                          <span style={{ padding:".14rem .5rem", borderRadius:"999px", fontSize:".66rem", fontWeight:700, background:"rgba(234,107,20,.14)", border:"1px solid rgba(234,107,20,.4)", color:"#ea6b14" }}>Best match</span>
+                        )}
+                        {/* How this pro's prices sit against the category average. Price only — quality is the star rating. */}
+                        <PriceGrade grade={bidGrade[b.contractor_id] as Grade} kind="pro" size="sm" />
+                      </div>
+                      {(() => { const m = bidMatch[b.contractor_id]; if (!m) return null;
+                        const bits: string[] = [];
+                        if (m.rating != null && Number(m.rating_count) > 0) bits.push("\u2b50 " + Number(m.rating).toFixed(1) + "/10 (" + m.rating_count + ")");
+                        if (Number(m.total_jobs) > 0) bits.push(m.total_jobs + " job" + (Number(m.total_jobs) === 1 ? "" : "s") + " done");
+                        if (m.area_match) bits.push("works your area");
+                        if (!bits.length) return null;
+                        return <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .6)", marginTop:".2rem" }}>{bits.join(" \u00b7 ")}</div>;
+                      })()}
+                      {bidResp[b.contractor_id] != null && (
+                        <div style={{ display:"inline-block", marginTop:".25rem", padding:".15rem .5rem", borderRadius:"999px", fontSize:".68rem", fontWeight:600, background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.3)", color:"#22c55e" }}>
+                          ⚡ Usually responds in {respText(bidResp[b.contractor_id])}
+                        </div>
+                      )}
+                      <VerifiedMarks flags={bidVerif[b.contractor_id]} size="sm" style={{ marginTop:".3rem" }} />
+                      {b.walkthrough_requested && (
+                        <div style={{ display:"inline-flex", alignItems:"center", gap:".35rem", padding:".22rem .55rem", borderRadius:"99px", background:"rgba(234,107,20,.14)", color:"#ea6b14", fontSize:".72rem", fontWeight:700, marginTop:".3rem" }}>
+                          <Ic name="search" size={11} />Wants a free walkthrough first
+                        </div>
+                      )}
+                      {b.walkthrough_requested && (
+                        <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .65)", marginTop:".25rem", lineHeight:1.45 }}>
+                          This pro prefers to see the space before giving a firm price{b.price_low != null && b.price_high != null ? " — ballpark $" + b.price_low + "–$" + b.price_high : ""}. If you choose them, they'll propose a quick free visit, then send your estimate.
+                        </div>
+                      )}
+                      {b.message && <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .65)", marginTop:".15rem" }}>{b.message}</div>}
+                      {!b.walkthrough_requested && <QuoteBreakdownView row={b} assumptionsKey="assumptions" />}
+                    </div>
+                    {/* Ask before you commit. Every pro on this list can be
+                        messaged privately — they can only reply, never cold-call. */}
+                    <div style={{ display:"flex", flexDirection:"column", gap:".4rem", flex:"0 0 auto" }}>
+                      <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f", padding:".5rem 1rem" }} disabled={busyPick === b.id} onClick={() => pickBid(b.id)}>{busyPick === b.id ? "…" : "Choose"}</button>
+                      <button
+                        style={{ ...s.btn, padding:".4rem .8rem", fontSize:".78rem", position:"relative" as const }}
+                        onClick={() => setBidChat({ requestId: activeReq.id, contractorId: b.contractor_id, name: bidNames[b.contractor_id] ?? "Contractor", title: activeReq.service_needed })}
+                      >
+                        <Ic name="message-square" size={12} style={{ marginRight:4 }} />Ask a question
+                        {Number(bidUnread[b.contractor_id] ?? 0) > 0 && (
+                          <span style={{ position:"absolute", top:-6, right:-6, minWidth:16, height:16, padding:"0 4px", borderRadius:999, background:"#ea6b14", color:"#fff", fontSize:".62rem", fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                            {Number(bidUnread[b.contractor_id]) > 9 ? "9+" : bidUnread[b.contractor_id]}
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Rebooking is the cheapest job on the platform to win, and it was
                 buried one tab deep. Surface the same pros here on the home tab
                 so "get the guy who did it last time" is one tap from landing.
@@ -1644,13 +1786,44 @@ export default function ClientDashboard() {
                     </div>
                   </div>
                 )}
-                {activeReq && (
+                {activeReq && (() => {
+                  /* Collapsed ONLY while there are estimates to choose between. When
+                     the request is still waiting on bids this is the whole page, so
+                     it stays open and the toggle never appears. */
+                  const bidsOnScreen = activeReq.status === "pending" && clientBids.length > 0;
+                  const showReqDetail = reqDetailOpen || !bidsOnScreen;
+                  return (
                   <div style={s.card}>
-                    <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:".75rem", flexWrap:"wrap" as const }}>
-                      <div style={s.cardTitle}>Current Request</div>
-                      {activeJob?.id && <div style={{ fontSize:".72rem", fontFamily:"monospace", color:"#ea6b14" }} title="Quote this Job ID when filing a claim">{jobCode(activeJob.id)}</div>}
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".75rem", flexWrap:"wrap" as const, marginBottom: showReqDetail ? undefined : ".25rem" }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const, minWidth:0 }}>
+                        <div style={{ ...s.cardTitle, marginBottom:0 }}>Current Request</div>
+                        <div style={{ display:"inline-block", padding:".28rem .7rem", borderRadius:"99px", fontSize:".74rem", fontWeight:500, color: STATUS_META[activeReq.status]?.color, border:`1px solid ${STATUS_META[activeReq.status]?.color}` }}>
+                          <Ic name={STATUS_META[activeReq.status]?.icon as any} size={12} color={STATUS_META[activeReq.status]?.color} style={{ marginRight:4 }} />{STATUS_META[activeReq.status]?.label}
+                        </div>
+                      </div>
+                      <div style={{ display:"flex", alignItems:"center", gap:".75rem" }}>
+                        {activeJob?.id && <div style={{ fontSize:".72rem", fontFamily:"monospace", color:"#ea6b14" }} title="Quote this Job ID when filing a claim">{jobCode(activeJob.id)}</div>}
+                        {bidsOnScreen && (
+                          <button
+                            onClick={() => setReqDetailOpen(v => !v)}
+                            aria-expanded={reqDetailOpen}
+                            style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".8rem", fontWeight:600, cursor:"pointer", padding:0, display:"inline-flex", alignItems:"center", gap:".3rem" }}
+                          >
+                            {reqDetailOpen ? "Hide details" : "Details"}
+                            <Ic name={reqDetailOpen ? "chevron-up" : "chevron-down"} size={13} color="#ea6b14" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:".75rem 1.5rem", marginBottom:"1.25rem" }}>
+                    {/* One-line recap so the collapsed card still says WHICH request
+                        this is — the sidebar chips only appear past one open request. */}
+                    {!showReqDetail && (
+                      <div style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.5, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
+                        {activeReq.service_needed}{activeReq.location ? " · " + activeReq.location : ""}{activeReq.preferred_schedule ? " · " + activeReq.preferred_schedule : ""}
+                      </div>
+                    )}
+                    {showReqDetail && (<>
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:".75rem 1.5rem", margin:"1rem 0 1.25rem" }}>
                       {[["Service", activeReq.service_needed], ["Location", activeReq.location], ["Schedule", activeReq.preferred_schedule], ["Submitted", new Date(activeReq.created_at).toLocaleDateString()]].map(([l,v]) => (
                         <div key={l}>
                           <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)" }}>{l}</div>
@@ -1663,100 +1836,7 @@ export default function ClientDashboard() {
                       <div style={{ fontSize:".88rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.6 }}>{activeReq.job_description}</div>
                     </div>
                     <RequestPhotoQuote requestId={activeReq.id} photoPath={activeReq.photo_path} estimatedQuote={activeReq.estimated_quote} quoteNotes={activeReq.quote_notes} canUpload />
-                    <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" }}>
-                      <div style={{ display:"inline-block", padding:".4rem .9rem", borderRadius:"99px", fontSize:".78rem", fontWeight:500, color: STATUS_META[activeReq.status]?.color, border:`1px solid ${STATUS_META[activeReq.status]?.color}` }}>
-                        <Ic name={STATUS_META[activeReq.status]?.icon as any} size={13} color={STATUS_META[activeReq.status]?.color} style={{ marginRight:4 }} />{STATUS_META[activeReq.status]?.label}
-                      </div>
-                      {(() => { const { score, max, label, color } = calcJobScore(activeReq); return (
-                        <div title={`Listing score: ${score}/${max}`} style={{ display:"inline-flex", alignItems:"center", gap:".4rem", padding:".4rem .9rem", borderRadius:"99px", fontSize:".78rem", fontWeight:500, color, border:`1px solid ${color}44`, background:`${color}11` }}>
-                          <span style={{ fontWeight:700 }}>{score}/{max}</span>
-                          <span>{label}</span>
-                          {label === "Add more details" && <span style={{ fontSize:".72rem", opacity:.7 }}>— add photo or description</span>}
-                        </div>
-                      ); })()}
-                    </div>
-
-                    {activeReq.status === "pending" && clientBids.length > 0 && (
-                      <div {...anchor("ffc-bids")} style={{ ...anchorPad, marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)" }}>
-                        <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".6rem" }}>Choose your contractor ({clientBids.length} bid{clientBids.length === 1 ? "" : "s"})</div>
-                        {Object.keys(bidMatch).length > 0 && (
-                          <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .55)", marginBottom:".6rem", display:"flex", alignItems:"center", gap:".35rem" }}>
-                            <Ic name="sparkles" size={12} color="#ea6b14" />Ranked by match quality — rating, jobs done, response speed and area fit.
-                          </div>
-                        )}
-                        {[...clientBids].sort((a, b) => (Number(bidMatch[b.contractor_id]?.score ?? -1)) - (Number(bidMatch[a.contractor_id]?.score ?? -1)) || (Number(a.amount ?? Infinity)) - (Number(b.amount ?? Infinity))).map((b, bi) => (
-                          <div key={b.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", padding:".6rem .7rem", marginBottom:".5rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px", flexWrap:"wrap" as const }}>
-                            {/* Who you'd be letting into your home. Falls back to initials
-                                rather than a broken image when the pro hasn't added a photo. */}
-                            <div style={{ width:44, height:44, borderRadius:"50%", overflow:"hidden", flex:"0 0 auto", alignSelf:"flex-start",
-                              background:"rgba(234,107,20,.14)", border:"1px solid rgba(var(--ff-fg), .1)",
-                              display:"flex", alignItems:"center", justifyContent:"center" }}>
-                              {bidPhoto[b.contractor_id]
-                                ? <FadeImg src={bidPhoto[b.contractor_id]} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" as const }} />
-                                : <span style={{ fontSize:".85rem", fontWeight:700, color:"#ea6b14" }}>
-                                    {(bidNames[b.contractor_id] ?? "Contractor").split(/\s+/).map((w: string) => w[0] ?? "").join("").slice(0,2).toUpperCase()}
-                                  </span>}
-                            </div>
-                            <div style={{ flex:"1 1 160px", minWidth:0 }}>
-                              <div style={{ fontSize:".88rem", color:"var(--ff-text)", display:"flex", alignItems:"center", gap:".45rem", flexWrap:"wrap" as const }}>
-                                {/* A walkthrough bid has no b.amount, so without the range fallback the
-                                    headline showed a name and no number at all — nothing to compare. */}
-                                {bidNames[b.contractor_id] ?? "Contractor"}{b.amount != null
-                                  ? " — $" + b.amount
-                                  : (b.price_low != null && b.price_high != null ? " — $" + b.price_low + "–$" + b.price_high : "")}
-                                {bi === 0 && clientBids.length > 1 && bidMatch[b.contractor_id] != null && (
-                                  <span style={{ padding:".14rem .5rem", borderRadius:"999px", fontSize:".66rem", fontWeight:700, background:"rgba(234,107,20,.14)", border:"1px solid rgba(234,107,20,.4)", color:"#ea6b14" }}>Best match</span>
-                                )}
-                                {/* How this pro's prices sit against the category average. Price only — quality is the star rating. */}
-                                <PriceGrade grade={bidGrade[b.contractor_id] as Grade} kind="pro" size="sm" />
-                              </div>
-                              {(() => { const m = bidMatch[b.contractor_id]; if (!m) return null;
-                                const bits: string[] = [];
-                                if (m.rating != null && Number(m.rating_count) > 0) bits.push("\u2b50 " + Number(m.rating).toFixed(1) + "/10 (" + m.rating_count + ")");
-                                if (Number(m.total_jobs) > 0) bits.push(m.total_jobs + " job" + (Number(m.total_jobs) === 1 ? "" : "s") + " done");
-                                if (m.area_match) bits.push("works your area");
-                                if (!bits.length) return null;
-                                return <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .6)", marginTop:".2rem" }}>{bits.join(" \u00b7 ")}</div>;
-                              })()}
-                              {bidResp[b.contractor_id] != null && (
-                                <div style={{ display:"inline-block", marginTop:".25rem", padding:".15rem .5rem", borderRadius:"999px", fontSize:".68rem", fontWeight:600, background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.3)", color:"#22c55e" }}>
-                                  ⚡ Usually responds in {respText(bidResp[b.contractor_id])}
-                                </div>
-                              )}
-                              <VerifiedMarks flags={bidVerif[b.contractor_id]} size="sm" style={{ marginTop:".3rem" }} />
-                              {b.walkthrough_requested && (
-                                <div style={{ display:"inline-flex", alignItems:"center", gap:".35rem", padding:".22rem .55rem", borderRadius:"99px", background:"rgba(234,107,20,.14)", color:"#ea6b14", fontSize:".72rem", fontWeight:700, marginTop:".3rem" }}>
-                                  <Ic name="search" size={11} />Wants a free walkthrough first
-                                </div>
-                              )}
-                              {b.walkthrough_requested && (
-                                <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .65)", marginTop:".25rem", lineHeight:1.45 }}>
-                                  This pro prefers to see the space before giving a firm price{b.price_low != null && b.price_high != null ? " — ballpark $" + b.price_low + "–$" + b.price_high : ""}. If you choose them, they'll propose a quick free visit, then send your estimate.
-                                </div>
-                              )}
-                              {b.message && <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .65)", marginTop:".15rem" }}>{b.message}</div>}
-                              {!b.walkthrough_requested && <QuoteBreakdownView row={b} assumptionsKey="assumptions" />}
-                            </div>
-                            {/* Ask before you commit. Every pro on this list can be
-                                messaged privately — they can only reply, never cold-call. */}
-                            <div style={{ display:"flex", flexDirection:"column", gap:".4rem", flex:"0 0 auto" }}>
-                              <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f", padding:".5rem 1rem" }} disabled={busyPick === b.id} onClick={() => pickBid(b.id)}>{busyPick === b.id ? "…" : "Choose"}</button>
-                              <button
-                                style={{ ...s.btn, padding:".4rem .8rem", fontSize:".78rem", position:"relative" as const }}
-                                onClick={() => setBidChat({ requestId: activeReq.id, contractorId: b.contractor_id, name: bidNames[b.contractor_id] ?? "Contractor", title: activeReq.service_needed })}
-                              >
-                                <Ic name="message-square" size={12} style={{ marginRight:4 }} />Ask a question
-                                {Number(bidUnread[b.contractor_id] ?? 0) > 0 && (
-                                  <span style={{ position:"absolute", top:-6, right:-6, minWidth:16, height:16, padding:"0 4px", borderRadius:999, background:"#ea6b14", color:"#fff", fontSize:".62rem", fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                                    {Number(bidUnread[b.contractor_id]) > 9 ? "9+" : bidUnread[b.contractor_id]}
-                                  </span>
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    </>)}
 
                     {activeJob && (activeJob.client_approved_at || activeJob.status === "scheduled" || activeJob.status === "in_progress" || activeJob.status === "pending_confirmation" || activeJob.status === "completed") && (
                       <div style={{ marginTop:"1rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .07)" }}>
@@ -2110,7 +2190,8 @@ export default function ClientDashboard() {
                       </div>
                     )}
                   </div>
-                )}
+                  );
+                })()}
 
                 {contractor && (
                   <div style={s.card}>

@@ -106,6 +106,39 @@ export function benchmarkFor(
   return hits > 0 && benchmark > 0 ? { benchmark, low, high, source } : null;
 }
 
+/**
+ * The PLATFORM's starting price for a job — what we tell the client the work
+ * begins at, and what gets written into `client_requests.budget_min`.
+ *
+ * Deliberately `base_price`, not the benchmark. `benchmarkFor` returns a
+ * midpoint (the completed-job average once a category has 5+, else the middle
+ * of the price book) which is a fair description of a TYPICAL job — but a floor
+ * has to be a number the cheapest honest version of this job could actually be
+ * done for, or we'd be telling a client their small tap repair starts at the
+ * price of a mid-sized one.
+ *
+ * Multi-service requests sum, matching `benchmarkFor` — two trades on one visit
+ * cost roughly the two jobs added together. Unknown labels ("Other") contribute
+ * nothing, and if NOTHING is known we return null so the caller hides the floor
+ * rather than inventing one. A floor we made up is worse than no floor: the
+ * client is being asked to budget above it.
+ */
+export function floorFor(
+  serviceNeeded: string | null | undefined,
+  pricing: Record<string, ServicePrice>,
+): number | null {
+  if (!serviceNeeded) return null;
+  let total = 0, hits = 0;
+  for (const raw of serviceNeeded.split(",")) {
+    const p = pricing[raw.trim()];
+    const base = p?.base_price;
+    if (base == null || !isFinite(Number(base))) continue;
+    total += Number(base);
+    hits++;
+  }
+  return hits > 0 && total > 0 ? Math.round(total) : null;
+}
+
 // Budget grade — shown to CONTRACTORS. Higher budget vs market = better grade.
 // Mirrors public.budget_grade() in SQL; keep the thresholds in sync.
 export function gradeBudget(budgetMid: number | null, benchmark: number | null): Grade | null {

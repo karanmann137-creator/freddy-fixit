@@ -2,14 +2,14 @@ import { Ic } from "@/components/Ic";
 import { Sk, SkText, SkCard, StalledNotice } from "@/components/Skeleton";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import VoiceDictate from "@/components/VoiceDictate";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/imageCompress";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
 import OnboardingProgress from "@/components/OnboardingProgress";
 import { SERVICES, SCHEDULES } from "@/pages/ClientOnboarding";
-import { useServicePricing, fromText } from "@/lib/servicePricing";
+import { useServicePricing, fromText, floorFor } from "@/lib/servicePricing";
 import ServicePicker from "@/components/ServicePicker";
 import BudgetPicker from "@/components/BudgetPicker";
 import { isPerKmService, freqLabel, SLIDER_STOPS, SLIDER_SHORT } from "@/lib/recurrence";
@@ -18,6 +18,7 @@ import { usePlatformStatus, acceptingRequests } from "@/lib/platformStatus";
 import { detectFromText } from "@/lib/serviceTags";
 import { questionsFor, answerSummary, type JobAnswers } from "@/lib/jobQuestions";
 import { trackEvent } from "@/lib/analytics";
+import { useStoredDraft, useDraftAutosave, clearDraft, NEWREQUEST_DRAFT_KEY, dStr, dArr, dNum, dBool } from "@/lib/requestDraft";
 
 const TOTAL = 4;
 // One short, plain-language line per step — matches ClientOnboarding's
@@ -46,42 +47,78 @@ export default function NewRequest() {
   // (hooks rule) — the gate itself lives further down, past the early returns.
   const { status: platform, ready: platformReady } = usePlatformStatus();
 
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  /**
+   * A half-finished request, remembered for the length of the browsing session.
+   *
+   * Its own key (`ff_req_draft_return`), separate from the signup form's — the two
+   * hold different shapes and must never cross-restore. Read ONCE here, above
+   * every piece of state that seeds from it, because the autosave effect below
+   * runs on mount too and a later read would see the freshly-written empty form.
+   */
+  const { draft, restored, startOver } = useStoredDraft(NEWREQUEST_DRAFT_KEY);
+  // Captured once, because the profile/address read below resolves AFTER mount and
+  // would otherwise overwrite a restored choice with its own default. Empty string
+  // means "the draft had nothing to say", which is the same as no draft at all.
+  const draftAddrChoice = dStr(draft, "addrChoice");
+  const draftVehChoice  = dStr(draft, "vehChoice");
+
+  const [selectedServices, setSelectedServices] = useState<string[]>(() => dArr(draft, "selectedServices").filter(l => SERVICES.some(sv => sv.label === l)));
   const pricing = useServicePricing();
-  const [schedule, setSchedule] = useState("");
+  const [schedule, setSchedule] = useState(() => dStr(draft, "schedule"));
   const [sameAddress, setSameAddress] = useState(true);
-  const [newLocation, setNewLocation] = useState("");
+  const [newLocation, setNewLocation] = useState(() => dStr(draft, "newLocation"));
 
   // Saved addresses & vehicles (reused across requests).
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
   const [savedVehicles, setSavedVehicles] = useState<any[]>([]);
-  const [addrChoice, setAddrChoice] = useState<string>("last"); // saved id | "last" | "new"
+  const [addrChoice, setAddrChoice] = useState<string>(() => dStr(draft, "addrChoice", "last")); // saved id | "last" | "new"
   const [saveNewAddress, setSaveNewAddress] = useState(true);
-  const [vehChoice, setVehChoice] = useState<string>("new");    // saved id | "new"
-  const [vehYear, setVehYear] = useState("");
-  const [vehMake, setVehMake] = useState("");
-  const [vehModel, setVehModel] = useState("");
+  const [vehChoice, setVehChoice] = useState<string>(() => dStr(draft, "vehChoice", "new"));    // saved id | "new"
+  const [vehYear, setVehYear] = useState(() => dStr(draft, "vehYear"));
+  const [vehMake, setVehMake] = useState(() => dStr(draft, "vehMake"));
+  const [vehModel, setVehModel] = useState(() => dStr(draft, "vehModel"));
   const [saveNewVehicle, setSaveNewVehicle] = useState(true);
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState(() => dStr(draft, "description"));
   // Describe-first scaffolding: which screen we're on, what the description
   // read as, and the answers to the follow-up questions.
-  const [step, setStep] = useState(1);
-  const [tags, setTags] = useState<string[]>([]);
-  const [answers, setAnswers] = useState<JobAnswers>({});
-  const [detectedFor, setDetectedFor] = useState("");
-  const [showAllServices, setShowAllServices] = useState(false);
-  const [budgetMin, setBudgetMin]           = useState("");
-  const [budgetMax, setBudgetMax]           = useState("");
-  const [budgetFlexible, setBudgetFlexible] = useState(false);
-  const [recurring, setRecurring] = useState(false);
-  const [recurringFrequency, setRecurringFrequency] = useState<string>("");
-  const [sliderIdx, setSliderIdx]                   = useState(3);
-  const [recurringDates, setRecurringDates]         = useState<string[]>([]);
+  const [step, setStep] = useState(() => dNum(draft, "step", 1, 1, TOTAL));
+  const [tags, setTags] = useState<string[]>(() => dArr(draft, "tags"));
+  const [answers, setAnswers] = useState<JobAnswers>(() => {
+    // Free-form id->string map, so there's no fixed key list to validate against.
+    // Keep only the string values and drop anything else.
+    const raw = draft?.answers;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+    const out: JobAnswers = {};
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) if (typeof v === "string") out[k] = v;
+    return out;
+  });
+  const [detectedFor, setDetectedFor] = useState(() => dStr(draft, "detectedFor"));
+  const [showAllServices, setShowAllServices] = useState(() => dBool(draft, "showAllServices"));
+  const [budgetMax, setBudgetMax]           = useState(() => dStr(draft, "budgetMax"));
+  const [budgetFlexible, setBudgetFlexible] = useState(() => dBool(draft, "budgetFlexible"));
+  /**
+   * The platform's starting price for whatever is currently selected. Derived,
+   * never typed — the client picks a maximum only (see BudgetPicker).
+   *
+   * Computed HERE rather than inside BudgetPicker so the number the client is
+   * shown and the number written into `client_requests.budget_min` are the same
+   * value, not two evaluations that could drift apart. Null while `pricing` is
+   * still loading or when nothing selected is in the price book, in which case
+   * the floor is hidden and budget_min is left NULL rather than guessed.
+   */
+  const budgetFloor = floorFor(selectedServices.join(", "), pricing);
+  const [recurring, setRecurring] = useState(() => dBool(draft, "recurring"));
+  const [recurringFrequency, setRecurringFrequency] = useState<string>(() => dStr(draft, "recurringFrequency"));
+  const [sliderIdx, setSliderIdx]                   = useState(() => dNum(draft, "sliderIdx", 3, 0, SLIDER_STOPS.length - 1));
+  const [recurringDates, setRecurringDates]         = useState<string[]>(() => dArr(draft, "recurringDates"));
   const [newDate, setNewDate]                       = useState("");
-  const [recurringKm, setRecurringKm]               = useState("");
-  const [prepayPref, setPrepayPref]                 = useState(0);
-  const [recurringStartDate, setRecurringStartDate] = useState("");
-  const [recurringEndDate, setRecurringEndDate]     = useState("");
+  const [recurringKm, setRecurringKm]               = useState(() => dStr(draft, "recurringKm"));
+  // Only 0 / 2 / 3 are offerable; clamping a range would let a stale value restore
+  // as one with no chip selected, which reads as "nothing chosen" while still
+  // being submitted. Anything off the list falls back to 0.
+  const [prepayPref, setPrepayPref]                 = useState(() => { const n = dNum(draft, "prepayPref", 0, 0, 3); return n === 2 || n === 3 ? n : 0; });
+  const [recurringStartDate, setRecurringStartDate] = useState(() => dStr(draft, "recurringStartDate"));
+  const [recurringEndDate, setRecurringEndDate]     = useState(() => dStr(draft, "recurringEndDate"));
 
   const SEASON_PRESETS = [
     { label: "Spring", start: "-04-01", end: "-06-30" },
@@ -146,10 +183,15 @@ export default function NewRequest() {
       setSavedAddresses(addrs ?? []);
       setSavedVehicles(vehs ?? []);
       // Default address choice: last-used if we have one, else first saved, else fresh entry.
-      if (last?.location) { setAddrChoice("last"); setSameAddress(true); }
+      // DEFAULT, not override — a restored draft already carries a choice the client
+      // made, and this read resolves after mount, so without the guard it would land
+      // a second later and silently move them off the address they picked (hiding a
+      // new one they had already typed).
+      if (draftAddrChoice) { setSameAddress(draftAddrChoice !== "new"); }
+      else if (last?.location) { setAddrChoice("last"); setSameAddress(true); }
       else if ((addrs ?? []).length) { setAddrChoice((addrs as any[])[0].id); setSameAddress(true); }
       else { setAddrChoice("new"); setSameAddress(false); }
-      if ((vehs ?? []).length) setVehChoice((vehs as any[])[0].id);
+      if ((vehs ?? []).length && !draftVehChoice) setVehChoice((vehs as any[])[0].id);
       if (last?.client_type === "business") setRecurring(!!last.recurring);
       } catch (e) {
         console.error("NewRequest load failed", e);
@@ -174,7 +216,12 @@ export default function NewRequest() {
     if (!raw) return;
     const map: Record<string,string> = { "General Repairs":"General Handyman", "Plumbing":"Plumbing Repair", "Electrical":"Electrical Work", "HVAC":"HVAC Maintenance", "Drywall & Flooring":"Drywall / Flooring" };
     const mapped = map[raw] ?? raw;
-    if (SERVICES.some(sv => sv.label === mapped)) setSelectedServices([mapped]);
+    // ADD, never replace — see the same guard in ClientOnboarding. Now that a draft
+    // can be restored, someone who picked three services and then tapped a service
+    // tile would otherwise come back to find the other two silently deleted.
+    if (SERVICES.some(sv => sv.label === mapped)) {
+      setSelectedServices(prev => prev.includes(mapped) ? prev : [...prev, mapped]);
+    }
   }, []);
 
   const prevAddress = lastReq?.location ?? "";
@@ -202,8 +249,42 @@ export default function NewRequest() {
   // changes the recorded answers belong to a different question set and must go.
   // Keeping them would attach (say) a plumbing answer to an electrical job.
   const primaryService = selectedServices[0] || "";
-  useEffect(() => { setAnswers({}); }, [primaryService]);
+  // The FIRST run is skipped, and that skip is what makes draft restore work at
+  // all: this effect fires on mount like any other, so without the ref it would
+  // wipe the answers we just restored before the client ever saw them.
+  const answersFor = useRef(primaryService);
+  useEffect(() => {
+    if (answersFor.current === primaryService) return;
+    answersFor.current = primaryService;
+    setAnswers({});
+  }, [primaryService]);
   const activeQuestions = questionsFor(primaryService);
+
+  /**
+   * Autosave, debounced.
+   *
+   * The snapshot is FLAT because `draftWorthOffering` looks for `description` and
+   * `selectedServices` at the top level, and flat is what the `dStr`/`dArr`/`dNum`
+   * accessors above read back.
+   *
+   * Left out on purpose: `photoFile` (a `File` doesn't survive JSON — a stringified
+   * one restores as `{}` and the UI would claim a photo is attached with no bytes
+   * to upload), `errors` / `submitError` / `submitting` (they describe a moment,
+   * not an intention), and `agreedToTerms` (consent should be an act of this
+   * visit, not one inherited from the last one).
+   *
+   * `enabled` goes false while the insert is in flight so a pending timer can't
+   * outlive a request that now exists; a FAILED submit turns it back on, because
+   * at that point the client still has a draft and nothing was created.
+   */
+  useDraftAutosave(NEWREQUEST_DRAFT_KEY, {
+    step, tags, answers, detectedFor, showAllServices,
+    selectedServices, description, schedule,
+    addrChoice, newLocation, vehChoice, vehYear, vehMake, vehModel,
+    recurring, recurringFrequency, sliderIdx, recurringDates,
+    recurringKm, prepayPref, recurringStartDate, recurringEndDate,
+    budgetMax, budgetFlexible,
+  }, !submitting);
 
   const setAnswer = (q: { id: string; multi?: boolean }, option: string) => {
     setAnswers(prev => {
@@ -268,15 +349,13 @@ export default function NewRequest() {
       if (!schedule) e.schedule = "Please choose a timeframe";
       const loc = resolveLocation();
       if (!loc) e.location = addrChoice === "new" ? "Address required" : "No address on file — please enter one";
-      // Budget is optional, but if given it has to make sense.
+      // Budget is optional, but if given it has to make sense. The minimum is
+      // ours and can't be typed wrong, so only the max is validated — and a max
+      // under our floor is a soft warning inside BudgetPicker, not a hard block:
+      // someone genuinely willing to pay less should still be allowed to ask.
       if (!budgetFlexible) {
-        const bLo = budgetMin.trim() === "" ? null : Number(budgetMin);
         const bHi = budgetMax.trim() === "" ? null : Number(budgetMax);
-        if ((bLo != null && (!isFinite(bLo) || bLo < 0)) || (bHi != null && (!isFinite(bHi) || bHi < 0))) {
-          e.budget = "Budget must be a positive number";
-        } else if (bLo != null && bHi != null && bHi < bLo) {
-          e.budget = "Budget maximum must be at least the minimum";
-        }
+        if (bHi != null && (!isFinite(bHi) || bHi < 0)) e.budget = "Budget must be a positive number";
       }
     }
     setErrors(e);
@@ -357,7 +436,11 @@ export default function NewRequest() {
         photo_path: photoPath,
         status: "pending",
         budget_flexible: budgetFlexible,
-        budget_min: budgetFlexible || budgetMin.trim() === "" ? null : Number(budgetMin),
+        // budget_min is OURS now (see BudgetPicker) — the platform starting
+        // price for the chosen services, stored even when the client says
+        // they're flexible, because it describes the work rather than their
+        // preference and it is the anchor the contractor actually wants.
+        budget_min: budgetFloor,
         budget_max: budgetFlexible || budgetMax.trim() === "" ? null : Number(budgetMax),
         client_type: lastReq?.client_type ?? "individual",
         business_name: isBusiness ? (lastReq?.business_name ?? null) : null,
@@ -375,6 +458,10 @@ export default function NewRequest() {
       });
       if (error) throw error;
       requestGoogleReview("job_posted");
+      // The request row exists now, so the draft is no longer a half-finished
+      // request — it's a duplicate waiting to happen. Cleared before navigating,
+      // while `submitting` still has autosave switched off.
+      clearDraft(NEWREQUEST_DRAFT_KEY);
       setLocation("/client-dashboard");
     } catch (err: any) {
       setSubmitError(err?.message ?? "Something went wrong. Please try again.");
@@ -454,6 +541,20 @@ export default function NewRequest() {
           {step === 1 ? "← Dashboard" : "← Back"}
         </button>
         <OnboardingProgress step={step} total={TOTAL} />
+        {/* The form has already filled itself in by the time this renders — it says
+            so rather than asking. Same banner shape as the signup flow on purpose. */}
+        {restored && (
+          <div style={{ display:"flex", alignItems:"center", gap:".75rem", flexWrap:"wrap" as const, padding:".8rem 1rem", marginBottom:"1.25rem", borderRadius:"10px", background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.3)" }}>
+            <Ic name="check" size={16} color="#22c55e" style={{ flexShrink:0 }} />
+            <span style={{ fontSize:".88rem", color:"var(--ff-text)", flex:"1 1 auto", minWidth:0 }}>We saved your progress.</span>
+            {/* Clear the stored copy, THEN reload — resetting two dozen pieces of
+                state by hand would be a second copy of the initial values that has
+                to be kept in step with the first one forever. */}
+            <button type="button" onClick={() => { startOver(); window.location.reload(); }} style={{ background:"none", border:"none", padding:0, cursor:"pointer", fontFamily:"inherit", fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", textDecoration:"underline", flexShrink:0 }}>
+              Start over
+            </button>
+          </div>
+        )}
         <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:"2rem" }}>{STEP_TITLES[step-1]}</h1>
 
         {preferredPro && (
@@ -819,14 +920,13 @@ export default function NewRequest() {
             </label>
           )}
 
-          {/* Budget — anchored to the category average so the number is informed. */}
+          {/* Budget — our starting price is shown read-only; the client picks a max. */}
           <BudgetPicker
             services={selectedServices}
             pricing={pricing}
-            min={budgetMin}
+            floor={budgetFloor}
             max={budgetMax}
             flexible={budgetFlexible}
-            onMin={v => { setBudgetMin(v); setErrors(e => ({ ...e, budget: "" })); }}
             onMax={v => { setBudgetMax(v); setErrors(e => ({ ...e, budget: "" })); }}
             onFlexible={v => { setBudgetFlexible(v); setErrors(e => ({ ...e, budget: "" })); }}
             error={errors.budget}

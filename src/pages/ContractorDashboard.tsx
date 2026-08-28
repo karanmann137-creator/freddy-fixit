@@ -1773,9 +1773,25 @@ export default function ContractorDashboard() {
                 </div>
                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .55)", marginBottom:".6rem" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{r.location}</div>
 
-                {/* Client budget vs the category average. The A+/A/A- grade says
+                {/* Money on this job vs the category average. The A+/A/A- grade says
                     how this job's money compares to what the category usually
-                    pays, so a good-paying job is obvious without doing math. */}
+                    pays, so a good-paying job is obvious without doing math.
+
+                    THE TWO NUMBERS MEAN DIFFERENT THINGS (2026-08-28). Since the
+                    budget rework the client no longer types a minimum — they pick
+                    a maximum only, and `budget_min` holds OUR platform starting
+                    price for the selected services (`floorFor` →
+                    `service_pricing.base_price`). So this can't render as one
+                    "Client budget $X–$Y" range any more: half of that range is a
+                    number we set and half is a number they chose, and telling a
+                    pro the client stated a floor they never stated is the kind of
+                    quiet misinformation that gets priced into a bid.
+
+                    Requests created before that change do hold a client-typed
+                    minimum in the same column and will read as "Base price" here.
+                    That's the deliberate trade: the wrong-but-harmless direction
+                    is calling an old client floor a base price, not inventing a
+                    client floor that doesn't exist. */}
                 {(() => {
                   // Server values come from list_open_jobs(); fall back to the
                   // client-side price book if this build is ahead of the RPC.
@@ -1784,12 +1800,11 @@ export default function ContractorDashboard() {
                   const bLo = r.budget_min != null ? Number(r.budget_min) : null;
                   const bHi = r.budget_max != null ? Number(r.budget_max) : null;
                   const grade = (r.budget_grade ?? null) as Grade | null;
-                  const hasBudget = !r.budget_flexible && (bLo != null || bHi != null);
-                  if (!hasBudget && !r.budget_flexible && bench == null) return null;
-
-                  const budgetText = bLo != null && bHi != null && bLo !== bHi
-                    ? money(bLo) + "–" + money(bHi)
-                    : money(bLo ?? bHi);
+                  // A max the client actually chose is the only thing that counts
+                  // as "they told us a budget" — the base price is ours and is
+                  // present on essentially every new request.
+                  const hasBudget = !r.budget_flexible && bHi != null;
+                  if (!hasBudget && bLo == null && !r.budget_flexible && bench == null) return null;
 
                   return (
                     <div style={{
@@ -1799,10 +1814,19 @@ export default function ContractorDashboard() {
                       border: hasBudget ? "1px solid rgba(234,107,20,.24)" : "1px solid rgba(var(--ff-fg), .08)",
                     }}>
                       <Ic name="dollar" size={14} color="#ea6b14" style={{ flexShrink:0 }} />
-                      {hasBudget ? (
+                      {(bLo != null || hasBudget) ? (
                         <span style={{ fontSize:".85rem", color:"var(--ff-text)" }}>
-                          <span style={{ color:"rgba(var(--ff-muted), .6)" }}>Client budget </span>
-                          <strong>{budgetText}</strong>
+                          {bLo != null && (<>
+                            <span style={{ color:"rgba(var(--ff-muted), .6)" }}>Base price </span>
+                            <strong>{money(bLo)}</strong>
+                          </>)}
+                          {bLo != null && (hasBudget || r.budget_flexible) && <span style={{ color:"rgba(var(--ff-muted), .4)" }}>{" · "}</span>}
+                          {hasBudget ? (<>
+                            <span style={{ color:"rgba(var(--ff-muted), .6)" }}>Client max </span>
+                            <strong>{money(bHi)}</strong>
+                          </>) : r.budget_flexible ? (
+                            <span style={{ color:"rgba(var(--ff-muted), .65)" }}>client is flexible</span>
+                          ) : null}
                         </span>
                       ) : (
                         <span style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .65)" }}>
