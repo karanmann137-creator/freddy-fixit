@@ -185,8 +185,9 @@ export default function NotificationBell({ userId, dashboardPath }: { userId: st
 
       {open && (
         <div style={{
-          position: "fixed", top: 64, right: 10, width: "min(320px, calc(100vw - 20px))",
-          maxHeight: "min(420px, calc(100vh - 84px))", overflowY: "auto",
+          position: "fixed", top: pos.top, bottom: pos.bottom, left: pos.left,
+          width: "min(320px, calc(100vw - 20px))",
+          maxHeight: pos.maxHeight, overflowY: "auto",
           background: "var(--ff-surface)", border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: 14,
           boxShadow: "0 18px 50px rgba(0,0,0,.5)", zIndex: 200, fontFamily: "'DM Sans', sans-serif",
         }}>
