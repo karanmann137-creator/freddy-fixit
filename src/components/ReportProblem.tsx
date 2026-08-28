@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/imageCompress";
+import { scanImage, shouldBlock, rejectMessage } from "@/lib/imageSafety";
 
 const REASONS = [
   "Work was not completed",
@@ -60,6 +61,16 @@ export default function ReportProblem({
         const key = `${userId}/${jobId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
         const { error: upErr } = await supabase.storage.from("problem-photos").upload(key, small, { upsert: false, contentType: small.type || undefined });
         if (upErr) throw new Error("Photo upload failed: " + upErr.message);
+        // Scanned as EVIDENCE: a claim can legitimately be about an injury the
+        // work caused, so a `gore` verdict must not block the one photo that
+        // proves it. Only sexual content and hate symbols stop a claim here.
+        // The verdict is recorded in image_scans either way, so an admin
+        // reading the dispute still sees what the scanner thought. Fails open —
+        // a scanner outage returns "unknown" and the photo attaches as normal.
+        const scan = await scanImage("problem-photos", key);
+        if (shouldBlock(scan, { evidence: true })) {
+          throw new Error(rejectMessage(scan) + " Please remove it and submit your claim again — the rest of what you've written is still here.");
+        }
         paths.push(key);
       }
       const { error } = await supabase.rpc("open_dispute", {

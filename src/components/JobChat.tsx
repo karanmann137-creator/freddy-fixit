@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/imageCompress";
+import { scanImage, shouldBlock, rejectMessage } from "@/lib/imageSafety";
 import { blockedReason, BLOCKED_HELP, detectDateTime, formatWhen } from "@/lib/chatParse";
 import { markJobRead, announceChatChange, messageTime, daySeparator, isNewDay } from "@/lib/chatUnread";
 import { jobCode } from "@/lib/jobCode";
@@ -234,6 +235,18 @@ export default function JobChat({
           contentType: outFile.type || undefined, upsert: false,
         });
         if (upErr) { setErr("Upload failed — please try again."); setSending(false); return; }
+        // Safety scan sits between the upload and the message insert, so a
+        // rejected photo is never attached to a message anyone else can read.
+        // Images only — the scanner can't look at a video, and asking it to
+        // would just spend 12 seconds arriving at "unknown". It fails open by
+        // construction: only a real "reject" verdict stops a send, and an
+        // outage comes back "unknown" and sends as normal. A photo in a job
+        // thread is often the evidence in a dispute; losing one to a scanner
+        // problem is a worse outcome than the thing the scan guards against.
+        if (pending.kind === "image") {
+          const scan = await scanImage(BUCKET, path);
+          if (shouldBlock(scan)) { setErr(rejectMessage(scan)); setSending(false); return; }
+        }
         attachment_path = path;
         attachment_type = pending.kind;
       }

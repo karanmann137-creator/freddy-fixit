@@ -21,6 +21,8 @@ import { usePlatformStatus, acceptingRequests } from "@/lib/platformStatus";
 import { detectFromText } from "@/lib/serviceTags";
 import { questionsFor, answerSummary, type JobAnswers } from "@/lib/jobQuestions";
 import { useStoredDraft, useDraftAutosave, clearDraft, ONBOARDING_DRAFT_KEY, dStr, dArr, dNum, dBool } from "@/lib/requestDraft";
+import { compressImage } from "@/lib/imageCompress";
+import { scanImage, shouldBlock, rejectMessage } from "@/lib/imageSafety";
 
 export const SERVICES = [
   { iconName: "wrench", label: "General Handyman" },
@@ -279,6 +281,18 @@ export default function ClientOnboarding() {
   const [verifyEmail, setVerifyEmail] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoWarn, setPhotoWarn] = useState(false); // photo failed to upload at submit
+  const [photoReject, setPhotoReject] = useState("");
+  /**
+   * The photo nudge. A photo is OPTIONAL and stays optional — this is the one
+   * pressed "Next" with nothing attached, which shows the advisory and pulses
+   * the field. Pressing Next again moves on regardless.
+   *
+   * It is a `useRef`, not state, because it must NOT re-render: the whole point
+   * is that the second press proceeds, and a state update between the two
+   * presses is a race with the click handler that reads it.
+   */
+  const photoNudged = useRef(false);
+  const [photoPulse, setPhotoPulse] = useState(false);
   const [referral, setReferral] = useState<{ code:string } | null>(null);
   const [refCopied, setRefCopied] = useState(false);
 
@@ -422,6 +436,33 @@ export default function ClientOnboarding() {
 
   const next = () => {
     if (!validate()) return;
+
+    /**
+     * The photo nudge — a nudge, NOT a gate.
+     *
+     * A photo is the single biggest difference between an estimate a pro can
+     * stand behind and a guess they'll want to revise on site, so leaving
+     * without one is worth interrupting once. It is interrupted exactly once:
+     * the flag is set on the first press and the second press goes through, so
+     * someone who genuinely can't photograph the problem — it's in a crawlspace,
+     * it's intermittent, they're posting from a desk at work — is never stuck.
+     *
+     * It runs AFTER validate() on purpose. If the description is also too short,
+     * that error is the one that matters and it should not be competing with an
+     * advisory for the same scroll position.
+     */
+    if (step === 1 && !photoFile && !photoNudged.current) {
+      photoNudged.current = true;
+      setPhotoPulse(true);
+      setTimeout(() => {
+        document.getElementById("co-photo")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 60);
+      // Matches the 1.5s x 3 animation, so the outline clears itself rather than
+      // sitting on the field for the rest of the session.
+      setTimeout(() => setPhotoPulse(false), 4500);
+      return;
+    }
+
     // Read the description on the way out of screen 1 so screen 2 has something
     // to confirm.
     if (step === 1) runDetect();
@@ -510,13 +551,38 @@ export default function ClientOnboarding() {
       if (!authData.session) { trackEvent("sign_up", { method: "client" }); trackEvent("post_job"); requestGoogleReview("signup"); requestGoogleReview("job_posted"); setVerifyEmail(true); clearDraft(ONBOARDING_DRAFT_KEY); window.scrollTo(0,0); setLoading(false); return; }
 
       // Session exists: attach the optional photo to the request the trigger made.
+      //
+      // This was the ONE image upload on the platform that never went through
+      // compressImage — every other call site did. A request photo off a modern
+      // phone is several megabytes, and it is the first thing a contractor loads
+      // when deciding whether to quote.
+      //
+      // The extension comes off the RETURNED file, not the picked one, and the
+      // returned type is passed as contentType: compressImage outputs WebP, so
+      // reading the original name here would write a `.jpg` path holding WebP
+      // bytes. Every failure path inside compressImage returns the ORIGINAL
+      // file, so this can't lose a photo — at worst it uploads the big one.
       if (photoFile) {
-        const ext = (photoFile.name.split(".").pop() || "jpg").toLowerCase();
+        const small = await compressImage(photoFile, "photo");
+        const ext = (small.name.split(".").pop() || "jpg").toLowerCase();
         const path = userId + "/" + crypto.randomUUID() + "." + ext;
-        const up = await supabase.storage.from("problem-photos").upload(path, photoFile, { upsert: false });
+        const up = await supabase.storage.from("problem-photos").upload(path, small, { upsert: false, contentType: small.type || undefined });
         if (!up.error) {
-          const { data: reqRow } = await supabase.from("client_requests").select("id").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
-          if (reqRow) await supabase.from("client_requests").update({ photo_path: path }).eq("id", reqRow.id);
+          // Safety scan. It runs AFTER the upload because the scanner reads the
+          // object out of storage, and it fails open — anything other than a
+          // real "reject" attaches the photo as normal. A rejected photo is
+          // simply never linked to the request, so no contractor is shown it;
+          // the object itself stays where only its uploader and an admin can
+          // reach it, because deleting it needs the Storage API from a
+          // service-role function and a moderation call is not worth a second
+          // network hop on the signup path.
+          const scan = await scanImage("problem-photos", path);
+          if (shouldBlock(scan)) {
+            setPhotoReject(rejectMessage(scan));
+          } else {
+            const { data: reqRow } = await supabase.from("client_requests").select("id").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+            if (reqRow) await supabase.from("client_requests").update({ photo_path: path }).eq("id", reqRow.id);
+          }
         } else {
           setPhotoWarn(true); // surface on the success screen instead of failing silently
         }
@@ -598,6 +664,14 @@ export default function ClientOnboarding() {
             Heads up — your photo didn't upload. Your request went through fine; you can add the photo again from your dashboard.
           </p>
         )}
+        {/* The request itself always goes through. A rejected photo is a photo
+            problem, not a posting problem, and saying so is what keeps someone
+            from assuming the whole thing failed. */}
+        {photoReject && (
+          <p style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.35)", borderRadius:"10px", padding:".85rem 1rem", color:"var(--ff-text)", fontSize:".88rem", lineHeight:1.55, marginBottom:"2rem", textAlign:"left" }}>
+            {photoReject} Your request was posted without it — you can add a different photo from your dashboard.
+          </p>
+        )}
         {referral?.code && (
           <div style={{ background:"linear-gradient(135deg, rgba(234,107,20,.10), rgba(var(--ff-fg),.03))", border:"1px solid rgba(234,107,20,.28)", borderRadius:"12px", padding:"1.25rem", marginBottom:"2rem", textAlign:"left" }}>
             <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.3rem", letterSpacing:".04em", marginBottom:".35rem" }}>Invite a friend, they save</div>
@@ -647,6 +721,13 @@ export default function ClientOnboarding() {
   return (
     <div style={s.wrap}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+      {/* .ff-pulse exists in both dashboards, but scoped to `.ffdash` — this page
+          is outside it, so it carries its own copy. Same 1.5s x 3 timing and the
+          same static tint under prefers-reduced-motion, so the highlight means
+          the same thing wherever a person meets it. */}
+      <style>{"@keyframes ff-co-pulse{0%{box-shadow:0 0 0 0 rgba(234,107,20,.55)}70%{box-shadow:0 0 0 12px rgba(234,107,20,0)}100%{box-shadow:0 0 0 0 rgba(234,107,20,0)}}"
+        + " .ff-photo-pulse{outline:2px solid rgba(234,107,20,.75); outline-offset:6px; border-radius:12px; animation:ff-co-pulse 1.5s ease-out 3}"
+        + " @media (prefers-reduced-motion: reduce){.ff-photo-pulse{animation:none; background:rgba(234,107,20,.12)}}"}</style>
       <div style={s.inner}>
         <button onClick={back} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".82rem", textTransform:"uppercase", letterSpacing:".08em", padding:0, marginBottom:"2rem", display:"block" }}>
           {step === 1 ? "← Home" : "← Back"}
@@ -758,11 +839,34 @@ export default function ClientOnboarding() {
                 </p>
                 {errors.jobDescription && <p id="co-err-jobDescription" style={s.err}>{errors.jobDescription}</p>}
               </div>
-              <div style={{ marginBottom:"1.2rem" }}>
-                <label style={s.label}>Photo of the Problem <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
-                <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB."); e.target.value = ""; return; } setSubmitError(""); setPhotoFile(f); }} style={{ ...inp, padding:".6rem", cursor:"pointer" }} />
-                <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginTop:".4rem" }}>A photo helps us give you a faster, more accurate estimate. Max 5MB.</p>
+              <div id="co-photo" className={photoPulse ? "ff-photo-pulse" : undefined} style={{ marginBottom:"1.2rem", scrollMarginTop:"5.5rem" }}>
+                <label style={s.label}>
+                  Photo of the Problem{" "}
+                  {/* The asterisk appears only once they've been nudged. Marking a
+                      genuinely optional field on first sight would be a lie about
+                      what's required, and people learn very quickly to ignore an
+                      asterisk that turns out not to mean anything. */}
+                  {photoNudged.current && !photoFile
+                    ? <span aria-hidden="true" style={{ color:"#ea6b14", fontWeight:600 }}>*</span>
+                    : <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span>}
+                </label>
+                {/* accept has no `capture`, so this offers the camera AND the
+                    gallery — a photo taken earlier is just as useful, and forcing
+                    the camera means anyone not standing in front of the problem
+                    right now has nothing to attach. */}
+                <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 10*1024*1024) { setSubmitError("That photo is over 10MB — please pick a smaller one."); e.target.value = ""; return; } setSubmitError(""); setPhotoFile(f); setPhotoPulse(false); }} style={{ ...inp, padding:".6rem", cursor:"pointer" }} />
+                <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginTop:".4rem" }}>We shrink it for you before it's sent, so a photo straight off your phone is fine.</p>
                 {photoFile && <p style={{ fontSize:".78rem", color:"var(--ff-success)", marginTop:".3rem" }}>Attached: {photoFile.name}</p>}
+                {/* The advisory. It stays on screen after the pulse ends — the
+                    animation is what draws the eye, the words are what answer
+                    "why does it matter?", and those are not the same job. */}
+                {photoNudged.current && !photoFile && (
+                  <div style={{ background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.28)", borderRadius:"8px", padding:".8rem 1rem", marginTop:".6rem", fontSize:".82rem", lineHeight:1.6, color:"rgba(var(--ff-muted), .85)" }}>
+                    <strong style={{ color:"var(--ff-text)" }}>A photo gets you a real number, faster.</strong>{" "}
+                    Pros price what they can see. With a photo you'll usually get firm estimates the same day; without one you're more likely to get a wide ballpark, questions before anyone will quote, or a pro who wants to come out and look first.
+                    <div style={{ marginTop:".45rem", opacity:.8 }}>It's still optional — press Next again to carry on without one, and you can add a photo from your dashboard any time after you post.</div>
+                  </div>
+                )}
               </div>
               {submitError && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"var(--ff-danger)", marginTop:"1rem" }}>{submitError}</div>}
             </div>

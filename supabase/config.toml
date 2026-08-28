@@ -182,6 +182,10 @@ verify_jwt = true
 enabled = true
 verify_jwt = true
 
+[functions.scan-image]
+enabled = true
+verify_jwt = true
+
 [functions.send-bid-email]
 enabled = true
 verify_jwt = false

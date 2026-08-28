@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { clearMyProfile } from "@/lib/myProfile";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
 import { requestReferralShare } from "@/lib/referralPrompt";
-import RequestPhotoQuote from "@/components/RequestPhotoQuote";
+import RequestPhotoQuote, { PHOTO_ANCHOR } from "@/components/RequestPhotoQuote";
 import ProfileBar from "@/components/ProfileBar";
 import JobChat from "@/components/JobChat";
 import ChatTimePrompt from "@/components/ChatTimePrompt";
@@ -503,6 +503,19 @@ export default function ClientDashboard() {
     }, 60));
   };
   const focusContract = () => focusAnchor(CONTRACT_ANCHOR);
+  /**
+   * The photo panel lives inside the request-detail block, which is COLLAPSED
+   * whenever estimates are on screen — which is exactly when someone is most
+   * likely to be told their request has no photo. Expanding first is what makes
+   * the row's button land on something; focusAnchor would otherwise measure an
+   * element that isn't in the DOM and fall back to scrolling to the top, which
+   * reads as a button that does nothing.
+   *
+   * setReqDetailOpen and focusAnchor are batched into the same render, and
+   * focusAnchor already waits a frame plus 60ms before measuring, so the panel
+   * has painted by the time it looks for the id.
+   */
+  const focusPhoto = () => { setReqDetailOpen(true); focusAnchor(PHOTO_ANCHOR); };
   // Spreads an id + the pulse ring onto whichever card an attention row targets.
   // scrollMarginTop clears the fixed top nav so the card isn't tucked under it.
   const anchor = (id: string) => ({ id, className: pulseAnchor === id ? "ff-pulse" : undefined });
@@ -1394,6 +1407,15 @@ export default function ClientDashboard() {
           if (activeJob?.status === "assigned" && activeJob?.schedule_proposed_at && !activeJob?.client_approved_at && !(activeJob?.client_rescheduled_at && !activeJob?.reschedule_accepted_at)) attn.push({ key: "sched", text: "Your pro proposed a time and price — approve it to book the visit.", cta: "Review proposal", onClick: () => focusAnchor("ffc-sched"), ownsScroll: true });
           if (activeJob?.status === "assigned" && activeJob?.walkthrough_proposed_at && !activeJob?.walkthrough_approved_at) attn.push({ key: "walkthrough", text: "Your pro wants to do a free walkthrough before pricing — confirm the visit time.", cta: "Review time", onClick: () => focusAnchor("ffc-walkthrough"), ownsScroll: true });
           if (!activeJob && clientBids.length > 0) attn.push({ key: "bids", text: clientBids.length + " pro" + (clientBids.length === 1 ? " has" : "s have") + " bid on your request — pick the one you like.", cta: "See bids", onClick: () => focusAnchor("ffc-bids"), ownsScroll: true });
+          // A live request with no photo. This is the only row here that isn't
+          // about something already owed — it's about the quality of the
+          // estimates still to come, which is why it sits below every money row
+          // and above the conversational ones. It is scoped to `pending`
+          // deliberately: once a pro is picked the photo has done its job, and
+          // asking for it then is noise.
+          if (activeReq?.status === "pending" && !activeReq?.photo_path) {
+            attn.push({ key: "photo", text: "Your request has no photo — adding one usually turns a rough ballpark into a firm price.", cta: "Add a photo", onClick: focusPhoto, ownsScroll: true });
+          }
           // ── Conversational rows last (see the ordering note above) ──────────
           if (chatTimeJob) attn.push({
             key: "chattime",
@@ -1835,7 +1857,7 @@ export default function ClientDashboard() {
                       <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".4rem" }}>Job Description</div>
                       <div style={{ fontSize:".88rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.6 }}>{activeReq.job_description}</div>
                     </div>
-                    <RequestPhotoQuote requestId={activeReq.id} photoPath={activeReq.photo_path} estimatedQuote={activeReq.estimated_quote} quoteNotes={activeReq.quote_notes} canUpload />
+                    <RequestPhotoQuote requestId={activeReq.id} photoPath={activeReq.photo_path} estimatedQuote={activeReq.estimated_quote} quoteNotes={activeReq.quote_notes} canUpload highlight={pulseAnchor === PHOTO_ANCHOR} />
                     </>)}
 
                     {activeJob && (activeJob.client_approved_at || activeJob.status === "scheduled" || activeJob.status === "in_progress" || activeJob.status === "pending_confirmation" || activeJob.status === "completed") && (

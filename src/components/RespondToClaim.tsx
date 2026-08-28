@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/imageCompress";
+import { scanImage, shouldBlock, rejectMessage } from "@/lib/imageSafety";
 
 // Contractor's side of the story on an open claim. Mirrors the client's claim
 // form: a written response plus optional photos, submitted via respond_to_dispute.
@@ -39,6 +40,14 @@ export default function RespondToClaim({
         const key = `${userId}/resp-${disputeId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
         const { error: upErr } = await supabase.storage.from("problem-photos").upload(key, small, { upsert: false, contentType: small.type || undefined });
         if (upErr) throw new Error("Photo upload failed: " + upErr.message);
+        // Same evidence rule as the client's claim form — this is the pro's
+        // only chance to answer a claim that can cost them the whole payout,
+        // so a `gore` verdict must not silence them. Scanned regardless, so
+        // the verdict still reaches the admin resolving the dispute.
+        const scan = await scanImage("problem-photos", key);
+        if (shouldBlock(scan, { evidence: true })) {
+          throw new Error(rejectMessage(scan) + " Please remove it and submit again — your written response is still here.");
+        }
         paths.push(key);
       }
       const { error } = await supabase.rpc("respond_to_dispute", {

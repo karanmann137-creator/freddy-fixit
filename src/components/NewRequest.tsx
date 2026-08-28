@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/imageCompress";
+import { scanImage, shouldBlock, rejectMessage } from "@/lib/imageSafety";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
 import OnboardingProgress from "@/components/OnboardingProgress";
 import { SERVICES, SCHEDULES } from "@/pages/ClientOnboarding";
@@ -397,7 +398,26 @@ export default function NewRequest() {
         const ext = (small.name.split(".").pop() || "jpg").toLowerCase();
         const path = user.id + "/" + crypto.randomUUID() + "." + ext;
         const up = await supabase.storage.from("problem-photos").upload(path, small, { upsert: false, contentType: small.type || undefined });
-        if (!up.error) photoPath = path;
+        // Safety scan before the photo is linked to the request. Fail-open —
+        // only a real "reject" stops it, and a scanner outage comes back
+        // "unknown" and attaches the photo as normal.
+        //
+        // Unlike the signup flow, this stops BEFORE the request is inserted and
+        // says so, because here it can: nothing else is half-created, the page
+        // is still on screen, and the person can pick a different photo. It
+        // drops the attachment first so pressing Submit again just works — the
+        // photo is optional, so refusing one must never leave someone unable to
+        // post their job at all.
+        if (!up.error) {
+          const scan = await scanImage("problem-photos", path);
+          if (shouldBlock(scan)) {
+            setPhotoFile(null);
+            setSubmitError(rejectMessage(scan) + " We've removed it — press Submit again to post without a photo, or choose a different one.");
+            setSubmitting(false);
+            return;
+          }
+          photoPath = path;
+        }
       }
 
       const location = resolveLocation();
@@ -605,10 +625,10 @@ export default function NewRequest() {
                     {photoFile ? photoFile.name : "Attach a photo"}
                   </p>
                   <p style={{ margin:".2rem 0 0", fontSize:".74rem", color:"rgba(var(--ff-muted), .4)" }}>
-                    {photoFile ? "Tap to change" : "Tap to choose — max 5 MB"}
+                    {photoFile ? "Tap to change" : "Tap to choose — max 10 MB"}
                   </p>
                 </div>
-                <input id="nr-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB. Please choose a smaller one."); e.target.value = ""; return; } setSubmitError(""); setPhotoFile(f); }} style={{ display:"none" }} />
+                <input id="nr-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 10*1024*1024) { setSubmitError("That photo is over 10 MB. Please choose a smaller one."); e.target.value = ""; return; } setSubmitError(""); setPhotoFile(f); }} style={{ display:"none" }} />
               </label>
             </div>
           </>)}

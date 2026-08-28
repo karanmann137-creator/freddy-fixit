@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Ic } from "@/components/Ic";
 import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/imageCompress";
+import { scanImage, shouldBlock, rejectMessage } from "@/lib/imageSafety";
 import FadeImg from "@/components/FadeImg";
 
 // Before / after job photos. Both are mandatory for the contractor: the "after"
@@ -116,6 +117,14 @@ export default function JobPhotos({ job, role, onSaved, onError }: {
       const path = job.id + "/" + kind + "-" + crypto.randomUUID() + "." + ext;
       const { error: upErr } = await supabase.storage.from("completion-photos").upload(path, up, { contentType: up.type || undefined });
       if (upErr) throw upErr;
+      // Scanned as EVIDENCE. This photo is a payment gate — mark_job_complete
+      // raises without it — so a `gore` verdict must not block it: a genuine
+      // job photo can show an injury the work caused, and refusing it would
+      // use a moderation tool to stop a contractor being paid at all. Only
+      // sexual content and hate symbols stop it, and the verdict lands in
+      // image_scans regardless so an admin can act on it afterwards.
+      const scan = await scanImage("completion-photos", path);
+      if (shouldBlock(scan, { evidence: true })) { onError?.(rejectMessage(scan)); return; }
       const { error } = await supabase.rpc("save_job_photo", { p_job_id: job.id, p_kind: kind, p_path: path });
       if (error) throw error;
       onSaved?.(kind, path);
