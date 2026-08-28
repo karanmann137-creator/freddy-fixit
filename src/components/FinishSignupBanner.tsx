@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { getMyProfile } from "@/lib/myProfile";
@@ -28,8 +28,30 @@ export default function FinishSignupBanner() {
   const [show, setShow] = useState(false);
   // What the signup metadata says they were trying to become (if we know).
   const [intent, setIntent] = useState<"client" | "contractor" | null>(null);
+  const barRef = useRef<HTMLDivElement>(null);
 
   const hidden = HIDE_ON.some(p => loc === p || loc.startsWith(p + "/"));
+
+  // This bar pins to the very bottom of every page it's not hidden on —
+  // including both dashboards and any page the chat bubble is open on. Other
+  // fixed-to-bottom UI (ChatWidget's bubble/panel, the dashboards' toast)
+  // used to assume nothing else lived down there, so when both were visible
+  // at once the higher-zIndex element visually cut into this bar's orange
+  // strip — the exact "overlapping button" look reported for the notification
+  // bell. Publishing the bar's real height as a CSS var lets that UI shift up
+  // to clear it instead. Re-measured on show/hide and on resize (the text
+  // wraps to two lines on narrow screens, which changes the height).
+  useEffect(() => {
+    const setH = () => {
+      document.documentElement.style.setProperty(
+        "--ff-fsb-h", show && barRef.current ? barRef.current.offsetHeight + "px" : "0px"
+      );
+    };
+    setH();
+    if (!show) return;
+    window.addEventListener("resize", setH);
+    return () => window.removeEventListener("resize", setH);
+  }, [show]);
 
   useEffect(() => {
     if (hidden) return;
@@ -64,7 +86,7 @@ export default function FinishSignupBanner() {
   const go = (path: string) => setLocation(path);
 
   return (
-    <div style={bar} role="status">
+    <div ref={barRef} style={bar} role="status">
       <style>{"@keyframes ffFsbIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}"}</style>
       <span style={{ fontWeight: 600 }}>Your account isn&rsquo;t finished yet.</span>
       <span style={{ opacity: .92 }}> Finish setting up — it takes about 2 minutes.</span>

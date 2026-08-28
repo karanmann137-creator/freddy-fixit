@@ -83,7 +83,7 @@ export default function ChatWidget() {
       {/* Chat panel */}
       {open && (
         <div style={{
-          position: "fixed", bottom: "5.5rem", right: "1.5rem",
+          position: "fixed", bottom: "calc(5.5rem + var(--ff-fsb-h, 0px))", right: "1.5rem",
           // 360px + the 1.5rem right offset overflowed a 360px-wide phone.
           width: "min(360px, calc(100vw - 3rem))", maxHeight: "min(520px, calc(100vh - 9rem))",
           background: "var(--ff-bg)", border: "1px solid rgba(var(--ff-fg), .12)",
@@ -223,7 +223,7 @@ export default function ChatWidget() {
         onClick={() => setOpen(o => !o)}
         aria-label={open ? "Close chat" : "Open chat"}
         style={{
-          position: "fixed", bottom: "1.5rem", right: "1.5rem",
+          position: "fixed", bottom: "calc(1.5rem + var(--ff-fsb-h, 0px))", right: "1.5rem",
           width: 56, height: 56, borderRadius: "50%", border: "none",
           background: open ? "rgba(var(--ff-fg), .1)" : "linear-gradient(135deg, #ea6b14, #f09020)",
           color: "#fff", fontSize: open ? "1.2rem" : "1.4rem",
