@@ -14,6 +14,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 //   { "dryRun": true }            -> list who WOULD be emailed, send nothing
 //   { "confirm": "SEND" }         -> actually send (required to send)
 //   { "limit": 40 }               -> max recipients this run (default 40)
+//   { "trade": "Plumbing Repair" }-> only send this trade's queued batch
+//
+// Rows carry a `trade` (a service_specialty_map.service label). When set, the
+// copy names that trade so the note reads as relevant rather than as a blast.
+// It NEVER names the job that prompted the batch: the row's `queued_for` is an
+// audit pointer only. Describing a live client request to a non-member would
+// leak that client's address and problem to a stranger.
 //
 // GET ?u=<row-uuid>  (public, no auth — used by the unsubscribe link in the
 //   email): marks that row — and every other row with the same email —
@@ -65,12 +72,40 @@ function unsubscribeUrl(rowId: string): string {
   return `${SUPABASE_URL}/functions/v1/contractor-outreach?u=${rowId}`;
 }
 
-function buildEmail(rowId: string, companyName: string, contactName?: string | null): string {
+// Lower-cases the trade label for mid-sentence use, but leaves acronyms and
+// proper nouns alone — "we're getting hvac maintenance requests" reads as
+// careless, and this email is a first impression.
+const KEEP_CASE = /\b(HVAC|AC)\b/;
+function tradePhrase(trade?: string | null): string | null {
+  const t = (trade ?? "").trim();
+  if (!t) return null;
+  return KEEP_CASE.test(t) ? t : t.toLowerCase();
+}
+
+function subjectFor(trade?: string | null): string {
+  const t = tradePhrase(trade);
+  return t
+    ? `Calgary homeowners are posting ${t} jobs — we need more pros`
+    : "We're launching in Calgary — and we want you on the platform";
+}
+
+function buildEmail(
+  rowId: string,
+  companyName: string,
+  contactName?: string | null,
+  trade?: string | null,
+): string {
+  const t = tradePhrase(trade);
+  // Deliberately vague about volume and silent about any specific job. We say
+  // that requests are coming in, never how many and never whose.
+  const hook = t
+    ? `<p>We're getting <strong>${t}</strong> requests in Calgary and we don't have enough pros in that trade to quote them properly. That's the honest reason you're hearing from me.</p>`
+    : `<p>We're now opening up contractor onboarding, and based on your reputation in the city, we'd love to have you on board.</p>`;
   return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;line-height:1.7;max-width:600px;margin:0 auto;padding:32px 24px">
 <p>Hi ${greeting(companyName, contactName)},</p>
 <p>My name is Karan, and I'm the founder of <strong>Freddy Fix It</strong> &mdash; a new Calgary-based platform that connects homeowners with vetted local contractors like yourself.</p>
-<p>We're now opening up contractor onboarding, and based on your reputation in the city, we'd love to have you on board.</p>
+${hook}
 <p><strong>Here's how it works:</strong></p>
 <ul>
 <li>Homeowners post a job on <a href="https://freddyfixit.ca">freddyfixit.ca</a></li>
@@ -126,7 +161,7 @@ serve(async (req) => {
     if (row?.email) {
       // Mark every row for this email so re-imports can't re-mail them.
       await admin.from("contractor_outreach")
-        .update({ status: "unsubscribed" })
+        .update({ status: "unsubscribed", unsubscribed: true })
         .eq("email", row.email);
     }
     // Always show success — don't leak whether an id existed.
@@ -148,6 +183,9 @@ serve(async (req) => {
   const body = await req.json().catch(() => ({}));
   const dryRun = body?.dryRun === true;
   const limit = Math.min(Math.max(Number(body?.limit) || 40, 1), 100);
+  const tradeFilter = typeof body?.trade === "string" && body.trade.trim()
+    ? body.trade.trim()
+    : null;
 
   // Guard: actually sending requires an explicit confirm token.
   if (!dryRun && body?.confirm !== "SEND") {
@@ -165,10 +203,15 @@ serve(async (req) => {
     );
   }
 
-  const { data: pending, error: selErr } = await admin
+  let q = admin
     .from("contractor_outreach")
-    .select("id, company_name, contact_name, email")
+    .select("id, company_name, contact_name, email, trade")
     .eq("status", "pending")
+    // Belt and braces: an unsubscribed row should already be status
+    // 'unsubscribed', but a row that was somehow re-queued must still never go.
+    .eq("unsubscribed", false);
+  if (tradeFilter) q = q.eq("trade", tradeFilter);
+  const { data: pending, error: selErr } = await q
     .order("created_at", { ascending: true })
     .limit(limit);
 
@@ -183,9 +226,11 @@ serve(async (req) => {
   if (dryRun) {
     return new Response(JSON.stringify({
       dryRun: true,
+      trade: tradeFilter,
       wouldSend: queue.length,
       mailingAddressSet: !!MAILING_ADDRESS.trim(),
-      recipients: queue.map((c) => ({ company_name: c.company_name, email: c.email })),
+      subjectPreview: subjectFor(tradeFilter ?? queue[0]?.trade ?? null),
+      recipients: queue.map((c) => ({ company_name: c.company_name, email: c.email, trade: c.trade })),
     }), { headers: { ...cors, "Content-Type": "application/json" } });
   }
 
@@ -200,8 +245,8 @@ serve(async (req) => {
         body: JSON.stringify({
           from: FROM,
           to: c.email,
-          subject: "We're launching in Calgary — and we want you on the platform",
-          html: buildEmail(c.id, c.company_name, c.contact_name),
+          subject: subjectFor(c.trade),
+          html: buildEmail(c.id, c.company_name, c.contact_name, c.trade),
           headers: {
             // RFC 8058 one-click unsubscribe — Gmail/Outlook surface this natively.
             "List-Unsubscribe": `<${unsubscribeUrl(c.id)}>`,

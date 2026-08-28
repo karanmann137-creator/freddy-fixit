@@ -241,6 +241,14 @@ Bids are **private** — RLS lets a contractor read only their own; `list_open_j
 
 Handyman is intentionally wide — `{General Repairs, Carpentry, Painting, Drywall, Flooring / Tile}` in both directions, because that's where volume is. **Deliberately NOT electrical, plumbing, HVAC or cleaning** — those pros can't do the work and would start treating our email as noise.
 
+**A 1:1 mapping is a silent reach cap (2026-08-28).** An Appliance Repair job reached exactly one contractor and was reported as an email bug. It was two faults stacked. The immediate one was activation — only one pro was both `active` and specialty-matched at dispatch time — and note that **`contractors` has no `updated_at`**, so there is no way to prove after the fact when anyone was re-approved; a deactivation window is invisible in the data. The structural one was worse: **19 of the 23 service labels mapped to themselves and nothing else**, so even with every pro active the job could only ever reach 2 of 23. Re-approving everyone would have taken the email from 1 recipient to 2 and it would still have looked broken.
+
+Nine labels were widened (Appliance Repair, Windows & Doors, Garage, Locksmith, Gutters, Siding & Roofing, Concrete / Masonry, Snow Removal, Landscaping); Appliance went 2 → 13. **Locksmith matched ZERO active pros.** The "unmapped labels pass through to everyone" fallback keys on the label being *absent from the table*, so a label that IS mapped, to a specialty nobody holds, reaches nobody at all — no error, no empty state, nothing anywhere says so. **`public.trade_reach(service)` is the one function that answers "how many pros would actually see this?"** — check it before assuming a trade is covered.
+
+Compulsory trades (Electrical, Plumbing, Air Conditioning, HVAC), Cleaning, Solar and the four vehicle labels were deliberately **not** widened, for the same reason Handyman excludes them.
+
+**Order matters when fixing this: widen the map FIRST, then `refire_request`.** `refire_request` shrinks `dispatched_to` to actual bidders and re-invokes `dispatch-job`, which recomputes the match from the map *at that moment* — the other order re-mails the same two pros and burns the re-fire.
+
 **Preferred-pro reservation:** a request with `preferred_contractor_id` (rehire) is visible and biddable ONLY to that pro for 48h, enforced in both `list_open_jobs` and `place_bid`; the `notify_preferred_contractor()` trigger sends the dedicated `rehire_request` bell (and `notify_contractors_new_request()` short-circuits so the pro isn't alerted twice).
 
 **Re-firing a stalled request (2026-08-05).** `client_requests.dispatched_to` is a **permanent** "already told them" list, not a cooldown — `dispatch-job` filters on it, so re-invoking it is a no-op and there was no way to nudge pros who got the email but never bid. `refire_request(request_id)` **shrinks `dispatched_to` down to the contractors who already bid**, then re-invokes dispatch-job: every matched pro who hasn't quoted is emailed again exactly once per re-fire, nobody who already quoted is pestered, and the guard is intact afterwards so a stray double-invoke stays a no-op. It recomputes the same matcher itself (service_specialty_map, active, minus `hidden_jobs`, minus bidders) because dispatch-job answers asynchronously and its count can't be read back. Rehire reservations are respected.
@@ -554,6 +562,22 @@ Admins additionally see an **Admin Review panel**: `admin_get_contractor_detail(
 - **Homepage before/after images are responsive (2026-08-18).** Each pair ships twice in `public/before-after/`: `<name>.webp` at 1100px and `<name>-sm.webp` at 688px, wired through `baSrcSet()` + `BA_SIZES` in `Home.tsx`. The slider box caps at 900px so nothing ever needs more than 1100 (1466KB → 676KB desktop, 294KB mobile). **Regenerating one file means regenerating both widths** — otherwise the srcset keeps serving a stale variant to whichever half of visitors matches the other breakpoint.
 - **Lead scouts, both DORMANT, nothing ever auto-posts.** `reddit-lead-scout` is blocked by Reddit's Responsible Builder Policy (OAuth pre-wired if `REDDIT_CLIENT_ID`/`SECRET` ever land); interim is F5Bot + a manual reply cheatsheet. `meta-lead-scout` is **own-Page-only** (Meta ToS forbids scanning others' posts/groups) — reads FB Page comments/DMs + IG comments, classifies, drafts replies, dedupes into `social_leads`, emails an approval digest; activates when `META_PAGE_TOKEN` + `META_PAGE_ID` are set.
 - Offline owner deliverables (Desktop, not in repo): Google-Business-Profile-Guide, Contractor-Recruitment-Kit, Analytics-Setup-Guide, Reddit-Reply-Cheatsheet, Meta-Setup-Guide, Facebook-Groups-Lead-Kit.
+
+## Trade-targeted cold outreach (2026-08-28)
+
+`contractor-outreach` **v14** is the cold-email sender and it already existed — queue-driven off `contractor_outreach`, admin-JWT gated, `confirm:"SEND"` required, CASL mailing address + RFC 8058 one-click unsubscribe, 600ms pacing for Resend's 2/s limit. It only ever reads `status='pending'` and flips rows to `'sent'`, which is what makes it **structurally incapable of mailing the same address twice**. What it could not do was aim.
+
+New columns `trade` / `source` / `city` / `queued_at` / `queued_for` / `unsubscribed`, a unique index on `lower(email)`, and a new status **`'new'` = imported but NOT queued**. That status is the whole safety design: the sender picks up `'pending'` only, so **importing a list can never send anything by itself**. `admin_import_outreach(jsonb)` lands rows at `'new'` and `on conflict do nothing`, so a re-import can never resurrect an address we already mailed or that unsubscribed. `admin_queue_outreach(trade, limit, request)` promotes `'new'` → `'pending'`. Sending is still a separate, confirmed admin act.
+
+Trigger `client_requests_outreach_gap` (AFTER INSERT) queues up to 25 candidates for the job's trade when `trade_reach(service) < outreach_gap_threshold()` (6), and bells every admin. Three rules it encodes:
+
+- **It queues, it never sends.** An automatic per-job blast would put the shared `freddyfixit.ca` DKIM reputation at risk — the same reputation that carries payment receipts, dispatch and GoTrue-adjacent mail, and a DKIM fault has already taken all platform email down once. "Don't send bulk email without asking the owner" still holds.
+- **The client's job never leaves the platform.** `queued_for` is an audit pointer; the copy names the *trade* and says requests are coming in, never how many and never whose. Describing a live request to a non-member would leak that client's address and problem to a stranger.
+- **It cannot break a job posting.** The whole body is inside an exception block. A recruiting nicety is never worth a client's request — that is the pgcrypto lesson.
+
+A rolled-back probe verified all three paths: gap trade queued 1 and belled the admin, healthy trade queued 0, an unknown label inserted fine (unmapped ⇒ `trade_reach` counts everyone ⇒ above threshold). The probe also caught a real bug before it shipped — `contractor_outreach_status_check` predated `'new'` and would have rejected every import.
+
+**The pipeline has no ammunition until company records are loaded.** Contact details must be supplied or gathered from conspicuously-published business listings; CASL implied consent covers role-relevant B2B recruitment from a published address, not an unlimited list.
 
 ---
 
