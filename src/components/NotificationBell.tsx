@@ -22,6 +22,44 @@ export default function NotificationBell({ userId, dashboardPath }: { userId: st
   const [notes, setNotes] = useState<Note[]>([]);
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  // Where the dropdown renders. The bell lives in very different spots —
+  // top-right in TopNav's menu, bottom of a left sidebar on desktop, bottom
+  // of a narrow icon rail or a mobile drawer footer — but the panel used to
+  // be hardcoded to top:64/right:10, which only matched the first of those.
+  // Everywhere else it popped up disconnected from the button that opened
+  // it and landed on top of whatever else was near that screen corner.
+  // Computed fresh from the button's own position each time it opens.
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number; maxHeight: number }>({
+    top: 64, left: 10, maxHeight: 420,
+  });
+
+  const positionDropdown = () => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const margin = 10, gap = 8, panelW = 320;
+    const r = el.getBoundingClientRect();
+    let left = r.right - panelW;
+    if (left < margin) left = margin;
+    if (left + panelW + margin > window.innerWidth) left = window.innerWidth - panelW - margin;
+    const spaceBelow = window.innerHeight - r.bottom - gap;
+    const spaceAbove = r.top - gap;
+    // Open upward when there isn't much room below (a sidebar-footer bell
+    // sits near the bottom of the viewport) and there's more room above.
+    const openUp = spaceBelow < 260 && spaceAbove > spaceBelow;
+    setPos(openUp
+      ? { bottom: window.innerHeight - r.top + gap, left, maxHeight: Math.max(160, Math.min(420, spaceAbove - margin)) }
+      : { top: r.bottom + gap, left, maxHeight: Math.max(160, Math.min(420, spaceBelow - margin)) });
+  };
+
+  // Keep the panel anchored to the button across resizes while it's open
+  // (e.g. rotating a phone, or the sidebar collapsing/expanding).
+  useEffect(() => {
+    if (!open) return;
+    const onResize = () => positionDropdown();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const load = async () => {
     const { data } = await supabase
@@ -123,7 +161,7 @@ export default function NotificationBell({ userId, dashboardPath }: { userId: st
   return (
     <div ref={wrapRef} style={{ position: "relative" }}>
       <button
-        onClick={() => { const next = !open; setOpen(next); if (next) load(); }}
+        onClick={() => { const next = !open; setOpen(next); if (next) { load(); positionDropdown(); } }}
         aria-label="Notifications"
         style={{
           position: "relative", width: 40, height: 40, borderRadius: "999px",
