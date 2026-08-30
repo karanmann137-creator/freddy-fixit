@@ -1,0 +1,2 @@
+[functions.auth-rescue]
+verify_jwt = false

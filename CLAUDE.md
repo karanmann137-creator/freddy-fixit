@@ -543,6 +543,73 @@ Diagnosing it: **GoTrue returns HTTP 500 on SMTP failure and 200 on a successful
 
 Standing owner instruction: **don't send bulk email without asking.**
 
+## Signup rescue — `auth-rescue` (2026-08-30)
+
+Health check 7 could only ever *tell* us somebody was locked out. `auth-rescue`
+is the remedy, and it exists because on 2026-08-30 an account (`auth.users`
+`5c597221`) was stuck in exactly the Aug 2026 shape: our Resend welcome arrived, the GoTrue
+confirmation did not, no error was visible to anyone.
+
+**This one was a DELIVERY failure, not an outage.** A live `net.http_post` to
+`/auth/v1/recover` came back **200**, and `confirmation_sent_at` was stamped —
+so GoTrue accepted the handoff and tried. The mail died somewhere past the
+sender (spam, recipient filtering, or the reputation of Supabase's shared
+free-tier sender), which is a place we have no visibility into and cannot
+retry into. **Diagnosing a 200 as "email works" is the trap** — a 200 proves
+handoff, never delivery.
+
+**The fix removes GoTrue's mailer from the path while keeping its token
+minting.** `admin.auth.admin.generateLink()` returns an action link and **sends
+nothing**, so the edge function mints the link and delivers it over Resend, on
+the DKIM-verified `freddyfixit.ca` domain that already carries every receipt,
+dispatch and reminder we send — the one sender we monitor and whose failures
+we would notice.
+
+**A magic link is not a force-confirm, and the distinction is the whole
+safety argument.** The recipient still has to receive the mail to use it, so it
+proves address ownership exactly as the confirmation email did — it is a change
+of *carrier*, not a weakening of verification. `admin.updateUserById({
+email_confirm: true })` would unlock an account with no proof at all and was
+deliberately rejected. Clicking the link both signs them in and confirms the
+address, which is what finally clears health check 7.
+
+**`auth-rescue` v1, `verify_jwt=false`, gated in code two ways.** Either an
+`x-ff-internal` single-use token redeemed through `consume_internal_token`
+(proving the caller is Postgres) or a real admin JWT resolved via
+`admin.auth.getUser()` → `profiles.role`. `verify_jwt` buys nothing here, as
+always — the anon key is a valid project-signed JWT and ships publicly.
+Verified: a valid anon bearer with **no** internal token gets **403**.
+**Identity comes from `auth_rescue_target(p_user)`, never from the request
+body** — the body carries a uuid and nothing else, so it cannot name an email
+to mail.
+
+Two copy variants. **`apology`** says plainly that this was our fault, that
+they did nothing wrong, that the link expires in 24h, and to reply for a fresh
+one; **`stuck`** is the gentler automated nudge that suggests checking spam.
+Both reply to hello@, so a failure produces a human reply instead of silence —
+the same reasoning as the paragraph in `client-welcome` that names the second
+email.
+
+The sweep `rescue_stuck_signups()` runs hourly (pg_cron `rescue-stuck-signups`,
+`37 * * * *`) over accounts **6h–7d old** with no confirmation and no sign-in,
+**max 2 successful rescues ever and none within 24h**, 25 per pass, **each row
+in its own exception block** so one bad row can't strand everyone behind it.
+`admin_rescue_signup(user, kind)` is the `is_admin()`-gated one-shot and ignores
+the cap on purpose. Every send lands in `signup_rescue_log` (RLS on, no policy).
+
+**It is deliberately NOT in `set_platform_mode`'s quiet list.** Silencing signup
+rescue during a pause reproduces the Aug 2026 lockout exactly. The pause is
+about not soliciting people, not about refusing to answer someone who already
+handed us their email address — same call as the two welcome emails and GoTrue
+itself.
+
+**⚠️ This heals the symptom; it does not remove the failure class.** The
+permanent fix is an owner action in the Dashboard: **Authentication → SMTP
+Settings, pointed at Resend**, so confirmation and password-reset mail leave the
+unmonitored shared sender and ride the same verified domain as everything else.
+Until that is set, GoTrue delivery remains a place we cannot see into and
+`auth-rescue` is the net underneath it.
+
 ## Newsletter
 Sender **tips@freddyfixit.ca** (reply-to hello@). Two audiences: client (home & vehicle tips) and contractor (business tips).
 
@@ -892,6 +959,7 @@ no-op.
 # Open / queued
 
 - **Owner action, cosmetic: remove the four tombstoned edge functions** (`send-reminder`, `send-welcome`, `remind-contractor`, `resend-domains`) in Supabase Dashboard → Edge Functions → Delete. They already send nothing and hold no secrets; the MCP just has no delete tool.
+- **Owner action, and it is the only permanent fix for signup email: point Supabase Auth at Resend.** Dashboard → Authentication → SMTP Settings. Until then, confirmation and password-reset mail ride an unmonitored shared sender we have no delivery visibility into; `auth-rescue` is the net underneath it, not a replacement for it.
 - **Prepaid-contracting licensing** (contractor licence + bond; whether the platform needs its own) — lawyer + Service Alberta. Blocking-risk item.
 - **The dispute branch is still production-untested** — the held→release path ran live on 2026-08-30, but no job has ever reached `disputed`, so `resolve-dispute` has never executed against real money.
 - Balance-owed client reminders in `run_reminders()`; admin escalation for health check 5.
