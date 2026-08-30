@@ -527,7 +527,7 @@ Sidebar badges render on the collapsed/mobile icon rail too (absolutely-position
 
 **`client-welcome` (2026-08-23) — clients had never had a welcome email at all.** Contractors have had one since launch; a client signed up and the only thing that ever reached them was a GoTrue confirmation from a sender they don't recognise. Fired by the **`client_welcome_email` AFTER INSERT trigger on `public.profiles`, `WHEN (new.role = 'client')`** → `send_client_welcome()`. On `profiles` rather than `auth.users` because the role lives there and a WHEN clause is the cheapest filter — which also means `ensure_profile()`'s orphan repair sends it, the one case where somebody most needs to hear from us. `verify_jwt=false`, `{test:true}` previews to hello@.
 
-**The load-bearing paragraph is the one naming the second email.** It says a separate confirmation is coming, that it comes from a **different sender**, to check spam, that they can't sign in until they click it, and to **reply to this email** if it doesn't arrive — so the Aug 2026 failure produces a reply instead of silence. The rest of the copy is mode-aware (`platform_settings.mode`, defaulting to `open` on any read failure, since the open copy is the superset), and it carries the referral code worded as **one friend**, matching `apply_referral_code` — promising "invite your friends" and then refusing the second one would be our bug showing up as their embarrassment.
+**The load-bearing paragraph is the one naming the second email.** It says a separate confirmation is coming, that it comes from a **different sender**, to check spam, — **the "different sender" line went stale on 2026-08-30** when GoTrue moved to the same `noreply@freddyfixit.ca` address, and is owed a copy edit; "check spam" is still right, that they can't sign in until they click it, and to **reply to this email** if it doesn't arrive — so the Aug 2026 failure produces a reply instead of silence. The rest of the copy is mode-aware (`platform_settings.mode`, defaulting to `open` on any read failure, since the open copy is the superset), and it carries the referral code worded as **one friend**, matching `apply_referral_code` — promising "invite your friends" and then refusing the second one would be our bug showing up as their embarrassment.
 
 `send_client_welcome()` is wrapped in its own exception block because it runs **inside the signup transaction**; an unguarded raise would roll back the profiles insert and orphan the auth user, which is the exact shape of the bug that killed every signup for a month. **A welcome email is never worth an account.**
 
@@ -535,9 +535,9 @@ Sidebar badges render on the collapsed/mobile icon rail too (absolutely-position
 
 **CASL:** mailing address `20 Whiteram Mews NE, Calgary`, `List-Unsubscribe` + `List-Unsubscribe-Post` headers (Gmail one-click sends **POST**, per RFC 8058), and unsubscribe handled **before** any auth gate, always returning the same page (no id-existence leak).
 
-**DKIM:** an outage once killed ALL platform email — a second, truncated TXT record at `resend._domainkey.freddyfixit.ca` with no `p=`. Check for stray records first if Resend returns "domain not verified".
+**DKIM:** an outage once killed ALL platform email — a second, truncated TXT record at `resend._domainkey.freddyfixit.ca` with no `p=`. Check for stray records first if Resend returns "domain not verified". **Since 2026-08-30 this is worse than it was**: auth mail rides the same key, so a DKIM fault now locks people out of their accounts as well as silencing receipts.
 
-**⚠️ There are TWO email systems, and only one of them is Resend.** Everything above — welcome, dispatch, receipts, reminders, newsletter — is ours, sent from edge functions via Resend as `noreply@freddyfixit.ca`. But **signup confirmation and password reset are sent by Supabase's own GoTrue mailer**, a different sender on a different domain that we do not monitor. In Aug 2026 that path broke on its own: people signed up, got our Resend welcome, never got the GoTrue confirmation, and were **silently locked out with no error visible to anyone**. Three accounts were stranded — one an already-approved contractor who had been receiving job emails for five days that he could not act on — and we only found out because one of them phoned. Password reset runs through the same mailer, so "just reset your password" fails too and is not a workaround.
+**⚠️ There WERE two email systems; since 2026-08-30 both are Resend — but they are still two different SENDERS with different failure modes.** Everything above — welcome, dispatch, receipts, reminders, newsletter — is ours, sent from edge functions via the Resend **API** as `noreply@freddyfixit.ca`. **Signup confirmation and password reset are sent by Supabase's GoTrue mailer**, which until 2026-08-30 was an unmonitored shared sender on a domain we did not own. It is now pointed at Resend over **SMTP** (`smtp.resend.com:465`) with the same `noreply@freddyfixit.ca` sender — so both paths share a domain, a DKIM key and a quota, but they are still **two different transports**, and GoTrue's is the one nothing in our code can retry. In Aug 2026 that path broke on its own: people signed up, got our Resend welcome, never got the GoTrue confirmation, and were **silently locked out with no error visible to anyone**. Three accounts were stranded — one an already-approved contractor who had been receiving job emails for five days that he could not act on — and we only found out because one of them phoned. Password reset runs through the same mailer, so "just reset your password" fails too and is not a workaround. That specific outage is closed, but the shape can recur any time GoTrue's transport fails, which is why `auth-rescue` exists.
 
 Diagnosing it: **GoTrue returns HTTP 500 on SMTP failure and 200 on a successful handoff**, so triggering a real auth email from Postgres (`net.http_post` → `/auth/v1/recover`, then re-select `net._http_response` after `pg_sleep(12)`) tells you whether the mailer accepted it. A 200 proves handoff, never delivery — only an inbox proves that. The permanent detection net is health check 7 `no_stuck_signups`.
 
@@ -603,12 +603,32 @@ about not soliciting people, not about refusing to answer someone who already
 handed us their email address — same call as the two welcome emails and GoTrue
 itself.
 
-**⚠️ This heals the symptom; it does not remove the failure class.** The
-permanent fix is an owner action in the Dashboard: **Authentication → SMTP
-Settings, pointed at Resend**, so confirmation and password-reset mail leave the
-unmonitored shared sender and ride the same verified domain as everything else.
-Until that is set, GoTrue delivery remains a place we cannot see into and
-`auth-rescue` is the net underneath it.
+**The failure class was closed the same day: custom SMTP is now configured
+(2026-08-30).** Dashboard → Authentication → Emails → Enable custom SMTP, host
+`smtp.resend.com`, port 465, user `resend`, sender `noreply@freddyfixit.ca`,
+min interval 10s. GoTrue no longer sends anything itself — confirmation and
+password-reset mail now leave over the same DKIM-verified domain, from the same
+provider, as every receipt and dispatch we send. A live `/auth/v1/recover`
+probe returned **200** afterwards, which now means more than it used to: bad
+credentials or a bad host would fail the SMTP connection and return **500**, so
+a 200 proves Resend accepted the message. It still does not prove delivery —
+only an inbox does that.
+
+**This trades an invisible failure for a correlated one, deliberately.** Auth
+mail and transactional mail now share one provider, one domain and one quota,
+so a Resend outage or a blown sending limit takes down **both** at once, where
+before they failed independently. `auth-rescue` rides Resend too, so it is no
+help in that scenario. The trade is worth it because the old independence was
+worthless: the second sender was one we did not own, did not monitor, and could
+not retry into — an outage there was silent, and silence is what stranded three
+accounts in Aug 2026 and one more on 2026-08-30. A shared failure we would
+notice within minutes beats a separate one we would learn about by phone.
+**Watch the Resend quota as a platform-wide dependency now, not just a
+marketing one.**
+
+`auth-rescue` stays as the net underneath: it is what recovers accounts that
+were stranded *before* SMTP was fixed, and what catches any future delivery
+failure that a 200 hides.
 
 ## Newsletter
 Sender **tips@freddyfixit.ca** (reply-to hello@). Two audiences: client (home & vehicle tips) and contractor (business tips).
@@ -959,7 +979,7 @@ no-op.
 # Open / queued
 
 - **Owner action, cosmetic: remove the four tombstoned edge functions** (`send-reminder`, `send-welcome`, `remind-contractor`, `resend-domains`) in Supabase Dashboard → Edge Functions → Delete. They already send nothing and hold no secrets; the MCP just has no delete tool.
-- **Owner action, and it is the only permanent fix for signup email: point Supabase Auth at Resend.** Dashboard → Authentication → SMTP Settings. Until then, confirmation and password-reset mail ride an unmonitored shared sender we have no delivery visibility into; `auth-rescue` is the net underneath it, not a replacement for it.
+- **`client-welcome` copy edit owed:** it tells new clients the confirmation email comes from a *different sender*, which stopped being true on 2026-08-30 when GoTrue moved onto `noreply@freddyfixit.ca`. Harmless but now confusing; the "check your spam folder" advice stays.
 - **Prepaid-contracting licensing** (contractor licence + bond; whether the platform needs its own) — lawyer + Service Alberta. Blocking-risk item.
 - **The dispute branch is still production-untested** — the held→release path ran live on 2026-08-30, but no job has ever reached `disputed`, so `resolve-dispute` has never executed against real money.
 - Balance-owed client reminders in `run_reminders()`; admin escalation for health check 5.
