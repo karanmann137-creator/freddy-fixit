@@ -72,7 +72,7 @@ Freddy Verified uses **`--ff-bg`, not `--ff-surface`** — under the scope `--ff
 - **The service fee is charged once, in full, with the deposit** — never split it proportionally. `platform_health_check` check 2 asserts `client_fee = round(amount * rate, 2)`, and both `adjust-payment` and `stripe-webhook` reconstruct the applied rate from `client_fee / amount` (0 when a referral waived it).
 - **A job can hold MULTIPLE payment intents** (deposit + balance + top-ups). Refund/adjust logic must walk `extra_charge_intent_ids` newest-first, never assume one.
 - **`withdraw_job()` (contractor) and `remove_client_request()` (client) hard-DELETE and everything cascades.** Every child of `jobs` is ON DELETE CASCADE — disputes included. Any new "remove this" path must guard on `payment_status`, funded milestones and held prepayment pools first, or it destroys the only pointer to a live Stripe payment intent.
-- The held→dispute→release path is still **production-untested** — no job has ever reached `held`. One real end-to-end live run is owed.
+- **The held→release path ran for real on 2026-08-30 and the money moved** (job `fd9c3db4`, two transfer legs totalling $4.65). It is no longer untested. The **dispute** branch still is — no job has ever reached `disputed`.
 
 ## Postgres
 - **Never use bare `to_char()` on a `timestamptz`** — the DB session TimeZone is UTC, so it renders visit times 6-7h ahead of Calgary. Use `public.ff_local_ts(ts)`, the single source of truth for user-facing date/time text. (`to_char()` on a `date` is fine.)
@@ -177,6 +177,83 @@ Full write-up in `PAYMENT-AUDIT-2026-08-18.md`. Every finding came from reading 
 - **The dashboard used to lie twice.** `confirmCompletion` reported EVERY release failure as green "being processed… nothing more for you to do" — flatly wrong for the two failures that actually happen (unpaid balance, which only the client can fix; unfinished payout setup, which `reconcile-payouts` retries forever without succeeding). Now three branches keyed on the 409 reason dug off `error.context`. Separately the job read's `error` was thrown away, so a failed read looked identical to "no job yet" and **the entire payment surface vanished silently** — now `jobLoadFailed` keeps the last-known job on screen behind a banner.
 - **`release-payment`'s admin alert had no identity** — `reconcile-payouts` runs every 15 min, so a single broken payout sent ~96 identical, unidentifiable emails a day. It now names the job/stage/pool and the likely cause.
 - **Still open:** `create-payment-intent` doesn't store its session id, so a client who abandons checkout and clicks "Start a new payment" leaves the old session live and could pay both. The pay button is deliberately NOT disabled during `processing` (that would strand them for 2h), and `stripe-webhook` now **captures** a duplicate deposit into `funded_amount` + `extra_charge_intent_ids` and alerts the admin to refund — but preventing it needs a `stripe_session_id` column and an `expire()` call before creating the replacement.
+
+## The first live payout, and why one transfer was never going to work (2026-08-30)
+
+The platform's first real job reached `held`, the client confirmed, and the payout
+failed with **`Insufficient funds in Stripe account`** — then failed again every 15
+minutes for hours while `reconcile-payouts` retried. Nothing was wrong with the
+money. The owner checked the bank and the charges had gone through; **Stripe was
+reporting a platform-balance problem in language that reads like a client payment
+failure**, and the dashboard passed that wording straight to the client.
+
+**Root cause: a transfer draws on the AVAILABLE balance, and card money sits in
+PENDING until it settles** — about 7 days for a new Canadian account's first
+payout. So a correctly-collected, fully-funded job is unpayable for a week unless
+the transfer names the charge it comes from. `source_transaction` does exactly
+that: the transfer draws on a specific charge, inherits its pending status, and
+executes on settlement.
+
+**The trap is that a transfer cannot exceed its `source_transaction` charge, and a
+Freddy job is funded by TWO charges.** Deposit $2.15 + balance $3.00 fund a $4.65
+payout, so no single charge is large enough — **a one-`source_transaction` payout
+is arithmetically impossible on any 40/60 job**, which is every job. `release-payment`
+**v18** therefore splits the payout into legs, one per funding charge, and Stripe
+allows several transfers against one charge so long as they sum to no more than it.
+`jobs.stripe_transfer_ids text[]` records all of them; `stripe_transfer_id` keeps the
+first for backward compatibility.
+
+Four rules the implementation encodes, none of them optional:
+
+- **The ledger is read from Stripe, not from our own columns.** `priorTransfers()`
+  lists `transfers.list({ transfer_group })` and pays only the shortfall. This is
+  what makes a retry safe after a partial success — and it is required, because
+  **Stripe idempotency caches ERRORS as well as successes for 24h**, so replaying a
+  fixed key like `payout_<job>` would have returned the cached "Insufficient funds"
+  forever. Keys are now per-charge.
+- **A failed read is not an empty result.** `priorTransfers()` **rethrows** if the
+  list call fails rather than assuming zero. Assuming zero here means paying the
+  contractor twice.
+- **The no-charge fallback is kept deliberately.** If no funding charge is readable,
+  `planLegs` emits one legless transfer — the old behaviour — so an unreadable
+  intent degrades to "might wait for settlement", never to "cannot pay".
+- **Milestone mode uses `transfer_group = ms_<milestone_id>`**, not the job id, or
+  its ledger read would count the job-level payout as already paid. Prepay keeps the
+  job id.
+
+**None of the four payout guards was weakened.** Guard 3's `!fully_funded` 409 is
+unchanged and still sits ahead of every transfer; guards 1, 2 and 4 were not touched.
+This change is downstream of all of them — it only alters *how* an already-authorised
+payout reaches Stripe.
+
+**Alert throttling.** A single broken payout emailed the owner ~96 times a day
+because `reconcile-payouts` retries every 15 minutes. `alert_throttle_log` +
+`alert_should_send(key, cooldown_mins default 360)` collapse that to one email per
+6 hours per distinct failure, with a running count in the body. The throttle key is
+`release-payment|<what>|<why>` with hex ids masked, so two *different* failures still
+both get through. **`alert_should_send` fails OPEN** — any error sends the email,
+because a throttle that silences an alert on its own bug is worse than a duplicate.
+(Its first version was wrong: `now()` is frozen for the whole transaction in Postgres,
+so comparing `last_sent_at` to `now()` after updating it in the same statement always
+passed. It reads the prior value from a CTE.)
+
+**Frontend rule this produced: never branch on a server error's wording where the
+job's own state can answer.** `confirmCompletion` matched the substring `"fund"`,
+so `"Insufficient funds in Stripe account"` — a **platform settlement** message the
+client can do nothing about — was reported as "you still owe a balance". `jobBalance()`
+was 0, so there was no button anywhere on the page and the client was told to pay
+something they had already paid, with no way to. It now branches on
+`jobFullyFunded(activeJob)` first, and the payout branch no longer matches the bare
+tokens `payout`/`transfer` (which would have caught our own "Could not read existing
+Stripe transfers…"). The third branch says plainly that the payment is complete,
+nothing is owed, and the transfer is just slow.
+
+**And the message now survives.** It was a toast that vanished in six seconds, on a
+surface that unmounts the moment confirming flips the job to `completed` — which is
+why the owner reported "no way to input new information to actually pay on the
+website". `releaseNote` persists it as a **Needs-your-attention row pushed ahead of
+every other money row**, since a release that did not complete is the only state in
+which money has been taken and reached nobody.
 
 ## Disputes / claims
 Client files a formal claim (`ReportProblem` → `open_dispute` RPC: reason, service date, agreed scope, requested remedy, amount, signed declaration + photos) which freezes payment to `disputed` and notifies contractor + all admins. Contractor responds within 3 days (`RespondToClaim` → `respond_to_dispute`). Admin resolves via `resolve-dispute` edge fn (v5 — walks multiple payment intents newest-first) with full/partial refund or release. Photos in the private `problem-photos` bucket; dispute parties can read each other's via RLS. Clients reach the flow from the sidebar **File a claim** action (`FileClaimModal.tsx` → picks a job by `jobCode`).
@@ -816,7 +893,7 @@ no-op.
 
 - **Owner action, cosmetic: remove the four tombstoned edge functions** (`send-reminder`, `send-welcome`, `remind-contractor`, `resend-domains`) in Supabase Dashboard → Edge Functions → Delete. They already send nothing and hold no secrets; the MCP just has no delete tool.
 - **Prepaid-contracting licensing** (contractor licence + bond; whether the platform needs its own) — lawyer + Service Alberta. Blocking-risk item.
-- **One real end-to-end live payment run** — no job has ever reached `held`, so the held→dispute→release path is production-untested.
+- **The dispute branch is still production-untested** — the held→release path ran live on 2026-08-30, but no job has ever reached `disputed`, so `resolve-dispute` has never executed against real money.
 - Balance-owed client reminders in `run_reminders()`; admin escalation for health check 5.
 - Stripe **SetupIntent card-on-file** auto-collection of the balance (agreed phase 2 of the deposit work).
 - `platform_commission_rate()` to match `platform_fee_rate()` — 7% is still hardcoded in `propose_milestones`.

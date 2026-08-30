@@ -173,6 +173,12 @@ export default function ClientDashboard() {
   const [feeRate, setFeeRate] = useState(0.03); // base service-fee rate; loaded from platform_fee_rate() so it matches what Stripe charges
   const [depositRate, setDepositRate] = useState(0.40); // share of the quote taken up front; from platform_deposit_rate()
   const [busyBalance, setBusyBalance] = useState(false); // second charge (the 60% balance) is opening
+  // A release that didn't go through, kept on screen after the toast has gone.
+  // The client's own report of the first real job was that Stripe said the
+  // payment failed and there was "no way to input new information to actually
+  // pay on the website" -- because the only thing that ever said so was a toast
+  // that vanished in six seconds.
+  const [releaseNote, setReleaseNote] = useState<{ kind: "balance" | "payout" | "delayed"; text: string } | null>(null);
   const [waivedForJob, setWaivedForJob] = useState<string|null>(null); // job whose 3% fee a referral waives
   const [loadError, setLoadError] = useState(false);
   const [selectedReqId, setSelectedReqId] = useState<string|null>(null);
@@ -986,17 +992,35 @@ export default function ClientDashboard() {
           // and unfinished payout setup is retried forever by reconcile-payouts
           // without ever succeeding. Telling someone to do nothing in either case
           // strands the money.
+          // Branch on the JOB'S OWN funding state, never on substring-matching an
+          // arbitrary server error. "Insufficient funds in Stripe account" is a
+          // PLATFORM settlement message the client can do nothing about, and it
+          // contains the word "fund" -- so the old test told a client who had paid
+          // in full to go and pay a balance, while jobBalance() was 0 so there was
+          // no button anywhere on the page. That is exactly what was reported on
+          // the first real job.
           const r = reason.toLowerCase();
-          if (r.includes("fund") || r.includes("balance")) {
-            // "err" not "ok": this is the only branch the client can act on, and
-            // notify() gives an err toast 6s instead of 3s to read it in.
-            notify("Job confirmed — but the payment can't be released until the remaining balance is paid. Use the payment button on this job to finish it.");
-          } else if (r.includes("payout") || r.includes("connect") || r.includes("onboard") || r.includes("transfer")) {
-            notify("Job confirmed. Your contractor hasn't finished their payout setup yet, so the money stays held until they do — we've let them know. Nothing is lost and nothing more is owed by you.");
+          if (!jobFullyFunded(activeJob)) {
+            // The one branch the client can act on. notify() gives an err toast 6s
+            // instead of 3s, and the note below keeps it on screen afterwards.
+            const t = "The remaining $" + jobBalance(activeJob).toFixed(2) + " on this job still needs to be paid before the payment can be released. Nothing is lost — pay it below and it completes.";
+            setReleaseNote({ kind: "balance", text: t });
+            notify("Job confirmed — but " + t.charAt(0).toLowerCase() + t.slice(1));
+            focusAnchor("ffc-confirm");
+          } else if (r.includes("payout setup") || r.includes("connect") || r.includes("onboard")) {
+            const t = "Your contractor hasn't finished their payout setup yet, so your payment stays held until they do — we've let them know. Nothing is lost and nothing more is owed by you.";
+            setReleaseNote({ kind: "payout", text: t });
+            notify("Job confirmed. " + t);
           } else {
-            notify("Job confirmed. The payment is being processed and will complete automatically — nothing more for you to do.", "ok");
+            // Paid in full, nothing owed, release didn't land. Do NOT ask the
+            // client for money or for an action -- there isn't one. Say plainly
+            // that their side is finished and that we are watching it.
+            const t = "Your payment is complete and nothing more is owed by you. Sending it on to your contractor is taking a little longer than usual — that happens automatically, and we're watching it.";
+            setReleaseNote({ kind: "delayed", text: t });
+            notify("Job confirmed. " + t, "ok");
           }
         } else {
+          setReleaseNote(null);
           setActiveJob((j: any) => j ? { ...j, payment_status: "released" } : j);
         }
       } catch {
@@ -1390,6 +1414,15 @@ export default function ClientDashboard() {
             attn.push(contractStatus === "sent"
               ? { key: "contract", text: "Your pro sent the service agreement — sign it so you can pay and lock in your visit.", cta: "Review & sign", onClick: focusContract, ownsScroll: true }
               : { key: "contract", text: "Waiting on your pro to send the service agreement. You'll be able to pay and book once it's signed by both of you.", cta: "See job", onClick: focusContract, ownsScroll: true });
+          }
+          // A release that didn't complete outranks everything: it is the only
+          // state in which money has been taken and not yet reached anybody. It
+          // sits here rather than in the job card because confirming flips the
+          // job to 'completed', which unmounts the surface the toast came from.
+          if (releaseNote) {
+            attn.push(releaseNote.kind === "balance"
+              ? { key: "release", text: releaseNote.text, cta: "Pay now", onClick: () => focusAnchor("ffc-confirm"), ownsScroll: true }
+              : { key: "release", text: releaseNote.text, cta: "See job", onClick: () => focusAnchor("ffc-confirm"), ownsScroll: true });
           }
           // Work is finished and only the deposit is held: the balance is now the
           // thing standing between the pro and their money, so it outranks
