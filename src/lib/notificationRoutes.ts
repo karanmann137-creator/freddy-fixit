@@ -96,6 +96,10 @@ const CLIENT_TAB: Record<string, string> = {
   reschedule_accepted: "requests",
   on_my_way:           "requests",
   completion_pending:  "requests",
+  // The work is done and the 60% balance is still owed. The Pay button lives on
+  // the job card, which lives under Requests — the same place completion_pending
+  // lands, and deliberately not History: the job is not finished until it's paid.
+  balance_owed:        "requests",
   price_change:        "requests",
   walkthrough_proposed: "requests",
   walkthrough_done:    "requests",
