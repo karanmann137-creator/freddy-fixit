@@ -2,8 +2,6 @@ import { useState, useEffect } from "react";
 import { Ic, type IconName } from "@/components/Ic";
 
 export type SidebarItem = { key: string; label: string; icon: IconName; badge?: number };
-// Footer actions (Contact, Settings, Log out, …) — plain buttons, not tabs.
-export type SidebarAction = { key: string; label: string; icon: IconName; onClick: () => void; danger?: boolean };
 
 const COLLAPSE_KEY = "ff_sidebar_collapsed";
 
@@ -12,16 +10,21 @@ const COLLAPSE_KEY = "ff_sidebar_collapsed";
 // left accent) that can be collapsed to a slim icon rail via a toggle at the
 // bottom (remembered in localStorage). Narrow screens: collapses to a slim icon
 // rail; tapping the ☰ menu button expands a labelled drawer that closes on
-// selection. A footer holds account actions (notifications, settings, log out).
+// selection.
+//
+// This is NAVIGATION ONLY, deliberately. It used to carry a footer of account
+// actions plus the notification bell, and on a narrow screen the rail and the
+// drawer render SIMULTANEOUSLY — so the bell mounted twice, opening two
+// `supabase.channel("notif:"+userId)` subscriptions and two polls, with two
+// independent `open` states. Account actions now live once, in the TopNav gear.
+// Don't reintroduce a footer here.
 export default function DashboardSidebar({
-  items, active, onSelect, title, actions, bell,
+  items, active, onSelect, title,
 }: {
   items: SidebarItem[];
   active: string;
   onSelect: (key: string) => void;
   title?: string;
-  actions?: SidebarAction[];
-  bell?: React.ReactNode;
 }) {
   const [narrow, setNarrow] = useState<boolean>(typeof window !== "undefined" ? window.innerWidth < 780 : false);
   const [expanded, setExpanded] = useState(false);
@@ -101,40 +104,9 @@ export default function DashboardSidebar({
     );
   };
 
-  const actionBtn = (a: SidebarAction, labels: boolean) => (
-    <button
-      key={a.key}
-      title={a.label}
-      onClick={() => { a.onClick(); if (narrow) setExpanded(false); }}
-      style={{
-        ...rowBase(labels),
-        background:"transparent",
-        color: a.danger ? "#ea6b14" : "rgba(var(--ff-muted), .8)",
-        fontWeight: 500,
-      }}
-      onMouseEnter={e => { e.currentTarget.style.background = a.danger ? "rgba(234,107,20,.1)" : "rgba(var(--ff-fg), .05)"; showTip(e, a.label, labels); }}
-      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; hideTip(); }}
-    >
-      <Ic name={a.icon} size={18} color={a.danger ? "#ea6b14" : "currentColor"} />
-      {labels && <span style={{ whiteSpace:"nowrap" as const, flex:1 }}>{a.label}</span>}
-    </button>
-  );
-
   const renderFooter = (labels: boolean) => {
-    const hasFooter = !!bell || !!(actions && actions.length);
     return (
       <div style={{ marginTop:"auto", display:"flex", flexDirection:"column" as const, gap:".25rem", paddingTop:".5rem" }}>
-        {hasFooter && (
-          <div style={{ display:"flex", flexDirection:"column" as const, gap:".25rem", borderTop:"1px solid rgba(var(--ff-fg), .08)", paddingTop:".5rem" }}>
-            {bell && (
-              <div style={{ display:"flex", alignItems:"center", gap:".7rem", padding: labels ? ".4rem .8rem" : ".4rem 0", justifyContent: labels ? "flex-start" : "center" }}>
-                {bell}
-                {labels && <span style={{ fontSize:".9rem", fontWeight:500, color:"rgba(var(--ff-muted), .8)" }}>Notifications</span>}
-              </div>
-            )}
-            {actions?.map(a => actionBtn(a, labels))}
-          </div>
-        )}
         {/* Desktop-only collapse / expand toggle */}
         {!narrow && (
           <button

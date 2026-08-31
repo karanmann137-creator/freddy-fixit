@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { clearMyProfile } from "@/lib/myProfile";
 import { compressImage } from "@/lib/imageCompress";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
+import JobDescription from "@/components/JobDescription";
 import DeleteAccount from "@/components/DeleteAccount";
 import ProfileBar from "@/components/ProfileBar";
 import ScheduleField from "@/components/ScheduleField";
@@ -21,8 +22,7 @@ import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 import ContractorProfileCompletion, { GAP_ANCHORS } from "@/components/ContractorProfileCompletion";
 import ProfileCompleteCelebration from "@/components/ProfileCompleteCelebration";
-import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/components/DashboardSidebar";
-import NotificationBell from "@/components/NotificationBell";
+import DashboardSidebar, { type SidebarItem } from "@/components/DashboardSidebar";
 import RequestHelpModal from "@/components/RequestHelpModal";
 import { jobCode } from "@/lib/jobCode";
 import JobsCalendar from "@/components/JobsCalendar";
@@ -465,9 +465,20 @@ export default function ContractorDashboard() {
     });
   }, [contractor?.id]);
 
-  const handleSignOut = async () => { await supabase.auth.signOut(); setLocation("/"); };
   const [helpOpen, setHelpOpen] = useState(false);
   const [bugOpen, setBugOpen] = useState(false);
+  // Account actions moved to the TopNav gear, which can't reach this page's
+  // state — it dispatches, we listen (same pattern as `ff:open-settings`).
+  useEffect(() => {
+    const help = () => setHelpOpen(true);
+    const bug = () => setBugOpen(true);
+    window.addEventListener("ff:request-help", help);
+    window.addEventListener("ff:report-bug", bug);
+    return () => {
+      window.removeEventListener("ff:request-help", help);
+      window.removeEventListener("ff:report-bug", bug);
+    };
+  }, []);
   // Walkthrough-first flow: free site visit before the priced estimate.
   const [wtForm, setWtForm] = useState({ when:"", note:"" });
   const [wtOpen, setWtOpen] = useState(false);
@@ -1049,13 +1060,6 @@ export default function ContractorDashboard() {
           active={activeTab}
           onSelect={(k) => setActiveTab(k as any)}
           title="Dashboard"
-          bell={profile?.id ? <NotificationBell userId={profile.id} dashboardPath="/contractor-dashboard" /> : undefined}
-          actions={[
-            { key: "help",     label: "Request help", icon: "message-square", onClick: () => setHelpOpen(true) },
-            { key: "bug",      label: "Report a bug", icon: "alert-triangle", onClick: () => setBugOpen(true) },
-            { key: "settings", label: "Settings",   icon: "settings", onClick: () => window.dispatchEvent(new Event("ff:open-settings")) },
-            { key: "logout",   label: "Log out",    icon: "door",     onClick: handleSignOut, danger: true },
-          ] as SidebarAction[]}
         />
         <div style={{ flex:1, minWidth:0 }}>
 
@@ -1844,7 +1848,13 @@ export default function ContractorDashboard() {
                   );
                 })()}
 
-                <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .65)", marginBottom:"1rem", lineHeight:1.5 }}>{r.job_description}</div>
+                {/* Was a raw <div>, which collapsed the blank lines
+                    `composedDescription()` puts between the client's sentence,
+                    the answer summary and the "Details:" list — so all three ran
+                    together as one unpunctuated wall. A long one also buried the
+                    Bids block below the fold on a phone; it now clamps to 4
+                    lines with a measured Read more. */}
+                <JobDescription text={r.job_description} />
                 <RequestPhotoQuote requestId={r.id} photoPath={r.photo_path} estimatedQuote={r.estimated_quote} quoteNotes={r.quote_notes} />
                 <div style={{ margin:".75rem 0", padding:".75rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:".5rem" }}>

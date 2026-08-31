@@ -167,8 +167,12 @@ export default function TopNav() {
       <div style={right}>
         {/* Public links sit outside the menu, so they're one tap rather than two
             (hidden during onboarding, where the whole point is to keep people
-            moving forward). Blog collapses under 460px — see NAV_LINKS. */}
-        {!onOnboarding && NAV_LINKS.map(l => (
+            moving forward). Blog collapses under 460px — see NAV_LINKS.
+            Also hidden on the three dashboards: About and Blog are marketing
+            surfaces a logged-in user has no reason to be pushed toward mid-job,
+            and they crowd out the account controls on mobile. They stay on every
+            public route, which is where their SEO value actually lives. */}
+        {!onOnboarding && !onSidebarDash && NAV_LINKS.map(l => (
           <button
             key={l.to}
             onClick={() => setLocation(l.to)}
@@ -185,8 +189,56 @@ export default function TopNav() {
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </button>
         ) : authed && onSidebarDash ? (
-          // Dashboard: account actions live in the left sidebar — no top-right Menu.
-          null
+          /* Dashboard: ONE home for account actions, and it is here.
+             They used to live in the left sidebar's footer, which meant the
+             notification bell mounted twice on a phone (rail + drawer render
+             simultaneously) and the client had no Settings entry at all. The
+             top bar is fixed and visible on every dashboard at every width,
+             where the sidebar footer is below a scrolling column. The three
+             dashboards no longer pass `bell` or `actions` — if you add an
+             account action, add it here, not there, or it comes back twice. */
+          <>
+            {/* The bell is top-level, not a row inside the gear panel. Its
+                badge is the whole point of it, and a badge you can only see
+                after opening a menu tells you nothing. */}
+            {uid && <NotificationBell userId={uid} dashboardPath={dashboardPath} />}
+            <div ref={menuRef} style={{ position: "relative" }}>
+            <button
+              aria-label="Account and settings"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen(o => !o)}
+              className="ff-nav-btn ff-nav-btn-ghost"
+              style={{ ...btn, ...ghostBtn, padding:".5rem", display:"inline-flex", alignItems:"center", justifyContent:"center" }}
+            >
+              <Ic name="settings" size={17} />
+            </button>
+            {menuOpen && (
+              <div style={menuPanel}>
+                <button onClick={() => { setMenuOpen(false); setSettingsOpen(true); }} className="ff-menu-item" style={menuItem}>
+                  Settings
+                </button>
+                {role === "client" && (
+                  <button onClick={() => { setMenuOpen(false); window.dispatchEvent(new Event("ff:file-claim")); }} className="ff-menu-item" style={menuItem}>
+                    File a claim
+                  </button>
+                )}
+                {role === "contractor" && (
+                  <button onClick={() => { setMenuOpen(false); window.dispatchEvent(new Event("ff:request-help")); }} className="ff-menu-item" style={menuItem}>
+                    Request help
+                  </button>
+                )}
+                {role !== "admin" && (
+                  <button onClick={() => { setMenuOpen(false); window.dispatchEvent(new Event("ff:report-bug")); }} className="ff-menu-item" style={menuItem}>
+                    Report a bug
+                  </button>
+                )}
+                <button onClick={logOut} className="ff-menu-item" style={{ ...menuItem, color: "#ea6b14" }}>
+                  Log out
+                </button>
+              </div>
+            )}
+            </div>
+          </>
         ) : authed ? (
           // Logged in: collapse account actions into a menu button.
           <div ref={menuRef} style={{ position: "relative" }}>

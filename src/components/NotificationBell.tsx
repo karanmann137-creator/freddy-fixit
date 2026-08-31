@@ -29,35 +29,54 @@ export default function NotificationBell({ userId, dashboardPath }: { userId: st
   // Everywhere else it popped up disconnected from the button that opened
   // it and landed on top of whatever else was near that screen corner.
   // Computed fresh from the button's own position each time it opens.
-  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number; maxHeight: number }>({
-    top: 64, left: 10, maxHeight: 420,
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number; maxHeight: number; width: number }>({
+    top: 64, left: 10, maxHeight: 420, width: 320,
   });
 
   const positionDropdown = () => {
     const el = wrapRef.current;
     if (!el) return;
-    const margin = 10, gap = 8, panelW = 320;
+    const margin = 10, gap = 8;
+    // Width has to bend to the viewport. A fixed 320 is wider than the content
+    // box on a 320-360px phone once both margins are taken, which is what drove
+    // `left` negative and clipped the panel off the left edge.
+    const panelW = Math.min(320, window.innerWidth - margin * 2);
     const r = el.getBoundingClientRect();
+    // Clamp the RIGHT edge first, then the left. The old order did it the other
+    // way round, so the right-edge clamp could re-introduce the negative `left`
+    // the previous line had just corrected.
     let left = r.right - panelW;
-    if (left < margin) left = margin;
     if (left + panelW + margin > window.innerWidth) left = window.innerWidth - panelW - margin;
+    if (left < margin) left = margin;
     const spaceBelow = window.innerHeight - r.bottom - gap;
     const spaceAbove = r.top - gap;
     // Open upward when there isn't much room below (a sidebar-footer bell
     // sits near the bottom of the viewport) and there's more room above.
     const openUp = spaceBelow < 260 && spaceAbove > spaceBelow;
+    const space = openUp ? spaceAbove : spaceBelow;
+    // No floor above the space actually available: the panel scrolls
+    // internally, so a short panel is correct where a 160px floor simply ran
+    // off the screen.
+    const maxHeight = Math.max(0, Math.min(420, space - margin));
     setPos(openUp
-      ? { bottom: window.innerHeight - r.top + gap, left, maxHeight: Math.max(160, Math.min(420, spaceAbove - margin)) }
-      : { top: r.bottom + gap, left, maxHeight: Math.max(160, Math.min(420, spaceBelow - margin)) });
+      ? { bottom: window.innerHeight - r.top + gap, left, maxHeight, width: panelW }
+      : { top: r.bottom + gap, left, maxHeight, width: panelW });
   };
 
-  // Keep the panel anchored to the button across resizes while it's open
-  // (e.g. rotating a phone, or the sidebar collapsing/expanding).
+  // Keep the panel anchored to the button while it's open. `resize` alone was
+  // not enough: the panel is position:fixed with coordinates frozen at open
+  // time, and the sidebar itself scrolls (aside is overflowY:auto), so any
+  // scroll detached the panel from the bell. Capture phase catches scrolls on
+  // inner containers, which don't bubble.
   useEffect(() => {
     if (!open) return;
-    const onResize = () => positionDropdown();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    const reposition = () => positionDropdown();
+    window.addEventListener("resize", reposition);
+    window.addEventListener("scroll", reposition, true);
+    return () => {
+      window.removeEventListener("resize", reposition);
+      window.removeEventListener("scroll", reposition, true);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -100,11 +119,13 @@ export default function NotificationBell({ userId, dashboardPath }: { userId: st
 
   // Close the dropdown when clicking outside it.
   useEffect(() => {
-    const onDoc = (e: MouseEvent) => {
+    // `pointerdown` rather than `mousedown`: the latter is not guaranteed on
+    // touch, so tapping outside the panel on a phone left it open.
+    const onDoc = (e: Event) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as any)) setOpen(false);
     };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    document.addEventListener("pointerdown", onDoc);
+    return () => document.removeEventListener("pointerdown", onDoc);
   }, []);
 
   const unread = notes.filter(n => !n.read_at).length;
@@ -186,20 +207,28 @@ export default function NotificationBell({ userId, dashboardPath }: { userId: st
       {open && (
         <div style={{
           position: "fixed", top: pos.top, bottom: pos.bottom, left: pos.left,
-          width: "min(320px, calc(100vw - 20px))",
+          // Single source of truth with positionDropdown's clamp, so the
+          // measured left edge and the painted width can't disagree.
+          width: pos.width,
           maxHeight: pos.maxHeight, overflowY: "auto",
           background: "var(--ff-surface)", border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: 14,
-          boxShadow: "0 18px 50px rgba(0,0,0,.5)", zIndex: 200, fontFamily: "'DM Sans', sans-serif",
+          // Above the mobile drawer (900/901). At 200 a panel opened from the
+          // icon rail before the drawer opened was buried underneath it.
+          boxShadow: "0 18px 50px rgba(0,0,0,.5)", zIndex: 950, fontFamily: "'DM Sans', sans-serif",
         }}>
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             padding: ".8rem 1rem", borderBottom: "1px solid rgba(var(--ff-fg), .08)",
           }}>
             <span style={{ color: "var(--ff-text)", fontWeight: 600, fontSize: ".92rem" }}>Notifications</span>
+            {/* Padded to a real tap target — it was ~15px tall, which is under
+                half the 44px minimum and easy to miss on a phone. The negative
+                margin keeps the header's visual height unchanged. */}
             {unread > 0 && (
               <button onClick={markAllRead} style={{
                 background: "none", border: "none", color: "#ea6b14", cursor: "pointer",
                 fontSize: ".78rem", fontWeight: 600, fontFamily: "'DM Sans', sans-serif",
+                padding: ".55rem .6rem", margin: "-.55rem -.6rem", minHeight: 44,
               }}>Mark all read</button>
             )}
           </div>

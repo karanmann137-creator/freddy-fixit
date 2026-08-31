@@ -39,11 +39,32 @@ export default function AddressAutocomplete({ value, onChange, placeholder, styl
     clearTimeout(debounce.current);
     debounce.current = setTimeout(async () => {
       try {
-        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${CAL_LAT}&lon=${CAL_LON}&limit=6&lang=en`;
+        // `lat`/`lon` are only a proximity RANKING hint — Photon still returns
+        // world-wide matches, which then filled all six slots whenever local
+        // matches were few. `bbox` restricts rather than ranks, so it does the
+        // real work; the client-side filter below is the guarantee, since the
+        // public Photon instance isn't contractually bound to honour bbox.
+        // Box covers Calgary plus every town we actually serve — Airdrie,
+        // Cochrane, Chestermere, Okotoks, Strathmore.
+        const BBOX = "-115.2,50.35,-112.9,51.75";
+        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${CAL_LAT}&lon=${CAL_LON}&bbox=${BBOX}&limit=10&lang=en`;
         const res = await fetch(url);
         if (!res.ok) return;
         const data = await res.json();
+        // Test the STRUCTURED fields, not a regex over the joined display
+        // string. The old `/alberta|AB/i` was unanchored, so any address
+        // containing the letters "ab" (Abbotsford, Abbey Lane) scored as local.
+        const inServiceArea = (p: any) => {
+          const country = String(p.countrycode || p.country || "");
+          if (country && !/^(ca|canada)$/i.test(country)) return false;
+          const state = String(p.state || "").trim();
+          return /^alberta$/i.test(state) || /^AB$/.test(state);
+        };
         const opts: string[] = (data.features || [])
+          // Filter, not sort. Showing a Toronto or Texas address to someone
+          // booking a Calgary trade is never useful, and picking one silently
+          // breaks the zone matcher that reads this value.
+          .filter((f: any) => inServiceArea(f.properties || {}))
           .map((f: any) => {
             const p = f.properties || {};
             const line1 = [p.housenumber, p.street || p.name].filter(Boolean).join(" ");
@@ -51,11 +72,8 @@ export default function AddressAutocomplete({ value, onChange, placeholder, styl
             return parts.join(", ");
           })
           .filter((x: string) => x.length > 0)
-          // Prefer Alberta / Calgary-area results but keep others as fallback.
-          .sort((a: string, b: string) => {
-            const score = (s: string) => (/calgary/i.test(s) ? 0 : /alberta|AB/i.test(s) ? 1 : 2);
-            return score(a) - score(b);
-          });
+          // Calgary proper first within what's left.
+          .sort((a: string, b: string) => Number(!/calgary/i.test(a)) - Number(!/calgary/i.test(b)));
         const uniq = Array.from(new Set(opts)).slice(0, 6);
         setSuggestions(uniq);
         setOpen(uniq.length > 0);

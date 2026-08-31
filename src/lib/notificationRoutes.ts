@@ -106,6 +106,8 @@ const CLIENT_TAB: Record<string, string> = {
   // The agreement lives on the job card, and the card lives under Requests.
   contract_signature:  "requests",
   visit_reminder:      "requests",
+  // Tracked time renders read-only on the job card, which is under Requests.
+  timer_started:       "requests",
   chat_time_proposed:  "requests",
   chat_time_agreed:    "requests",
   visit_slot_released: "requests",

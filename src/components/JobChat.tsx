@@ -46,9 +46,16 @@ function jobEvents(job: any, role: Role): Evt[] {
   if (!job) return [];
   const pro = role === "contractor";
   const out: Evt[] = [];
-  const add = (at: any, text: string, icon: IconName) => { if (at) out.push({ at: String(at), text, icon }); };
+  // `text` may be a thunk so a row's own fields are only touched when the
+  // timestamp that gates the event is actually present. Passing a built string
+  // evaluates it unconditionally, which is how `formatWhen(null)` used to throw
+  // here and blank the entire dashboard.
+  const add = (at: any, text: string | (() => string), icon: IconName) => {
+    if (!at) return;
+    out.push({ at: String(at), text: typeof text === "function" ? text() : text, icon });
+  };
 
-  add(job.walkthrough_approved_at, "Walkthrough booked for " + formatWhen(job.walkthrough_at), "calendar");
+  add(job.walkthrough_approved_at, () => "Walkthrough booked for " + formatWhen(job.walkthrough_at), "calendar");
   add(job.walkthrough_done_at, "Walkthrough done", "check-circle");
   add(job.schedule_proposed_at, pro ? "You sent an estimate" : "Estimate received", "dollar");
   add(job.client_approved_at, pro ? "Client approved the estimate" : "You approved the estimate", "check-circle");

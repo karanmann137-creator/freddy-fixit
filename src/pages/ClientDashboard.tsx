@@ -7,6 +7,7 @@ import { clearMyProfile } from "@/lib/myProfile";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
 import { requestReferralShare } from "@/lib/referralPrompt";
 import RequestPhotoQuote, { PHOTO_ANCHOR } from "@/components/RequestPhotoQuote";
+import JobDescription from "@/components/JobDescription";
 import ProfileBar from "@/components/ProfileBar";
 import JobChat from "@/components/JobChat";
 import ChatTimePrompt from "@/components/ChatTimePrompt";
@@ -33,8 +34,7 @@ import PriceGrade from "@/components/PriceGrade";
 import VerifiedMarks, { type VerifyFlags } from "@/components/VerifiedMarks";
 import BidChat from "@/components/BidChat";
 import type { Grade } from "@/lib/servicePricing";
-import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/components/DashboardSidebar";
-import NotificationBell from "@/components/NotificationBell";
+import DashboardSidebar, { type SidebarItem } from "@/components/DashboardSidebar";
 import { SettingsPanel } from "@/components/SettingsModal";
 import MessagesInbox, { partyName } from "@/components/MessagesInbox";
 import { useConversations, chatReadOnly, chatClosedReason, type Conversation } from "@/lib/chatUnread";
@@ -241,7 +241,7 @@ export default function ClientDashboard() {
     if (c.unread > 0) void markConvRead(c.job_id);
   };
 
-  // "File a claim" (sidebar footer): load every job tied to this client's
+  // "File a claim" (top-nav gear menu): load every job tied to this client's
   // requests so they can pick which one the claim is about, then hand off to
   // the existing ReportProblem flow inside FileClaimModal.
   const openClaim = async () => {
@@ -261,6 +261,23 @@ export default function ClientDashboard() {
       notify("Couldn't load your jobs just now — try again in a moment.");
     }
   };
+
+  // Account actions now live in the TopNav gear, which cannot reach into this
+  // page's state — so it dispatches and we listen, the same pattern as
+  // `ff:open-settings`. Re-registered whenever `requests` changes because
+  // openClaim closes over it; a stale closure here would offer an empty job
+  // picker to a client who has jobs.
+  useEffect(() => {
+    const claim = () => { void openClaim(); };
+    const bug = () => setBugOpen(true);
+    window.addEventListener("ff:file-claim", claim);
+    window.addEventListener("ff:report-bug", bug);
+    return () => {
+      window.removeEventListener("ff:file-claim", claim);
+      window.removeEventListener("ff:report-bug", bug);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requests]);
 
   const askConfirm = (o: Omit<ConfirmState, "resolve">) =>
     new Promise<boolean>(resolve => setConfirmState({ ...o, resolve }));
@@ -541,7 +558,6 @@ export default function ClientDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeReq?.id]);
 
-  const handleSignOut = async () => { await supabase.auth.signOut(); setLocation("/"); };
 
   const toggleFav = async (contractorId: string) => {
     // optimistic flip
@@ -1300,12 +1316,6 @@ export default function ClientDashboard() {
           active={activeTab}
           onSelect={(k) => setActiveTab(k as ClientTab)}
           title="Dashboard"
-          bell={profile?.id ? <NotificationBell userId={profile.id} dashboardPath="/client-dashboard" /> : undefined}
-          actions={[
-            { key: "claim",   label: "File a claim", icon: "alert-triangle", onClick: openClaim },
-            { key: "bug",     label: "Report a bug", icon: "message-square", onClick: () => setBugOpen(true) },
-            { key: "logout",  label: "Log out",    icon: "door", onClick: handleSignOut, danger: true },
-          ] as SidebarAction[]}
         />
         <div style={{ flex:1, minWidth:0 }}>
 
@@ -1888,7 +1898,9 @@ export default function ClientDashboard() {
                     </div>
                     <div style={{ background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .06)", borderRadius:"8px", padding:"1rem", marginBottom:"1rem" }}>
                       <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".4rem" }}>Job Description</div>
-                      <div style={{ fontSize:".88rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.6 }}>{activeReq.job_description}</div>
+                      {/* Same tidy + clamp the contractor sees on the feed, so
+                          the client is reading exactly what the pros price off. */}
+                      <JobDescription text={activeReq.job_description} size=".88rem" color="rgba(var(--ff-muted), .75)" lines={5} />
                     </div>
                     <RequestPhotoQuote requestId={activeReq.id} photoPath={activeReq.photo_path} estimatedQuote={activeReq.estimated_quote} quoteNotes={activeReq.quote_notes} canUpload highlight={pulseAnchor === PHOTO_ANCHOR} />
                     </>)}
@@ -2158,9 +2170,27 @@ export default function ClientDashboard() {
                                 )}
                                 <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                                   <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq || !!activeJob.price_change_pending || (activeJob.payment_status === "held" && !jobFullyFunded(activeJob))} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm & release payment"}</button>
-                                  <button style={{ ...s.btn, color:"var(--ff-warn)", borderColor:"rgba(251,191,36,.35)", background:"rgba(251,191,36,.08)" }} disabled={busyReq} onClick={() => setReportOpen(true)}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />File a claim</button>
                                   <button style={s.btn} onClick={() => downloadReceipt(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Download receipt</button>
                                 </div>
+                                {/* Demoted from a third equal-weight button to a
+                                    quiet link, NOT removed. This is the client's
+                                    remedy and this is the one screen where they
+                                    are deciding whether to use it — the gear menu
+                                    carries the same action for every other moment,
+                                    but sending someone hunting for a menu at the
+                                    point of dispute is not a simplification. */}
+                                <button
+                                  onClick={() => setReportOpen(true)}
+                                  disabled={busyReq}
+                                  style={{
+                                    background:"none", border:"none", padding:".55rem 0", marginTop:".15rem",
+                                    minHeight:44, cursor:"pointer", fontFamily:"'DM Sans',sans-serif",
+                                    fontSize:".8rem", color:"var(--ff-warn)", textDecoration:"underline",
+                                    display:"inline-flex", alignItems:"center", gap:".3rem",
+                                  }}
+                                >
+                                  <Ic name="alert-triangle" size={13} />Something wrong? File a claim
+                                </button>
                                 {activeJob.payment_status === "held" && !jobFullyFunded(activeJob) && (
                                   <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .65)", marginTop:".5rem", lineHeight:1.5 }}>Pay the balance above to unlock confirming. If something isn't right with the work, file a claim instead — that freezes everything while we look into it.</div>
                                 )}

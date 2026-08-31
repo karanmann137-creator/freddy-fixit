@@ -8,8 +8,7 @@ import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import ProfileBar from "@/components/ProfileBar";
 import MilestonePanel from "@/components/MilestonePanel";
 import ContractPanel from "@/components/ContractPanel";
-import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/components/DashboardSidebar";
-import NotificationBell from "@/components/NotificationBell";
+import DashboardSidebar, { type SidebarItem } from "@/components/DashboardSidebar";
 import AdminMessageModal, { type MsgRecipient } from "@/components/AdminMessageModal";
 import JobChat from "@/components/JobChat";
 import { jobCode } from "@/lib/jobCode";
@@ -104,7 +103,6 @@ export default function AdminDashboard() {
   const [counts, setCounts] = useState<{ requests: number; jobs: number }>({ requests: 0, jobs: 0 });
   const [me, setMe] = useState<{ id: string; first_name?: string } | null>(null);
 
-  const handleSignOut = async () => { await supabase.auth.signOut(); setLocation("/"); };
 
   // ── Notification deep links ─────────────────────────────────────────────────
   // Tapping a 🔔 lands here two ways: from another page it navigates with ?tab=,
@@ -669,10 +667,6 @@ export default function AdminDashboard() {
           active={tab}
           onSelect={(k) => setTab(k as any)}
           title="Admin"
-          bell={me?.id ? <NotificationBell userId={me.id} dashboardPath="/admin-dashboard" /> : undefined}
-          actions={[
-            { key: "logout", label: "Log out", icon: "door", onClick: handleSignOut, danger: true },
-          ] as SidebarAction[]}
         />
         <div style={{ flex:1, minWidth:0 }}>
 

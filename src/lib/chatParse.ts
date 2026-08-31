@@ -201,10 +201,21 @@ export function detectDateTime(raw: string, now: Date = new Date()): ParsedTime 
   return { at, label: formatWhen(at) };
 }
 
-/** "Thursday, Aug 6 at 2:00 PM" — the same shape used across the dashboards. */
-export function formatWhen(d: Date | string): string {
+/**
+ * "Thursday, Aug 6 at 2:00 PM" — the same shape used across the dashboards.
+ *
+ * Accepts null/undefined on purpose. Callers build strings eagerly — e.g.
+ * `add(job.walkthrough_approved_at, "Walkthrough booked for " + formatWhen(job.walkthrough_at))`
+ * evaluates the argument even when the row has no walkthrough — so a throw here
+ * takes down the whole render. There is no error boundary above chat, so that
+ * surfaced as a blank navy screen on both dashboards for every job without a
+ * walkthrough, which is nearly all of them. A vague label is always better than
+ * an unmounted tree.
+ */
+export function formatWhen(d: Date | string | null | undefined): string {
+  if (d === null || d === undefined || d === "") return "the agreed time";
   const at = typeof d === "string" ? new Date(d) : d;
-  if (isNaN(at.getTime())) return "the agreed time";
+  if (!(at instanceof Date) || isNaN(at.getTime())) return "the agreed time";
   return at.toLocaleString(undefined, {
     weekday: "long", month: "short", day: "numeric",
     hour: "numeric", minute: "2-digit",

@@ -191,16 +191,39 @@ export default function JobPhotos({ job, role, onSaved, onError }: {
     );
   };
 
+  // The panel SHOUTS while a photo is outstanding and goes quiet once both are
+  // in. This is the payment gate — `mark_job_complete` raises without them —
+  // and it used to look like every other neutral card on a long job, so it read
+  // as one more optional extra rather than the thing standing between the pro
+  // and their money. Styling the container by state keeps that emphasis in ONE
+  // place, so both mount sites (in_progress and pending_confirmation) get it.
+  const missing = readOnly ? [] : photosMissing(job);
+  const urgent = missing.length > 0;
+
   return (
-    <div style={{ padding: ".85rem .95rem", borderRadius: "12px", background: "rgba(var(--ff-fg), .03)", border: "1px solid rgba(var(--ff-fg), .08)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: ".4rem", marginBottom: ".2rem" }}>
-        <Ic name="camera" size={15} color="#ea6b14" style={{ flexShrink: 0 }} />
-        <div style={{ fontSize: ".82rem", fontWeight: 700, color: "var(--ff-text)" }}>Before &amp; after photos</div>
+    <div style={{
+      padding: urgent ? "1rem 1.05rem" : ".85rem .95rem",
+      borderRadius: "12px",
+      background: urgent ? "rgba(234,107,20,.09)" : "rgba(var(--ff-fg), .03)",
+      border: urgent ? "2px solid rgba(234,107,20,.55)" : "1px solid rgba(var(--ff-fg), .08)",
+      boxShadow: urgent ? "0 6px 20px rgba(234,107,20,.13)" : "none",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: ".4rem", marginBottom: ".2rem", flexWrap: "wrap" as const }}>
+        <Ic name="camera" size={urgent ? 17 : 15} color="#ea6b14" style={{ flexShrink: 0 }} />
+        <div style={{ fontSize: urgent ? ".92rem" : ".82rem", fontWeight: 700, color: "var(--ff-text)" }}>Before &amp; after photos</div>
+        {urgent && (
+          <span style={{ fontSize: ".62rem", fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: ".07em", padding: ".16rem .4rem", borderRadius: "5px", background: "#ea6b14", color: "#fff" }}>
+            Required to get paid
+          </span>
+        )}
+        {!readOnly && !urgent && <Ic name="check-circle" size={14} color="#22c55e" style={{ flexShrink: 0 }} />}
       </div>
-      <div style={{ fontSize: ".76rem", color: "rgba(var(--ff-muted), .65)", lineHeight: 1.45, marginBottom: ".7rem" }}>
+      <div style={{ fontSize: urgent ? ".8rem" : ".76rem", color: urgent ? "var(--ff-text)" : "rgba(var(--ff-muted), .65)", lineHeight: 1.45, marginBottom: ".7rem" }}>
         {readOnly
           ? "Your contractor photographs the work area before starting and the finished job at the end, so you can see exactly what changed."
-          : "Take one when you arrive and one when you're done. The finished-work photo is what lets the client confirm and release your payment."}
+          : urgent
+            ? "You still need " + missing.join(" and ") + ". Take one when you arrive and one when you're done — the finished-work photo is what lets the client confirm and release your payment."
+            : "Both photos are in. The client can see exactly what changed."}
       </div>
       <div style={{ display: "flex", gap: ".7rem", flexWrap: "wrap" as const }}>
         {slot("before", "Before", "The work area as you found it")}

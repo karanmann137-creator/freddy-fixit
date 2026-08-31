@@ -12,6 +12,9 @@ import Login from "@/pages/Login";
 import UpdatePassword from "@/pages/UpdatePassword";
 import AuthCallback from "@/pages/AuthCallback";
 import TopNav from "@/components/TopNav";
+// Eager on purpose: it wraps <Suspense>, so it must exist before any lazy
+// chunk resolves — and a boundary that arrives late is no boundary at all.
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { DashboardSkeleton, PageSkeleton } from "@/components/Skeleton";
 import ChatWidget from "@/components/ChatWidget";
 import GoogleReviewModal from "@/components/GoogleReviewModal";
@@ -189,6 +192,9 @@ function ProtectedRoute({
 }
 
 export default function App() {
+  // Keyed on the path so navigating away from a broken route clears the error
+  // instead of stranding the user on the fallback panel.
+  const [appLoc] = useLocation();
   return (
     <>
       <RecoveryRedirect />
@@ -201,6 +207,7 @@ export default function App() {
       <CookieConsent />
       <OverhaulNotice />
       <RouteFade>
+      <ErrorBoundary label="this page" resetKey={appLoc}>
       <Suspense fallback={<PageLoader />}>
       <Switch>
       {/* Public */}
@@ -248,6 +255,7 @@ export default function App() {
       </Route>
     </Switch>
     </Suspense>
+    </ErrorBoundary>
     </RouteFade>
     <Footer />
     </>
