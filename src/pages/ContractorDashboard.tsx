@@ -1455,21 +1455,30 @@ export default function ContractorDashboard() {
               </div>
             ) : shown.map(job => (
               <div key={job.id} id={"job-" + job.id} style={{ ...s.jobCard, scrollMarginTop: "5.5rem" }} onClick={() => openJob(job)}>
-                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:".75rem" }}>
-                  <div>
+                {/* The address is the longest thing on this card and it lived in
+                    a flex child with no minWidth:0, so it could not shrink —
+                    it pushed the status and the price column off the right of
+                    a phone. minWidth:0 plus the underlined link's own
+                    overflow handling keeps both columns on screen, and the
+                    status/price column no longer shrinks to nothing. */}
+                <div style={{ display:"flex", gap:".75rem", justifyContent:"space-between", marginBottom:".75rem" }}>
+                  <div style={{ minWidth:0, flex:"1 1 auto" }}>
                     <div style={{ fontSize:"1rem", fontWeight:500, marginBottom:".2rem" }}>{job.request?.service_needed ?? "Job"}</div>
                     <div style={{ fontSize:".72rem", fontFamily:"monospace", color:"#ea6b14", marginBottom:".3rem" }}>{jobCode(job.id)}</div>
                     <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", marginBottom:".2rem" }}><Ic name="user" size={13} style={{ marginRight:4 }} />{job.client?.first_name || "Your client"}</div>
                     {job.request?.location && (
                       <a href={mapsUrl(job.request.location)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                        style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .65)", textDecoration:"underline", textUnderlineOffset:"3px" }}>
+                        style={{ display:"inline-block", maxWidth:"100%", fontSize:".82rem", color:"rgba(var(--ff-muted), .65)", textDecoration:"underline", textUnderlineOffset:"3px" }}>
                         <Ic name="map-pin" size={13} color="#ea6b14" style={{ marginRight:4 }} />{job.request.location}
                       </a>
                     )}
                   </div>
-                  <div style={{ textAlign:"right" }}>
-                    <div style={{ fontSize:".78rem", fontWeight:500, color: STATUS_COLORS[job.status] ?? "#94a3b8" }}>● {job.status.replace("_"," ")}</div>
-                    {job.amount && <div style={{ fontSize:"1rem", fontWeight:500, color:"#22c55e", marginTop:".25rem" }}>${job.amount}</div>}
+                  <div style={{ textAlign:"right" as const, flexShrink:0 }}>
+                    {/* A pill rather than "● scheduled". At a glance on a card
+                        list, a tinted chip is what separates one job's state
+                        from the next; a coloured bullet in body text does not. */}
+                    <span style={{ display:"inline-block", padding:".22rem .55rem", borderRadius:"99px", fontSize:".7rem", fontWeight:700, letterSpacing:".03em", textTransform:"uppercase" as const, whiteSpace:"nowrap" as const, color: STATUS_COLORS[job.status] ?? "#94a3b8", background:"rgba(var(--ff-fg), .07)", border:"1px solid rgba(var(--ff-fg), .12)" }}>{job.status.replace("_"," ")}</span>
+                    {job.amount && <div style={{ fontSize:"1rem", fontWeight:600, color:"#22c55e", marginTop:".35rem" }}>${job.amount}</div>}
                   </div>
                 </div>
                 {activeJobId === job.id && (
@@ -1826,12 +1835,18 @@ export default function ContractorDashboard() {
                     </div>
                   </div>
                 )}
-                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:".5rem" }}>
-                  <div>
+                {/* space-between with no gap, no wrap and no minWidth:0 on the
+                    left child: on a phone the service name and the preferred
+                    schedule fought for one row, and because a flex child can't
+                    shrink below its content the schedule text pushed the whole
+                    header wider than the card. Wrap + minWidth:0 lets the
+                    schedule drop to its own line instead. */}
+                <div style={{ display:"flex", flexWrap:"wrap" as const, gap:".4rem .75rem", justifyContent:"space-between", alignItems:"baseline", marginBottom:".5rem" }}>
+                  <div style={{ minWidth:0, flex:"1 1 auto" }}>
                     <div style={{ fontSize:"1rem", fontWeight:500 }}>{r.service_needed}</div>
                     {rangeText(priceFor(r.service_needed)) && <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .5)", marginTop:"2px" }}>Typical {rangeText(priceFor(r.service_needed))}</div>}
                   </div>
-                  <div style={{ fontSize:".78rem", color:"#ea6b14" }}><Ic name="timer" size={12} style={{ marginRight:4 }} />{r.preferred_schedule}</div>
+                  <div style={{ fontSize:".78rem", color:"#ea6b14", flexShrink:0 }}><Ic name="timer" size={12} style={{ marginRight:4 }} />{r.preferred_schedule}</div>
                 </div>
                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .55)", marginBottom:".6rem" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{r.location}</div>
 
@@ -1983,13 +1998,23 @@ export default function ContractorDashboard() {
                           <input type="number" min="0" placeholder="Ballpark high $" value={bidForm[r.id]?.price_high ?? (r.my_price_high != null ? String(r.my_price_high) : "")} onChange={e => setBid(r.id, { price_high: e.target.value })} style={{ flex:"1 1 130px", minWidth:0, maxWidth:"170px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
                         </>
                       ) : (
-                        <input type="number" min="0" placeholder="Price $" value={bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "")} onChange={e => setBid(r.id, { amount: e.target.value, message: bidForm[r.id]?.message ?? (r.my_message ?? ""), used_base_price:false })} style={{ width:"100px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
+                        // Was a flat width:100px. At the 16px minimum every
+                        // touch field now carries (see main.tsx), "Price $"
+                        // no longer fits in 100px and the caret sat on top of
+                        // the placeholder. Matched to the walkthrough pair.
+                        <input type="number" min="0" placeholder="Price $" value={bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "")} onChange={e => setBid(r.id, { amount: e.target.value, message: bidForm[r.id]?.message ?? (r.my_message ?? ""), used_base_price:false })} style={{ flex:"1 1 130px", minWidth:0, maxWidth:"170px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
                       )}
-                      <input placeholder="Short message (optional)" value={bidForm[r.id]?.message ?? (r.my_message ?? "")} onChange={e => setBid(r.id, { message: e.target.value, amount: bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "") })} style={{ flex:"1 1 150px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
-                      <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyBid === r.id} onClick={() => placeBid(r)}>{busyBid === r.id ? "…" : ((r.my_amount != null || r.my_walkthrough) ? "Update bid" : "Place bid")}</button>
+                      <input placeholder="Short message (optional)" value={bidForm[r.id]?.message ?? (r.my_message ?? "")} onChange={e => setBid(r.id, { message: e.target.value, amount: bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "") })} style={{ ...ffInp, flexBasis:"100%" }} />
                       {!wtOn && <QuoteBreakdown v={bidForm[r.id] ?? {}} on={patch => setBid(r.id, patch)} calloutHint={contractor?.min_callout ?? null} price={priceFor(r.service_needed)} />}
                       <input placeholder="Assumptions (optional, e.g. price assumes parts are accessible)" value={bidForm[r.id]?.assumptions ?? ""} onChange={e => setBid(r.id, { assumptions: e.target.value })} style={{ ...ffInp, flexBasis:"100%" }} />
-                      <button type="button" onClick={() => setBidOpen(pp => ({ ...pp, [r.id]: false }))} style={{ background:"none", border:"none", color:"rgba(var(--ff-muted), .6)", fontFamily:"inherit", fontSize:".78rem", cursor:"pointer", padding:0, flexBasis:"100%", textAlign:"left" as const }}>Cancel</button>
+                      {/* Submit moved BELOW the breakdown and the assumptions
+                          field, and made full-width. It used to sit directly
+                          after the message input, so on a phone — where every
+                          row wraps — the pro reached the orange button before
+                          the two fields underneath it had been seen at all,
+                          and bid without them. One primary action, last. */}
+                      <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", flexBasis:"100%", justifyContent:"center", fontWeight:600 }} disabled={busyBid === r.id} onClick={() => placeBid(r)}>{busyBid === r.id ? "…" : ((r.my_amount != null || r.my_walkthrough) ? "Update bid" : "Place bid")}</button>
+                      <button type="button" onClick={() => setBidOpen(pp => ({ ...pp, [r.id]: false }))} style={{ background:"none", border:"none", color:"rgba(var(--ff-muted), .6)", fontFamily:"inherit", fontSize:".78rem", cursor:"pointer", padding:0, flexBasis:"100%", textAlign:"center" as const }}>Cancel</button>
                     </div>
                     );
                   })()}

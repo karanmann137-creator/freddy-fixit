@@ -1566,10 +1566,15 @@ export default function ClientDashboard() {
             <div style={{ display:"flex", gap:".8rem", overflowX:"auto" as const, paddingBottom:".3rem" }}>
               {pros.map(pro => (
                 <div key={pro.contractor_id} style={{ minWidth:"210px", flex:"0 0 auto", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"12px", padding:"1rem", background:"rgba(var(--ff-fg), .03)" }}>
+                  {/* The card is a fixed 210px in a horizontal scroller, so the
+                      name column has nowhere to grow — without minWidth:0 a long
+                      company name could not shrink and pushed the favourite heart
+                      off the right of the card. The sibling strip on the Requests
+                      tab already clipped its name; this one didn't. */}
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:".5rem" }}>
-                    <div>
-                      <div style={{ fontSize:".95rem", fontWeight:600, color:"var(--ff-text)" }}>{pro.company_name || pro.name || "Your pro"}</div>
-                      <div style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .5)" }}>
+                    <div style={{ minWidth:0, flex:"1 1 auto" }}>
+                      <div style={{ fontSize:".95rem", fontWeight:600, color:"var(--ff-text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{pro.company_name || pro.name || "Your pro"}</div>
+                      <div style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .5)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
                         {pro.rating ? `⭐ ${Number(pro.rating).toFixed(1)}` : "New"}{pro.jobs_together ? ` · ${pro.jobs_together} job${pro.jobs_together===1?"":"s"} together` : ""}
                       </div>
                     </div>
@@ -1843,7 +1848,7 @@ export default function ClientDashboard() {
             {pros.length > 0 && (
               <div style={{ ...s.card, padding:"1rem 1.25rem" }}>
                 <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:".75rem", flexWrap:"wrap" as const, marginBottom:".75rem" }}>
-                  <div>
+                  <div style={{ minWidth:0, flex:"1 1 auto" }}>
                     <div style={{ ...s.cardTitle, marginBottom:".15rem" }}>Book a pro you've used before</div>
                     <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .55)" }}>They get first refusal for 48 hours — no need to compare estimates again.</div>
                   </div>
@@ -1910,7 +1915,7 @@ export default function ClientDashboard() {
                           <Ic name={STATUS_META[activeReq.status]?.icon as any} size={12} color={STATUS_META[activeReq.status]?.color} style={{ marginRight:4 }} />{STATUS_META[activeReq.status]?.label}
                         </div>
                       </div>
-                      <div style={{ display:"flex", alignItems:"center", gap:".75rem" }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:".75rem", flexShrink:0 }}>
                         {activeJob?.id && <div style={{ fontSize:".72rem", fontFamily:"monospace", color:"#ea6b14" }} title="Quote this Job ID when filing a claim">{jobCode(activeJob.id)}</div>}
                         {bidsOnScreen && (
                           <button
@@ -2398,17 +2403,25 @@ export default function ClientDashboard() {
                       {shown.length === 0 ? (
                         <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .5)", padding:".5rem 0" }}>No {histFilter === "all" ? "" : histFilter + " "}requests to show.</div>
                       ) : shown.map(r => (
-                        <div key={r.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:".85rem 0", borderBottom:"1px solid rgba(var(--ff-fg), .06)", gap:"1rem", flexWrap:"wrap" as const }}>
-                          <div>
+                        <div key={r.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:".85rem 0", borderBottom:"1px solid rgba(var(--ff-fg), .06)", gap:".75rem", flexWrap:"wrap" as const }}>
+                          {/* minWidth:0 so a long service label shrinks instead of
+                              forcing the whole row wider than a phone screen, and
+                              flexBasis keeps the controls beside it until there is
+                              genuinely no room, rather than wrapping on every row. */}
+                          <div style={{ minWidth:0, flex:"1 1 140px" }}>
                             <div style={{ fontSize:".9rem" }}>{r.service_needed}</div>
                             <div style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .4)" }}>{new Date(r.created_at).toLocaleDateString()}</div>
                           </div>
-                          <div style={{ display:"flex", alignItems:"center", gap:".75rem" }}>
+                          <div style={{ display:"flex", alignItems:"center", gap:".5rem", flexShrink:0 }}>
                             {r.status !== "completed" && r.status !== "cancelled" && (
                               <button style={{ ...s.btn, padding:".3rem .7rem" }} onClick={() => { setSelectedReqId(r.id); setActiveTab("requests"); window.scrollTo({ top: 0 }); }}>View</button>
                             )}
-                            <div style={{ fontSize:".78rem", fontWeight:500, color: STATUS_META[r.status]?.color, whiteSpace:"nowrap" as const }}>
-                              <Ic name={STATUS_META[r.status]?.icon as any} size={13} color={STATUS_META[r.status]?.color} style={{ marginRight:4 }} />{STATUS_META[r.status]?.label}
+                            {/* A bordered chip rather than coloured body text. Down a
+                                list of past requests the state is the thing being
+                                scanned for, and it now reads the same as the badge
+                                on the Current Request card above. */}
+                            <div style={{ display:"inline-block", padding:".22rem .6rem", borderRadius:"99px", fontSize:".72rem", fontWeight:600, color: STATUS_META[r.status]?.color, border:`1px solid ${STATUS_META[r.status]?.color}`, whiteSpace:"nowrap" as const }}>
+                              <Ic name={STATUS_META[r.status]?.icon as any} size={12} color={STATUS_META[r.status]?.color} style={{ marginRight:4 }} />{STATUS_META[r.status]?.label}
                             </div>
                             {r.status !== "cancelled" && (
                               <button style={{ ...s.btn, padding:".3rem .55rem", color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyReq} onClick={() => removeRequest(r)}><Ic name="trash" size={13} /></button>

@@ -87,9 +87,13 @@ update bids set status = 'pending'
    and status in ('accepted', 'declined');
 ```
 
-**This is NOT applied.** It touches the bid path, so it goes through the `freddy-payment-change` review gate first. Two things to decide before applying: whether the withdrawing contractor's own bid should return to `pending` or be removed (I would remove it — they just walked), and whether the one existing bad row is repaired by hand or left as history.
+**This is NOT applied.** It touches the bid path, so it goes through the `freddy-payment-change` review gate first. One thing to decide before applying: whether the withdrawing contractor's own bid should return to `pending` or be removed. I left it returning to `pending` because the migration cannot tell the two apart from inside the function, but removing it is defensible — they just walked.
 
-`admin_delete_job` has the same omission and was not the cause here, but it should be fixed in the same pass.
+`admin_delete_job` has the same omission and was not the cause here, but it is fixed in the same migration. It also has a **second** gap: it never resets `client_requests` at all, so an admin deleting a job leaves the request stuck at `matched` pointing at a contractor with no job. That one has no live victims yet.
+
+The migration also carries a one-off repair for rows already stranded. It is scoped by **shape, not by id**: an `accepted`/`declined` bid on a request that is `pending`, has no assigned contractor, and has no job row anywhere. Only the bug can produce that combination — an ordinarily-pending request carries `pending` bids — so it cannot catch a healthy row. Request `420a4f6c` is the known match.
+
+None of the four payout guards is touched. `job_money_block()` still runs first and unchanged in both functions; the new statements execute only after it has returned NULL, i.e. only on a job holding no money.
 
 ### 4. `Solar` reaches zero contractors
 
