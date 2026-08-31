@@ -500,10 +500,34 @@ export default function ContractorOnboarding() {
           {/* Step 2 — What you do: services + line of work (was steps 2 and 5) */}
           {step === 2 && (
             <div>
+              {/* Aligned with ClientOnboarding step 2: what you have picked is shown
+                  as removable chips ABOVE the picker, not as a bare count below it.
+                  The list is 23 items long, so a pro who has scrolled to the bottom
+                  could not see what they had already ticked and had to scroll back
+                  up to check — the client side solved this and the two screens now
+                  behave the same way. Tapping a chip removes it, exactly as there. */}
               <p style={s.label}>Services You Offer</p>
-              <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"1rem", fontWeight:300, lineHeight:1.6 }}>
-                Search or tap everything you&rsquo;re comfortable taking on. You can change this anytime.
-              </p>
+              {selectedSpec.length > 0 ? (
+                <>
+                  <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginBottom:".5rem" }}>
+                    {selectedSpec.map(sv => (
+                      <button key={sv} type="button" onClick={() => toggleSpec(sv)}
+                        style={{ display:"inline-flex", alignItems:"center", gap:".5rem", padding:".55rem .9rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".88rem", fontWeight:500, cursor:"pointer", background:"rgba(234,107,20,.15)", border:"1px solid #ea6b14", color:"var(--ff-text)" }}>
+                        {sv}
+                        <span aria-hidden style={{ color:"#ea6b14", fontSize:"1.05rem", lineHeight:1 }}>×</span>
+                      </button>
+                    ))}
+                  </div>
+                  <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"1rem" }}>
+                    {selectedSpec.length} selected — tap one to remove it. Add more below.
+                  </p>
+                </>
+              ) : (
+                <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"1rem", fontWeight:300, lineHeight:1.6 }}>
+                  Search or tap everything you&rsquo;re comfortable taking on. You can change this anytime.
+                </p>
+              )}
+              {errors.spec && <p style={s.err}>{errors.spec}</p>}
               {/* allowCustom={false}: an off-list specialty matches no client
                   request, so inventing one would look like it worked and then
                   quietly send this pro nothing. */}
@@ -514,8 +538,6 @@ export default function ContractorOnboarding() {
                 allowCustom={false}
                 placeholder="Search your trade (e.g. plumbing, drywall, snow)…"
               />
-              {errors.spec && <p style={s.err}>{errors.spec}</p>}
-              {selectedSpec.length > 0 && <p style={{ fontSize:".78rem", color:"#ea6b14", marginTop:".75rem" }}>✓ {selectedSpec.length} service{selectedSpec.length > 1 ? "s" : ""} selected</p>}
 
               <div style={{ marginTop:"1.75rem", paddingTop:"1.5rem", borderTop:"1px solid rgba(var(--ff-fg), .08)" }}>
                 <p style={s.label}>Your Line of Work</p>

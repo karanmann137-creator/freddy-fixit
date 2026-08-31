@@ -151,6 +151,10 @@ export default function NewRequest() {
     if (schedule === "Recurring" && !recurringFrequency) setRecurringFrequency(SLIDER_STOPS[sliderIdx]);
   }, [schedule]); // eslint-disable-line react-hooks/exhaustive-deps
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  // Photo nudge state. `photoNudged` is a ref, not state, so the second press
+  // can never be swallowed by a re-render landing between the two clicks.
+  const photoNudged = useRef(false);
+  const [photoPulse, setPhotoPulse] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState("");
@@ -373,6 +377,25 @@ export default function NewRequest() {
 
   const next = () => {
     if (!validate()) return;
+    /**
+     * The photo nudge — a nudge, NOT a gate. Same rule, same wording and the
+     * same one-press budget as ClientOnboarding step 1, because this is the
+     * SAME question asked of a returning client and the two forms answering it
+     * differently is how one of them quietly stops working.
+     *
+     * It runs AFTER validate() so a real error keeps the scroll position; the
+     * flag is a ref rather than state because a re-render between the two
+     * presses would race the click handler and swallow the second press.
+     */
+    if (step === 1 && !photoFile && !photoNudged.current) {
+      photoNudged.current = true;
+      setPhotoPulse(true);
+      setTimeout(() => {
+        document.getElementById("nr-photo")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 60);
+      setTimeout(() => setPhotoPulse(false), 4500); // matches 1.5s x 3
+      return;
+    }
     // Read the description on the way out of screen 1 so screen 2 has something
     // to confirm.
     if (step === 1) runDetect();
@@ -556,6 +579,14 @@ export default function NewRequest() {
   return (
     <div style={s.wrap}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+      {/* This page is outside `.ffdash`, and ClientOnboarding returns
+          <NewRequest/> BEFORE its own <style> block ever renders — so the pulse
+          keyframes have to be declared here. Copied deliberately rather than
+          imported: an inline style attribute cannot express @keyframes, and the
+          two forms are separate top-level screens. */}
+      <style>{"@keyframes ff-co-pulse{0%{box-shadow:0 0 0 0 rgba(234,107,20,.55)}70%{box-shadow:0 0 0 12px rgba(234,107,20,0)}100%{box-shadow:0 0 0 0 rgba(234,107,20,0)}}"
+        + " .ff-photo-pulse{outline:2px solid rgba(234,107,20,.75); outline-offset:6px; border-radius:12px; animation:ff-co-pulse 1.5s ease-out 3}"
+        + " @media (prefers-reduced-motion: reduce){.ff-photo-pulse{animation:none; background:rgba(234,107,20,.12)}}"}</style>
       <div style={s.inner}>
         <button onClick={back} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".82rem", textTransform:"uppercase", letterSpacing:".08em", padding:0, marginBottom:"2rem", display:"block" }}>
           {step === 1 ? "← Dashboard" : "← Back"}
@@ -615,8 +646,16 @@ export default function NewRequest() {
             </div>
 
             {/* Photo */}
-            <div style={{ marginBottom:"1.2rem" }}>
-              <label style={s.label}>Photo of the problem <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
+            <div id="nr-photo" className={photoPulse ? "ff-photo-pulse" : undefined} style={{ marginBottom:"1.2rem", scrollMarginTop:"5.5rem" }}>
+              <label style={s.label}>
+                Photo of the problem{" "}
+                {/* The asterisk appears only after the nudge. Marking a field
+                    that really is optional on first sight is a lie, and people
+                    learn fast to ignore an asterisk that means nothing. */}
+                {photoNudged.current && !photoFile
+                  ? <span aria-hidden="true" style={{ color:"#ea6b14", fontWeight:600 }}>*</span>
+                  : <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span>}
+              </label>
               <p style={{ margin:"0 0 .5rem", fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.45 }}>A clear photo helps contractors give you a faster, more accurate estimate — and means fewer surprises on the day.</p>
               <label htmlFor="nr-photo-upload" style={{ display:"flex", alignItems:"center", gap:".75rem", border:"2px dashed " + (photoFile ? "rgba(234,107,20,.5)" : "rgba(var(--ff-fg), .12)"), borderRadius:"10px", padding:"1rem 1.25rem", cursor:"pointer", background: photoFile ? "rgba(234,107,20,.05)" : "transparent", transition:"border-color .2s,background .2s" }}>
                 <Ic name="camera" size={22} color="#ea6b14" style={{ flexShrink:0 }} />
@@ -628,8 +667,18 @@ export default function NewRequest() {
                     {photoFile ? "Tap to change" : "Tap to choose — max 10 MB"}
                   </p>
                 </div>
-                <input id="nr-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 10*1024*1024) { setSubmitError("That photo is over 10 MB. Please choose a smaller one."); e.target.value = ""; return; } setSubmitError(""); setPhotoFile(f); }} style={{ display:"none" }} />
+                <input id="nr-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 10*1024*1024) { setSubmitError("That photo is over 10 MB. Please choose a smaller one."); e.target.value = ""; return; } setSubmitError(""); setPhotoFile(f); setPhotoPulse(false); }} style={{ display:"none" }} />
               </label>
+              {/* The advisory outlives the pulse on purpose: the animation is
+                  what draws the eye, the words are what answer "why does it
+                  matter?", and those are two different jobs. */}
+              {photoNudged.current && !photoFile && (
+                <div style={{ background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.28)", borderRadius:"8px", padding:".8rem 1rem", marginTop:".6rem", fontSize:".82rem", lineHeight:1.6, color:"rgba(var(--ff-muted), .85)" }}>
+                  <strong style={{ color:"var(--ff-text)" }}>A photo gets you a real number, faster.</strong>{" "}
+                  Pros price what they can see. With a photo you&rsquo;ll usually get firm estimates the same day; without one you&rsquo;re more likely to get a wide ballpark, questions before anyone will quote, or a pro who wants to come out and look first.
+                  <div style={{ marginTop:".45rem", opacity:.8 }}>It&rsquo;s still optional — press Next again to carry on without one, and you can add a photo from your dashboard any time after you post.</div>
+                </div>
+              )}
             </div>
           </>)}
 

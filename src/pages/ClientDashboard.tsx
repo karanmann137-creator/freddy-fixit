@@ -130,6 +130,11 @@ const STATUS_META: Record<string, { icon: string; label: string; color: string }
   cancelled:   { icon: "x-circle", label: "Cancelled",          color: "#ef4444" },
 };
 
+// Scroll target for the open-request switcher, so changing request always
+// lands in the same place. Module-level for the same reason CONTRACT_ANCHOR is:
+// an id typed twice is an id that drifts, and a missed one scrolls to nothing.
+const REQ_SWITCH_ANCHOR = "ffc-requests";
+
 export default function ClientDashboard() {
   const [, setLocation] = useLocation();
   const [profile, setProfile]       = useState<any>(null);
@@ -361,6 +366,23 @@ export default function ClientDashboard() {
     (selectedReqId && requests.find(r => r.id === selectedReqId)) ||
     openReqs[0] || requests[0];
 
+  // Switching requests used to dump the client at whatever scroll offset they
+  // happened to be at, against a page whose height had just changed by
+  // hundreds of pixels — a request with five estimates and a request waiting
+  // on its first bid are nothing like the same length, so the viewport landed
+  // somewhere arbitrary and often below the end of the new content. Land them
+  // on the switcher every time instead, and reset the two per-request
+  // disclosure states so the new request opens in its own default shape
+  // rather than inheriting the last one's.
+  const selectRequest = (id: string) => {
+    setSelectedReqId(id);
+    setReqDetailOpen(false);
+    setShowChangeTime(false);
+    requestAnimationFrame(() => {
+      document.getElementById(REQ_SWITCH_ANCHOR)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
   // ── Notification deep links ─────────────────────────────────────────────────
   // Tapping a 🔔 lands here two ways: from another page it navigates with
   // ?tab=&job=, and from this page (where the bell lives) wouter treats the same
@@ -440,6 +462,13 @@ export default function ClientDashboard() {
   // (mount, or the client switching between open requests).
   useEffect(() => {
     if (!activeReq) { setContractor(null); setActiveJob(null); return; }
+    // Drop a job belonging to the PREVIOUSLY selected request before the new
+    // read resolves. Leaving it is not merely a visual jump: for the length of
+    // that round trip the pay, confirm and message buttons render under the new
+    // request's header while still acting on the OTHER job. Only clear on a
+    // genuine mismatch, so a re-render for any other reason doesn't flash the
+    // payment surface off and on.
+    setActiveJob((prev: any) => (prev && prev.request_id !== activeReq.id ? null : prev));
     let cancelled = false;
     (async () => {
       const [{ data: con }, { data: job, error: jobErr }] = await Promise.all([
@@ -731,6 +760,21 @@ export default function ClientDashboard() {
     if (error) { notify("Couldn't confirm: " + error.message); return; }
     setActiveJob({ ...activeJob, client_confirmed_visit_at: new Date().toISOString() });
   };
+
+  // Mirrors the 24h guard now inside `client_reschedule_visit`, so the button can
+  // explain itself BEFORE the tap instead of after a rejected RPC. The RPC stays
+  // the authority — this only exists to avoid a dead-end click.
+  //
+  // `!contractBlocked` is the frontend's read of `contract_signed`, and gating on
+  // it is what keeps this from colliding with `release_unconfirmed_visits`: that
+  // sweep only ever releases a visit that is BOTH unsigned and unpaid, at
+  // scheduled_at - 12h. Locking an UNSIGNED job at 24h would give the client a
+  // wall and then take the slot anyway. Note contractBlocked is also true when the
+  // check itself failed, so an unreadable gate leaves the button enabled and lets
+  // the RPC answer — a failed read is not a signed agreement.
+  const visitLocked = !!activeJob?.scheduled_at
+    && !contractBlocked
+    && new Date(activeJob.scheduled_at).getTime() - Date.now() < 24 * 3600 * 1000;
 
   const changeVisitTime = async () => {
     if (!activeJob || !newVisitTime) { notify("Pick a new date and time first."); return; }
@@ -1836,13 +1880,13 @@ export default function ClientDashboard() {
             ) : (
               <>
                 {openReqs.length > 1 && (
-                  <div style={{ ...s.card, padding:"1rem 1.25rem" }}>
+                  <div id={REQ_SWITCH_ANCHOR} style={{ ...s.card, ...anchorPad, padding:"1rem 1.25rem" }}>
                     <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)", marginBottom:".6rem" }}>Your open requests ({openReqs.length})</div>
                     <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
                       {openReqs.map(r => {
                         const on = r.id === activeReq?.id;
                         return (
-                          <button key={r.id} onClick={() => setSelectedReqId(r.id)} style={{ ...s.tab, ...(on ? s.activeTab : {}), display:"flex", alignItems:"center", gap:".4rem" }}>
+                          <button key={r.id} onClick={() => selectRequest(r.id)} style={{ ...s.tab, ...(on ? s.activeTab : {}), display:"flex", alignItems:"center", gap:".4rem" }}>
                             <Ic name={STATUS_META[r.status]?.icon as any} size={12} color={STATUS_META[r.status]?.color} />
                             <span style={{ maxWidth:160, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{r.service_needed}</span>
                           </button>
@@ -2062,18 +2106,31 @@ export default function ClientDashboard() {
                             )}
                             {activeJob.status === "scheduled" && (
                             <div style={{ margin:".25rem 0 .9rem", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .1)" }}>
-                              {activeJob.client_confirmed_visit_at ? (
+                              {/* Inside 24h on a signed job the time is fixed here — the pro
+                                  has set the day aside. It is a lock, not a dead end: chat
+                                  stays open and `chat_agree_time` still writes a new time
+                                  when BOTH sides agree in the thread, so the notice points
+                                  there rather than just refusing. */}
+                              {visitLocked ? (
+                                <div style={{ fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.55 }}>
+                                  <Ic name="clock" size={13} color="#ea6b14" style={{ marginRight:4 }} />
+                                  <strong>Your visit is less than 24 hours away.</strong> The time is locked in now — your pro has set the day aside for you. If something has come up, message them in the job chat and agree a new time together; it updates automatically once you both do.
+                                </div>
+                              ) : activeJob.client_confirmed_visit_at ? (
                                 <div style={{ fontSize:".82rem", color:"var(--ff-success)", lineHeight:1.5 }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />You confirmed this visit. Need to change it? <button onClick={() => setShowChangeTime(v => !v)} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer", padding:0, textDecoration:"underline" }}>Change the time</button></div>
                               ) : (
                                 <>
-                                  <div style={{ fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.5, marginBottom:".6rem" }}>Is this time still good? Confirm it, or pick a new day/time. The day before is your last easy change.</div>
+                                  <div style={{ fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.5, marginBottom:".6rem" }}>Is this time still good? Confirm it, or pick a new day/time. Changes close 24 hours before the visit.</div>
                                   <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                                     <button style={{ ...s.btn, color:"var(--ff-success)", borderColor:"rgba(34,197,94,.4)", background:"rgba(34,197,94,.1)" }} disabled={busyReq} onClick={confirmVisit}>{busyReq ? "…" : "✓ Confirm this time"}</button>
                                     <button style={s.btn} disabled={busyReq} onClick={() => setShowChangeTime(v => !v)}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Change the time</button>
                                   </div>
                                 </>
                               )}
-                              {showChangeTime && (
+                              {/* `!visitLocked` as well, because the panel can be left open
+                                  while the clock runs into the 24h window — without it the
+                                  client keeps a Send button that the RPC will now refuse. */}
+                              {showChangeTime && !visitLocked && (
                                 <div style={{ marginTop:".7rem" }}>
                                   <div style={{ fontSize:".78rem", color:"var(--ff-warn)", lineHeight:1.5, marginBottom:".5rem" }}><Ic name="alert-triangle" size={12} style={{ marginRight:4 }} />Your pro already blocked off the current time. If you change it, they have to accept the new time and may decline if they're not free — they'll then suggest another time.</div>
                                   <input type="datetime-local" value={newVisitTime} onChange={e => setNewVisitTime(e.target.value)} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, marginBottom:".55rem" }} />
