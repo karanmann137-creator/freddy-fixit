@@ -10,8 +10,14 @@
 // Resend mail, never got the confirmation, and were locked out with no error
 // visible to them OR to us. Three accounts sat stranded and we only found out
 // because one of them phoned. This email now names that second email, says it
-// comes from a different sender, says to check spam, and gives a human address to
+// comes separately, says to check spam, and gives a human address to
 // reply to -- so the same failure produces a reply instead of silence.
+//
+// v2 (2026-08-30): the copy used to say the confirmation email comes from a
+// DIFFERENT sender. That stopped being true when GoTrue was pointed at Resend
+// over SMTP with the same noreply@freddyfixit.ca sender. It now says the same
+// address. The paragraph itself stays -- the second email is still a second
+// TRANSPORT, and it is still the one nothing in our code can retry.
 //
 // The copy is MODE-AWARE. While the site is 'paused' or 'waitlist' a client's
 // request is parked (enforce_platform_pause sets waitlisted := true) and no
@@ -88,7 +94,7 @@ function welcomeHtml(firstName: string, mode: string, referralCode: string) {
     <p style="font-size:15px;line-height:1.6;margin:.5rem 0;">Thanks for creating an account. Freddy Fix It connects Calgary homeowners with local trades and handymen who've been vetted &mdash; ID checked, insurance and WCB on file where they have it, and reviewed before they're let near a job.</p>
 
     <div style="margin:1.5rem 0;padding:1rem 1.1rem;background:rgba(234,107,20,.12);border:1px solid rgba(234,107,20,.4);border-radius:10px;">
-      <p style="font-size:15px;line-height:1.6;margin:0;"><strong style="color:#ea6b14;">Watch for a second email.</strong> There's a separate message on its way asking you to confirm your email address. It comes from a <strong>different sender than this one</strong>, so check your junk or spam folder &mdash; and you won't be able to sign in until you've clicked the link in it. <strong>If it hasn't shown up in a few minutes, just reply to this email</strong> and a real person will sort it out.</p>
+      <p style="font-size:15px;line-height:1.6;margin:0;"><strong style="color:#ea6b14;">Watch for a second email.</strong> There's a separate message on its way asking you to confirm your email address. It comes from this same address, so check your junk or spam folder if you don't see it &mdash; and you won't be able to sign in until you've clicked the link in it. <strong>If it hasn't shown up in a few minutes, just reply to this email</strong> and a real person will sort it out.</p>
     </div>
 
     ${next}
