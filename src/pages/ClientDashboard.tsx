@@ -130,6 +130,27 @@ const STATUS_META: Record<string, { icon: string; label: string; color: string }
   cancelled:   { icon: "x-circle", label: "Cancelled",          color: "#ef4444" },
 };
 
+// Can the client actually delete this request? `remove_client_request` is guarded
+// server-side by `job_money_block()`, so on a paid job the button could only ever
+// raise — and it was rendered on every request that wasn't already cancelled.
+//
+// A COMPLETED request is the sharp case and the reason this exists. The RPC's
+// assigned branch skips completed jobs when it cancels them, but still writes
+// `client_requests.status = 'cancelled'` — so on a finished job that was never
+// charged, the button doesn't fail loudly, it quietly relabels a completed job in
+// the client's own history as cancelled. Hiding it is the fix; the RPC is right to
+// keep its guard.
+//
+// `job` is the loaded job for this request, or null where we don't have it (the
+// history list). Status alone answers those rows.
+const canRemoveRequest = (r: any, job: any): boolean => {
+  if (!r || r.status === "cancelled" || r.status === "completed") return false;
+  if (!job) return true;
+  if (["held", "released", "disputed", "processing"].includes(job.payment_status ?? "unpaid")) return false;
+  if (job.is_milestone || job.prepayment_id) return false;
+  return !["in_progress", "pending_confirmation", "completed"].includes(job.status);
+};
+
 // Scroll target for the open-request switcher, so changing request always
 // lands in the same place. Module-level for the same reason CONTRACT_ANCHOR is:
 // an id typed twice is an id that drifts, and a missed one scrolls to nothing.
@@ -2333,7 +2354,7 @@ export default function ClientDashboard() {
                     ) : (
                       <div style={{ display:"flex", gap:".6rem", marginTop:"1rem" }}>
                         <button style={s.btn} onClick={() => startEdit(activeReq)}><Ic name="pencil" size={13} style={{ marginRight:4 }} />Edit</button>
-                        <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyReq} onClick={() => removeRequest(activeReq)}><Ic name="trash" size={13} style={{ marginRight:4 }} />Delete</button>
+                        {canRemoveRequest(activeReq, activeJob) && <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyReq} onClick={() => removeRequest(activeReq)}><Ic name="trash" size={13} style={{ marginRight:4 }} />Delete</button>}
                       </div>
                     )}
                   </div>
@@ -2423,7 +2444,7 @@ export default function ClientDashboard() {
                             <div style={{ display:"inline-block", padding:".22rem .6rem", borderRadius:"99px", fontSize:".72rem", fontWeight:600, color: STATUS_META[r.status]?.color, border:`1px solid ${STATUS_META[r.status]?.color}`, whiteSpace:"nowrap" as const }}>
                               <Ic name={STATUS_META[r.status]?.icon as any} size={12} color={STATUS_META[r.status]?.color} style={{ marginRight:4 }} />{STATUS_META[r.status]?.label}
                             </div>
-                            {r.status !== "cancelled" && (
+                            {canRemoveRequest(r, null) && (
                               <button style={{ ...s.btn, padding:".3rem .55rem", color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyReq} onClick={() => removeRequest(r)}><Ic name="trash" size={13} /></button>
                             )}
                           </div>

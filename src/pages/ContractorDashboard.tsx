@@ -52,6 +52,21 @@ const STAGE_MATCH: Record<string, (j: any) => boolean> = {
   working:   j => j.status === "in_progress",
   payment:   j => j.status === "pending_confirmation" || (j.status === "completed" && j.payment_status === "held"),
 };
+// Mirrors the server guard `job_money_block()`, which `withdraw_job()` calls.
+// Withdrawal HARD-DELETES the job and every child cascades, so the DB refuses it
+// the moment any money is attached. The button was rendered unconditionally, which
+// meant it sat there dead on every deposit-paid job with nothing on screen saying so.
+//
+// It is deliberately STRICTER than the server, in the two places the browser can't
+// see the whole truth: a milestone job holds real money per stage while
+// jobs.payment_status is still 'unpaid', and `processing` means a Stripe checkout
+// may be open right now. Over-hiding a destructive control costs a contractor one
+// email; over-showing it offers to delete the only pointer to a live charge.
+const canWithdraw = (j: any): boolean =>
+  (j?.payment_status ?? "unpaid") === "unpaid" &&
+  !j?.is_milestone &&
+  !j?.prepayment_id;
+
 const STAGE_LABEL: Record<string, string> = {
   propose: "needs your estimate",
   awaiting: "awaiting client approval",
@@ -1483,7 +1498,7 @@ export default function ContractorDashboard() {
                 </div>
                 {activeJobId === job.id && (
                   <div onClick={e => e.stopPropagation()} style={{ marginTop:"1rem", borderTop:"1px solid rgba(var(--ff-fg), .07)", paddingTop:"1rem" }}>
-                    <RequestPhotoQuote requestId={job.request_id} photoPath={job.request?.photo_path} estimatedQuote={job.request?.estimated_quote} quoteNotes={job.request?.quote_notes} canQuote />
+                    <RequestPhotoQuote requestId={job.request_id} photoPath={job.request?.photo_path} estimatedQuote={job.request?.estimated_quote} quoteNotes={job.request?.quote_notes} canQuote={["assigned","scheduled","in_progress"].includes(job.status)} />
 
                     {/* Every job needs a signed service agreement before the client can pay,
                         so this sits above the pricing/scheduling work — it's the first move. */}
@@ -1559,7 +1574,11 @@ export default function ContractorDashboard() {
                           </div>
                         </div>
                       )}
-                      {job.client_rescheduled_at && !job.reschedule_accepted_at && (
+                      {/* Gated on the live stages. The two flags are never cleared, so
+                          without this the "the client changed the time" prompt and its
+                          Accept button sat on completed and cancelled jobs forever. */}
+                      {job.client_rescheduled_at && !job.reschedule_accepted_at
+                        && ["assigned","scheduled","in_progress"].includes(job.status) && (
                         <div {...jobAnchor(A_RESCHED, { padding:".7rem .8rem", borderRadius:"10px", background:"rgba(59,130,246,.10)", border:"1px solid rgba(59,130,246,.30)", marginBottom:".3rem" })}>
                           <div style={{ fontSize:".8rem", color:"var(--ff-text)", lineHeight:1.5, marginBottom:".55rem" }}>
                             <Ic name="calendar" size={14} color="#3b82f6" style={{ marginRight:5 }} />
@@ -1661,9 +1680,25 @@ export default function ContractorDashboard() {
                           </div>
                           <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                             <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyJobId === job.id} onClick={() => proposeSchedule(job)}>{busyJobId === job.id ?"Sending…" : (job.schedule_proposed_at ? "Update proposal" : "Propose time & price")}</button>
-                            <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJobId === job.id} onClick={() => withdrawJob(job)}>Withdraw</button>
+                            {canWithdraw(job) && <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJobId === job.id} onClick={() => withdrawJob(job)}>Withdraw</button>}
                           </div>
+                          {/* A client can move the time on a job they've already paid for,
+                              which flips it back to 'assigned' — so this branch can render
+                              on a job holding money. Two things follow. Withdraw is hidden
+                              above, and the price control the propose form offers would be
+                              rejected, so the real one is mounted here. */}
+                          {/* Keyed on money actually being held, NOT on !canWithdraw —
+                              canWithdraw is deliberately stricter than the server and also
+                              hides on a milestone job holding nothing yet, where this
+                              wording would be a plain lie. There, the button is simply
+                              absent and nothing is claimed. */}
+                          {(job.payment_status ?? "unpaid") !== "unpaid" && (
+                            <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.5 }}>
+                              This job is paid for, so it can't be withdrawn here — message the client, or email hello@freddyfixit.ca if something's gone wrong.
+                            </div>
+                          )}
                           </div>
+                          {(job.payment_status ?? "unpaid") !== "unpaid" && renderPriceChange(job)}
                         </>
                       )}
                       {(job.status === "scheduled" || job.status === "in_progress") && (
@@ -1717,7 +1752,7 @@ export default function ContractorDashboard() {
                             {/* Dimmed AND actually disabled while photos are outstanding —
                                 the reason is spelled out directly underneath. */}
                             {!job.is_milestone && <button title={photosMissing(job).length ? "Add " + photosMissing(job).join(" and ") + " first." : undefined} style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none", fontWeight:600, opacity: photosMissing(job).length ? .55 : 1, cursor: photosMissing(job).length ? "not-allowed" : "pointer" }} disabled={busyJobId === job.id || photosMissing(job).length > 0} onClick={() => markComplete(job)}>{busyJobId === job.id ?"Working…" : "✓ Mark complete"}</button>}
-                            <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJobId === job.id} onClick={() => withdrawJob(job)}>Withdraw</button>
+                            {canWithdraw(job) && <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJobId === job.id} onClick={() => withdrawJob(job)}>Withdraw</button>}
                           </div>
                           {!job.is_milestone && photosMissing(job).length > 0 && (
                             <div style={{ fontSize:".78rem", color:"#ea6b14", display:"flex", alignItems:"center", gap:".35rem" }}>
