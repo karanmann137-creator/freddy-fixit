@@ -149,7 +149,7 @@ Client pays a **40% deposit at booking** and the **60% balance when the work is 
 - `platform_health_check()` gained check 5 `no_unpaid_balances` (ghost client: work done, deposit held, never came back) and check 6 `no_underfunded_payouts`.
 - The deposit stays **HELD**, never advanced to the contractor — UserAgreement §6.10 promises refund of unreleased deposits within 15 days of a valid cancellation, so it is a commitment device, not materials funding.
 - Two latent bugs fixed while auditing: `open_dispute()` wrote `'disputed'`, which the CHECK constraint rejected (23514); `propose_price_change()` wrote NULL into the NOT NULL `payment_status` (23502). Neither had ever fired because no job has reached `held`.
-- **Still owed:** admin escalation for check 5; Stripe SetupIntent card-on-file auto-collection (the chosen phase 2).
+- **Still owed:** Stripe SetupIntent card-on-file auto-collection (the chosen phase 2).
 
 **The ghost client is now told, not just the admin — `run_reminders()` step 8 (2026-08-31).** Health check 5 `no_unpaid_balances` could only ever *detect* the state: deposit held, work finished and photographed, client never came back to pay the 60%. Every payout guard then correctly refuses to release, so **the contractor waits indefinitely and the one person who could fix it was never asked.** Step 8 emails the client the exact outstanding figure with a Pay-the-balance CTA.
 
@@ -313,6 +313,20 @@ The two load-bearing orderings are unchanged: the typed code is stashed **before
 
 ## Health check
 `platform_health_check()` returns 7 named checks: fee rate sane; `client_fee` matches `amount * rate`; critical RPCs present; no confirmed+held payout stuck >2h; `no_unpaid_balances`; `no_underfunded_payouts`; **`no_stuck_signups`**. `run_platform_health_check()` (pg_cron `platform-health-check`, 15:00 UTC daily) alerts every admin when a check fails, deduped ~20h — and since `health_alert` is NOT in `EMAIL_HANDLED_ELSEWHERE`, that alert emails as well as ringing the bell.
+
+**Check 5 now escalates to a human, and the escalation is what makes it useful (2026-08-31).** The alert could only ever say *"N finished job(s) with a balance unpaid for >3 days"* — a count, with no job code, no client, no amount and no age. There was nothing in it the owner could act on, and `run_reminders()` step 8 stops nudging the client after 7 days by design, so past that point **nothing happens again on its own**: the contractor stays unpaid and the one person who could fix it has already ignored three emails.
+
+**`escalate_unpaid_balances(p_days default 10)`** is called from `run_platform_health_check()` and names each stuck job — job code (matching `jobCode()`), service, exact amount owed, days since the work was finished, the client's name/email/phone, and which contractor is still waiting — followed by the two ways out: phone the client, or refund the deposit in Stripe and cancel.
+
+Five things about it are load-bearing:
+
+- **The predicate MIRRORS step 8** — same milestone / prepay / pending-price-change exclusions — so the two halves of the ghost-client problem can never disagree about what "a balance is owed" means.
+- **10 days is three days AFTER step 8's last nudge.** Escalating earlier would just re-send an email the client already has; this alert means *the automation is exhausted*.
+- **The type must be `health_alert`.** The `send-notification-email` trigger's WHEN clause is `new.type = 'health_alert' OR NOT outbound_paused()`, so any new type would be **silently un-emailed while the site is paused** — precisely when the owner's only warning system has to keep working.
+- **It is throttled on the SET of stuck job ids** (`health5|unpaid_balance|<md5 of sorted ids>`, 72h), the same idiom as the profile nudge's `profile_nudge:<sorted gap keys>`. A *new* stuck job changes the key and gets through at once; an unchanged list re-alerts every 3 days instead of every day forever — the `alert_throttle_log` lesson.
+- **The generic health alert is emitted FIRST**, because it dedupes on "any `health_alert` row in the last 20 hours" and the escalation writes `health_alert` rows too. The other order would let the escalation mute the very check that summoned it. The escalation call then sits **outside** the `v_fail = 0` early return and inside **its own** exception block, so neither a future predicate edit nor a fault in the escalation can take the health alert down with it.
+
+**MONEY: touches none of the four payout guards.** It writes notification rows and nothing else. The same apply also fixed `run_platform_health_check`'s `search_path`, which was `public` alone — missing both `extensions` and `pg_temp`. Verified by rolled-back probe, 6/6: escalates once with the right copy at 12 days, is throttled on an immediate re-run, fires again the moment a second stuck job joins the list, goes silent when the balances are paid, and correctly ignores both an 8-day job (still step 8's) and a 30-day milestone job.
 
 **Check 7 `no_stuck_signups` (2026-08-06)** counts `auth.users` rows created **24h–7d ago** that are still `email_confirmed_at is null` AND `last_sign_in_at is null`. Both ends of the window are deliberate: 24h so someone still working through their inbox isn't flagged, 7d so a genuinely abandoned signup ages out on its own instead of pinning the check red forever — while a real mailer outage re-fires every day it continues. Back-tested against the Aug 2026 incident it goes red on **Aug 1**, five days before the first phone call, and stays clean on the four days before that.
 
@@ -1026,7 +1040,7 @@ no-op.
 - **Owner action, cosmetic: remove the four tombstoned edge functions** (`send-reminder`, `send-welcome`, `remind-contractor`, `resend-domains`) in Supabase Dashboard → Edge Functions → Delete. They already send nothing and hold no secrets; the MCP just has no delete tool.
 - **Prepaid-contracting licensing** (contractor licence + bond; whether the platform needs its own) — lawyer + Service Alberta. Blocking-risk item.
 - **The dispute branch is still production-untested** — the held→release path ran live on 2026-08-30, but no job has ever reached `disputed`, so `resolve-dispute` has never executed against real money.
-- Admin escalation for health check 5. (The **client-facing** half shipped 2026-08-31 as `run_reminders()` step 8.)
+- **Both halves of the ghost client shipped 2026-08-31** — `run_reminders()` step 8 tells the client (24h/3d/7d), `escalate_unpaid_balances()` hands the job to the owner at 10 days. What is still owed is the structural fix that makes both rare: Stripe SetupIntent card-on-file.
 - Stripe **SetupIntent card-on-file** auto-collection of the balance (agreed phase 2 of the deposit work).
 - `platform_commission_rate()` to match `platform_fee_rate()` — 7% is still hardcoded in `propose_milestones`.
 - `notify-email` is `verify_jwt=false`, so `contract_copy` is callable by anyone with a job_id — consider gating or rate-limiting (the write-once guard blunts it).
