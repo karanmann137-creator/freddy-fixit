@@ -117,6 +117,21 @@ Deno.serve(async (req) => {
     const { data: profile } = await admin.from("profiles").select("email").eq("id", user.id).maybeSingle();
     const receiptEmail = profile?.email ?? user.email ?? undefined;
 
+    // Card-on-file for the balance. ONLY on a split job -- a job charged in full
+    // has no later balance, so saving a card there would collect consent for a
+    // charge that can never happen.
+    //
+    // setup_future_usage requires a Customer, which customer_creation:"always"
+    // provides. stripe-webhook stores pi.customer + pi.payment_method against
+    // the job so collect-balance-auto can charge it off-session.
+    //
+    // The consent is captured HERE, in Stripe's own UI, at the moment the client
+    // is already entering the card -- not buried in the User Agreement. It names
+    // the amount, when it will be taken, and how to turn it off.
+    const autopayText = isSplit
+      ? `The remaining $${balance.toFixed(2)} is due when the work is finished. We'll save this card and charge that balance automatically once your pro marks the job complete. That money is held securely and only reaches your pro after you confirm the work. You can turn this off any time from your dashboard.`
+      : null;
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       // These used to point at /client, which is not a route on this site — the
@@ -132,6 +147,8 @@ Deno.serve(async (req) => {
       // been withdrawn.
       expires_at: Math.floor(Date.now() / 1000) + 2 * 60 * 60,
       customer_email: receiptEmail,
+      ...(isSplit ? { customer_creation: "always" as const } : {}),
+      ...(autopayText ? { custom_text: { submit: { message: autopayText } } } : {}),
       line_items: [{
         quantity: 1,
         price_data: {
@@ -159,6 +176,7 @@ Deno.serve(async (req) => {
         // Stripe emails an automatic receipt to this address on a successful
         // live charge (in addition to the in-app downloadable receipt).
         receipt_email: receiptEmail,
+        ...(isSplit ? { setup_future_usage: "off_session" as const } : {}),
         metadata: { job_id: job.id, client_id: user.id, kind: "deposit" },
       },
       metadata: { job_id: job.id, kind: "deposit" },

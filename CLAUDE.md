@@ -149,7 +149,7 @@ Client pays a **40% deposit at booking** and the **60% balance when the work is 
 - `platform_health_check()` gained check 5 `no_unpaid_balances` (ghost client: work done, deposit held, never came back) and check 6 `no_underfunded_payouts`.
 - The deposit stays **HELD**, never advanced to the contractor — UserAgreement §6.10 promises refund of unreleased deposits within 15 days of a valid cancellation, so it is a commitment device, not materials funding.
 - Two latent bugs fixed while auditing: `open_dispute()` wrote `'disputed'`, which the CHECK constraint rejected (23514); `propose_price_change()` wrote NULL into the NOT NULL `payment_status` (23502). Neither had ever fired because no job has reached `held`.
-- **Still owed:** Stripe SetupIntent card-on-file auto-collection (the chosen phase 2).
+- **Phase 2 shipped 2026-08-31 — card-on-file auto-collection.** See the section below.
 
 **The ghost client is now told, not just the admin — `run_reminders()` step 8 (2026-08-31).** Health check 5 `no_unpaid_balances` could only ever *detect* the state: deposit held, work finished and photographed, client never came back to pay the 60%. Every payout guard then correctly refuses to release, so **the contractor waits indefinitely and the one person who could fix it was never asked.** Step 8 emails the client the exact outstanding figure with a Pay-the-balance CTA.
 
@@ -197,6 +197,108 @@ Full write-up in `PAYMENT-AUDIT-2026-08-18.md`. Every finding came from reading 
 - **The dashboard used to lie twice.** `confirmCompletion` reported EVERY release failure as green "being processed… nothing more for you to do" — flatly wrong for the two failures that actually happen (unpaid balance, which only the client can fix; unfinished payout setup, which `reconcile-payouts` retries forever without succeeding). Now three branches keyed on the 409 reason dug off `error.context`. Separately the job read's `error` was thrown away, so a failed read looked identical to "no job yet" and **the entire payment surface vanished silently** — now `jobLoadFailed` keeps the last-known job on screen behind a banner.
 - **`release-payment`'s admin alert had no identity** — `reconcile-payouts` runs every 15 min, so a single broken payout sent ~96 identical, unidentifiable emails a day. It now names the job/stage/pool and the likely cause.
 - **Still open:** `create-payment-intent` doesn't store its session id, so a client who abandons checkout and clicks "Start a new payment" leaves the old session live and could pay both. The pay button is deliberately NOT disabled during `processing` (that would strand them for 2h), and `stripe-webhook` now **captures** a duplicate deposit into `funded_amount` + `extra_charge_intent_ids` and alerts the admin to refund — but preventing it needs a `stripe_session_id` column and an `expire()` call before creating the replacement.
+
+## Card on file — automatic balance collection (2026-08-31)
+
+Phase 2 of the 40/60 split, and the structural fix for the **ghost client**:
+deposit held, work finished and photographed, the client never comes back to pay
+the 60%. Every payout guard then correctly refuses to release, so **the
+contractor waits indefinitely**. `run_reminders()` step 8 (24h/3d/7d) and
+`escalate_unpaid_balances()` (10 days) are both *remedies* for that state; this
+is what stops it arising.
+
+**MONEY: touches NONE of the four payout guards.** `confirm_job_completion()`
+still raises with the exact balance owed, `auto_confirm_stale_jobs()` still skips
+under-funded jobs, `release-payment` still 409s on `!fully_funded`, and
+`reconcile-payouts` still filters `.eq("fully_funded", true)`. What changed is
+only *how the balance arrives*. Money collected this way is **held**, never
+released — confirmation, the 3-day window and the dispute branch are untouched.
+
+**There is ONE receiving branch, deliberately.** The off-session charge is tagged
+`metadata.kind = 'balance'`, so the **existing** `stripe-webhook` balance branch
+does the `funded_amount` increment, reusing its `extra_charge_intent_ids`
+idempotency guard. A second receiving branch would have been a second place to
+get `funded_amount` wrong, which is the one arithmetic the money invariant rests
+on. `metadata.source = "autopay"` is the other half of the tag and is equally
+load-bearing: `stripe-webhook` **v18** reads it in the
+`payment_intent.payment_failed` branch and **returns early**, because a declined
+saved card is not an owner problem — the client has already been told in plain
+English and the sweep retries twice more. Alerting on every decline would bury
+the alerts that do need him.
+
+**Saving the card happens at deposit checkout, not as a separate step.**
+`create-payment-intent` **v18** passes `customer_creation: "always"` plus
+`payment_intent_data.setup_future_usage: 'off_session'` — `setup_future_usage`
+requires a Customer, which is what the first flag supplies. `stripe-webhook`
+stores `stripe_customer_id` / `stripe_payment_method_id` on the job **only when
+`pi.setup_future_usage === "off_session" && pi.customer`**, so a job whose client
+paid without a saved card simply has nulls and is invisible to the sweep.
+
+**Collection: `collect-balance-auto` (v1, `verify_jwt=false`), armed by pg_cron
+`collect-balances` at `52 * * * *`.** `verify_jwt` buys nothing as always, so it
+gates in code: an `x-ff-internal` single-use token redeemed through
+`consume_internal_token` (proving the caller is Postgres) **or** a real admin
+JWT, else **403**. Verified live: an ungated POST returns `403 {"error":"forbidden"}`.
+
+`jobs_due_for_autopay(p_limit)` is the predicate, and **every clause in it is a
+refusal** — the default answer is no. It requires `payment_status='held'`, not
+`fully_funded`, `status in ('pending_confirmation','completed')`, no dispute, not
+milestone, no prepay pool, no pending price change, `contractor_completed_at` set
+and **older than 2h**, a balance over half a cent, `autopay_balance = true`, both
+Stripe ids present, `autopay_attempts < 3`, and the last attempt over 24h ago.
+Milestone and prepay are excluded for the same reason step 8 excludes them —
+their money moves per stage or per pool and neither has a whole-job balance —
+and a pending price change is excluded because **charging a figure that is
+mid-negotiation is worse than charging nothing**. The 2h grace exists so a pro
+who marks a job complete by mistake can undo it before anyone's card is touched;
+24h between attempts means three tries span three days.
+
+**Claim before charge.** `record_autopay_attempt()` stamps the attempt *before*
+Stripe is called, so a crash mid-charge burns the attempt rather than
+re-charging on the next sweep. The idempotency key is **per-attempt**
+(`autopay_<job>_<attempt>`) because **Stripe caches ERRORS as well as successes
+for 24h** — a fixed key would return the first decline forever, the same trap
+that made `payout_<job>` unusable in `release-payment`.
+
+**The contract gate still fails CLOSED.** The function re-checks
+`contract_required` → `contract_signed` and refuses on *any* error. An
+unreadable answer is a refusal, never a charge.
+
+**`set_job_autopay(job, on)` is the client's consent switch**, and its owner
+check is written `auth.uid() is null or v_client <> auth.uid()` on purpose. **The
+obvious form is silently broken**: `v_client <> auth.uid()` evaluates to NULL
+when `auth.uid()` is NULL, and **a NULL `if` condition does not fire**, so an
+unauthenticated caller fell straight through the guard. Found by a rolled-back
+probe, not by a failure. The grants (revoked from `public, anon`, granted to
+`authenticated`) meant nothing could actually reach it — but *a guard that
+depends on an ACL to be correct is one refactor away from being wrong*. This is
+the SQL sibling of `.maybeSingle()` vs `.single()`: absence is not a match.
+Turning autopay back **on** also clears `autopay_last_error` and resets
+`autopay_attempts` to 0, so the sweep retries rather than staying stuck.
+
+**`autopay_balance` defaults to TRUE.** The client opted in at checkout by paying
+a deposit on a job whose signed agreement states the balance is due on
+completion; the switch exists so they can say no, not so they have to say yes
+twice. The UI is `autopayNote(job, whenText)` in `ClientDashboard` — **ONE
+renderer mounted in BOTH balance panels**, so the "we'll charge your card"
+promise and the manual Pay button can never disagree about what is about to
+happen. It renders nothing when there is no saved card, which is most jobs. A
+decline shows the plain-English Stripe reason plus either "we'll try again
+tomorrow" or, at three attempts, "we won't try again — please pay below". **The
+manual Pay-the-balance button is never removed or disabled by any of this**; a
+client whose card fails must always have a way to pay.
+
+Verified before arming the cron: predicate **15/15** by rolled-back probe (picked
+exactly the three qualifying rows; correctly refused too-new, milestone,
+disputed, price-change-pending, autopay-off, attempts-exhausted, no-card,
+fully-funded, recent-attempt, unpaid, wrong-status and not-yet-completed),
+consent switch **4/4**, `platform_health_check()` **7/7**, and a live end-to-end
+run returning `{"ok":true,"checked":0,"charged":0,"failed":0,"skipped":0}` —
+which also proved no real production job qualified, so arming the cron could not
+charge anyone.
+
+**Standing caution:** this has never charged a real card. It is verified by probe
+and by a live run over an empty candidate set, which is not the same as proven.
 
 ## The first live payout, and why one transfer was never going to work (2026-08-30)
 
@@ -1040,8 +1142,7 @@ no-op.
 - **Owner action, cosmetic: remove the four tombstoned edge functions** (`send-reminder`, `send-welcome`, `remind-contractor`, `resend-domains`) in Supabase Dashboard → Edge Functions → Delete. They already send nothing and hold no secrets; the MCP just has no delete tool.
 - **Prepaid-contracting licensing** (contractor licence + bond; whether the platform needs its own) — lawyer + Service Alberta. Blocking-risk item.
 - **The dispute branch is still production-untested** — the held→release path ran live on 2026-08-30, but no job has ever reached `disputed`, so `resolve-dispute` has never executed against real money.
-- **Both halves of the ghost client shipped 2026-08-31** — `run_reminders()` step 8 tells the client (24h/3d/7d), `escalate_unpaid_balances()` hands the job to the owner at 10 days. What is still owed is the structural fix that makes both rare: Stripe SetupIntent card-on-file.
-- Stripe **SetupIntent card-on-file** auto-collection of the balance (agreed phase 2 of the deposit work).
+- **The ghost client is now covered end to end (2026-08-31)** — card-on-file collects the balance automatically, `run_reminders()` step 8 nudges when it can't (24h/3d/7d), and `escalate_unpaid_balances()` hands the job to the owner at 10 days. **Card-on-file has never charged a real card**, only an empty candidate set; treat it as unproven until it has.
 - `platform_commission_rate()` to match `platform_fee_rate()` — 7% is still hardcoded in `propose_milestones`.
 - `notify-email` is `verify_jwt=false`, so `contract_copy` is callable by anyone with a job_id — consider gating or rate-limiting (the write-once guard blunts it).
 - `contractor-photos` + `portfolio-photos` buckets allow public listing.

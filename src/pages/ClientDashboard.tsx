@@ -198,7 +198,8 @@ export default function ClientDashboard() {
   const [contractStatus, setContractStatus] = useState<string|null>(null); // draft|sent|signed|void — drives the attention row wording only
   const [feeRate, setFeeRate] = useState(0.03); // base service-fee rate; loaded from platform_fee_rate() so it matches what Stripe charges
   const [depositRate, setDepositRate] = useState(0.40); // share of the quote taken up front; from platform_deposit_rate()
-  const [busyBalance, setBusyBalance] = useState(false); // second charge (the 60% balance) is opening
+  const [busyBalance, setBusyBalance] = useState(false);
+  const [busyAutopay, setBusyAutopay] = useState(false); // second charge (the 60% balance) is opening
   // A release that didn't go through, kept on screen after the toast has gone.
   // The client's own report of the first real job was that Stripe said the
   // payment failed and there was "no way to input new information to actually
@@ -1019,6 +1020,64 @@ export default function ClientDashboard() {
       notify("Payment couldn't start: " + msg);
       setBusyBalance(false);
     }
+  };
+
+  // The client's consent switch for card-on-file collection of the balance.
+  // set_job_autopay is owner-only in the DB; turning it back ON also clears a
+  // stale failure so the hourly sweep retries rather than staying stuck.
+  const setAutopay = async (on: boolean) => {
+    if (!activeJob) return;
+    setBusyAutopay(true);
+    try {
+      const { error } = await supabase.rpc("set_job_autopay", { p_job_id: activeJob.id, p_on: on });
+      if (error) throw error;
+      setActiveJob((j: any) => (j && j.id === activeJob.id
+        ? { ...j, autopay_balance: on, ...(on ? { autopay_last_error: null, autopay_attempts: 0 } : {}) }
+        : j));
+      notify(on
+        ? "Automatic payment is back on — we'll charge your saved card."
+        : "Automatic payment is off. You can pay the balance yourself below.", "ok");
+    } catch (e: any) {
+      notify("Couldn't change that: " + (e?.message || String(e)));
+    }
+    setBusyAutopay(false);
+  };
+
+  // ONE renderer, mounted in BOTH balance panels, so the "we'll charge your
+  // card" promise and the manual Pay button can never disagree about what is
+  // about to happen. Renders nothing when there is no saved card — most jobs.
+  const autopayNote = (j: any, whenText: string) => {
+    if (!j?.stripe_payment_method_id) return null;
+    const err = j.autopay_last_error as string | null;
+    const attempts = Number(j.autopay_attempts || 0);
+    const line = { fontSize:".82rem", lineHeight:1.5, marginBottom:".55rem" };
+    const link = {
+      background:"none", border:"none", padding:".5rem 0", minHeight:44, cursor:"pointer",
+      fontFamily:"'DM Sans',sans-serif", fontSize:".78rem", color:"rgba(var(--ff-muted), .8)",
+      textDecoration:"underline", display:"inline-flex", alignItems:"center",
+    } as const;
+    if (err) return (
+      <div style={{ ...line, color:"var(--ff-warn)" }}>
+        <Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />
+        We tried to charge your saved card and it didn't go through: {err}{" "}
+        {attempts < 3 ? "We'll try again tomorrow — or pay below to settle it now." : "We won't try again — please pay below."}
+      </div>
+    );
+    if (j.autopay_balance) return (
+      <div style={{ marginBottom:".55rem" }}>
+        <div style={{ ...line, color:"rgba(var(--ff-muted), .8)", marginBottom:".15rem" }}>
+          <Ic name="dollar" size={13} style={{ marginRight:4 }} />
+          Your card is saved, so the remaining <strong>${jobBalance(j).toFixed(2)}</strong> will be charged automatically {whenText}. It's still <strong>held</strong> — confirming the work is what releases it.
+        </div>
+        <button style={link} disabled={busyAutopay} onClick={() => setAutopay(false)}>Turn off automatic payment</button>
+      </div>
+    );
+    return (
+      <div style={{ marginBottom:".55rem" }}>
+        <div style={{ ...line, color:"rgba(var(--ff-muted), .8)", marginBottom:".15rem" }}>Automatic payment is off — pay the balance yourself below.</div>
+        <button style={link} disabled={busyAutopay} onClick={() => setAutopay(true)}>Turn it back on</button>
+      </div>
+    );
   };
 
   const confirmCompletion = async () => {
@@ -2181,6 +2240,7 @@ export default function ClientDashboard() {
                                   <div style={{ marginBottom:".7rem", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.18)" }}>
                                     <div style={{ fontSize:".82rem", color:"var(--ff-success)", marginBottom:".4rem", lineHeight:1.5 }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Deposit of ${jobFunded(activeJob).toFixed(2)} paid — your pro is booked in.</div>
                                     <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", marginBottom:".6rem", lineHeight:1.5 }}>The remaining <strong>${jobBalance(activeJob).toFixed(2)}</strong> is due once the work is finished — you can pay it now or wait until then. It's <strong>held safely</strong> with your deposit, and everything is released to your contractor only after you confirm the job is done.</div>
+                                    {autopayNote(activeJob, "once your pro marks the job complete")}
                                     {contractBlocked && (
                                       <div style={{ fontSize:".82rem", color:"var(--ff-warn)", marginBottom:".6rem", lineHeight:1.5 }}>
                                         <Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />{contractCheckError ? "We couldn't verify the service agreement. Please refresh the page and try again." : "Please sign the service agreement above before paying the balance."}
@@ -2241,6 +2301,7 @@ export default function ClientDashboard() {
                                   <div style={{ marginBottom:".75rem", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.18)" }}>
                                     <div style={{ fontSize:".82rem", color:"var(--ff-success)", marginBottom:".4rem", lineHeight:1.5 }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Deposit of ${jobFunded(activeJob).toFixed(2)} already paid.</div>
                                     <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", marginBottom:".6rem", lineHeight:1.5 }}>Your pro has finished, so the remaining <strong>${jobBalance(activeJob).toFixed(2)}</strong> is now due. It's <strong>held safely</strong> alongside your deposit — nothing reaches your contractor until you confirm the work below.</div>
+                                    {autopayNote(activeJob, "shortly")}
                                     {contractBlocked && (
                                       <div style={{ fontSize:".82rem", color:"var(--ff-warn)", marginBottom:".6rem", lineHeight:1.5 }}>
                                         <Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />{contractCheckError ? "We couldn't verify the service agreement. Please refresh the page and try again." : "Please sign the service agreement above before paying the balance."}

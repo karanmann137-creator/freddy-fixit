@@ -178,6 +178,11 @@ Deno.serve(async (req) => {
         // once the work was done. The deposit charge already put the job in 'held',
         // so all this does is record the money — which is what unlocks the payout
         // (release-payment refuses to transfer until fully_funded).
+        //
+        // This is also where an AUTOMATIC collection lands: collect-balance-auto
+        // charges the saved card off-session and tags it kind:'balance' precisely
+        // so there is ONE receiving branch and ONE idempotency guard, whether the
+        // client paid by hand or the card on file was charged for them.
         const { data: job } = await admin.from("jobs")
           .select("id, contractor_id, funded_amount, total_charged, extra_charge_intent_ids")
           .eq("id", jobId).maybeSingle();
@@ -216,6 +221,21 @@ Deno.serve(async (req) => {
         //
         // The processing -> held guard makes a webhook replay a no-op (0 rows),
         // so funded_amount can never be double-counted here.
+        //
+        // The card is stored ONLY when create-payment-intent actually asked for
+        // it (setup_future_usage='off_session' on a split job). A payment_method
+        // from a charge that was never set up for future use is not chargeable
+        // off-session, and storing it would give collect-balance-auto a card
+        // that always declines -- and, worse, would imply a consent the client
+        // was never shown.
+        const savedPm = pi.setup_future_usage === "off_session" && pi.customer
+          ? {
+              stripe_customer_id: typeof pi.customer === "string" ? pi.customer : pi.customer.id,
+              stripe_payment_method_id: typeof pi.payment_method === "string"
+                ? pi.payment_method
+                : (pi.payment_method?.id ?? null),
+            }
+          : {};
         const { data: rows } = await admin.from("jobs")
           .update({
             payment_status: "held",
@@ -223,6 +243,7 @@ Deno.serve(async (req) => {
             deposit_paid_at: new Date().toISOString(),
             stripe_payment_intent_id: pi.id,
             funded_amount: r2((pi.amount_received ?? 0) / 100),
+            ...savedPm,
           })
           .eq("id", jobId).eq("payment_status", "processing")
           .select("id");
@@ -302,6 +323,15 @@ Deno.serve(async (req) => {
       if (jobId && (!kind || kind === "deposit"))
         await admin.from("jobs").update({ payment_status: "failed" })
           .eq("id", jobId).eq("payment_status", "processing");
+      // An off-session autopay decline lands here too. It is NOT an owner
+      // problem: collect-balance-auto has already told the client in plain
+      // English and pointed them at the manual Pay-the-balance button, and it
+      // retries twice more. Alerting the owner on every declined card would
+      // bury the alerts that do need him.
+      if (pi.metadata?.source === "autopay") return new Response(
+        JSON.stringify({ received: true }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
       const reason = pi.last_payment_error?.message ?? "unknown reason";
       await alertAdmin(
         "Client payment failed",
