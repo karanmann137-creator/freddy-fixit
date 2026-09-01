@@ -8,7 +8,8 @@ import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import ProfileBar from "@/components/ProfileBar";
 import MilestonePanel from "@/components/MilestonePanel";
 import ContractPanel from "@/components/ContractPanel";
-import DashboardSidebar, { type SidebarItem } from "@/components/DashboardSidebar";
+import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/components/DashboardSidebar";
+import NotificationBell from "@/components/NotificationBell";
 import AdminMessageModal, { type MsgRecipient } from "@/components/AdminMessageModal";
 import JobChat from "@/components/JobChat";
 import { jobCode } from "@/lib/jobCode";
@@ -16,10 +17,6 @@ import { DASH_NAV_EVENT, readDashNavFromUrl, clearDashNavFromUrl, type DashNavDe
 import { needsFor, pendingText, disabledText } from "@/lib/stripeRequirements";
 import { clearPlatformStatusCache, DEFAULT_NOTICE, type PlatformMode, type PlatformNotice } from "@/lib/platformStatus";
 import FadeImg from "@/components/FadeImg";
-import DismissX from "@/components/DismissX";
-import DashSearch from "@/components/DashSearch";
-import { searchTokens, matchesSearch } from "@/lib/dashSearch";
-import { getDismissals, dismiss as dismissKey } from "@/lib/dismissals";
 
 // Re-signup flagging is computed server-side by admin_resignup_matches().
 // The Accounts tab lists every auth user (via admin_list_accounts) so the admin
@@ -37,30 +34,6 @@ const ADMIN_NAV: SidebarItem[] = [
   { key: "disputes", label: "Disputes", icon: "alert-triangle" },
   { key: "prepaid",  label: "Prepaid",  icon: "dollar" },
   { key: "leads",    label: "Leads",    icon: "user-check" },
-];
-
-/**
- * What each admin list is searched against — one definition per list, so the
- * box and the rows can't disagree about what "searchable" means.
- *
- * Requests and jobs are PAGINATED (PAGE_SIZE 20), so this filter only ever sees
- * the page that is loaded. The result line below each box says so in words
- * rather than reporting a total it cannot know — an admin who searches a job
- * code and is told "0 shown" without being told it only looked at 20 rows would
- * reasonably conclude the job does not exist.
- */
-const adminReqFields = (r: any): (string | number | null | undefined)[] => [
-  r?.service_needed, r?.location, r?.preferred_schedule, r?.job_description,
-  r?.first_name, r?.last_name, r?.phone, r?.status,
-];
-const adminJobFields = (j: any): (string | number | null | undefined)[] => [
-  j?.request?.service_needed, j?.request?.location, j?.status, j?.amount,
-  jobCode(j?.id ?? ""),
-  j?.client?.first_name, j?.client?.last_name,
-  j?.pro?.first_name, j?.pro?.last_name, j?.pro?.company_name,
-];
-const adminAcctFields = (a: any): (string | number | null | undefined)[] => [
-  a?.first_name, a?.last_name, a?.email, a?.phone, a?.meta_phone, a?.company_name,
 ];
 
 export default function AdminDashboard() {
@@ -87,7 +60,6 @@ export default function AdminDashboard() {
   const [busyStatus, setBusyStatus] = useState<string|null>(null); // contractor id whose status is toggling
   const [busyDelete, setBusyDelete] = useState(false);
   const [busyDeleteAccount, setBusyDeleteAccount] = useState<string|null>(null);
-  const [busyMfa, setBusyMfa] = useState<string|null>(null); // user id whose two-step is being cleared
   const [busyNudge, setBusyNudge] = useState(false);
   const [busyRefire, setBusyRefire] = useState<string|null>(null); // request id being re-sent
   // Live Stripe payout diagnosis, keyed by contractor id. Fetched on demand
@@ -130,33 +102,8 @@ export default function AdminDashboard() {
   const [page, setPage] = useState<{ requests: number; jobs: number }>({ requests: 0, jobs: 0 });
   const [counts, setCounts] = useState<{ requests: number; jobs: number }>({ requests: 0, jobs: 0 });
   const [me, setMe] = useState<{ id: string; first_name?: string } | null>(null);
-  // Client-side filter over rows that are already loaded — no query, no RPC, no
-  // new RLS surface. One box serves Requests and Jobs, so it is cleared on every
-  // tab change: carrying a query from Jobs into Requests would present a full
-  // tab as an empty one.
-  const [search, setSearch] = useState("");
-  /**
-   * Explanatory notes the owner has dismissed for good, from `ui_dismissals`.
-   *
-   * These are the static "here is what this tab does" paragraphs. They never
-   * change, so once he has read one, showing it again forever is just noise
-   * above the thing he came for — which is exactly the complaint. Nothing
-   * actionable is dismissible this way; the two live bars below use `hiddenNow`.
-   *
-   * A FAILED READ IS NOT AN EMPTY RESULT: `getDismissals` resolves `ok:false`
-   * rather than an empty set on error, and we only apply the keys when `ok`, so
-   * a bad read leaves every note SHOWING. Erring toward too much explanation is
-   * the safe direction.
-   */
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
-  /**
-   * Session-only hides for the two bars that carry LIVE state — the load-error
-   * banner and the orphaned-accounts nudge. Both are counts that change
-   * underneath the row, so a permanent dismissal would silence a future,
-   * different fault. Hiding until the next load is the most that is safe.
-   */
-  const [hiddenNow, setHiddenNow] = useState<Set<string>>(new Set());
 
+  const handleSignOut = async () => { await supabase.auth.signOut(); setLocation("/"); };
 
   // ── Notification deep links ─────────────────────────────────────────────────
   // Tapping a 🔔 lands here two ways: from another page it navigates with ?tab=,
@@ -180,14 +127,8 @@ export default function AdminDashboard() {
       const uid = data.session.user.id;
       const { data: prof } = await supabase.from("profiles").select("id, first_name").eq("id", uid).maybeSingle();
       setMe(prof ?? { id: uid });
-      // Only applied when the read succeeded — see the `dismissed` docblock.
-      const d = await getDismissals(uid);
-      if (d.ok) setDismissed(new Set(d.keys));
     });
   }, []);
-
-  // One box, several tabs — so the query is cleared whenever the tab changes.
-  useEffect(() => { setSearch(""); }, [tab]);
 
   // Reload whenever any tab's page changes (also fires once on mount).
   useEffect(() => { loadAll(); }, [page]);
@@ -195,10 +136,6 @@ export default function AdminDashboard() {
   const loadAll = async () => {
     setLoading(true);
     setLoadError("");
-    // Every session-only hide is released here, which is what makes the "hide
-    // until the next load" promise true. Without this a dismissed load-error
-    // banner would stay hidden across a retry and silence a DIFFERENT fault.
-    setHiddenNow(new Set());
     try {
     const rRange: [number, number] = [page.requests * PAGE_SIZE, page.requests * PAGE_SIZE + PAGE_SIZE - 1];
     const jRange: [number, number] = [page.jobs * PAGE_SIZE, page.jobs * PAGE_SIZE + PAGE_SIZE - 1];
@@ -390,25 +327,6 @@ export default function AdminDashboard() {
       try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
       alert("Couldn't delete account: " + msg);
     } finally { setBusyDeleteAccount(null); }
-  };
-
-  // Break glass: turn two-step sign-in OFF for someone who has lost both their
-  // email and their recovery codes. This is the whole reason the feature can be
-  // switched on safely -- without it, a lost mailbox is a permanently dead
-  // account and the only remedy would be raw SQL. It clears the setting; it does
-  // not sign anyone in, and it is logged by admin_clear_mfa itself.
-  const clearMfa = async (a: any) => {
-    const who = [a.first_name, a.last_name].filter(Boolean).join(" ") || a.email || a.id.slice(0, 8);
-    if (!window.confirm(`Turn OFF two-step sign-in for ${who}? They'll be able to sign in with just their password until they switch it back on. Only do this once you're sure who you're talking to.`)) return;
-    setBusyMfa(a.id);
-    try {
-      const { data, error } = await supabase.rpc("admin_clear_mfa", { p_user_id: a.id });
-      if (error) throw error;
-      if (!(data as any)?.ok) throw new Error((data as any)?.reason || "unknown");
-      alert(`Two-step sign-in is now off for ${who}.`);
-    } catch (e: any) {
-      alert("Couldn't turn off two-step: " + (e?.message || String(e)));
-    } finally { setBusyMfa(null); }
   };
 
   const setContractorStatus = async (contractorId: string, status: "active"|"inactive") => {
@@ -691,37 +609,17 @@ export default function AdminDashboard() {
          : undefined,
   }));
 
-  const hideNow = (key: string) => setHiddenNow(prev => new Set(prev).add(key));
-  /**
-   * Renders a tab's explanatory paragraph with a "don't show this again" ×, or
-   * nothing once it has been dismissed. Every note on this page goes through
-   * here so the copy, the ×, and the persistence can't drift apart — the same
-   * reason `upsertMeta` has exactly one copy.
-   */
-  const tabNote = (key: string, text: string) => {
-    const k = "admin_note:" + key;
-    if (dismissed.has(k)) return null;
-    return (
-      <div style={{ display:"flex", alignItems:"flex-start", gap:".5rem", marginBottom:"1rem" }}>
-        <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".82rem", margin:0, lineHeight:1.5, flex:1, minWidth:0 }}>{text}</p>
-        <DismissX
-          onClick={() => { setDismissed(prev => new Set(prev).add(k)); if (me?.id) dismissKey(me.id, k); }}
-          label="Don't show this again"
-          title="Don't show this again"
-        />
-      </div>
-    );
-  };
-
-  // Account search composes with the role chips rather than replacing them: an
-  // admin who clicked "contractor" and then typed a name means both.
-  const acctTokens = searchTokens(accountQ);
   const filteredAccounts = accounts.filter(a => {
     if (accountRole !== "all") {
       if (accountRole === "orphaned") { if (!a.orphaned) return false; }
       else if ((a.role || "") !== accountRole) return false;
     }
-    return matchesSearch(acctTokens, adminAcctFields(a));
+    const q = accountQ.trim().toLowerCase();
+    if (q) {
+      const hay = [a.first_name, a.last_name, a.email, a.phone, a.meta_phone, a.company_name].filter(Boolean).join(" ").toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
   });
 
   // Any account with an email on file is an eligible email target (clients + contractors).
@@ -751,6 +649,10 @@ export default function AdminDashboard() {
           active={tab}
           onSelect={(k) => setTab(k as any)}
           title="Admin"
+          bell={me?.id ? <NotificationBell userId={me.id} dashboardPath="/admin-dashboard" /> : undefined}
+          actions={[
+            { key: "logout", label: "Log out", icon: "door", onClick: handleSignOut, danger: true },
+          ] as SidebarAction[]}
         />
         <div style={{ flex:1, minWidth:0 }}>
 
@@ -763,44 +665,20 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {loadError && !hiddenNow.has("loadError") && (
+      {loadError && (
         <div style={{ margin:"1rem 1.5rem 0", padding:".8rem 1rem", background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.4)", borderRadius:"10px", display:"flex", alignItems:"center", gap:".75rem", flexWrap:"wrap" }}>
-          <span style={{ fontSize:".85rem", color:"var(--ff-text)", flex:1, minWidth:0 }}>{loadError}</span>
+          <span style={{ fontSize:".85rem", color:"var(--ff-text)" }}>{loadError}</span>
           <button style={{ ...s.btn, borderColor:"rgba(239,68,68,.5)" }} onClick={() => loadAll()}>Retry</button>
-          {/* Session-only, and deliberately not persisted. This names a real
-              fault whose text changes with the fault — dismissing it forever
-              would silence a DIFFERENT failure later. `loadAll` clears and
-              re-sets loadError, so a retry that fails again shows it back. */}
-          <DismissX onClick={() => hideNow("loadError")} label="Hide this" title="Hide until the next load" />
         </div>
       )}
 
       <div style={s.content} className={tabAnim}>
         <ProfileBar role="admin" />
 
-        {tab === "requests" && (() => {
-          const tokens = searchTokens(search);
-          const shown = requests.filter(r => matchesSearch(tokens, adminReqFields(r)));
-          return (
+        {tab === "requests" && (
           <div>
-            {requests.length > 3 && (
-              <DashSearch
-                value={search}
-                onChange={setSearch}
-                placeholder="Search this page — service, client, address or status"
-                resultText={shown.length + " of " + requests.length + " on this page (searches the page you're on, not all " + counts.requests + ")"}
-              />
-            )}
             {requests.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No requests yet.</p>}
-            {/* A query that empties the list is a different fact from an empty
-                page, and the pager is the fix for one and not the other. */}
-            {requests.length > 0 && shown.length === 0 && (
-              <p style={{ color:"rgba(var(--ff-muted), .45)", fontSize:".9rem" }}>
-                Nothing on this page matches “{search}”. Try the next page, or{" "}
-                <button type="button" onClick={() => setSearch("")} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer", padding:0 }}>clear the search</button>.
-              </p>
-            )}
-            {shown.map(r => (
+            {requests.map(r => (
               <div key={r.id} style={s.card}>
                 <div style={s.title}>{r.service_needed}</div>
                 <div style={s.meta}><Ic name="user" size={13} style={{ marginRight:4 }} />{r.first_name} {r.last_name} · <Ic name="phone" size={13} style={{ marginRight:4, marginLeft:4 }} />{r.phone}</div>
@@ -873,21 +751,15 @@ export default function AdminDashboard() {
             ))}
             {pager("requests")}
           </div>
-          );
-        })()}
+        )}
 
         {tab === "accounts" && (
           <div>
-            {tabNote("accounts", "Every account on the platform. Search, view full details, approve or deactivate contractors, and permanently delete any account (this wipes all of their jobs, requests, messages, reviews, photos and login).")}
-            {/* The same search component as every other list, deliberately — this
-                box predates it and had its own substring match, which meant a
-                phone typed as 403-555-1234 missed a stored 4035551234. */}
-            <DashSearch
-              value={accountQ}
-              onChange={setAccountQ}
-              placeholder="Search name, email or phone"
-              resultText={filteredAccounts.length + " of " + accounts.length + " shown"}
-            />
+            <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".82rem", marginBottom:"1rem", lineHeight:1.5 }}>
+              Every account on the platform. Search, view full details, approve or deactivate contractors, and permanently delete any account (this wipes all of their jobs, requests, messages, reviews, photos and login).
+            </p>
+            <input value={accountQ} onChange={e => setAccountQ(e.target.value)} placeholder="Search name, email or phone…"
+              style={{ width:"100%", padding:".6rem .8rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, marginBottom:".75rem" }} />
             <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginBottom:"1rem" }}>
               {(["all","client","contractor","admin","orphaned"] as const).map(rf => (
                 <button key={rf} onClick={() => setAccountRole(rf)}
@@ -916,7 +788,7 @@ export default function AdminDashboard() {
                 <Ic name="mail" size={13} style={{ marginRight:4 }} />Email all clients ({clientAccts.length})
               </button>
             </div>
-            {accounts.some(a => a.orphaned) && !hiddenNow.has("orphans") && (
+            {accounts.some(a => a.orphaned) && (
               <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const, marginBottom:"1rem", padding:".7rem .85rem", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"8px" }}>
                 <span style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)", flex:1 }}>
                   {accounts.filter(a => a.orphaned).length} account{accounts.filter(a => a.orphaned).length>1?"s":""} signed in but never finished onboarding.
@@ -925,11 +797,6 @@ export default function AdminDashboard() {
                   disabled={busyNudge} onClick={nudgeIncomplete}>
                   <Ic name="mail" size={13} style={{ marginRight:4 }} />{busyNudge ? "Sending…" : "Email a finish-signup reminder"}
                 </button>
-                {/* Session-only. This is a live count of people who are stuck
-                    mid-signup — the exact state health check 7 exists to catch —
-                    so it must come back, and the orphaned filter chip above
-                    still lists them either way. */}
-                <DismissX onClick={() => hideNow("orphans")} label="Hide this" title="Hide until the next load" />
               </div>
             )}
             {filteredAccounts.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No matching accounts.</p>}
@@ -1120,10 +987,6 @@ export default function AdminDashboard() {
                         {busyStatus === a.id ? "…" : "Deactivate"}
                       </button>
                     )}
-                    <button style={s.btn} disabled={busyMfa === a.id} onClick={() => clearMfa(a)}
-                      title="Use only when someone has lost both their email and their recovery codes">
-                      <Ic name="key" size={13} style={{ marginRight:4 }} />{busyMfa === a.id ? "…" : "Turn off two-step"}
-                    </button>
                     <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)", marginLeft:"auto" }}
                       disabled={busyDeleteAccount === a.id} onClick={() => deleteAccount(a)}>
                       <Ic name="trash" size={13} style={{ marginRight:4 }} />{busyDeleteAccount === a.id ? "Deleting…" : "Delete account"}
@@ -1135,29 +998,10 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {tab === "jobs" && (() => {
-          const tokens = searchTokens(search);
-          const shown = jobs.filter(j => matchesSearch(tokens, adminJobFields(j)));
-          return (
+        {tab === "jobs" && (
           <div>
-            {jobs.length > 3 && (
-              <DashSearch
-                value={search}
-                onChange={setSearch}
-                placeholder="Search this page — job code, service, client, pro or status"
-                resultText={shown.length + " of " + jobs.length + " on this page (searches the page you're on, not all " + counts.jobs + ")"}
-              />
-            )}
             {jobs.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No jobs yet.</p>}
-            {/* A query that empties the list is a different fact from an empty
-                page, and the pager is the fix for one and not the other. */}
-            {jobs.length > 0 && shown.length === 0 && (
-              <p style={{ color:"rgba(var(--ff-muted), .45)", fontSize:".9rem" }}>
-                Nothing on this page matches “{search}”. Try the next page, or{" "}
-                <button type="button" onClick={() => setSearch("")} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer", padding:0 }}>clear the search</button>.
-              </p>
-            )}
-            {shown.map(j => (
+            {jobs.map(j => (
               <div key={j.id} style={s.card}>
                 <div style={s.title}>
                   {j.request?.service_needed || "Job"} <span style={{ fontFamily:"monospace", color:"#ea6b14", fontSize:".8em" }}>{jobCode(j.id)}</span>
@@ -1182,12 +1026,13 @@ export default function AdminDashboard() {
             ))}
             {pager("jobs")}
           </div>
-          );
-        })()}
+        )}
 
         {tab === "picks" && (
           <div>
-            {tabNote("picks", "Every contractor a client has been matched with, newest first — who won, at what price, and how many bids they beat.")}
+            <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".82rem", marginBottom:"1rem", lineHeight:1.5 }}>
+              Every contractor a client has been matched with, newest first — who won, at what price, and how many bids they beat.
+            </p>
             {picks.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No picks yet. This fills in as clients choose contractors.</p>}
             {picks.map((p: any) => {
               const how = p.how === "client_pick" ? { label:"Client picked", color:"#22c55e" }
@@ -1224,7 +1069,12 @@ export default function AdminDashboard() {
 
         {tab === "flagged" && (
           <div>
-            {tabNote("flagged", "Messages the chat guard stopped before they reached the other person. The sender saw a note explaining why and could rewrite it. Nothing here was delivered — this is the record, kept so you can spot anyone who keeps trying to take a job off the platform.")}
+            <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.6, margin:"0 0 1rem", maxWidth:640 }}>
+              Messages the chat guard stopped before they reached the other person. The
+              sender saw a note explaining why and could rewrite it. Nothing here was
+              delivered — this is the record, kept so you can spot anyone who keeps trying
+              to take a job off the platform.
+            </p>
             {chatFlags.length === 0 && (
               <p style={{ color:"rgba(var(--ff-muted), .45)" }}>Nothing has been blocked. 🎉</p>
             )}

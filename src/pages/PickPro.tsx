@@ -32,61 +32,11 @@ export default function PickPro() {
   const [picked, setPicked] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  /**
-   * `?bid=<uuid>` from a per-pro card in the estimate email. It ONLY scrolls to
-   * and outlines that pro's card — it never accepts the bid.
-   *
-   * Accepting on page load would mean a link in an email awards a job, and
-   * links in email get fetched by things that are not the recipient: security
-   * scanners, corporate prefetchers, the Gmail image proxy. The choice stays a
-   * deliberate tap on the green button, which POSTs accept_bid_by_token.
-   */
-  const [focusBid] = useState(() => {
-    try { return new URLSearchParams(window.location.search).get("bid") || ""; }
-    catch { return ""; }
-  });
-
   useEffect(() => {
     document.title = "Choose your pro · Freddy Fix It";
     let alive = true;
     (async () => {
       if (!token) { setLoadErr("bad-link"); setLoading(false); return; }
-
-      /*
-       * Already signed in AND this is your own request? Go to the dashboard.
-       *
-       * The dashboard now leads with the estimates block, so it shows the same
-       * decision this page does plus everything else the request carries — chat
-       * with each pro, the photos, the agreement. Sending a signed-in owner to a
-       * stripped-down copy of their own dashboard would be the worse screen.
-       *
-       * THE TOKEN IS NEVER EXCHANGED FOR A SESSION. It is a bearer credential
-       * that travels by email, and email gets forwarded, quoted into replies and
-       * leaked in Referer headers — so minting a login from one would turn any
-       * of those into account access. Either a session already exists, or the
-       * tokenless page below is what you get.
-       *
-       * Ownership is proved by RLS, not by the token: this select can only
-       * return a row if the signed-in user's own policy allows it. A DIFFERENT
-       * signed-in user (a contractor, or someone the link was forwarded to)
-       * matches nothing, isn't redirected, and keeps the pick page — exactly
-       * what a logged-out visitor gets. Any error falls through for the same
-       * reason: a failed read is not proof of ownership.
-       */
-      try {
-        const { data: sess } = await supabase.auth.getSession();
-        if (!alive) return;
-        if (sess?.session?.user) {
-          const { data: own } = await supabase
-            .from("client_requests")
-            .select("id")
-            .eq("pick_token", token)
-            .maybeSingle();
-          if (!alive) return;
-          if (own?.id) { setLocation("/client-dashboard?tab=requests"); return; }
-        }
-      } catch { /* not signed in, or couldn't tell — render the pick page */ }
-
       try {
         const { data: d, error } = await supabase.rpc("get_bids_by_token", { p_token: token });
         if (!alive) return;
@@ -101,13 +51,7 @@ export default function PickPro() {
       }
     })();
     return () => { alive = false; };
-  }, [token, setLocation]);
-
-  // Scroll the emailed pro into view, but only once their card has rendered.
-  useEffect(() => {
-    if (!focusBid || loading || !data?.bids?.length) return;
-    document.getElementById("ff-pk-" + focusBid)?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [focusBid, loading, data]);
+  }, [token]);
 
   const pick = async (b: any) => {
     setErr(null);
@@ -265,17 +209,7 @@ export default function PickPro() {
             )}
 
             {(data.bids ?? []).map((b: any) => (
-              /* id + outline are what `?bid=` from the estimate email lands on.
-                 scrollMarginTop clears the page's top padding so the highlighted
-                 card isn't parked half under the fold. */
-              <div
-                className="ff-pk-card"
-                key={b.bid_id}
-                id={"ff-pk-" + b.bid_id}
-                style={focusBid && focusBid === String(b.bid_id)
-                  ? { borderColor: "#ea6b14", boxShadow: "0 0 0 3px rgba(234,107,20,.18)", scrollMarginTop: "2rem" }
-                  : { scrollMarginTop: "2rem" }}
-              >
+              <div className="ff-pk-card" key={b.bid_id}>
                 <div style={{ display: "flex", gap: ".8rem", alignItems: "flex-start" }}>
                   <div className="ff-pk-avatar">
                     {b.photo_url

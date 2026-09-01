@@ -243,32 +243,6 @@ style.textContent = `
     /* Opt-out for anything genuinely inline, e.g. a link styled as a word
        inside a sentence that must not become a 44px-tall gap. */
     button.ff-tap-auto, [role="button"].ff-tap-auto { min-height: 0; }
-
-    /* Text fields, and the reason for the !important.
-       iOS Safari ZOOMS THE WHOLE VIEWPORT whenever you focus a field whose
-       computed font-size is under 16px. Our inputs are written inline at
-       .85rem, and --ff-font-scale is 1.1, so that lands at ~15px — one pixel
-       under the threshold, on every form on the site. Tapping the bid price
-       field zoomed the page in and shifted the form half off-screen, which is
-       most of what "bidding doesn't work on my phone" actually was. Safari
-       does not zoom back out on blur, so the pro then had to pinch out by
-       hand between every field.
-
-       Inline styles beat this stylesheet (see the note above img/video), and
-       the size is written inline at roughly forty call sites, so !important
-       on one line is the honest fix rather than forty edits that the next
-       new input would silently miss. It is scoped to coarse pointers, so a
-       mouse-driven desktop keeps the smaller field exactly as designed.
-
-       16px, not 1rem: 1rem is 17.6px here, which would visibly re-flow every
-       form. 16px is the threshold itself and sits a pixel off what's already
-       drawn. Checkboxes and radios are excluded from BOTH rules — a 44px-tall
-       checkbox breaks the walkthrough opt-in row, and they never trigger the
-       zoom in the first place. */
-    input:not([type="checkbox"]):not([type="radio"]),
-    select, textarea { font-size: 16px !important; }
-    input:not([type="checkbox"]):not([type="radio"]),
-    textarea { min-height: 44px; }
   }
 
   /* ── Hand-drawn icons ──────────────────────────────────────────────

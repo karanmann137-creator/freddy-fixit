@@ -1,15 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/imageCompress";
-import { scanImage, shouldBlock, rejectMessage } from "@/lib/imageSafety";
 import FadeImg from "@/components/FadeImg";
-
-/**
- * The anchor the "add a photo" attention row scrolls to. It is exported so the
- * row and the panel can never name different ids — the same reason
- * ContractPanel exports CONTRACT_ANCHOR.
- */
-export const PHOTO_ANCHOR = "ffc-photo";
 
 interface Props {
   requestId: string;
@@ -18,11 +10,9 @@ interface Props {
   quoteNotes?: string | null;
   canQuote?: boolean;
   canUpload?: boolean;
-  /** Renders the orange pulse ring, driven by the dashboard's pulseAnchor. */
-  highlight?: boolean;
 }
 
-export default function RequestPhotoQuote({ requestId, photoPath, estimatedQuote, quoteNotes, canQuote, canUpload, highlight }: Props) {
+export default function RequestPhotoQuote({ requestId, photoPath, estimatedQuote, quoteNotes, canQuote, canUpload }: Props) {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [currentPath, setCurrentPath] = useState<string | null>(photoPath ?? null);
   const [editing, setEditing] = useState(false);
@@ -30,9 +20,6 @@ export default function RequestPhotoQuote({ requestId, photoPath, estimatedQuote
   const [notes, setNotes] = useState(quoteNotes ?? "");
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
-  // Was alert(). An alert is a dead end on a phone — it can't be re-read, and
-  // it can't sit next to the button that would fix it.
-  const [uploadErr, setUploadErr] = useState("");
   const [saved, setSaved] = useState(false);
   const [currentQuote, setCurrentQuote] = useState<number | null>(estimatedQuote ?? null);
   const [currentNotes, setCurrentNotes] = useState<string | null>(quoteNotes ?? null);
@@ -45,25 +32,17 @@ export default function RequestPhotoQuote({ requestId, photoPath, estimatedQuote
 
   const uploadPhoto = async (file: File) => {
     setUploading(true);
-    setUploadErr("");
     const { data: auth } = await supabase.auth.getUser();
     const uid = auth.user?.id;
-    if (!uid) { setUploading(false); setUploadErr("Please sign in again to add a photo."); return; }
+    if (!uid) { setUploading(false); alert("Please sign in again to add a photo."); return; }
     const small = await compressImage(file, "photo");
     const ext = (small.name.split(".").pop() || "jpg").toLowerCase();
     const path = uid + "/" + crypto.randomUUID() + "." + ext;
     const up = await supabase.storage.from("problem-photos").upload(path, small, { upsert: false, contentType: small.type || undefined });
-    if (up.error) { setUploading(false); setUploadErr("Couldn't upload that photo: " + up.error.message); return; }
-    // Safety scan before the photo is linked to the request. It fails open —
-    // only a real "reject" verdict stops it, and an outage or a timeout comes
-    // back "unknown" and attaches the photo as normal. A request photo is what
-    // gets someone an accurate estimate; losing one to a scanner problem would
-    // be a worse outcome than the thing the scan is guarding against.
-    const scan = await scanImage("problem-photos", path);
-    if (shouldBlock(scan)) { setUploading(false); setUploadErr(rejectMessage(scan)); return; }
+    if (up.error) { setUploading(false); alert("Couldn't upload photo: " + up.error.message); return; }
     const { error } = await supabase.from("client_requests").update({ photo_path: path }).eq("id", requestId);
     setUploading(false);
-    if (error) { setUploadErr("Couldn't attach that photo: " + error.message); return; }
+    if (error) { alert("Couldn't attach photo: " + error.message); return; }
     setCurrentPath(path);
   };
 
@@ -98,7 +77,7 @@ export default function RequestPhotoQuote({ requestId, photoPath, estimatedQuote
   };
 
   return (
-    <div id={PHOTO_ANCHOR} className={highlight ? "ff-pulse" : undefined} style={{ ...s.wrap, scrollMarginTop: "5.5rem" }}>
+    <div style={s.wrap}>
       {photoUrl && (
         <div>
           <div style={s.label}>Job photo</div>
@@ -108,22 +87,13 @@ export default function RequestPhotoQuote({ requestId, photoPath, estimatedQuote
 
       {canUpload && (
         <div>
-          {/* The advisory only appears while there is genuinely no photo, and it
-              says the same thing the onboarding nudge says — that a photo buys a
-              firm number rather than a ballpark. Same promise in both places, or
-              one of them is teaching the wrong lesson. */}
-          {!photoUrl && (
-            <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.28)", borderRadius: "8px", padding: ".8rem 1rem", marginBottom: ".65rem", fontSize: ".82rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .85)" }}>
-              <strong style={{ color: "var(--ff-text)" }}>Add a photo to get firmer estimates.</strong>{" "}
-              Pros price what they can see. Without one you're more likely to get a wide ballpark, or a pro who wants to visit before quoting. It only takes a second and you can add it now.
-            </div>
-          )}
-          <label style={{ ...s.btn, display: "inline-block", background: photoUrl ? "rgba(var(--ff-fg), .07)" : "#ea6b14", color: photoUrl ? "rgba(var(--ff-muted), .8)" : "#fff", border: photoUrl ? "1px solid rgba(var(--ff-fg), .1)" : "none", cursor: uploading ? "default" : "pointer" }}>
+          {!photoUrl && <div style={s.label}>Add a photo</div>}
+          <label style={{ ...s.btn, display: "inline-block", background: "rgba(var(--ff-fg), .07)", color: "rgba(var(--ff-muted), .8)", border: "1px solid rgba(var(--ff-fg), .1)", cursor: uploading ? "default" : "pointer" }}>
             {uploading ? "Uploading…" : photoUrl ? "Replace photo" : "Upload a photo"}
             <input type="file" accept="image/*" disabled={uploading} style={{ display: "none" }}
-              onChange={e => { const f = e.target.files?.[0]; if (!f) return; uploadPhoto(f); e.target.value = ""; }} />
+              onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); e.target.value = ""; }} />
           </label>
-          {uploadErr && <div style={{ fontSize: ".8rem", color: "var(--ff-danger)", marginTop: ".45rem", lineHeight: 1.5 }}>{uploadErr}</div>}
+          {!photoUrl && <div style={{ fontSize: ".75rem", color: "rgba(var(--ff-muted), .45)", marginTop: ".35rem" }}>A photo helps contractors estimate accurately.</div>}
         </div>
       )}
 

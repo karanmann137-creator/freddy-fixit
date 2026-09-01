@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/imageCompress";
-import { scanImage, shouldBlock, rejectMessage } from "@/lib/imageSafety";
 import { blockedReason, BLOCKED_HELP, detectDateTime, formatWhen } from "@/lib/chatParse";
 import { markJobRead, announceChatChange, messageTime, daySeparator, isNewDay } from "@/lib/chatUnread";
 import { jobCode } from "@/lib/jobCode";
@@ -46,16 +45,9 @@ function jobEvents(job: any, role: Role): Evt[] {
   if (!job) return [];
   const pro = role === "contractor";
   const out: Evt[] = [];
-  // `text` may be a thunk so a row's own fields are only touched when the
-  // timestamp that gates the event is actually present. Passing a built string
-  // evaluates it unconditionally, which is how `formatWhen(null)` used to throw
-  // here and blank the entire dashboard.
-  const add = (at: any, text: string | (() => string), icon: IconName) => {
-    if (!at) return;
-    out.push({ at: String(at), text: typeof text === "function" ? text() : text, icon });
-  };
+  const add = (at: any, text: string, icon: IconName) => { if (at) out.push({ at: String(at), text, icon }); };
 
-  add(job.walkthrough_approved_at, () => "Walkthrough booked for " + formatWhen(job.walkthrough_at), "calendar");
+  add(job.walkthrough_approved_at, "Walkthrough booked for " + formatWhen(job.walkthrough_at), "calendar");
   add(job.walkthrough_done_at, "Walkthrough done", "check-circle");
   add(job.schedule_proposed_at, pro ? "You sent an estimate" : "Estimate received", "dollar");
   add(job.client_approved_at, pro ? "Client approved the estimate" : "You approved the estimate", "check-circle");
@@ -242,18 +234,6 @@ export default function JobChat({
           contentType: outFile.type || undefined, upsert: false,
         });
         if (upErr) { setErr("Upload failed — please try again."); setSending(false); return; }
-        // Safety scan sits between the upload and the message insert, so a
-        // rejected photo is never attached to a message anyone else can read.
-        // Images only — the scanner can't look at a video, and asking it to
-        // would just spend 12 seconds arriving at "unknown". It fails open by
-        // construction: only a real "reject" verdict stops a send, and an
-        // outage comes back "unknown" and sends as normal. A photo in a job
-        // thread is often the evidence in a dispute; losing one to a scanner
-        // problem is a worse outcome than the thing the scan guards against.
-        if (pending.kind === "image") {
-          const scan = await scanImage(BUCKET, path);
-          if (shouldBlock(scan)) { setErr(rejectMessage(scan)); setSending(false); return; }
-        }
         attachment_path = path;
         attachment_type = pending.kind;
       }
