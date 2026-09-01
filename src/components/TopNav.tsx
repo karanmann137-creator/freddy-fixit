@@ -5,6 +5,7 @@ import { getMyProfile } from "@/lib/myProfile";
 import NotificationBell from "@/components/NotificationBell";
 import SettingsModal from "@/components/SettingsModal";
 import { Ic } from "@/components/Ic";
+import { setTheme, lightPeekEligible, markLightPeekUsed } from "@/lib/theme";
 
 const CONTACT_EMAIL = "hello@freddyfixit.ca";
 
@@ -20,6 +21,13 @@ const NAV_LINKS: { label: string; to: string; accent?: boolean; small?: boolean 
   { label: "About us", to: "/about" },
   { label: "Blog", to: "/blog", small: false },
 ];
+
+// The two reading surfaces a first-time visitor walks to from the home page,
+// and the only routes the light-mode peek fires on. Exact matches, not
+// prefixes: /blog/<slug> is somewhere they've already gone one level deeper,
+// and re-theming the page under someone mid-article is a worse trade than
+// missing the moment.
+const PEEK_ROUTES = ["/about", "/blog"];
 
 export default function TopNav() {
   const [loc, setLocation] = useLocation();
@@ -40,6 +48,53 @@ export default function TopNav() {
     window.addEventListener("ff:open-settings", open);
     return () => window.removeEventListener("ff:open-settings", open);
   }, []);
+
+  // ---- Light-mode peek -----------------------------------------------------
+  // A first-time, signed-out visitor stepping from the home page into About us
+  // or the Blog sees the site in light mode once, with a prompt beside the gear
+  // saying so. The eligibility rules — and why every failure answers "don't" —
+  // live in src/lib/theme.ts. It lives HERE rather than on those two pages
+  // because this component already knows whether anyone is signed in; asking
+  // again from a page would mean a second auth round-trip for an answer the nav
+  // is already holding.
+  //
+  // It is split across two effects on purpose. `authed` starts null (unknown)
+  // and resolves asynchronously, so "did they arrive from the home page?" has
+  // to be recorded on the route change itself, while the decision waits for the
+  // auth answer — deciding in one effect would either flip a signed-in user's
+  // theme or lose the arrival by the time we could tell.
+  const [peek, setPeek] = useState(false);
+  const prevLoc = useRef(loc);
+  const cameFromHome = useRef(false);
+  useEffect(() => {
+    cameFromHome.current = prevLoc.current === "/" && loc !== prevLoc.current;
+    prevLoc.current = loc;
+    // The prompt never outlives the page that raised it. This effect is
+    // declared BEFORE the one below, so on the firing navigation the reset runs
+    // first and the show wins.
+    setPeek(false);
+  }, [loc]);
+  useEffect(() => {
+    if (authed !== false) return;              // null = still asking, true = signed in
+    if (!cameFromHome.current) return;
+    if (!PEEK_ROUTES.includes(loc)) return;
+    if (!lightPeekEligible()) return;
+    // Claim, then act. If anything below throws, the visitor loses one prompt
+    // rather than getting the theme flipped under them on every navigation.
+    markLightPeekUsed();
+    // setTheme, not applyTheme: Settings reads the stored value when it opens,
+    // so applying light without persisting it would show "Dark" selected on a
+    // page that is visibly light — and the prompt sends them straight there.
+    setTheme("light");
+    setPeek(true);
+  }, [loc, authed]);
+  // Opening Settings answers the prompt, however it was opened.
+  useEffect(() => { if (settingsOpen) setPeek(false); }, [settingsOpen]);
+  useEffect(() => {
+    if (!peek) return;
+    const t = setTimeout(() => setPeek(false), 15000);
+    return () => clearTimeout(t);
+  }, [peek]);
 
   // Scroll state. Home makes the bar transparent while it sits over the hero
   // (a solid bar there cuts a hard seam across the hero's radial glow), so the
@@ -160,6 +215,14 @@ export default function TopNav() {
           .ff-nav-btn { padding: .4rem .75rem !important; font-size: .72rem !important; }
         }
         @media (max-width: 460px) { .ff-nav-small-hide { display: none !important; } }
+        /* Light-mode peek. Inline styles can't express keyframes or :hover,
+           which is why these live here rather than beside the JSX. */
+        .ff-peek { animation: ff-peek-in .22s ease-out both; }
+        .ff-peek-main:hover .ff-peek-link { text-decoration: underline; }
+        .ff-peek-x:hover { background: rgba(var(--ff-fg), .1); }
+        .ff-peek-target { border-color: rgba(234,107,20,.55) !important; color: #ea6b14 !important; }
+        @keyframes ff-peek-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+        @media (prefers-reduced-motion: reduce) { .ff-peek { animation: none; } }
       `}</style>
 
       <div className="ff-brand" style={brand} onClick={() => setLocation("/")}>FREDDYFIXIT</div>
@@ -306,9 +369,28 @@ export default function TopNav() {
         ) : (
           // Logged out: simple header — gear + Sign In.
           <>
-            <button aria-label="Settings" onClick={() => setSettingsOpen(true)} className="ff-nav-btn ff-nav-btn-ghost" style={{ ...btn, ...ghostBtn, padding:".5rem", display:"inline-flex", alignItems:"center", justifyContent:"center" }}>
+            {/* The gear is wrapped so the light-mode peek can hang off it. The
+                prompt has to point AT the control it names — a toast in the
+                corner would tell someone the theme changed without showing
+                them the one button that changes it back. */}
+            <div style={{ position: "relative" }}>
+            <button aria-label="Settings" onClick={() => setSettingsOpen(true)} className={`ff-nav-btn ff-nav-btn-ghost${peek ? " ff-peek-target" : ""}`} style={{ ...btn, ...ghostBtn, padding:".5rem", display:"inline-flex", alignItems:"center", justifyContent:"center" }}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             </button>
+            {peek && (
+              <div className="ff-peek" style={peekCard} role="status">
+                <div style={peekCaret} aria-hidden="true" />
+                {/* The card is not itself a button: the dismiss X has to be a
+                    real button, and a button inside a button is invalid. */}
+                <button className="ff-peek-main" onClick={() => { setPeek(false); setSettingsOpen(true); }} style={peekMain}>
+                  <span style={peekTitle}>Like the light mode?</span>
+                  <span style={peekBody}>We&rsquo;ve switched to the lighter look for a moment. Keep it, or switch back to dark whenever you like.</span>
+                  <span className="ff-peek-link" style={peekLink}>Open Settings &rarr;</span>
+                </button>
+                <button aria-label="Dismiss" onClick={() => setPeek(false)} className="ff-peek-x" style={peekX}>&times;</button>
+              </div>
+            )}
+            </div>
             <button onClick={() => setLocation("/login")} className="ff-nav-btn ff-nav-btn-ghost" style={{ ...btn, ...ghostBtn }}>Sign In</button>
           </>
         )}
@@ -347,6 +429,41 @@ const menuPanel: React.CSSProperties = {
   background: "var(--ff-surface)", border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: "14px",
   padding: ".4rem", boxShadow: "0 14px 40px rgba(0,0,0,.45)", zIndex: 200,
   display: "flex", flexDirection: "column", gap: ".15rem",
+};
+// Light-mode peek. Width is capped against the viewport because it is anchored
+// to the gear, which is not the rightmost control on the bar — on a narrow
+// phone a fixed 250px card would hang off the left edge.
+const peekCard: React.CSSProperties = {
+  position: "absolute", top: "calc(100% + .65rem)", right: 0,
+  width: "min(260px, calc(100vw - 2rem))",
+  background: "var(--ff-surface)", border: "1px solid rgba(234,107,20,.3)",
+  borderRadius: "14px", padding: ".85rem .9rem .8rem",
+  boxShadow: "0 16px 44px rgba(0,0,0,.28)", zIndex: 200,
+  display: "flex", alignItems: "flex-start", gap: ".4rem",
+};
+const peekCaret: React.CSSProperties = {
+  position: "absolute", top: "-5px", right: "14px", width: "9px", height: "9px",
+  background: "var(--ff-surface)", borderLeft: "1px solid rgba(234,107,20,.3)",
+  borderTop: "1px solid rgba(234,107,20,.3)", transform: "rotate(45deg)",
+};
+const peekMain: React.CSSProperties = {
+  display: "flex", flexDirection: "column", gap: ".3rem", flex: 1, minWidth: 0,
+  background: "transparent", border: "none", padding: 0, textAlign: "left",
+  cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+};
+const peekTitle: React.CSSProperties = {
+  fontSize: ".92rem", fontWeight: 600, color: "var(--ff-text)",
+};
+const peekBody: React.CSSProperties = {
+  fontSize: ".8rem", lineHeight: 1.5, color: "rgba(var(--ff-muted), .9)", fontWeight: 300,
+};
+const peekLink: React.CSSProperties = {
+  fontSize: ".8rem", fontWeight: 600, color: "#ea6b14", marginTop: ".1rem",
+};
+const peekX: React.CSSProperties = {
+  flex: "0 0 auto", width: "24px", height: "24px", borderRadius: "7px",
+  border: "none", background: "transparent", color: "rgba(var(--ff-muted), .8)",
+  fontSize: "1.05rem", lineHeight: 1, cursor: "pointer", padding: 0,
 };
 const menuRow: React.CSSProperties = {
   display: "flex", alignItems: "center", gap: ".5rem",

@@ -155,6 +155,25 @@ export default function About() {
         </div>
       </section>
 
+      {/* Homegrown / fast-moving / ethical. Deliberately written without a
+          single number or superlative, like the rest of the page: "we ship
+          most weeks" is checkable, "the fastest-moving platform in Alberta"
+          is not. The claims here are about HOW we work, which is the one
+          thing we can promise on the platform's worst day too. */}
+      <section style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem clamp(1rem, 4vw, 1.5rem) 2.5rem" }}>
+        <h2 className="ab-h" style={{ fontSize: "1.9rem", color: "var(--ff-text)", marginBottom: ".9rem", textAlign: "center" }}>We're never quite finished</h2>
+        <div className="ab-rule" />
+        <p className="ab-p" style={{ fontSize: "1rem", marginBottom: "1.1rem" }}>
+          Freddy Fix It is homegrown. It's built here, by a small team who use it, rather than bought off a shelf or handed down from a head office three provinces away. The upside of that is simple: when something on here is clumsy, there's nobody to escalate it to and no quarterly roadmap to wait for. We just fix it. Most weeks something changes — a step taken out of a form, a plainer explanation when a payment doesn't go through, a photo that finally uploads properly from an old phone.
+        </p>
+        <p className="ab-p" style={{ fontSize: "1rem", marginBottom: "1.1rem" }}>
+          We move quickly, but we're careful about where we point that speed. Anything that touches your money or a signed agreement is checked twice and changed slowly, because those are the things you can't undo. Everything else — the wording, the layout, the small frictions that turn a useful tool into a chore — we'd rather change the week we hear about it than defend for a year. Efficient, to us, means not asking you to do work a computer should have done for you.
+        </p>
+        <p className="ab-p" style={{ fontSize: "1rem" }}>
+          And we try to solve things the honest way, even when a cheaper trick exists. No countdown timers, no invented reviews, no pre-ticked boxes, no fee that appears at the end. Every change gets looked at from both sides of the job — the homeowner waiting to hear back, and the tradesperson trying to get paid for work they've already finished — because a shortcut that helps one of you at the other's expense isn't really a feature. It's just a bill somebody else pays later.
+        </p>
+      </section>
+
       <section style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem clamp(1rem, 4vw, 1.5rem) 2.5rem" }}>
         <h2 className="ab-h" style={{ fontSize: "1.9rem", color: "var(--ff-text)", marginBottom: ".9rem", textAlign: "center" }}>Who you're dealing with</h2>
         <div className="ab-rule" />
