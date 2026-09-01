@@ -2,14 +2,15 @@ import { Ic } from "@/components/Ic";
 import { Sk, SkText, SkCard, StalledNotice } from "@/components/Skeleton";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import VoiceDictate from "@/components/VoiceDictate";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/imageCompress";
+import { scanImage, shouldBlock, rejectMessage } from "@/lib/imageSafety";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
 import OnboardingProgress from "@/components/OnboardingProgress";
 import { SERVICES, SCHEDULES } from "@/pages/ClientOnboarding";
-import { useServicePricing, fromText } from "@/lib/servicePricing";
+import { useServicePricing, fromText, floorFor } from "@/lib/servicePricing";
 import ServicePicker from "@/components/ServicePicker";
 import BudgetPicker from "@/components/BudgetPicker";
 import { isPerKmService, freqLabel, SLIDER_STOPS, SLIDER_SHORT } from "@/lib/recurrence";
@@ -18,6 +19,7 @@ import { usePlatformStatus, acceptingRequests } from "@/lib/platformStatus";
 import { detectFromText } from "@/lib/serviceTags";
 import { questionsFor, answerSummary, type JobAnswers } from "@/lib/jobQuestions";
 import { trackEvent } from "@/lib/analytics";
+import { useStoredDraft, useDraftAutosave, clearDraft, NEWREQUEST_DRAFT_KEY, dStr, dArr, dNum, dBool } from "@/lib/requestDraft";
 
 const TOTAL = 4;
 // One short, plain-language line per step — matches ClientOnboarding's
@@ -46,42 +48,78 @@ export default function NewRequest() {
   // (hooks rule) — the gate itself lives further down, past the early returns.
   const { status: platform, ready: platformReady } = usePlatformStatus();
 
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  /**
+   * A half-finished request, remembered for the length of the browsing session.
+   *
+   * Its own key (`ff_req_draft_return`), separate from the signup form's — the two
+   * hold different shapes and must never cross-restore. Read ONCE here, above
+   * every piece of state that seeds from it, because the autosave effect below
+   * runs on mount too and a later read would see the freshly-written empty form.
+   */
+  const { draft, restored, startOver } = useStoredDraft(NEWREQUEST_DRAFT_KEY);
+  // Captured once, because the profile/address read below resolves AFTER mount and
+  // would otherwise overwrite a restored choice with its own default. Empty string
+  // means "the draft had nothing to say", which is the same as no draft at all.
+  const draftAddrChoice = dStr(draft, "addrChoice");
+  const draftVehChoice  = dStr(draft, "vehChoice");
+
+  const [selectedServices, setSelectedServices] = useState<string[]>(() => dArr(draft, "selectedServices").filter(l => SERVICES.some(sv => sv.label === l)));
   const pricing = useServicePricing();
-  const [schedule, setSchedule] = useState("");
+  const [schedule, setSchedule] = useState(() => dStr(draft, "schedule"));
   const [sameAddress, setSameAddress] = useState(true);
-  const [newLocation, setNewLocation] = useState("");
+  const [newLocation, setNewLocation] = useState(() => dStr(draft, "newLocation"));
 
   // Saved addresses & vehicles (reused across requests).
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
   const [savedVehicles, setSavedVehicles] = useState<any[]>([]);
-  const [addrChoice, setAddrChoice] = useState<string>("last"); // saved id | "last" | "new"
+  const [addrChoice, setAddrChoice] = useState<string>(() => dStr(draft, "addrChoice", "last")); // saved id | "last" | "new"
   const [saveNewAddress, setSaveNewAddress] = useState(true);
-  const [vehChoice, setVehChoice] = useState<string>("new");    // saved id | "new"
-  const [vehYear, setVehYear] = useState("");
-  const [vehMake, setVehMake] = useState("");
-  const [vehModel, setVehModel] = useState("");
+  const [vehChoice, setVehChoice] = useState<string>(() => dStr(draft, "vehChoice", "new"));    // saved id | "new"
+  const [vehYear, setVehYear] = useState(() => dStr(draft, "vehYear"));
+  const [vehMake, setVehMake] = useState(() => dStr(draft, "vehMake"));
+  const [vehModel, setVehModel] = useState(() => dStr(draft, "vehModel"));
   const [saveNewVehicle, setSaveNewVehicle] = useState(true);
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState(() => dStr(draft, "description"));
   // Describe-first scaffolding: which screen we're on, what the description
   // read as, and the answers to the follow-up questions.
-  const [step, setStep] = useState(1);
-  const [tags, setTags] = useState<string[]>([]);
-  const [answers, setAnswers] = useState<JobAnswers>({});
-  const [detectedFor, setDetectedFor] = useState("");
-  const [showAllServices, setShowAllServices] = useState(false);
-  const [budgetMin, setBudgetMin]           = useState("");
-  const [budgetMax, setBudgetMax]           = useState("");
-  const [budgetFlexible, setBudgetFlexible] = useState(false);
-  const [recurring, setRecurring] = useState(false);
-  const [recurringFrequency, setRecurringFrequency] = useState<string>("");
-  const [sliderIdx, setSliderIdx]                   = useState(3);
-  const [recurringDates, setRecurringDates]         = useState<string[]>([]);
+  const [step, setStep] = useState(() => dNum(draft, "step", 1, 1, TOTAL));
+  const [tags, setTags] = useState<string[]>(() => dArr(draft, "tags"));
+  const [answers, setAnswers] = useState<JobAnswers>(() => {
+    // Free-form id->string map, so there's no fixed key list to validate against.
+    // Keep only the string values and drop anything else.
+    const raw = draft?.answers;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+    const out: JobAnswers = {};
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) if (typeof v === "string") out[k] = v;
+    return out;
+  });
+  const [detectedFor, setDetectedFor] = useState(() => dStr(draft, "detectedFor"));
+  const [showAllServices, setShowAllServices] = useState(() => dBool(draft, "showAllServices"));
+  const [budgetMax, setBudgetMax]           = useState(() => dStr(draft, "budgetMax"));
+  const [budgetFlexible, setBudgetFlexible] = useState(() => dBool(draft, "budgetFlexible"));
+  /**
+   * The platform's starting price for whatever is currently selected. Derived,
+   * never typed — the client picks a maximum only (see BudgetPicker).
+   *
+   * Computed HERE rather than inside BudgetPicker so the number the client is
+   * shown and the number written into `client_requests.budget_min` are the same
+   * value, not two evaluations that could drift apart. Null while `pricing` is
+   * still loading or when nothing selected is in the price book, in which case
+   * the floor is hidden and budget_min is left NULL rather than guessed.
+   */
+  const budgetFloor = floorFor(selectedServices.join(", "), pricing);
+  const [recurring, setRecurring] = useState(() => dBool(draft, "recurring"));
+  const [recurringFrequency, setRecurringFrequency] = useState<string>(() => dStr(draft, "recurringFrequency"));
+  const [sliderIdx, setSliderIdx]                   = useState(() => dNum(draft, "sliderIdx", 3, 0, SLIDER_STOPS.length - 1));
+  const [recurringDates, setRecurringDates]         = useState<string[]>(() => dArr(draft, "recurringDates"));
   const [newDate, setNewDate]                       = useState("");
-  const [recurringKm, setRecurringKm]               = useState("");
-  const [prepayPref, setPrepayPref]                 = useState(0);
-  const [recurringStartDate, setRecurringStartDate] = useState("");
-  const [recurringEndDate, setRecurringEndDate]     = useState("");
+  const [recurringKm, setRecurringKm]               = useState(() => dStr(draft, "recurringKm"));
+  // Only 0 / 2 / 3 are offerable; clamping a range would let a stale value restore
+  // as one with no chip selected, which reads as "nothing chosen" while still
+  // being submitted. Anything off the list falls back to 0.
+  const [prepayPref, setPrepayPref]                 = useState(() => { const n = dNum(draft, "prepayPref", 0, 0, 3); return n === 2 || n === 3 ? n : 0; });
+  const [recurringStartDate, setRecurringStartDate] = useState(() => dStr(draft, "recurringStartDate"));
+  const [recurringEndDate, setRecurringEndDate]     = useState(() => dStr(draft, "recurringEndDate"));
 
   const SEASON_PRESETS = [
     { label: "Spring", start: "-04-01", end: "-06-30" },
@@ -113,6 +151,10 @@ export default function NewRequest() {
     if (schedule === "Recurring" && !recurringFrequency) setRecurringFrequency(SLIDER_STOPS[sliderIdx]);
   }, [schedule]); // eslint-disable-line react-hooks/exhaustive-deps
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  // Photo nudge state. `photoNudged` is a ref, not state, so the second press
+  // can never be swallowed by a re-render landing between the two clicks.
+  const photoNudged = useRef(false);
+  const [photoPulse, setPhotoPulse] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState("");
@@ -146,10 +188,15 @@ export default function NewRequest() {
       setSavedAddresses(addrs ?? []);
       setSavedVehicles(vehs ?? []);
       // Default address choice: last-used if we have one, else first saved, else fresh entry.
-      if (last?.location) { setAddrChoice("last"); setSameAddress(true); }
+      // DEFAULT, not override — a restored draft already carries a choice the client
+      // made, and this read resolves after mount, so without the guard it would land
+      // a second later and silently move them off the address they picked (hiding a
+      // new one they had already typed).
+      if (draftAddrChoice) { setSameAddress(draftAddrChoice !== "new"); }
+      else if (last?.location) { setAddrChoice("last"); setSameAddress(true); }
       else if ((addrs ?? []).length) { setAddrChoice((addrs as any[])[0].id); setSameAddress(true); }
       else { setAddrChoice("new"); setSameAddress(false); }
-      if ((vehs ?? []).length) setVehChoice((vehs as any[])[0].id);
+      if ((vehs ?? []).length && !draftVehChoice) setVehChoice((vehs as any[])[0].id);
       if (last?.client_type === "business") setRecurring(!!last.recurring);
       } catch (e) {
         console.error("NewRequest load failed", e);
@@ -168,13 +215,45 @@ export default function NewRequest() {
     if (pro) setPreferredPro(pro);
   }, []);
 
+  /**
+   * Pros this client has worked with or favourited, for the "book again" strip.
+   *
+   * This used to sit on the client dashboard home tab, where it competed with
+   * the money-gating attention rows for the top of the page. It belongs HERE:
+   * rebooking is a decision about the request being written, so the shortcut
+   * lives on the form that writes it.
+   *
+   * Read on its OWN, deliberately outside the `Promise.all` above — that block
+   * sets `loadError`, which replaces the entire page with a retry screen. A
+   * convenience strip must never be able to stop someone posting a job, so a
+   * failed read here leaves `pros` empty and the strip simply doesn't render.
+   * There is nothing for the client to do about it either way, and the full
+   * list is still on the dashboard's My Pros tab.
+   */
+  const [pros, setPros] = useState<any[]>([]);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const { data, error } = await supabase.rpc("list_my_pros");
+      if (!alive || error) return;
+      setPros(data ?? []);
+    })();
+    return () => { alive = false; };
+  }, []);
+  const chosenPro = preferredPro ? pros.find(p => p.contractor_id === preferredPro) : null;
+
   // Pre-select a service if the home page linked here with ?service=…
   useEffect(() => {
     const raw = new URLSearchParams(window.location.search).get("service");
     if (!raw) return;
     const map: Record<string,string> = { "General Repairs":"General Handyman", "Plumbing":"Plumbing Repair", "Electrical":"Electrical Work", "HVAC":"HVAC Maintenance", "Drywall & Flooring":"Drywall / Flooring" };
     const mapped = map[raw] ?? raw;
-    if (SERVICES.some(sv => sv.label === mapped)) setSelectedServices([mapped]);
+    // ADD, never replace — see the same guard in ClientOnboarding. Now that a draft
+    // can be restored, someone who picked three services and then tapped a service
+    // tile would otherwise come back to find the other two silently deleted.
+    if (SERVICES.some(sv => sv.label === mapped)) {
+      setSelectedServices(prev => prev.includes(mapped) ? prev : [...prev, mapped]);
+    }
   }, []);
 
   const prevAddress = lastReq?.location ?? "";
@@ -202,8 +281,42 @@ export default function NewRequest() {
   // changes the recorded answers belong to a different question set and must go.
   // Keeping them would attach (say) a plumbing answer to an electrical job.
   const primaryService = selectedServices[0] || "";
-  useEffect(() => { setAnswers({}); }, [primaryService]);
+  // The FIRST run is skipped, and that skip is what makes draft restore work at
+  // all: this effect fires on mount like any other, so without the ref it would
+  // wipe the answers we just restored before the client ever saw them.
+  const answersFor = useRef(primaryService);
+  useEffect(() => {
+    if (answersFor.current === primaryService) return;
+    answersFor.current = primaryService;
+    setAnswers({});
+  }, [primaryService]);
   const activeQuestions = questionsFor(primaryService);
+
+  /**
+   * Autosave, debounced.
+   *
+   * The snapshot is FLAT because `draftWorthOffering` looks for `description` and
+   * `selectedServices` at the top level, and flat is what the `dStr`/`dArr`/`dNum`
+   * accessors above read back.
+   *
+   * Left out on purpose: `photoFile` (a `File` doesn't survive JSON — a stringified
+   * one restores as `{}` and the UI would claim a photo is attached with no bytes
+   * to upload), `errors` / `submitError` / `submitting` (they describe a moment,
+   * not an intention), and `agreedToTerms` (consent should be an act of this
+   * visit, not one inherited from the last one).
+   *
+   * `enabled` goes false while the insert is in flight so a pending timer can't
+   * outlive a request that now exists; a FAILED submit turns it back on, because
+   * at that point the client still has a draft and nothing was created.
+   */
+  useDraftAutosave(NEWREQUEST_DRAFT_KEY, {
+    step, tags, answers, detectedFor, showAllServices,
+    selectedServices, description, schedule,
+    addrChoice, newLocation, vehChoice, vehYear, vehMake, vehModel,
+    recurring, recurringFrequency, sliderIdx, recurringDates,
+    recurringKm, prepayPref, recurringStartDate, recurringEndDate,
+    budgetMax, budgetFlexible,
+  }, !submitting);
 
   const setAnswer = (q: { id: string; multi?: boolean }, option: string) => {
     setAnswers(prev => {
@@ -268,15 +381,13 @@ export default function NewRequest() {
       if (!schedule) e.schedule = "Please choose a timeframe";
       const loc = resolveLocation();
       if (!loc) e.location = addrChoice === "new" ? "Address required" : "No address on file — please enter one";
-      // Budget is optional, but if given it has to make sense.
+      // Budget is optional, but if given it has to make sense. The minimum is
+      // ours and can't be typed wrong, so only the max is validated — and a max
+      // under our floor is a soft warning inside BudgetPicker, not a hard block:
+      // someone genuinely willing to pay less should still be allowed to ask.
       if (!budgetFlexible) {
-        const bLo = budgetMin.trim() === "" ? null : Number(budgetMin);
         const bHi = budgetMax.trim() === "" ? null : Number(budgetMax);
-        if ((bLo != null && (!isFinite(bLo) || bLo < 0)) || (bHi != null && (!isFinite(bHi) || bHi < 0))) {
-          e.budget = "Budget must be a positive number";
-        } else if (bLo != null && bHi != null && bHi < bLo) {
-          e.budget = "Budget maximum must be at least the minimum";
-        }
+        if (bHi != null && (!isFinite(bHi) || bHi < 0)) e.budget = "Budget must be a positive number";
       }
     }
     setErrors(e);
@@ -293,6 +404,25 @@ export default function NewRequest() {
 
   const next = () => {
     if (!validate()) return;
+    /**
+     * The photo nudge — a nudge, NOT a gate. Same rule, same wording and the
+     * same one-press budget as ClientOnboarding step 1, because this is the
+     * SAME question asked of a returning client and the two forms answering it
+     * differently is how one of them quietly stops working.
+     *
+     * It runs AFTER validate() so a real error keeps the scroll position; the
+     * flag is a ref rather than state because a re-render between the two
+     * presses would race the click handler and swallow the second press.
+     */
+    if (step === 1 && !photoFile && !photoNudged.current) {
+      photoNudged.current = true;
+      setPhotoPulse(true);
+      setTimeout(() => {
+        document.getElementById("nr-photo")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 60);
+      setTimeout(() => setPhotoPulse(false), 4500); // matches 1.5s x 3
+      return;
+    }
     // Read the description on the way out of screen 1 so screen 2 has something
     // to confirm.
     if (step === 1) runDetect();
@@ -318,7 +448,26 @@ export default function NewRequest() {
         const ext = (small.name.split(".").pop() || "jpg").toLowerCase();
         const path = user.id + "/" + crypto.randomUUID() + "." + ext;
         const up = await supabase.storage.from("problem-photos").upload(path, small, { upsert: false, contentType: small.type || undefined });
-        if (!up.error) photoPath = path;
+        // Safety scan before the photo is linked to the request. Fail-open —
+        // only a real "reject" stops it, and a scanner outage comes back
+        // "unknown" and attaches the photo as normal.
+        //
+        // Unlike the signup flow, this stops BEFORE the request is inserted and
+        // says so, because here it can: nothing else is half-created, the page
+        // is still on screen, and the person can pick a different photo. It
+        // drops the attachment first so pressing Submit again just works — the
+        // photo is optional, so refusing one must never leave someone unable to
+        // post their job at all.
+        if (!up.error) {
+          const scan = await scanImage("problem-photos", path);
+          if (shouldBlock(scan)) {
+            setPhotoFile(null);
+            setSubmitError(rejectMessage(scan) + " We've removed it — press Submit again to post without a photo, or choose a different one.");
+            setSubmitting(false);
+            return;
+          }
+          photoPath = path;
+        }
       }
 
       const location = resolveLocation();
@@ -357,7 +506,11 @@ export default function NewRequest() {
         photo_path: photoPath,
         status: "pending",
         budget_flexible: budgetFlexible,
-        budget_min: budgetFlexible || budgetMin.trim() === "" ? null : Number(budgetMin),
+        // budget_min is OURS now (see BudgetPicker) — the platform starting
+        // price for the chosen services, stored even when the client says
+        // they're flexible, because it describes the work rather than their
+        // preference and it is the anchor the contractor actually wants.
+        budget_min: budgetFloor,
         budget_max: budgetFlexible || budgetMax.trim() === "" ? null : Number(budgetMax),
         client_type: lastReq?.client_type ?? "individual",
         business_name: isBusiness ? (lastReq?.business_name ?? null) : null,
@@ -375,6 +528,10 @@ export default function NewRequest() {
       });
       if (error) throw error;
       requestGoogleReview("job_posted");
+      // The request row exists now, so the draft is no longer a half-finished
+      // request — it's a duplicate waiting to happen. Cleared before navigating,
+      // while `submitting` still has autosave switched off.
+      clearDraft(NEWREQUEST_DRAFT_KEY);
       setLocation("/client-dashboard");
     } catch (err: any) {
       setSubmitError(err?.message ?? "Something went wrong. Please try again.");
@@ -449,17 +606,50 @@ export default function NewRequest() {
   return (
     <div style={s.wrap}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+      {/* This page is outside `.ffdash`, and ClientOnboarding returns
+          <NewRequest/> BEFORE its own <style> block ever renders — so the pulse
+          keyframes have to be declared here. Copied deliberately rather than
+          imported: an inline style attribute cannot express @keyframes, and the
+          two forms are separate top-level screens. */}
+      <style>{"@keyframes ff-co-pulse{0%{box-shadow:0 0 0 0 rgba(234,107,20,.55)}70%{box-shadow:0 0 0 12px rgba(234,107,20,0)}100%{box-shadow:0 0 0 0 rgba(234,107,20,0)}}"
+        + " .ff-photo-pulse{outline:2px solid rgba(234,107,20,.75); outline-offset:6px; border-radius:12px; animation:ff-co-pulse 1.5s ease-out 3}"
+        + " @media (prefers-reduced-motion: reduce){.ff-photo-pulse{animation:none; background:rgba(234,107,20,.12)}}"}</style>
       <div style={s.inner}>
         <button onClick={back} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".82rem", textTransform:"uppercase", letterSpacing:".08em", padding:0, marginBottom:"2rem", display:"block" }}>
           {step === 1 ? "← Dashboard" : "← Back"}
         </button>
         <OnboardingProgress step={step} total={TOTAL} />
+        {/* The form has already filled itself in by the time this renders — it says
+            so rather than asking. Same banner shape as the signup flow on purpose. */}
+        {restored && (
+          <div style={{ display:"flex", alignItems:"center", gap:".75rem", flexWrap:"wrap" as const, padding:".8rem 1rem", marginBottom:"1.25rem", borderRadius:"10px", background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.3)" }}>
+            <Ic name="check" size={16} color="#22c55e" style={{ flexShrink:0 }} />
+            <span style={{ fontSize:".88rem", color:"var(--ff-text)", flex:"1 1 auto", minWidth:0 }}>We saved your progress.</span>
+            {/* Clear the stored copy, THEN reload — resetting two dozen pieces of
+                state by hand would be a second copy of the initial values that has
+                to be kept in step with the first one forever. */}
+            <button type="button" onClick={() => { startOver(); window.location.reload(); }} style={{ background:"none", border:"none", padding:0, cursor:"pointer", fontFamily:"inherit", fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", textDecoration:"underline", flexShrink:0 }}>
+              Start over
+            </button>
+          </div>
+        )}
         <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:"2rem" }}>{STEP_TITLES[step-1]}</h1>
 
         {preferredPro && (
-          <div style={{ ...s.card, marginBottom:"1rem", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.07)", display:"flex", alignItems:"center", gap:".6rem" }}>
-            <Ic name="star" size={16} color="#ea6b14" />
-            <div style={{ fontSize:".86rem", color:"var(--ff-text)" }}>You're rebooking a pro you've worked with — they'll be notified directly to send you an estimate.</div>
+          <div style={{ ...s.card, marginBottom:"1rem", padding:"1rem 1.25rem", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.07)", display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const }}>
+            <Ic name="star" size={16} color="#ea6b14" style={{ flexShrink:0 }} />
+            <div style={{ fontSize:".86rem", color:"var(--ff-text)", flex:"1 1 auto", minWidth:0 }}>
+              {chosenPro
+                ? "This request goes to " + (chosenPro.company_name || chosenPro.name || "your pro") + " first — they'll be notified directly to send you an estimate."
+                : "You're rebooking a pro you've worked with — they'll be notified directly to send you an estimate."}
+            </div>
+            {/* A reservation hides the request from every other pro for 48 hours,
+                so the client has to be able to change their mind before posting.
+                Clearing it here is enough: the value is read off state at submit,
+                not off the URL. */}
+            <button type="button" onClick={() => setPreferredPro(null)} style={{ background:"none", border:"none", padding:0, cursor:"pointer", fontFamily:"inherit", fontSize:".8rem", fontWeight:600, color:"rgba(var(--ff-muted), .75)", textDecoration:"underline", flexShrink:0 }}>
+              Send to everyone instead
+            </button>
           </div>
         )}
 
@@ -479,6 +669,43 @@ export default function NewRequest() {
               <p style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .4)", marginTop:".5rem" }}>Need to change your name or phone? Update it in your profile.</p>
             </div>
 
+            {/* Rebooking is the cheapest job on the platform to win. This strip
+                used to live on the client dashboard home tab, above the fold and
+                below nothing — which put a marketing card in the same space as
+                the money-gating attention rows. It belongs on the form that
+                actually writes `preferred_contractor_id`.
+
+                Hidden once a pro is chosen: the banner above already names them
+                and offers the undo, and leaving the row on screen would invite a
+                second tap that changes nothing visible. */}
+            {pros.length > 0 && !preferredPro && (
+              <div style={{ marginBottom:"1.75rem", paddingBottom:"1.25rem", borderBottom:"1px solid rgba(var(--ff-fg), .08)" }}>
+                <div style={s.label}>Used us before?</div>
+                <p style={{ margin:"0 0 .7rem", fontSize:".8rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.45 }}>
+                  Send this straight to a pro you&rsquo;ve worked with. They get first refusal for 48 hours — no need to compare estimates again.
+                </p>
+                <div style={{ display:"flex", gap:".7rem", overflowX:"auto" as const, paddingBottom:".3rem" }}>
+                  {pros.slice(0, 6).map(pro => (
+                    <div key={pro.contractor_id} style={{ minWidth:"178px", flex:"0 0 auto", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"12px", padding:".8rem", background:"rgba(var(--ff-fg), .03)" }}>
+                      <div style={{ fontSize:".88rem", fontWeight:600, color:"var(--ff-text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
+                        {pro.company_name || pro.name || "Your pro"}
+                      </div>
+                      <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .5)", marginTop:".15rem", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
+                        {pro.rating ? "⭐ " + Number(pro.rating).toFixed(1) : "New"}
+                        {pro.last_service ? " · " + pro.last_service : ""}
+                      </div>
+                      {/* Sets state rather than navigating — we are already on the
+                          form, so a trip through ?pro= would throw away everything
+                          typed so far. */}
+                      <button type="button" onClick={() => setPreferredPro(pro.contractor_id)} style={{ width:"100%", marginTop:".6rem", padding:".45rem", fontSize:".8rem", fontFamily:"inherit", fontWeight:600, cursor:"pointer", borderRadius:"8px", border:"1px solid rgba(234,107,20,.4)", background:"rgba(234,107,20,.12)", color:"#ea6b14" }}>
+                        Book again
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* The description drives everything downstream — the service we pick,
                 the questions we ask, and what the pro reads. So it comes first and
                 nothing is asked before it. */}
@@ -494,8 +721,16 @@ export default function NewRequest() {
             </div>
 
             {/* Photo */}
-            <div style={{ marginBottom:"1.2rem" }}>
-              <label style={s.label}>Photo of the problem <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
+            <div id="nr-photo" className={photoPulse ? "ff-photo-pulse" : undefined} style={{ marginBottom:"1.2rem", scrollMarginTop:"5.5rem" }}>
+              <label style={s.label}>
+                Photo of the problem{" "}
+                {/* The asterisk appears only after the nudge. Marking a field
+                    that really is optional on first sight is a lie, and people
+                    learn fast to ignore an asterisk that means nothing. */}
+                {photoNudged.current && !photoFile
+                  ? <span aria-hidden="true" style={{ color:"#ea6b14", fontWeight:600 }}>*</span>
+                  : <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span>}
+              </label>
               <p style={{ margin:"0 0 .5rem", fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.45 }}>A clear photo helps contractors give you a faster, more accurate estimate — and means fewer surprises on the day.</p>
               <label htmlFor="nr-photo-upload" style={{ display:"flex", alignItems:"center", gap:".75rem", border:"2px dashed " + (photoFile ? "rgba(234,107,20,.5)" : "rgba(var(--ff-fg), .12)"), borderRadius:"10px", padding:"1rem 1.25rem", cursor:"pointer", background: photoFile ? "rgba(234,107,20,.05)" : "transparent", transition:"border-color .2s,background .2s" }}>
                 <Ic name="camera" size={22} color="#ea6b14" style={{ flexShrink:0 }} />
@@ -504,11 +739,21 @@ export default function NewRequest() {
                     {photoFile ? photoFile.name : "Attach a photo"}
                   </p>
                   <p style={{ margin:".2rem 0 0", fontSize:".74rem", color:"rgba(var(--ff-muted), .4)" }}>
-                    {photoFile ? "Tap to change" : "Tap to choose — max 5 MB"}
+                    {photoFile ? "Tap to change" : "Tap to choose — max 10 MB"}
                   </p>
                 </div>
-                <input id="nr-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB. Please choose a smaller one."); e.target.value = ""; return; } setSubmitError(""); setPhotoFile(f); }} style={{ display:"none" }} />
+                <input id="nr-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 10*1024*1024) { setSubmitError("That photo is over 10 MB. Please choose a smaller one."); e.target.value = ""; return; } setSubmitError(""); setPhotoFile(f); setPhotoPulse(false); }} style={{ display:"none" }} />
               </label>
+              {/* The advisory outlives the pulse on purpose: the animation is
+                  what draws the eye, the words are what answer "why does it
+                  matter?", and those are two different jobs. */}
+              {photoNudged.current && !photoFile && (
+                <div style={{ background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.28)", borderRadius:"8px", padding:".8rem 1rem", marginTop:".6rem", fontSize:".82rem", lineHeight:1.6, color:"rgba(var(--ff-muted), .85)" }}>
+                  <strong style={{ color:"var(--ff-text)" }}>A photo gets you a real number, faster.</strong>{" "}
+                  Pros price what they can see. With a photo you&rsquo;ll usually get firm estimates the same day; without one you&rsquo;re more likely to get a wide ballpark, questions before anyone will quote, or a pro who wants to come out and look first.
+                  <div style={{ marginTop:".45rem", opacity:.8 }}>It&rsquo;s still optional — press Next again to carry on without one, and you can add a photo from your dashboard any time after you post.</div>
+                </div>
+              )}
             </div>
           </>)}
 
@@ -819,14 +1064,13 @@ export default function NewRequest() {
             </label>
           )}
 
-          {/* Budget — anchored to the category average so the number is informed. */}
+          {/* Budget — our starting price is shown read-only; the client picks a max. */}
           <BudgetPicker
             services={selectedServices}
             pricing={pricing}
-            min={budgetMin}
+            floor={budgetFloor}
             max={budgetMax}
             flexible={budgetFlexible}
-            onMin={v => { setBudgetMin(v); setErrors(e => ({ ...e, budget: "" })); }}
             onMax={v => { setBudgetMax(v); setErrors(e => ({ ...e, budget: "" })); }}
             onFlexible={v => { setBudgetFlexible(v); setErrors(e => ({ ...e, budget: "" })); }}
             error={errors.budget}

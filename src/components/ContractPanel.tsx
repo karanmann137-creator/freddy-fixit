@@ -64,7 +64,12 @@ function renderMd(md: string) {
     else if (/^##\s+/.test(line)) { flush(); out.push(<div key={out.length} style={{ fontSize: ".82rem", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: ".06em", color: "#ea6b14", margin: ".7rem 0 .3rem" }}>{line.replace(/^##\s+/, "")}</div>); }
     else if (/^[-*]\s+/.test(line)) { list.push(line.replace(/^[-*]\s+/, "")); }
     else if (line === "") { flush(); }
-    else { flush(); out.push(<p key={out.length} style={{ fontSize: ".84rem", lineHeight: 1.6, margin: ".25rem 0", color: "rgba(var(--ff-text-rgb, 240,244,255), .92)" }}>{inline(line)}</p>); }
+    // `--ff-text-rgb` was never declared anywhere in the repo, so the literal
+    // fallback always won and every body paragraph of the agreement rendered
+    // near-white — invisible on the light-mode ground. This is a legal document
+    // the client has to read before signing, so it uses the same body-text token
+    // as the rest of the app and follows the theme.
+    else { flush(); out.push(<p key={out.length} style={{ fontSize: ".84rem", lineHeight: 1.6, margin: ".25rem 0", color: "var(--ff-ink-2)" }}>{inline(line)}</p>); }
   }
   flush();
   return out;
@@ -290,13 +295,60 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
           This job needs a signed agreement before any money is collected. Review the agreement below, add anything you like, then sign to send it to your client for their signature.
         </div>
 
-        {/* source toggle */}
-        <div style={{ display: "flex", gap: ".5rem", marginBottom: ".9rem", flexWrap: "wrap" }}>
-          {(["generated", "uploaded"] as const).map(sv => (
-            <button key={sv} onClick={() => { setSource(sv); setErr(null); }} style={{ ...btn, background: source === sv ? "#ea6b14" : "rgba(var(--ff-fg), .06)", color: source === sv ? "#fff" : "var(--ff-text)", fontWeight: source === sv ? 700 : 500 }}>
-              {sv === "generated" ? "Use the standard agreement" : "Upload my own document"}
-            </button>
+        {/* Date & time and price first, because they are what the agreement is
+            ABOUT — a contractor asked to sign before either is set has nothing
+            to check the document against. This panel deliberately does not own
+            those fields (they belong to the time & price form, which is the one
+            thing that writes them); it shows their current value and says where
+            to set them. Never move or conditionally unmount the panel itself —
+            dropping its mount once made every job on the platform unpayable. */}
+        <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", marginBottom: ".9rem" }}>
+          {([
+            ["calendar", "Date & time", job?.scheduled_at ? new Date(job.scheduled_at).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : null],
+            ["dollar", "Price", job?.amount != null ? "$" + job.amount : null],
+          ] as const).map(([icon, label, value]) => (
+            <div key={label} style={{
+              flex: "1 1 160px", padding: ".55rem .7rem", borderRadius: "10px",
+              background: value ? "rgba(var(--ff-fg), .04)" : "rgba(251,191,36,.08)",
+              border: value ? "1px solid rgba(var(--ff-fg), .1)" : "1px solid rgba(251,191,36,.3)",
+            }}>
+              <div style={{ fontSize: ".68rem", textTransform: "uppercase", letterSpacing: ".1em", color: "rgba(var(--ff-muted), .5)", marginBottom: ".2rem" }}>
+                <Ic name={icon as any} size={11} style={{ marginRight: 4 }} />{label}
+              </div>
+              <div style={{ fontSize: ".84rem", fontWeight: 600, color: value ? "var(--ff-text)" : "var(--ff-warn)" }}>
+                {value ?? "Set this below first"}
+              </div>
+            </div>
           ))}
+        </div>
+
+        {/* Source toggle — a two-option CHOICE, not two actions.
+            "Use the standard agreement" is the default, so pressing it did
+            nothing visible and read as a broken button. It is now labelled as a
+            choice, carries aria-pressed, and the selected option says so. */}
+        <div style={{ fontSize: ".8rem", fontWeight: 600, marginBottom: ".4rem", color: "var(--ff-text)" }}>Which agreement?</div>
+        <div role="group" style={{ display: "flex", gap: ".5rem", marginBottom: ".9rem", flexWrap: "wrap" }}>
+          {(["generated", "uploaded"] as const).map(sv => {
+            const on = source === sv;
+            return (
+              <button
+                key={sv}
+                aria-pressed={on}
+                onClick={() => { setSource(sv); setErr(null); }}
+                style={{
+                  ...btn,
+                  display: "inline-flex", alignItems: "center", gap: ".35rem",
+                  background: on ? "#ea6b14" : "rgba(var(--ff-fg), .06)",
+                  color: on ? "#fff" : "var(--ff-text)",
+                  fontWeight: on ? 700 : 500,
+                  border: on ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .14)",
+                }}
+              >
+                {on && <Ic name="check" size={13} color="#fff" />}
+                {sv === "generated" ? "Standard agreement" : "Upload my own"}
+              </button>
+            );
+          })}
         </div>
 
         {source === "generated" ? (
@@ -335,8 +387,18 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
           )}
           {err && <div style={{ fontSize: ".82rem", color: "#ef4444", marginBottom: ".6rem" }}>{err}</div>}
           {msg && <div style={{ fontSize: ".82rem", color: "#22c55e", marginBottom: ".6rem" }}>{msg}</div>}
-          <button disabled={busy || !!notReady} onClick={contractorSign} style={{ ...btn, background: "#ea6b14", color: "#fff", opacity: (busy || notReady) ? .6 : 1, cursor: notReady ? "not-allowed" : "pointer" }}>
-            {busy ? "Sending…" : "Sign & send to client"}
+          {/* The last step of the panel and the one that actually sends it —
+              full width and unmissable rather than one small button among many. */}
+          <button
+            disabled={busy || !!notReady}
+            onClick={contractorSign}
+            style={{
+              ...btn, width: "100%", padding: ".9rem 1rem", fontSize: ".95rem", fontWeight: 700,
+              background: "#ea6b14", color: "#fff", minHeight: 52,
+              opacity: (busy || notReady) ? .6 : 1, cursor: notReady ? "not-allowed" : "pointer",
+            }}
+          >
+            {busy ? "Sending…" : "Sign & send agreement to client"}
           </button>
         </div>
       </div>

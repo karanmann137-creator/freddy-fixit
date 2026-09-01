@@ -3,8 +3,10 @@ import { DashboardSkeleton, useEnterAnim } from "@/components/Skeleton";
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { clearMyProfile } from "@/lib/myProfile";
 import { compressImage } from "@/lib/imageCompress";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
+import JobDescription from "@/components/JobDescription";
 import DeleteAccount from "@/components/DeleteAccount";
 import ProfileBar from "@/components/ProfileBar";
 import ScheduleField from "@/components/ScheduleField";
@@ -20,8 +22,7 @@ import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 import ContractorProfileCompletion, { GAP_ANCHORS } from "@/components/ContractorProfileCompletion";
 import ProfileCompleteCelebration from "@/components/ProfileCompleteCelebration";
-import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/components/DashboardSidebar";
-import NotificationBell from "@/components/NotificationBell";
+import DashboardSidebar, { type SidebarItem } from "@/components/DashboardSidebar";
 import RequestHelpModal from "@/components/RequestHelpModal";
 import { jobCode } from "@/lib/jobCode";
 import JobsCalendar from "@/components/JobsCalendar";
@@ -31,6 +32,9 @@ import JobPhotos, { photosMissing } from "@/components/JobPhotos";
 import JobExpenses, { type JobExpense } from "@/components/JobExpenses";
 import ContractPanel, { CONTRACT_ANCHOR } from "@/components/ContractPanel";
 import BidChat from "@/components/BidChat";
+import DismissX from "@/components/DismissX";
+import DashSearch from "@/components/DashSearch";
+import { searchTokens, matchesSearch } from "@/lib/dashSearch";
 
 const CONTRACTOR_NAV: SidebarItem[] = [
   { key: "jobs",      label: "My Jobs",        icon: "briefcase" },
@@ -51,6 +55,21 @@ const STAGE_MATCH: Record<string, (j: any) => boolean> = {
   working:   j => j.status === "in_progress",
   payment:   j => j.status === "pending_confirmation" || (j.status === "completed" && j.payment_status === "held"),
 };
+// Mirrors the server guard `job_money_block()`, which `withdraw_job()` calls.
+// Withdrawal HARD-DELETES the job and every child cascades, so the DB refuses it
+// the moment any money is attached. The button was rendered unconditionally, which
+// meant it sat there dead on every deposit-paid job with nothing on screen saying so.
+//
+// It is deliberately STRICTER than the server, in the two places the browser can't
+// see the whole truth: a milestone job holds real money per stage while
+// jobs.payment_status is still 'unpaid', and `processing` means a Stripe checkout
+// may be open right now. Over-hiding a destructive control costs a contractor one
+// email; over-showing it offers to delete the only pointer to a live charge.
+const canWithdraw = (j: any): boolean =>
+  (j?.payment_status ?? "unpaid") === "unpaid" &&
+  !j?.is_milestone &&
+  !j?.prepayment_id;
+
 const STAGE_LABEL: Record<string, string> = {
   propose: "needs your estimate",
   awaiting: "awaiting client approval",
@@ -79,6 +98,24 @@ const contractorMissing = (c: any): string[] => contractorGaps(c).map(g => g.lab
 // The token records WHICH gaps were dismissed, so if the set later changes
 // (e.g. insurance lapses) the nudge comes back rather than staying silent.
 const nudgeToken = (gaps: ProfileGap[]) => "profile_nudge:" + gaps.map(g => g.key).sort().join(",");
+
+/**
+ * What a search query is matched against — one definition per list, so the
+ * box and the rows can't disagree about what "searchable" means.
+ *
+ * The job code is included because it is the identifier a client quotes on the
+ * phone, and it is the only thing on the card that is unique. Nothing private
+ * to the other party goes in here: matching is done on text already rendered.
+ */
+const jobSearchFields = (j: any): (string | number | null | undefined)[] => [
+  j?.request?.service_needed, j?.request?.location, j?.client?.first_name,
+  j?.status?.replace("_", " "), j?.amount, jobCode(j?.id ?? ""),
+  j?.scheduled_at ? new Date(j.scheduled_at).toLocaleDateString() : null,
+];
+const openJobSearchFields = (r: any): (string | number | null | undefined)[] => [
+  r?.service_needed, r?.location, r?.preferred_schedule, r?.description,
+  r?.recurring_frequency,
+];
 import FreddyRewind from "@/components/FreddyRewind";
 import MilestonePanel from "@/components/MilestonePanel";
 import { useServicePricing, rangeText, money, benchmarkFor, type ServicePrice, type Grade } from "@/lib/servicePricing";
@@ -88,6 +125,22 @@ import { respShort } from "@/lib/respTime";
 import { DASH_NAV_EVENT, readDashNavFromUrl, clearDashNavFromUrl, type DashNavDetail } from "@/lib/notificationRoutes";
 import { needsFor, pendingText, disabledText } from "@/lib/stripeRequirements";
 import FadeImg from "@/components/FadeImg";
+
+// Section anchors inside the EXPANDED job card, so a "Needs your attention"
+// button can land on the control it names rather than on the card header.
+//
+// These are deliberately bare ids, NOT keyed per job: exactly one job card is
+// expanded at a time (`activeJobId === job.id`), so each id is unique in the
+// document — the same reasoning that lets ContractPanel ship a single
+// CONTRACT_ANCHOR. Keying them per job would break the pulse, which compares
+// `pulseAnchor` to the id by string.
+const A_CLAIM    = "ffp-claim";
+const A_RESCHED  = "ffp-resched";
+const A_WALK     = "ffp-walkthrough";
+const A_PROPOSE  = "ffp-propose";
+const A_PHOTOS   = "ffp-photos";
+const A_ONWAY    = "ffp-onway";
+const A_BALANCE  = "ffp-balance";
 
 const ffInp = { width:"100%", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const };
 const ffLbl = { fontSize:".66rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .45)", marginBottom:".2rem" };
@@ -170,6 +223,23 @@ export default function ContractorDashboard() {
   const [activeTab, setActiveTab]     = useState<"jobs"|"available"|"messages"|"calendar"|"profile"|"earnings"|"reviews">("jobs");
   const tabAnim = useEnterAnim(activeTab); // replays a 220ms fade+rise on tab change; nothing remounts
   const [jobFilter, setJobFilter]     = useState<string|null>(null); // pipeline-strip stage filter for the My Jobs list
+  const [search, setSearch]           = useState(""); // client-side filter over already-loaded rows; no query, no new RLS surface
+  /**
+   * Attention rows the contractor has hidden — SESSION ONLY, deliberately.
+   *
+   * Nothing in this list is safe to dismiss forever. `claim-`, `bal-`,
+   * `contract-` and `photo-` are money and payout gates; `resched-`, `wt-`,
+   * `wtdone-`, `slot-`, `propose-` and `soon-` are action-required state that
+   * changes underneath the row; `reserved` and `msg-` carry NEW information on
+   * every load, so a permanent dismissal of "3 unread" would silence every
+   * future message. Note the contractor `photo-` row is the opposite of the
+   * client's "photo" row — theirs is an optional advisory, this one is what
+   * stops them marking the job complete and getting paid.
+   *
+   * So there is no `ui_dismissals` write here. The banner above it persists its
+   * dismissal, because "my profile is complete" is a fact that stays true.
+   */
+  const [hiddenNow, setHiddenNow]     = useState<Set<string>>(new Set());
   const [pendingJobId, setPendingJobId] = useState<string|null>(null); // job a notification pointed at, waiting for the list to load
   const [bidsCount, setBidsCount]     = useState(0); // lifetime bids — drives the "place your first bid" setup step
   const [showProfileCongrats, setShowProfileCongrats] = useState(false);
@@ -250,40 +320,67 @@ export default function ContractorDashboard() {
   const askConfirm = (o: Omit<ConfirmState, "resolve">) =>
     new Promise<boolean>(resolve => setConfirmState({ ...o, resolve }));
 
-  // Point the contractor at the exact section of their profile that's still
-  // missing: jump to the Profile tab, scroll it into view, and ring it for ~4.5s.
+  // Every "Needs your attention" button lands on the CONTROL it names, not on
+  // the top of the job card.
+  //
+  // The card is long — agreement, milestones, timeline, walkthrough, the whole
+  // propose form, timer, checklist, expenses, photos — so "Add photos" scrolling
+  // to the card header left the pro looking at a heading and hunting downward
+  // for the thing they'd just been sent to. On a phone the control was often
+  // several screens down. A button that lands near-but-not-on its target reads
+  // as a button that did nothing.
+  //
+  // `ringAnchor` is the one implementation of "scroll there and ring it", shared
+  // by the profile-gap chips, the agreement button and every job row. It was
+  // pasted twice before this and had already drifted (60ms vs 80ms).
   const [pulseAnchor, setPulseAnchor] = useState<string | null>(null);
   const pulseTimer = useRef<number | null>(null);
-  const focusProfileGap = (anchor: string) => {
-    setActiveTab("profile");
-    setPulseAnchor(anchor);
+  const ringAnchor = (anchorId: string, delay = 80) => {
+    setPulseAnchor(anchorId);
     if (pulseTimer.current) window.clearTimeout(pulseTimer.current);
     pulseTimer.current = window.setTimeout(() => setPulseAnchor(null), 4500);
-    // Wait for the Profile tab to paint before measuring the target.
+    // Wait for the tab (and, for a job anchor, the expanded card) to paint
+    // before measuring. Falling back to the top of the page is deliberate: a
+    // section that isn't on screen for this job's state has no anchor, and
+    // scrolling somewhere beats scrolling nowhere.
     requestAnimationFrame(() => window.setTimeout(() => {
-      const el = document.getElementById(anchor);
+      const el = document.getElementById(anchorId);
       if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
       else window.scrollTo({ top: 0, behavior: "smooth" });
-    }, 60));
+    }, delay));
   };
+  // Point the contractor at the exact section of their profile that's still
+  // missing: jump to the Profile tab, scroll it into view, and ring it.
+  const focusProfileGap = (anchor: string) => { setActiveTab("profile"); ringAnchor(anchor, 60); };
   useEffect(() => () => { if (pulseTimer.current) window.clearTimeout(pulseTimer.current); }, []);
 
-  // Same treatment for "Send agreement": expanding the job card isn't enough,
-  // because the panel can still be below the fold on a long card. Only the
-  // expanded job renders a ContractPanel, so the anchor id is unique.
-  const focusContractJob = (job: any) => {
+  /**
+   * Open a job on the Jobs tab and land on one of its sections.
+   *
+   * Section anchors are only rendered by the EXPANDED card, and exactly one job
+   * is expanded at a time, so a bare id like `ffp-photos` is unique in the
+   * document — the same reasoning that lets ContractPanel use a single
+   * CONTRACT_ANCHOR. Do not key these per job id; the pulse compares by string.
+   *
+   * `setJobFilter(null)` first, or a stage filter can hide the very job being
+   * opened and the scroll finds nothing.
+   */
+  const focusJobAnchor = (job: any, anchorId: string) => {
     setActiveTab("jobs");
     setJobFilter(null);
     if (activeJobId !== job.id) openJob(job);
-    setPulseAnchor(CONTRACT_ANCHOR);
-    if (pulseTimer.current) window.clearTimeout(pulseTimer.current);
-    pulseTimer.current = window.setTimeout(() => setPulseAnchor(null), 4500);
-    requestAnimationFrame(() => window.setTimeout(() => {
-      const el = document.getElementById(CONTRACT_ANCHOR);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-      else window.scrollTo({ top: 0, behavior: "smooth" });
-    }, 80));
+    ringAnchor(anchorId);
   };
+  const focusContractJob = (job: any) => focusJobAnchor(job, CONTRACT_ANCHOR);
+  // Spreads an id + the ring onto whichever section an attention row targets.
+  // scrollMarginTop clears the fixed top nav so the section isn't tucked under it.
+  const jobAnchor = (id: string, style: React.CSSProperties = {}) => ({
+    id,
+    className: pulseAnchor === id ? "ff-pulse" : undefined,
+    // scrollMarginTop clears the fixed top nav so the section isn't scrolled
+    // to a position that tucks it underneath the bar.
+    style: { scrollMarginTop: "5.5rem", ...style },
+  });
 
   // Export the job/payout history as a CSV the contractor can open in Excel
   // (handy at tax time). Built entirely in-browser — no server round-trip.
@@ -312,6 +409,12 @@ export default function ContractorDashboard() {
       if (!data.session) setLocation("/login");
     });
   }, []);
+
+  // One search box, two lists — so the query is cleared on every tab change.
+  // Carrying "kitchen" from My Jobs over to Available Jobs would present an
+  // empty tab as if there were no work, which is the worst possible lie to
+  // tell a contractor looking for leads.
+  useEffect(() => { setSearch(""); }, [activeTab]);
 
   // Pull the service-agreement status for a set of jobs. Called on load for every
   // job, and again after ContractPanel signs so the attention row clears without
@@ -379,6 +482,7 @@ export default function ContractorDashboard() {
       if (!prof2 || !con2) {
         try {
           const { data: role } = await supabase.rpc("ensure_profile", { p_role: "contractor" });
+          clearMyProfile();  // a profile row now exists where it didn't
           if (role && role !== "contractor") {
             setLocation(role === "admin" ? "/admin-dashboard" : "/client-dashboard");
             return;
@@ -463,9 +567,20 @@ export default function ContractorDashboard() {
     });
   }, [contractor?.id]);
 
-  const handleSignOut = async () => { await supabase.auth.signOut(); setLocation("/"); };
   const [helpOpen, setHelpOpen] = useState(false);
   const [bugOpen, setBugOpen] = useState(false);
+  // Account actions moved to the TopNav gear, which can't reach this page's
+  // state — it dispatches, we listen (same pattern as `ff:open-settings`).
+  useEffect(() => {
+    const help = () => setHelpOpen(true);
+    const bug = () => setBugOpen(true);
+    window.addEventListener("ff:request-help", help);
+    window.addEventListener("ff:report-bug", bug);
+    return () => {
+      window.removeEventListener("ff:request-help", help);
+      window.removeEventListener("ff:report-bug", bug);
+    };
+  }, []);
   // Walkthrough-first flow: free site visit before the priced estimate.
   const [wtForm, setWtForm] = useState({ when:"", note:"" });
   const [wtOpen, setWtOpen] = useState(false);
@@ -1033,7 +1148,7 @@ export default function ContractorDashboard() {
         + " .ffdash .ff-pulse{outline:2px solid rgba(234,107,20,.75); outline-offset:6px; border-radius:10px; animation:ff-pulse-ring 1.5s ease-out 3}"
         + " @media (prefers-reduced-motion: reduce){.ffdash .ff-pulse{animation:none; background:rgba(234,107,20,.12)}}"}</style>
       {toast && (
-        <div onClick={() => setToast(null)} className="ff-toast-in" style={{ position:"fixed", left:"50%", bottom:"1.5rem", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
+        <div onClick={() => setToast(null)} className="ff-toast-in" style={{ position:"fixed", left:"50%", bottom:"calc(1.5rem + var(--ff-fsb-h, 0px))", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
       )}
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       <div style={{ height: "3.75rem" }} />
@@ -1047,13 +1162,6 @@ export default function ContractorDashboard() {
           active={activeTab}
           onSelect={(k) => setActiveTab(k as any)}
           title="Dashboard"
-          bell={profile?.id ? <NotificationBell userId={profile.id} dashboardPath="/contractor-dashboard" /> : undefined}
-          actions={[
-            { key: "help",     label: "Request help", icon: "message-square", onClick: () => setHelpOpen(true) },
-            { key: "bug",      label: "Report a bug", icon: "alert-triangle", onClick: () => setBugOpen(true) },
-            { key: "settings", label: "Settings",   icon: "settings", onClick: () => window.dispatchEvent(new Event("ff:open-settings")) },
-            { key: "logout",   label: "Log out",    icon: "door",     onClick: handleSignOut, danger: true },
-          ] as SidebarAction[]}
         />
         <div style={{ flex:1, minWidth:0 }}>
 
@@ -1161,6 +1269,10 @@ export default function ContractorDashboard() {
                   Ignore — my profile is complete
                 </button>
               </div>
+              {/* Same call as the link beside it, deliberately. The × is the
+                  faster affordance; giving it its OWN store for the same fact is
+                  how two answers to one question start disagreeing. */}
+              <DismissX onClick={() => skipSetupStep(nudgeToken(gaps))} label="Don't show this again" title="Don't show this again" />
             </div>
           );
         })()}
@@ -1188,6 +1300,7 @@ export default function ContractorDashboard() {
                 Not now
               </button>
             </div>
+            <DismissX onClick={dismissGuide} label="Hide this" title="Hide this" />
           </div>
         )}
 
@@ -1235,7 +1348,6 @@ export default function ContractorDashboard() {
         {(() => {
           // "Needs your attention" — the one place that answers "what should I do next?"
           const attn: { key: string; text: string; cta: string; onClick: () => void; danger?: boolean }[] = [];
-          const goJob = (job: any) => { setActiveTab("jobs"); setJobFilter(null); if (activeJobId !== job.id) openJob(job); window.scrollTo({ top: 0, behavior: "smooth" }); };
           // ORDER MATTERS: only the first four rows render, so money-gating rows
           // (claims, unsent agreements, missing photos, an unpaid balance) are
           // pushed FIRST and the conversational rows go last. A chat time
@@ -1245,26 +1357,30 @@ export default function ContractorDashboard() {
             const d = disputes[job.id];
             const svc = job.request?.service_needed ?? "a job";
             if (d && d.status === "open" && !d.contractor_responded_at) {
-              attn.push({ key: "claim-" + job.id, text: "A client filed a claim on “" + svc + "” — your payout is paused until you respond.", cta: "Respond now", onClick: () => goJob(job), danger: true });
+              attn.push({ key: "claim-" + job.id, text: "A client filed a claim on “" + svc + "” — your payout is paused until you respond.", cta: "Respond now", onClick: () => focusJobAnchor(job, A_CLAIM), danger: true });
             } else if (job.client_rescheduled_at && !job.reschedule_accepted_at) {
-              attn.push({ key: "resched-" + job.id, text: (job.client?.first_name || "Your client") + " changed the time on “" + svc + "”.", cta: "Review new time", onClick: () => goJob(job) });
+              attn.push({ key: "resched-" + job.id, text: (job.client?.first_name || "Your client") + " changed the time on “" + svc + "”.", cta: "Review new time", onClick: () => focusJobAnchor(job, A_RESCHED) });
             } else if (job.status === "assigned" && job.walkthrough_approved_at && !job.walkthrough_done_at) {
-              attn.push({ key: "wt-" + job.id, text: "Walkthrough confirmed for “" + svc + "”" + (job.walkthrough_at ? " — " + new Date(job.walkthrough_at).toLocaleString() : "") + ". After the visit, mark it done and send your estimate.", cta: "View job", onClick: () => goJob(job) });
+              attn.push({ key: "wt-" + job.id, text: "Walkthrough confirmed for “" + svc + "”" + (job.walkthrough_at ? " — " + new Date(job.walkthrough_at).toLocaleString() : "") + ". After the visit, mark it done and send your estimate.", cta: "Mark walkthrough done", onClick: () => focusJobAnchor(job, A_WALK) });
             } else if (job.status === "assigned" && job.walkthrough_done_at && !job.schedule_proposed_at) {
-              attn.push({ key: "wtdone-" + job.id, text: "You finished the walkthrough on “" + svc + "” — the client is waiting for your estimate.", cta: "Send estimate", onClick: () => goJob(job) });
+              // The walkthrough block only says "done"; the thing they came to do
+              // is the propose form, so send them there rather than to the notice.
+              attn.push({ key: "wtdone-" + job.id, text: "You finished the walkthrough on “" + svc + "” — the client is waiting for your estimate.", cta: "Send estimate", onClick: () => focusJobAnchor(job, A_PROPOSE) });
             } else if (job.status === "assigned" && job.slot_released_at && !job.schedule_proposed_at) {
-              attn.push({ key: "slot-" + job.id, text: "The booked time on “" + svc + "” was released — it wasn't signed and paid in time. You still have the job; propose a new time.", cta: "Propose new time", onClick: () => goJob(job) });
+              attn.push({ key: "slot-" + job.id, text: "The booked time on “" + svc + "” was released — it wasn't signed and paid in time. You still have the job; propose a new time.", cta: "Propose new time", onClick: () => focusJobAnchor(job, A_PROPOSE) });
             } else if (job.status === "assigned" && !job.schedule_proposed_at && !job.walkthrough_proposed_at) {
-              attn.push({ key: "propose-" + job.id, text: "“" + svc + "” is waiting for your time and price.", cta: "Propose now", onClick: () => goJob(job) });
+              attn.push({ key: "propose-" + job.id, text: "“" + svc + "” is waiting for your time and price.", cta: "Propose now", onClick: () => focusJobAnchor(job, A_PROPOSE) });
             } else if (job.status === "scheduled" && job.scheduled_at) {
               const dt = new Date(job.scheduled_at).getTime() - Date.now();
-              if (dt > 0 && dt < 24 * 3600 * 1000) attn.push({ key: "soon-" + job.id, text: "“" + svc + "” is booked for " + new Date(job.scheduled_at).toLocaleString() + ".", cta: "View job", onClick: () => goJob(job) });
+              // Booked within the day: the move is directions + "I'm on my way",
+              // so land on that pair rather than the top of the card.
+              if (dt > 0 && dt < 24 * 3600 * 1000) attn.push({ key: "soon-" + job.id, text: "“" + svc + "” is booked for " + new Date(job.scheduled_at).toLocaleString() + ".", cta: "Get ready", onClick: () => focusJobAnchor(job, A_ONWAY) });
             }
             // Work is done and only the deposit is in: the outstanding balance is
             // the single thing blocking this pro's payout, and nothing else on
             // their dashboard would tell them so.
             if (job.status === "pending_confirmation" && awaitingBalance(job)) {
-              attn.push({ key: "bal-" + job.id, text: "“" + svc + "” is finished but the client still owes $" + jobBalanceDue(job).toFixed(2) + " — your payout is released once they pay and confirm.", cta: "View job", onClick: () => goJob(job) });
+              attn.push({ key: "bal-" + job.id, text: "“" + svc + "” is finished but the client still owes $" + jobBalanceDue(job).toFixed(2) + " — your payout is released once they pay and confirm.", cta: "See what's owed", onClick: () => focusJobAnchor(job, A_BALANCE) });
             }
             // No signed agreement = the client physically cannot pay, so this
             // outranks everything else on a live job. Only prompt when it's the
@@ -1278,7 +1394,7 @@ export default function ContractorDashboard() {
             // Photos are what unlock payment, so chase them once work is under way.
             if (job.status === "in_progress" || (job.status === "scheduled" && job.on_my_way_at)) {
               const miss = photosMissing(job);
-              if (miss.length) attn.push({ key: "photo-" + job.id, text: "“" + svc + "” still needs " + miss.join(" and ") + " — you can't mark it complete without them.", cta: "Add photos", onClick: () => goJob(job) });
+              if (miss.length) attn.push({ key: "photo-" + job.id, text: "“" + svc + "” still needs " + miss.join(" and ") + " — you can't mark it complete without them.", cta: "Add photos", onClick: () => focusJobAnchor(job, A_PHOTOS) });
             }
           }
           const reserved = availableJobs.filter((r: any) => r.is_preferred);
@@ -1305,16 +1421,29 @@ export default function ContractorDashboard() {
               onClick: () => { setActiveTab("messages"); openConversation(c); window.scrollTo({ top: 0, behavior: "smooth" }); },
             });
           }
-          if (attn.length === 0) return null;
+          // Filter BEFORE the slice, or an × would remove a row and reveal
+          // nothing — only the first four ever render.
+          const rowKey = (k: string) => "attn:contractor:" + k;
+          const shownAttn = attn.filter(a => !hiddenNow.has(rowKey(a.key)));
+          if (shownAttn.length === 0) return null;
           return (
             <div style={{ ...s.card, padding:"1.1rem 1.25rem", marginBottom:"1.25rem", border:"1px solid rgba(234,107,20,.3)" }}>
               <div style={{ display:"flex", alignItems:"center", gap:".45rem", fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"#ea6b14", fontWeight:700 }}>
                 <Ic name="alert-triangle" size={13} />Needs your attention
               </div>
-              {attn.slice(0, 4).map((a, i) => (
+              {shownAttn.slice(0, 4).map((a, i) => (
                 <div key={a.key} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".75rem", padding:".6rem 0", borderTop: i === 0 ? "none" : "1px solid rgba(var(--ff-fg), .06)", marginTop: i === 0 ? ".5rem" : 0 }}>
                   <div style={{ fontSize:".85rem", color:"var(--ff-text)", lineHeight:1.45 }}>{a.text}</div>
-                  <button style={{ ...s.btn, background: a.danger ? "rgba(239,68,68,.12)" : "#ea6b14", color: a.danger ? "#ef4444" : "#fff", border: a.danger ? "1px solid rgba(239,68,68,.35)" : "none", whiteSpace:"nowrap" as const, flexShrink:0 }} onClick={a.onClick}>{a.cta}</button>
+                  <div style={{ display:"flex", alignItems:"center", gap:".4rem", flexShrink:0 }}>
+                    <button style={{ ...s.btn, background: a.danger ? "rgba(239,68,68,.12)" : "#ea6b14", color: a.danger ? "#ef4444" : "#fff", border: a.danger ? "1px solid rgba(239,68,68,.35)" : "none", whiteSpace:"nowrap" as const, flexShrink:0 }} onClick={a.onClick}>{a.cta}</button>
+                    {/* Hide for now only — see the hiddenNow docblock. Every row
+                        here is either a money gate or state that changes. */}
+                    <DismissX
+                      onClick={() => setHiddenNow(prev => new Set(prev).add(rowKey(a.key)))}
+                      label="Hide for now"
+                      title="Hide until next time you open the dashboard"
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -1322,9 +1451,23 @@ export default function ContractorDashboard() {
         })()}
 
         {activeTab === "jobs" && (() => {
-          const shown = jobFilter && STAGE_MATCH[jobFilter] ? myJobs.filter(STAGE_MATCH[jobFilter]) : myJobs;
+          // Search COMPOSES with the pipeline-stage filter rather than replacing
+          // it — a pro who clicked "Scheduled" and then typed an address means
+          // both, and silently dropping either would show them a job the
+          // controls on screen say is hidden.
+          const staged = jobFilter && STAGE_MATCH[jobFilter] ? myJobs.filter(STAGE_MATCH[jobFilter]) : myJobs;
+          const tokens = searchTokens(search);
+          const shown = staged.filter(j => matchesSearch(tokens, jobSearchFields(j)));
           return (
           <div>
+            {myJobs.length > 3 && (
+              <DashSearch
+                value={search}
+                onChange={setSearch}
+                placeholder="Search jobs — service, client, address or job code"
+                resultText={shown.length + " of " + staged.length + " shown"}
+              />
+            )}
             {jobFilter && myJobs.length > 0 && (
               <div style={{ display:"flex", alignItems:"center", gap:".6rem", marginBottom:"1rem", flexWrap:"wrap" as const }}>
                 <span style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .6)" }}>
@@ -1333,9 +1476,14 @@ export default function ContractorDashboard() {
                 <button onClick={() => setJobFilter(null)} style={{ ...s.btn, padding:".3rem .75rem", borderRadius:"99px", fontSize:".75rem" }}>Show all ×</button>
               </div>
             )}
-            {jobFilter && myJobs.length > 0 && shown.length === 0 && (
+            {/* Two different nothings, said differently. "No jobs in this stage"
+                is the truth about the pipeline; when a query is what emptied
+                the list, saying that would be a lie the pro can't correct. */}
+            {myJobs.length > 0 && shown.length === 0 && (
               <div style={{ textAlign:"center" as const, padding:"2.5rem 1.5rem", color:"rgba(var(--ff-muted), .5)", fontSize:".9rem" }}>
-                No jobs {STAGE_LABEL[jobFilter] ?? "in this stage"} right now.
+                {tokens.length > 0
+                  ? <>No jobs match “{search}”. <button type="button" onClick={() => setSearch("")} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer", padding:0 }}>Clear search</button></>
+                  : <>No jobs {jobFilter ? (STAGE_LABEL[jobFilter] ?? "in this stage") : "here"} right now.</>}
               </div>
             )}
             {(() => {
@@ -1403,26 +1551,35 @@ export default function ContractorDashboard() {
               </div>
             ) : shown.map(job => (
               <div key={job.id} id={"job-" + job.id} style={{ ...s.jobCard, scrollMarginTop: "5.5rem" }} onClick={() => openJob(job)}>
-                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:".75rem" }}>
-                  <div>
+                {/* The address is the longest thing on this card and it lived in
+                    a flex child with no minWidth:0, so it could not shrink —
+                    it pushed the status and the price column off the right of
+                    a phone. minWidth:0 plus the underlined link's own
+                    overflow handling keeps both columns on screen, and the
+                    status/price column no longer shrinks to nothing. */}
+                <div style={{ display:"flex", gap:".75rem", justifyContent:"space-between", marginBottom:".75rem" }}>
+                  <div style={{ minWidth:0, flex:"1 1 auto" }}>
                     <div style={{ fontSize:"1rem", fontWeight:500, marginBottom:".2rem" }}>{job.request?.service_needed ?? "Job"}</div>
                     <div style={{ fontSize:".72rem", fontFamily:"monospace", color:"#ea6b14", marginBottom:".3rem" }}>{jobCode(job.id)}</div>
                     <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", marginBottom:".2rem" }}><Ic name="user" size={13} style={{ marginRight:4 }} />{job.client?.first_name || "Your client"}</div>
                     {job.request?.location && (
                       <a href={mapsUrl(job.request.location)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                        style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .65)", textDecoration:"underline", textUnderlineOffset:"3px" }}>
+                        style={{ display:"inline-block", maxWidth:"100%", fontSize:".82rem", color:"rgba(var(--ff-muted), .65)", textDecoration:"underline", textUnderlineOffset:"3px" }}>
                         <Ic name="map-pin" size={13} color="#ea6b14" style={{ marginRight:4 }} />{job.request.location}
                       </a>
                     )}
                   </div>
-                  <div style={{ textAlign:"right" }}>
-                    <div style={{ fontSize:".78rem", fontWeight:500, color: STATUS_COLORS[job.status] ?? "#94a3b8" }}>● {job.status.replace("_"," ")}</div>
-                    {job.amount && <div style={{ fontSize:"1rem", fontWeight:500, color:"#22c55e", marginTop:".25rem" }}>${job.amount}</div>}
+                  <div style={{ textAlign:"right" as const, flexShrink:0 }}>
+                    {/* A pill rather than "● scheduled". At a glance on a card
+                        list, a tinted chip is what separates one job's state
+                        from the next; a coloured bullet in body text does not. */}
+                    <span style={{ display:"inline-block", padding:".22rem .55rem", borderRadius:"99px", fontSize:".7rem", fontWeight:700, letterSpacing:".03em", textTransform:"uppercase" as const, whiteSpace:"nowrap" as const, color: STATUS_COLORS[job.status] ?? "#94a3b8", background:"rgba(var(--ff-fg), .07)", border:"1px solid rgba(var(--ff-fg), .12)" }}>{job.status.replace("_"," ")}</span>
+                    {job.amount && <div style={{ fontSize:"1rem", fontWeight:600, color:"#22c55e", marginTop:".35rem" }}>${job.amount}</div>}
                   </div>
                 </div>
                 {activeJobId === job.id && (
                   <div onClick={e => e.stopPropagation()} style={{ marginTop:"1rem", borderTop:"1px solid rgba(var(--ff-fg), .07)", paddingTop:"1rem" }}>
-                    <RequestPhotoQuote requestId={job.request_id} photoPath={job.request?.photo_path} estimatedQuote={job.request?.estimated_quote} quoteNotes={job.request?.quote_notes} canQuote />
+                    <RequestPhotoQuote requestId={job.request_id} photoPath={job.request?.photo_path} estimatedQuote={job.request?.estimated_quote} quoteNotes={job.request?.quote_notes} canQuote={["assigned","scheduled","in_progress"].includes(job.status)} />
 
                     {/* Every job needs a signed service agreement before the client can pay,
                         so this sits above the pricing/scheduling work — it's the first move. */}
@@ -1449,7 +1606,7 @@ export default function ContractorDashboard() {
                       const deadline = d.response_deadline ? new Date(d.response_deadline) : null;
                       const overdue = deadline ? deadline.getTime() < Date.now() : false;
                       return (
-                        <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(251,191,36,.07)", border:"1px solid rgba(251,191,36,.35)" }}>
+                        <div {...jobAnchor(A_CLAIM, { margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(251,191,36,.07)", border:"1px solid rgba(251,191,36,.35)" })}>
                           <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".82rem", fontWeight:600, color:"var(--ff-warn)", marginBottom:".6rem" }}>
                             <Ic name="alert-triangle" size={14} />{open ? "The client filed a claim on this job" : "Claim resolved"}
                           </div>
@@ -1498,8 +1655,12 @@ export default function ContractorDashboard() {
                           </div>
                         </div>
                       )}
-                      {job.client_rescheduled_at && !job.reschedule_accepted_at && (
-                        <div style={{ padding:".7rem .8rem", borderRadius:"10px", background:"rgba(59,130,246,.10)", border:"1px solid rgba(59,130,246,.30)", marginBottom:".3rem" }}>
+                      {/* Gated on the live stages. The two flags are never cleared, so
+                          without this the "the client changed the time" prompt and its
+                          Accept button sat on completed and cancelled jobs forever. */}
+                      {job.client_rescheduled_at && !job.reschedule_accepted_at
+                        && ["assigned","scheduled","in_progress"].includes(job.status) && (
+                        <div {...jobAnchor(A_RESCHED, { padding:".7rem .8rem", borderRadius:"10px", background:"rgba(59,130,246,.10)", border:"1px solid rgba(59,130,246,.30)", marginBottom:".3rem" })}>
                           <div style={{ fontSize:".8rem", color:"var(--ff-text)", lineHeight:1.5, marginBottom:".55rem" }}>
                             <Ic name="calendar" size={14} color="#3b82f6" style={{ marginRight:5 }} />
                             <strong>The client changed the time</strong> to {job.scheduled_at ? new Date(job.scheduled_at).toLocaleString() : "a new time"}. Accept it, or propose a different time below if you're not available.
@@ -1524,7 +1685,7 @@ export default function ContractorDashboard() {
                           {job.walkthrough_done_at ? (
                             <div style={{ fontSize:".82rem", color:"var(--ff-success)" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Walkthrough done — send your estimate below while it's fresh.</div>
                           ) : job.walkthrough_proposed_at && job.walkthrough_approved_at ? (
-                            <div style={{ padding:".7rem .8rem", borderRadius:"10px", background:"rgba(34,197,94,.08)", border:"1px solid rgba(34,197,94,.3)" }}>
+                            <div {...jobAnchor(A_WALK, { padding:".7rem .8rem", borderRadius:"10px", background:"rgba(34,197,94,.08)", border:"1px solid rgba(34,197,94,.3)" })}>
                               <div style={{ fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.5, marginBottom:".55rem" }}>
                                 <Ic name="calendar" size={14} color="#22c55e" style={{ marginRight:5 }} />
                                 <strong>Walkthrough confirmed</strong> for {job.walkthrough_at ? new Date(job.walkthrough_at).toLocaleString() : "the agreed time"}. It's a free visit — after you've seen the space, mark it done and send your estimate.
@@ -1568,6 +1729,11 @@ export default function ContractorDashboard() {
                           {job.schedule_proposed_at && !job.client_approved_at && (
                             <div style={{ fontSize:".8rem", color:"var(--ff-warn)" }}><Ic name="clock" size={13} style={{ marginRight:4 }} />Waiting for the client to approve {job.scheduled_at ? new Date(job.scheduled_at).toLocaleString() : "your proposed time"}. You can update it below.</div>
                           )}
+                          {/* The propose form is wrapped so "Propose now" / "Send estimate"
+                              can ring the WHOLE form rather than a single field. The wrapper
+                              re-declares the parent's flex column and gap, so it changes
+                              nothing visually — these were siblings of the gapped column. */}
+                          <div {...jobAnchor(A_PROPOSE, { display:"flex", flexDirection:"column" as const, gap:".7rem" })}>
                           <ScheduleField value={proposeForm.when} onChange={(v) => setProposeForm(f => ({ ...f, when: v }))} />
                           <div>
                             <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".25rem" }}>Price ($)</div>
@@ -1595,8 +1761,25 @@ export default function ContractorDashboard() {
                           </div>
                           <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                             <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyJobId === job.id} onClick={() => proposeSchedule(job)}>{busyJobId === job.id ?"Sending…" : (job.schedule_proposed_at ? "Update proposal" : "Propose time & price")}</button>
-                            <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJobId === job.id} onClick={() => withdrawJob(job)}>Withdraw</button>
+                            {canWithdraw(job) && <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJobId === job.id} onClick={() => withdrawJob(job)}>Withdraw</button>}
                           </div>
+                          {/* A client can move the time on a job they've already paid for,
+                              which flips it back to 'assigned' — so this branch can render
+                              on a job holding money. Two things follow. Withdraw is hidden
+                              above, and the price control the propose form offers would be
+                              rejected, so the real one is mounted here. */}
+                          {/* Keyed on money actually being held, NOT on !canWithdraw —
+                              canWithdraw is deliberately stricter than the server and also
+                              hides on a milestone job holding nothing yet, where this
+                              wording would be a plain lie. There, the button is simply
+                              absent and nothing is claimed. */}
+                          {(job.payment_status ?? "unpaid") !== "unpaid" && (
+                            <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.5 }}>
+                              This job is paid for, so it can't be withdrawn here — message the client, or email hello@freddyfixit.ca if something's gone wrong.
+                            </div>
+                          )}
+                          </div>
+                          {(job.payment_status ?? "unpaid") !== "unpaid" && renderPriceChange(job)}
                         </>
                       )}
                       {(job.status === "scheduled" || job.status === "in_progress") && (
@@ -1617,7 +1800,7 @@ export default function ContractorDashboard() {
                           <JobExpenses jobId={job.id} items={expenses.filter(e => e.job_id === job.id)} jobAmount={job.amount}
                             onAdd={r => setExpenses(p => [r, ...p])} onDelete={id => setExpenses(p => p.filter(e => e.id !== id))} onError={m => notify(m)} />
                           {/* Heading out: tappable map + on-my-way, side by side */}
-                          <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const, alignItems:"stretch" }}>
+                          <div {...jobAnchor(A_ONWAY, { display:"flex", gap:".6rem", flexWrap:"wrap" as const, alignItems:"stretch" })}>
                             {job.request?.location && (
                               <a href={mapsUrl(job.request.location)} target="_blank" rel="noopener noreferrer"
                                 style={{ flex:"1 1 230px", minWidth:0, display:"flex", alignItems:"center", gap:".65rem", padding:".75rem .9rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .05)", border:"1px solid rgba(var(--ff-fg), .12)", textDecoration:"none" }}>
@@ -1639,12 +1822,18 @@ export default function ContractorDashboard() {
                               </button>
                             )}
                           </div>
-                          <JobPhotos job={job} role="contractor" onError={m => notify(m)} onSaved={(kind, path) => patchJobPhoto(job.id, kind, path)} />
+                          {/* Anchored so the "still needs a before/after photo" attention row
+                              lands on the uploader itself. Safe as a bare id: the sibling
+                              <JobPhotos> below lives in the mutually exclusive
+                              pending_confirmation branch, so the two never render together. */}
+                          <div {...jobAnchor(A_PHOTOS)}>
+                            <JobPhotos job={job} role="contractor" onError={m => notify(m)} onSaved={(kind, path) => patchJobPhoto(job.id, kind, path)} />
+                          </div>
                           <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                             {/* Dimmed AND actually disabled while photos are outstanding —
                                 the reason is spelled out directly underneath. */}
                             {!job.is_milestone && <button title={photosMissing(job).length ? "Add " + photosMissing(job).join(" and ") + " first." : undefined} style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none", fontWeight:600, opacity: photosMissing(job).length ? .55 : 1, cursor: photosMissing(job).length ? "not-allowed" : "pointer" }} disabled={busyJobId === job.id || photosMissing(job).length > 0} onClick={() => markComplete(job)}>{busyJobId === job.id ?"Working…" : "✓ Mark complete"}</button>}
-                            <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJobId === job.id} onClick={() => withdrawJob(job)}>Withdraw</button>
+                            {canWithdraw(job) && <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJobId === job.id} onClick={() => withdrawJob(job)}>Withdraw</button>}
                           </div>
                           {!job.is_milestone && photosMissing(job).length > 0 && (
                             <div style={{ fontSize:".78rem", color:"#ea6b14", display:"flex", alignItems:"center", gap:".35rem" }}>
@@ -1659,7 +1848,7 @@ export default function ContractorDashboard() {
                         <>
                           <div style={{ fontSize:".85rem", color:"var(--ff-warn)" }}><Ic name="clock" size={13} style={{ marginRight:4 }} />You marked this complete — waiting for the client to confirm.</div>
                           {awaitingBalance(job) && (
-                            <div style={{ background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.18)", borderRadius:"10px", padding:".7rem .8rem", fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.5 }}>
+                            <div {...jobAnchor(A_BALANCE, { background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.18)", borderRadius:"10px", padding:".7rem .8rem", fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.5 })}>
                               <Ic name="dollar" size={13} color="#ea6b14" style={{ marginRight:4 }} />
                               <strong>{"The client still owes $" + jobBalanceDue(job).toFixed(2) + "."}</strong> They paid a deposit to book you and pay the rest now the work is done. They can't confirm — and your payout can't be released — until that balance is in. We've asked them for it; a friendly message from you usually speeds it up.
                             </div>
@@ -1721,7 +1910,10 @@ export default function ContractorDashboard() {
           />
         )}
 
-        {activeTab === "available" && (
+        {activeTab === "available" && (() => {
+          const openTokens = searchTokens(search);
+          const openHits = availableJobs.filter(r => matchesSearch(openTokens, openJobSearchFields(r)));
+          return (
           <div>
             {contractor?.status !== "active" ? (
               <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
@@ -1735,14 +1927,26 @@ export default function ContractorDashboard() {
             ) : (
             <>
             <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .45)", marginBottom:"1rem" }}>Open jobs that match your trades — lowest-competition first.</p>
-            {availableJobs.length === 0 ? (
+            {availableJobs.length > 3 && (
+              <DashSearch
+                value={search}
+                onChange={setSearch}
+                placeholder="Search open jobs — service or area"
+                resultText={openHits.length + " of " + availableJobs.length + " shown"}
+              />
+            )}
+            {availableJobs.length > 0 && openHits.length === 0 ? (
+              <div style={{ textAlign:"center" as const, padding:"2.5rem 1.5rem", color:"rgba(var(--ff-muted), .5)", fontSize:".9rem" }}>
+                No open jobs match “{search}”. <button type="button" onClick={() => setSearch("")} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer", padding:0 }}>Clear search</button>
+              </div>
+            ) : availableJobs.length === 0 ? (
               <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
                 <div style={{ marginBottom:"1rem" }}><Ic name="clipboard-list" size={48} color="#ea6b14" /></div>
                 <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".03em", lineHeight:1.1, marginBottom:".5rem" }}>No Open Jobs Right Now</h2>
                 <p style={{ color:"rgba(var(--ff-muted), .5)" }}>New jobs matching your specialties will show up here. Add more specialties in your profile to see more work.</p>
                 <button onClick={() => setActiveTab("profile")} style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", marginTop:"1.25rem" }}>Update your specialties</button>
               </div>
-            ) : availableJobs.map(r => (
+            ) : openHits.map(r => (
               <div key={r.id} style={s.jobCard}>
                 {r.my_amount == null && !r.my_walkthrough && (
                   <div style={{ display:"inline-flex", alignItems:"center", gap:".3rem", padding:".22rem .55rem", borderRadius:"99px", background:"rgba(234,107,20,.16)", color:"#ea6b14", fontSize:".68rem", fontWeight:800, letterSpacing:".04em", textTransform:"uppercase" as const, marginBottom:".6rem", marginRight:".4rem" }}>
@@ -1762,18 +1966,40 @@ export default function ContractorDashboard() {
                     </div>
                   </div>
                 )}
-                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:".5rem" }}>
-                  <div>
+                {/* space-between with no gap, no wrap and no minWidth:0 on the
+                    left child: on a phone the service name and the preferred
+                    schedule fought for one row, and because a flex child can't
+                    shrink below its content the schedule text pushed the whole
+                    header wider than the card. Wrap + minWidth:0 lets the
+                    schedule drop to its own line instead. */}
+                <div style={{ display:"flex", flexWrap:"wrap" as const, gap:".4rem .75rem", justifyContent:"space-between", alignItems:"baseline", marginBottom:".5rem" }}>
+                  <div style={{ minWidth:0, flex:"1 1 auto" }}>
                     <div style={{ fontSize:"1rem", fontWeight:500 }}>{r.service_needed}</div>
                     {rangeText(priceFor(r.service_needed)) && <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .5)", marginTop:"2px" }}>Typical {rangeText(priceFor(r.service_needed))}</div>}
                   </div>
-                  <div style={{ fontSize:".78rem", color:"#ea6b14" }}><Ic name="timer" size={12} style={{ marginRight:4 }} />{r.preferred_schedule}</div>
+                  <div style={{ fontSize:".78rem", color:"#ea6b14", flexShrink:0 }}><Ic name="timer" size={12} style={{ marginRight:4 }} />{r.preferred_schedule}</div>
                 </div>
                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .55)", marginBottom:".6rem" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{r.location}</div>
 
-                {/* Client budget vs the category average. The A+/A/A- grade says
+                {/* Money on this job vs the category average. The A+/A/A- grade says
                     how this job's money compares to what the category usually
-                    pays, so a good-paying job is obvious without doing math. */}
+                    pays, so a good-paying job is obvious without doing math.
+
+                    THE TWO NUMBERS MEAN DIFFERENT THINGS (2026-08-28). Since the
+                    budget rework the client no longer types a minimum — they pick
+                    a maximum only, and `budget_min` holds OUR platform starting
+                    price for the selected services (`floorFor` →
+                    `service_pricing.base_price`). So this can't render as one
+                    "Client budget $X–$Y" range any more: half of that range is a
+                    number we set and half is a number they chose, and telling a
+                    pro the client stated a floor they never stated is the kind of
+                    quiet misinformation that gets priced into a bid.
+
+                    Requests created before that change do hold a client-typed
+                    minimum in the same column and will read as "Base price" here.
+                    That's the deliberate trade: the wrong-but-harmless direction
+                    is calling an old client floor a base price, not inventing a
+                    client floor that doesn't exist. */}
                 {(() => {
                   // Server values come from list_open_jobs(); fall back to the
                   // client-side price book if this build is ahead of the RPC.
@@ -1782,12 +2008,11 @@ export default function ContractorDashboard() {
                   const bLo = r.budget_min != null ? Number(r.budget_min) : null;
                   const bHi = r.budget_max != null ? Number(r.budget_max) : null;
                   const grade = (r.budget_grade ?? null) as Grade | null;
-                  const hasBudget = !r.budget_flexible && (bLo != null || bHi != null);
-                  if (!hasBudget && !r.budget_flexible && bench == null) return null;
-
-                  const budgetText = bLo != null && bHi != null && bLo !== bHi
-                    ? money(bLo) + "–" + money(bHi)
-                    : money(bLo ?? bHi);
+                  // A max the client actually chose is the only thing that counts
+                  // as "they told us a budget" — the base price is ours and is
+                  // present on essentially every new request.
+                  const hasBudget = !r.budget_flexible && bHi != null;
+                  if (!hasBudget && bLo == null && !r.budget_flexible && bench == null) return null;
 
                   return (
                     <div style={{
@@ -1797,10 +2022,19 @@ export default function ContractorDashboard() {
                       border: hasBudget ? "1px solid rgba(234,107,20,.24)" : "1px solid rgba(var(--ff-fg), .08)",
                     }}>
                       <Ic name="dollar" size={14} color="#ea6b14" style={{ flexShrink:0 }} />
-                      {hasBudget ? (
+                      {(bLo != null || hasBudget) ? (
                         <span style={{ fontSize:".85rem", color:"var(--ff-text)" }}>
-                          <span style={{ color:"rgba(var(--ff-muted), .6)" }}>Client budget </span>
-                          <strong>{budgetText}</strong>
+                          {bLo != null && (<>
+                            <span style={{ color:"rgba(var(--ff-muted), .6)" }}>Base price </span>
+                            <strong>{money(bLo)}</strong>
+                          </>)}
+                          {bLo != null && (hasBudget || r.budget_flexible) && <span style={{ color:"rgba(var(--ff-muted), .4)" }}>{" · "}</span>}
+                          {hasBudget ? (<>
+                            <span style={{ color:"rgba(var(--ff-muted), .6)" }}>Client max </span>
+                            <strong>{money(bHi)}</strong>
+                          </>) : r.budget_flexible ? (
+                            <span style={{ color:"rgba(var(--ff-muted), .65)" }}>client is flexible</span>
+                          ) : null}
                         </span>
                       ) : (
                         <span style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .65)" }}>
@@ -1818,7 +2052,13 @@ export default function ContractorDashboard() {
                   );
                 })()}
 
-                <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .65)", marginBottom:"1rem", lineHeight:1.5 }}>{r.job_description}</div>
+                {/* Was a raw <div>, which collapsed the blank lines
+                    `composedDescription()` puts between the client's sentence,
+                    the answer summary and the "Details:" list — so all three ran
+                    together as one unpunctuated wall. A long one also buried the
+                    Bids block below the fold on a phone; it now clamps to 4
+                    lines with a measured Read more. */}
+                <JobDescription text={r.job_description} />
                 <RequestPhotoQuote requestId={r.id} photoPath={r.photo_path} estimatedQuote={r.estimated_quote} quoteNotes={r.quote_notes} />
                 <div style={{ margin:".75rem 0", padding:".75rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:".5rem" }}>
@@ -1889,13 +2129,23 @@ export default function ContractorDashboard() {
                           <input type="number" min="0" placeholder="Ballpark high $" value={bidForm[r.id]?.price_high ?? (r.my_price_high != null ? String(r.my_price_high) : "")} onChange={e => setBid(r.id, { price_high: e.target.value })} style={{ flex:"1 1 130px", minWidth:0, maxWidth:"170px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
                         </>
                       ) : (
-                        <input type="number" min="0" placeholder="Price $" value={bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "")} onChange={e => setBid(r.id, { amount: e.target.value, message: bidForm[r.id]?.message ?? (r.my_message ?? ""), used_base_price:false })} style={{ width:"100px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
+                        // Was a flat width:100px. At the 16px minimum every
+                        // touch field now carries (see main.tsx), "Price $"
+                        // no longer fits in 100px and the caret sat on top of
+                        // the placeholder. Matched to the walkthrough pair.
+                        <input type="number" min="0" placeholder="Price $" value={bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "")} onChange={e => setBid(r.id, { amount: e.target.value, message: bidForm[r.id]?.message ?? (r.my_message ?? ""), used_base_price:false })} style={{ flex:"1 1 130px", minWidth:0, maxWidth:"170px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
                       )}
-                      <input placeholder="Short message (optional)" value={bidForm[r.id]?.message ?? (r.my_message ?? "")} onChange={e => setBid(r.id, { message: e.target.value, amount: bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "") })} style={{ flex:"1 1 150px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
-                      <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyBid === r.id} onClick={() => placeBid(r)}>{busyBid === r.id ? "…" : ((r.my_amount != null || r.my_walkthrough) ? "Update bid" : "Place bid")}</button>
+                      <input placeholder="Short message (optional)" value={bidForm[r.id]?.message ?? (r.my_message ?? "")} onChange={e => setBid(r.id, { message: e.target.value, amount: bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "") })} style={{ ...ffInp, flexBasis:"100%" }} />
                       {!wtOn && <QuoteBreakdown v={bidForm[r.id] ?? {}} on={patch => setBid(r.id, patch)} calloutHint={contractor?.min_callout ?? null} price={priceFor(r.service_needed)} />}
                       <input placeholder="Assumptions (optional, e.g. price assumes parts are accessible)" value={bidForm[r.id]?.assumptions ?? ""} onChange={e => setBid(r.id, { assumptions: e.target.value })} style={{ ...ffInp, flexBasis:"100%" }} />
-                      <button type="button" onClick={() => setBidOpen(pp => ({ ...pp, [r.id]: false }))} style={{ background:"none", border:"none", color:"rgba(var(--ff-muted), .6)", fontFamily:"inherit", fontSize:".78rem", cursor:"pointer", padding:0, flexBasis:"100%", textAlign:"left" as const }}>Cancel</button>
+                      {/* Submit moved BELOW the breakdown and the assumptions
+                          field, and made full-width. It used to sit directly
+                          after the message input, so on a phone — where every
+                          row wraps — the pro reached the orange button before
+                          the two fields underneath it had been seen at all,
+                          and bid without them. One primary action, last. */}
+                      <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", flexBasis:"100%", justifyContent:"center", fontWeight:600 }} disabled={busyBid === r.id} onClick={() => placeBid(r)}>{busyBid === r.id ? "…" : ((r.my_amount != null || r.my_walkthrough) ? "Update bid" : "Place bid")}</button>
+                      <button type="button" onClick={() => setBidOpen(pp => ({ ...pp, [r.id]: false }))} style={{ background:"none", border:"none", color:"rgba(var(--ff-muted), .6)", fontFamily:"inherit", fontSize:".78rem", cursor:"pointer", padding:0, flexBasis:"100%", textAlign:"center" as const }}>Cancel</button>
                     </div>
                     );
                   })()}
@@ -1908,7 +2158,8 @@ export default function ContractorDashboard() {
             </>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {activeTab === "profile" && (
           <div>

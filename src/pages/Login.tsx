@@ -1,8 +1,10 @@
 import { Ic } from "@/components/Ic";
+import PasswordField from "@/components/PasswordField";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import OAuthButtons from "@/components/OAuthButtons";
+import { mfaReason, type MfaStatus } from "@/lib/mfa";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -14,6 +16,16 @@ export default function Login() {
   const [resetSent, setResetSent] = useState(false);
   const [needsConfirm, setNeedsConfirm] = useState(false);
   const [resendNote, setResendNote] = useState("");
+
+  // Two-step sign-in stage. Reached only after the password has been accepted,
+  // so a session already exists by the time this shows — see cancelOtp.
+  const [otpStage, setOtpStage] = useState(false);
+  const [otpCode, setOtpCode]   = useState("");
+  const [otpErr, setOtpErr]     = useState("");
+  const [otpNote, setOtpNote]   = useState("");
+  const [otpBusy, setOtpBusy]   = useState(false);
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [dest, setDest]         = useState("/client-dashboard");
 
   const resendConfirmation = async () => {
     if (!email) { setError("Enter your email above first."); return; }
@@ -39,9 +51,26 @@ export default function Login() {
       const { data, error: authErr } = await supabase.auth.signInWithPassword({ email, password });
       if (authErr) throw authErr;
       const { data: profile } = await supabase.from("profiles").select("role").eq("id", data.user.id).maybeSingle();
-      if (profile?.role === "admin")           setLocation("/admin-dashboard");
-      else if (profile?.role === "contractor") setLocation("/contractor-dashboard");
-      else                                     setLocation("/client-dashboard");
+      const to = profile?.role === "admin"      ? "/admin-dashboard"
+               : profile?.role === "contractor" ? "/contractor-dashboard"
+               :                                  "/client-dashboard";
+      setDest(to);
+
+      // Two-step sign-in. Supabase issues the session the moment the password is
+      // accepted, so this prompt gates the UI, not the API — which is exactly why
+      // mfa_ok() also sits inside admin_guard(), on the RPCs that do irreversible
+      // things. Fail OPEN on a read error: failing closed would lock people out
+      // over a network blip and would buy nothing, because the server-side gate
+      // is the one that actually holds.
+      const { data: st, error: stErr } = await supabase.rpc("mfa_status");
+      const mfa = st as MfaStatus | null;
+      if (!stErr && mfa?.enabled && !mfa.verified_recently) {
+        setOtpCode(""); setOtpErr(""); setOtpNote(""); setRecoveryMode(false);
+        setOtpStage(true);
+        sendLoginCode();
+        return;
+      }
+      setLocation(to);
     } catch (err: any) {
       const m = (err?.message ?? "").toLowerCase();
       if (m.includes("not confirmed") || m.includes("email_not_confirmed") || err?.code === "email_not_confirmed") {
@@ -51,6 +80,44 @@ export default function Login() {
         setError(err.message ?? "Sign in failed. Please check your credentials.");
       }
     } finally { setLoading(false); }
+  };
+
+  const sendLoginCode = async () => {
+    setOtpErr(""); setOtpNote(""); setOtpBusy(true);
+    try {
+      const { data, error: rErr } = await supabase.rpc("mfa_request_code", { p_purpose: "login" });
+      if (rErr) throw rErr;
+      if (!(data as any)?.ok) { setOtpErr(mfaReason((data as any)?.reason)); return; }
+      setOtpNote("Code sent \u2014 check your email.");
+    } catch (err: any) {
+      setOtpErr(err?.message ?? "Couldn't send the code. Try again in a moment.");
+    } finally { setOtpBusy(false); }
+  };
+
+  const verifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setOtpErr(""); setOtpNote(""); setOtpBusy(true);
+    try {
+      const { data, error: vErr } = recoveryMode
+        ? await supabase.rpc("mfa_use_recovery", { p_code: otpCode.trim() })
+        : await supabase.rpc("mfa_verify", { p_code: otpCode, p_purpose: "login" });
+      if (vErr) throw vErr;
+      const d = data as any;
+      if (!d?.ok) { setOtpErr(mfaReason(d?.reason, d?.attempts_left)); return; }
+      setLocation(dest);
+    } catch (err: any) {
+      setOtpErr(err?.message ?? "Couldn't check that code.");
+    } finally { setOtpBusy(false); }
+  };
+
+  // Backing out has to actually end the session. The password was already
+  // accepted, so simply hiding this screen would leave a signed-in session
+  // sitting in the browser behind a page that says you are not signed in.
+  const cancelOtp = async () => {
+    setOtpBusy(true);
+    try { await supabase.auth.signOut(); } catch { /* nothing useful to show */ }
+    setOtpStage(false); setOtpCode(""); setOtpErr(""); setOtpNote("");
+    setRecoveryMode(false); setPassword(""); setOtpBusy(false);
   };
 
   const handleReset = async (e: React.FormEvent) => {
@@ -104,6 +171,71 @@ export default function Login() {
                 ← Back to sign in
               </button>
             </div>
+          ) : otpStage ? (
+            <>
+              <div style={s.heading}>One More Step</div>
+              <p style={s.sub}>
+                {recoveryMode
+                  ? "Enter one of the recovery codes you saved"
+                  : "We emailed a 6-digit code to " + email}
+              </p>
+              {otpErr && <div style={s.err}>{otpErr}</div>}
+              {otpNote && !recoveryMode && (
+                <p style={{ fontSize:".82rem", color:"#22c55e", marginBottom:"1rem" }}>{otpNote}</p>
+              )}
+              <form onSubmit={verifyOtp}>
+                <div style={{ marginBottom:"1.25rem" }}>
+                  <label style={s.label}>{recoveryMode ? "Recovery code" : "6-digit code"}</label>
+                  <input
+                    style={{ ...inp, fontFamily:"'SFMono-Regular',Menlo,Consolas,monospace", fontSize:"1.2rem", letterSpacing: recoveryMode ? ".14em" : ".35em", textAlign:"center" }}
+                    value={otpCode}
+                    onChange={e => setOtpCode(recoveryMode
+                      ? e.target.value.replace(/[^0-9a-zA-Z]/g, "").slice(0, 10).toUpperCase()
+                      : e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder={recoveryMode ? "A1B2C3D4E5" : "000000"}
+                    inputMode={recoveryMode ? "text" : "numeric"}
+                    autoComplete="one-time-code"
+                    autoFocus
+                    aria-label={recoveryMode ? "Recovery code" : "6-digit code"}
+                  />
+                  {!recoveryMode && (
+                    <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .45)", marginTop:".5rem" }}>
+                      It expires in 10 minutes. Check your spam folder if it hasn't arrived.
+                    </p>
+                  )}
+                </div>
+                <button style={{ ...s.btn, ...s.dim(otpBusy || otpCode.length < (recoveryMode ? 10 : 6)) }}
+                        type="submit" disabled={otpBusy || otpCode.length < (recoveryMode ? 10 : 6)}>
+                  {otpBusy ? <><span className="ff-btn-spin" aria-hidden="true" />Checking…</> : "Verify →"}
+                </button>
+              </form>
+              <div style={{ display:"flex", justifyContent:"space-between", gap:".75rem", marginTop:"1.25rem" }}>
+                {recoveryMode ? (
+                  <button type="button" style={s.textBtn} onClick={() => { setRecoveryMode(false); setOtpCode(""); setOtpErr(""); }}>
+                    ← Use an emailed code
+                  </button>
+                ) : (
+                  <>
+                    <button type="button" style={{ ...s.textBtn, ...s.dim(otpBusy) }} onClick={sendLoginCode} disabled={otpBusy}>
+                      Resend code
+                    </button>
+                    <button type="button" style={s.textBtn} onClick={() => { setRecoveryMode(true); setOtpCode(""); setOtpErr(""); setOtpNote(""); }}>
+                      Use a recovery code
+                    </button>
+                  </>
+                )}
+              </div>
+              <div style={{ textAlign:"center", marginTop:"1.5rem" }}>
+                <button type="button" style={{ ...s.textBtn, color:"rgba(var(--ff-muted), .5)", ...s.dim(otpBusy) }} onClick={cancelOtp} disabled={otpBusy}>
+                  Cancel and sign out
+                </button>
+              </div>
+              <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .4)", textAlign:"center", marginTop:"1rem", lineHeight:1.5 }}>
+                Locked out of both? Email{" "}
+                <a href="mailto:hello@freddyfixit.ca" style={{ color:"#ea6b14", textDecoration:"none" }}>hello@freddyfixit.ca</a>{" "}
+                and we can switch two-step off for you.
+              </p>
+            </>
           ) : mode === "signin" ? (
             <>
               <div style={s.heading}>Welcome Back</div>
@@ -125,7 +257,7 @@ export default function Login() {
                 </div>
                 <div style={{ marginBottom:".75rem" }}>
                   <label style={s.label}>Password</label>
-                  <input style={inp} type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" />
+                  <PasswordField style={inp} placeholder="••••••••" value={password} onChange={setPassword} autoComplete="current-password" />
                 </div>
                 <div style={{ textAlign:"right", marginBottom:"1.25rem" }}>
                   <button type="button" style={s.textBtn} onClick={() => { setMode("forgot"); setError(""); }}>

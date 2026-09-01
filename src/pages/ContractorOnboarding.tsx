@@ -1,7 +1,9 @@
 import { Ic } from "@/components/Ic";
+import PasswordField from "@/components/PasswordField";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { clearMyProfile } from "@/lib/myProfile";
 import { compressImage } from "@/lib/imageCompress";
 import { AVAIL_DAYS, WEEKDAYS, TIME_OPTIONS, DEFAULT_START, DEFAULT_END } from "@/lib/availability";
 import { trackEvent } from "@/lib/analytics";
@@ -104,6 +106,9 @@ export default function ContractorOnboarding() {
   const [step, setStep] = useState(1);
   const TOTAL = 5;
   const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", companyName:"", password:"", yearsOfExperience:"", photoUrl:"", workType:"", licensed:false, licenseNumber:"", hasInsurance:false, insuranceProvider:"", insuranceExpiry:"", hasWcb:false, operatesAlone:false, workReferences:"" });
+  // True only when Have I Been Pwned definitively matched the typed password.
+  // An unreachable HIBP reports false, so a flaky network can never block a signup.
+  const [pwBreached, setPwBreached] = useState(false);
   const [selectedSpec,  setSelectedSpec]  = useState<string[]>([]);
   const [selectedArea,  setSelectedArea]  = useState<string[]>([]);
   // Convenience only — the address is never stored. It exists to pre-tick the
@@ -223,6 +228,7 @@ export default function ContractorOnboarding() {
       if (!authedUserId) { const ev = validateEmail(form.email); if (!ev.ok) errs.email = ev.error!; }
       { const pv = validatePhone(form.phone); if (!pv.ok) errs.phone = pv.error!; }
       if (!authedUserId && form.password.length < 8) errs.password = "Minimum 8 characters";
+      else if (!authedUserId && pwBreached) errs.password = "This password has appeared in public data breaches. Please choose a different one.";
     }
     // Step 2 merges the old Specialties + Trade screens. Work type must be
     // answered here because it drives the credential copy on step 4 and the
@@ -303,6 +309,10 @@ export default function ContractorOnboarding() {
           .update({ role: "contractor", first_name: form.firstName, last_name: form.lastName || null, phone: form.phone || null })
           .eq("id", userId);
         if (profErr) throw profErr;
+        // The row was just created and/or the role just changed — drop the
+        // shared cache so ProtectedRoute doesn't bounce them off the dashboard
+        // they're about to land on, and the finish-signup banner clears.
+        clearMyProfile();
         // Weekly pro-tips opt-in (CASL express consent — checkbox is never pre-checked).
         if (newsletterOptIn) {
           try { await supabase.rpc("newsletter_subscribe", { p_email: form.email, p_audience: "contractor", p_name: form.firstName, p_source: "signup_checkbox" }); } catch {}
@@ -468,8 +478,8 @@ export default function ContractorOnboarding() {
               {!authedUserId && (
                 <div style={{ marginBottom:"1.2rem" }}>
                   <label style={s.label}>Password (for your account)</label>
-                  <input autoComplete="new-password" style={{ ...inp, borderColor: errors.password ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="password" placeholder="Min 8 characters" value={form.password} onChange={e => setF("password",e.target.value)} />
-                <p style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .55)", margin:".3rem 0 0", lineHeight:1.4 }}>At least 8 characters. A mix of letters, numbers and symbols is strongest.</p>
+                  <PasswordField meter autoComplete="new-password" style={{ ...inp, borderColor: errors.password ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="Min 8 characters" value={form.password} onChange={v => setF("password",v)} onBreachChange={setPwBreached} />
+                <p style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .55)", margin:".3rem 0 0", lineHeight:1.4 }}>At least 8 characters. Length beats symbols &mdash; four random words is stronger than one word with punctuation.</p>
                   {errors.password && <p style={s.err}>{errors.password}</p>}
                 </div>
               )}
@@ -490,10 +500,34 @@ export default function ContractorOnboarding() {
           {/* Step 2 — What you do: services + line of work (was steps 2 and 5) */}
           {step === 2 && (
             <div>
+              {/* Aligned with ClientOnboarding step 2: what you have picked is shown
+                  as removable chips ABOVE the picker, not as a bare count below it.
+                  The list is 23 items long, so a pro who has scrolled to the bottom
+                  could not see what they had already ticked and had to scroll back
+                  up to check — the client side solved this and the two screens now
+                  behave the same way. Tapping a chip removes it, exactly as there. */}
               <p style={s.label}>Services You Offer</p>
-              <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"1rem", fontWeight:300, lineHeight:1.6 }}>
-                Search or tap everything you&rsquo;re comfortable taking on. You can change this anytime.
-              </p>
+              {selectedSpec.length > 0 ? (
+                <>
+                  <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginBottom:".5rem" }}>
+                    {selectedSpec.map(sv => (
+                      <button key={sv} type="button" onClick={() => toggleSpec(sv)}
+                        style={{ display:"inline-flex", alignItems:"center", gap:".5rem", padding:".55rem .9rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".88rem", fontWeight:500, cursor:"pointer", background:"rgba(234,107,20,.15)", border:"1px solid #ea6b14", color:"var(--ff-text)" }}>
+                        {sv}
+                        <span aria-hidden style={{ color:"#ea6b14", fontSize:"1.05rem", lineHeight:1 }}>×</span>
+                      </button>
+                    ))}
+                  </div>
+                  <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"1rem" }}>
+                    {selectedSpec.length} selected — tap one to remove it. Add more below.
+                  </p>
+                </>
+              ) : (
+                <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"1rem", fontWeight:300, lineHeight:1.6 }}>
+                  Search or tap everything you&rsquo;re comfortable taking on. You can change this anytime.
+                </p>
+              )}
+              {errors.spec && <p style={s.err}>{errors.spec}</p>}
               {/* allowCustom={false}: an off-list specialty matches no client
                   request, so inventing one would look like it worked and then
                   quietly send this pro nothing. */}
@@ -504,8 +538,6 @@ export default function ContractorOnboarding() {
                 allowCustom={false}
                 placeholder="Search your trade (e.g. plumbing, drywall, snow)…"
               />
-              {errors.spec && <p style={s.err}>{errors.spec}</p>}
-              {selectedSpec.length > 0 && <p style={{ fontSize:".78rem", color:"#ea6b14", marginTop:".75rem" }}>✓ {selectedSpec.length} service{selectedSpec.length > 1 ? "s" : ""} selected</p>}
 
               <div style={{ marginTop:"1.75rem", paddingTop:"1.5rem", borderTop:"1px solid rgba(var(--ff-fg), .08)" }}>
                 <p style={s.label}>Your Line of Work</p>

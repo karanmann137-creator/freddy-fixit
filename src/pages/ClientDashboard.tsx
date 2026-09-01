@@ -3,9 +3,15 @@ import { DashboardSkeleton, useEnterAnim } from "@/components/Skeleton";
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
-import { requestGoogleReview } from "@/lib/reviewPrompt";
+import { clearMyProfile } from "@/lib/myProfile";
+// The standalone review ask is no longer fired from this page — the completion
+// moment is the only one it had here, and that now goes through
+// `requestCompletionThanks`, which asks for the review AND the referral in one
+// modal. `requestReferralShare` stays for the separate `rehire` fallback below.
 import { requestReferralShare } from "@/lib/referralPrompt";
-import RequestPhotoQuote from "@/components/RequestPhotoQuote";
+import { requestCompletionThanks } from "@/lib/completionPrompt";
+import RequestPhotoQuote, { PHOTO_ANCHOR } from "@/components/RequestPhotoQuote";
+import JobDescription from "@/components/JobDescription";
 import ProfileBar from "@/components/ProfileBar";
 import JobChat from "@/components/JobChat";
 import ChatTimePrompt from "@/components/ChatTimePrompt";
@@ -20,7 +26,11 @@ import ReportProblem from "@/components/ReportProblem";
 import FileClaimModal, { type ClaimJob } from "@/components/FileClaimModal";
 import RequestHelpModal from "@/components/RequestHelpModal";
 import { jobCode } from "@/lib/jobCode";
-import { referralReasonText, takeReferralError } from "@/lib/referralCode";
+import { getDismissals, dismiss as dismissKey } from "@/lib/dismissals";
+import { searchTokens, matchesSearch } from "@/lib/dashSearch";
+import DashSearch from "@/components/DashSearch";
+import DismissX from "@/components/DismissX";
+import { peekReferralError } from "@/lib/referralCode";
 import { sendContractCopy, CONTRACT_COPY_FAILED } from "@/lib/contractCopy";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
@@ -32,8 +42,7 @@ import PriceGrade from "@/components/PriceGrade";
 import VerifiedMarks, { type VerifyFlags } from "@/components/VerifiedMarks";
 import BidChat from "@/components/BidChat";
 import type { Grade } from "@/lib/servicePricing";
-import DashboardSidebar, { type SidebarItem, type SidebarAction } from "@/components/DashboardSidebar";
-import NotificationBell from "@/components/NotificationBell";
+import DashboardSidebar, { type SidebarItem } from "@/components/DashboardSidebar";
 import { SettingsPanel } from "@/components/SettingsModal";
 import MessagesInbox, { partyName } from "@/components/MessagesInbox";
 import { useConversations, chatReadOnly, chatClosedReason, type Conversation } from "@/lib/chatUnread";
@@ -41,15 +50,48 @@ import FadeImg from "@/components/FadeImg";
 
 type ClientTab = "requests" | "messages" | "pros" | "recurring" | "history" | "profile" | "settings";
 
+/**
+ * CLIENT_NAV is the ROUTING truth and must stay complete.
+ *
+ * `applyDashNav` validates an incoming tab against this array, so deleting an
+ * entry silently no-ops every notification that routes to it — `recurring_generated`
+ * to "recurring", `job_confirmed` and `review_received` to "history". What the
+ * client actually SEES is `visibleNav()` below, which is a filter over this list.
+ * Never trim this array to tidy the sidebar; trim the filter instead.
+ *
+ * "settings" has no visible entry of its own — Account renders ProfileBar and
+ * SettingsPanel together — but the key stays routable so an older deep link
+ * still lands somewhere real.
+ */
 const CLIENT_NAV: SidebarItem[] = [
   { key: "requests",  label: "My Requests",    icon: "clipboard-list" },
   { key: "messages",  label: "Messages",       icon: "message-square" },
   { key: "pros",      label: "My Pros",        icon: "user-check" },
   { key: "recurring", label: "Recurring Plans", icon: "refresh" },
   { key: "history",   label: "History",        icon: "clock" },
-  { key: "profile",   label: "Profile",        icon: "user" },
+  { key: "profile",   label: "Account",        icon: "user" },
   { key: "settings",  label: "Settings",       icon: "settings" },
 ];
+
+/**
+ * The sidebar a client actually gets.
+ *
+ * A first-time client had seven items, four of which opened an empty state —
+ * My Pros, Recurring Plans and History are all things you EARN by using the
+ * platform, and showing them on day one is just noise in front of the one thing
+ * that matters, which is choosing a pro. Each one appears the moment it has
+ * something in it.
+ *
+ * My Pros appears only past 3, because up to 3 are already fully rendered on the
+ * home tab and the tab would be a duplicate of a strip they can already see.
+ */
+function visibleNav(opts: { pros: number; plans: number; past: number }): SidebarItem[] {
+  const show = new Set<string>(["requests", "messages", "profile"]);
+  if (opts.pros > 3)  show.add("pros");
+  if (opts.plans > 0) show.add("recurring");
+  if (opts.past > 0)  show.add("history");
+  return CLIENT_NAV.filter(it => show.has(String(it.key)));
+}
 
 function QuoteBreakdownView({ row, assumptionsKey = "assumptions" }: { row: any; assumptionsKey?: string }) {
   const items: [string, any][] = [["Labour", row?.labour_amount], ["Parts & materials", row?.parts_amount], ["Call-out", row?.callout_fee]];
@@ -75,37 +117,18 @@ function QuoteBreakdownView({ row, assumptionsKey = "assumptions" }: { row: any;
 }
 
 
-const VEHICLE_SERVICES = ["Oil Change","Tire Swap / Rotation","Battery / Brakes","Vehicle Maintenance"];
-
-function calcJobScore(r: any): { score: number; max: number; label: string; color: string } {
-  let score = 0;
-  // Description quality
-  const desc = (r.job_description ?? "").trim();
-  if (desc.length >= 50) score += 3;
-  else if (desc.length >= 20) score += 2;
-  else if (desc.length >= 5) score += 1;
-  // Photo
-  if (r.photo_path) score += 2;
-  // Location
-  if ((r.location ?? "").trim().length > 3) score += 1;
-  // Vehicle details (if vehicle job)
-  const isVehicle = VEHICLE_SERVICES.some(s => (r.service_needed ?? "").includes(s));
-  if (isVehicle) {
-    const vd = r.vehicle_details ?? {};
-    if (vd.make) score += 1;
-    if (vd.year) score += 1;
-    if (vd.problem) score += 1;
-  }
-  // Schedule urgency
-  const sched = (r.preferred_schedule ?? "").toLowerCase();
-  if (sched.includes("urgent")) score += 2;
-  else if (sched.includes("week")) score += 1;
-  const max = isVehicle ? 10 : 8;
-  const pct = score / max;
-  const label = pct >= 0.75 ? "Strong listing" : pct >= 0.45 ? "Good listing" : "Add more details";
-  const color = pct >= 0.75 ? "var(--ff-success)" : pct >= 0.45 ? "var(--ff-warn)" : "var(--ff-danger)";
-  return { score, max, label, color };
-}
+/*
+ * calcJobScore + VEHICLE_SERVICES were removed on 2026-08-28 along with the
+ * "6/8 Good listing" chip they fed.
+ *
+ * The score was computed AFTER the request was already submitted, and the
+ * dashboard offered no way to edit a description or add a location — so the
+ * only actionable half of it was "add a photo", which RequestPhotoQuote
+ * already prompts for directly underneath. What was left was a grade on
+ * something the client can no longer change, sitting on the screen where they
+ * are supposed to be choosing a contractor. If a listing-quality nudge comes
+ * back it belongs on the REQUEST FORM, where the fields still exist.
+ */
 
 const STATUS_META: Record<string, { icon: string; label: string; color: string }> = {
   pending:     { icon: "clock", label: "Pending Review",     color: "#f59e0b" },
@@ -114,6 +137,81 @@ const STATUS_META: Record<string, { icon: string; label: string; color: string }
   completed:   { icon: "check-circle", label: "Completed",          color: "#22c55e" },
   cancelled:   { icon: "x-circle", label: "Cancelled",          color: "#ef4444" },
 };
+
+// Can the client actually delete this request? `remove_client_request` is guarded
+// server-side by `job_money_block()`, so on a paid job the button could only ever
+// raise — and it was rendered on every request that wasn't already cancelled.
+//
+// A COMPLETED request is the sharp case and the reason this exists. The RPC's
+// assigned branch skips completed jobs when it cancels them, but still writes
+// `client_requests.status = 'cancelled'` — so on a finished job that was never
+// charged, the button doesn't fail loudly, it quietly relabels a completed job in
+// the client's own history as cancelled. Hiding it is the fix; the RPC is right to
+// keep its guard.
+//
+// `job` is the loaded job for this request, or null where we don't have it (the
+// history list). Status alone answers those rows.
+const canRemoveRequest = (r: any, job: any): boolean => {
+  if (!r || r.status === "cancelled" || r.status === "completed") return false;
+  if (!job) return true;
+  if (["held", "released", "disputed", "processing"].includes(job.payment_status ?? "unpaid")) return false;
+  if (job.is_milestone || job.prepayment_id) return false;
+  return !["in_progress", "pending_confirmation", "completed"].includes(job.status);
+};
+
+// Scroll target for the open-request switcher, so changing request always
+// lands in the same place. Module-level for the same reason CONTRACT_ANCHOR is:
+// an id typed twice is an id that drifts, and a missed one scrolls to nothing.
+const REQ_SWITCH_ANCHOR = "ffc-requests";
+
+/**
+ * Attention rows whose × means "never again". Everything else clears for the
+ * SESSION only and comes back on the next load while its state is still true.
+ *
+ * The test is deliberately NOT "does this row mention money". It is: can this
+ * key ever come back carrying NEW information? If it can, a permanent mute
+ * hides that information with nothing on screen to say so.
+ *
+ *  - `photo` and `bids` are pointers to something already on the page, scoped
+ *    to one request, so muting them loses nothing. They are the whole list.
+ *  - `contract` / `release` / `balance` / `price` / `hike` / `confirm` name
+ *    money that is owed or stuck. The balance row in particular is often the
+ *    only place a client is told the job is under-funded, which is what leaves
+ *    the contractor waiting indefinitely.
+ *  - `sched` and `walkthrough` re-fire on the SAME job when a pro counters a
+ *    proposal, so a permanent mute would swallow the counter.
+ *  - `chattime` exists precisely so a time suggested in chat can never be lost
+ *    — dismissing the modal already leaves this row standing on purpose.
+ *  - `msg-*` regenerates from live unread state, so muting one job's row would
+ *    silently hide every future message on it.
+ *
+ * When in doubt leave a key OUT of this set. The cost is a banner the client
+ * has to wave away twice; the cost of the other mistake is a hidden bill.
+ */
+const PERMANENT_ATTN = new Set(["photo", "bids"]);
+
+/**
+ * What a client can search their own requests by.
+ *
+ * The status LABEL is included rather than the raw enum, because "waiting on
+ * estimates" is what the screen says and "pending" is what the column holds —
+ * searching for the word you can see is the only behaviour that isn't a
+ * surprise. The date is formatted for the same reason.
+ *
+ * Deliberately NO job code. The code is derived from the JOB's uuid, and this
+ * dashboard only ever loads the job for the request currently selected, so a
+ * code typed here could match at most one row and would silently miss every
+ * other. Adding it would mean a job read per request on every load — a new
+ * query for a search that is otherwise free. The contractor and admin
+ * dashboards hold their jobs already, and match on the code there.
+ */
+function reqSearchFields(r: any): (string | number | null | undefined)[] {
+  return [
+    r?.service_needed, r?.location, r?.preferred_schedule, r?.description,
+    STATUS_META[r?.status]?.label ?? r?.status,
+    r?.created_at ? new Date(r.created_at).toLocaleDateString() : null,
+  ];
+}
 
 export default function ClientDashboard() {
   const [, setLocation] = useLocation();
@@ -157,7 +255,14 @@ export default function ClientDashboard() {
   const [contractStatus, setContractStatus] = useState<string|null>(null); // draft|sent|signed|void — drives the attention row wording only
   const [feeRate, setFeeRate] = useState(0.03); // base service-fee rate; loaded from platform_fee_rate() so it matches what Stripe charges
   const [depositRate, setDepositRate] = useState(0.40); // share of the quote taken up front; from platform_deposit_rate()
-  const [busyBalance, setBusyBalance] = useState(false); // second charge (the 60% balance) is opening
+  const [busyBalance, setBusyBalance] = useState(false);
+  const [busyAutopay, setBusyAutopay] = useState(false); // second charge (the 60% balance) is opening
+  // A release that didn't go through, kept on screen after the toast has gone.
+  // The client's own report of the first real job was that Stripe said the
+  // payment failed and there was "no way to input new information to actually
+  // pay on the website" -- because the only thing that ever said so was a toast
+  // that vanished in six seconds.
+  const [releaseNote, setReleaseNote] = useState<{ kind: "balance" | "payout" | "delayed"; text: string } | null>(null);
   const [waivedForJob, setWaivedForJob] = useState<string|null>(null); // job whose 3% fee a referral waives
   const [loadError, setLoadError] = useState(false);
   const [selectedReqId, setSelectedReqId] = useState<string|null>(null);
@@ -166,10 +271,22 @@ export default function ClientDashboard() {
   const [pros, setPros]             = useState<any[]>([]);
   const [referral, setReferral]     = useState<any>(null);
   const [rewindOpen, setRewindOpen] = useState(false);
-  const [refCopied, setRefCopied]   = useState(false);
-  const [refInput, setRefInput]     = useState("");        // a friend's code, typed in by hand
-  const [refBusy, setRefBusy]       = useState(false);
-  const [refMsg, setRefMsg]         = useState<{ ok: boolean; text: string } | null>(null);
+  /**
+   * Whether the read-only copy of the request (service/location/schedule grid,
+   * job description, photo panel) is expanded.
+   *
+   * It is only ever COLLAPSED while estimates are on screen — see `showReqDetail`
+   * below. Nothing in that block is editable from here, so once there are pros to
+   * choose between it is 600px of recap standing between the client and the
+   * decision. With no estimates yet it stays open, because then it is the only
+   * thing on the page and folding it away would leave a near-empty screen.
+   */
+  const [reqDetailOpen, setReqDetailOpen] = useState(false);
+  // A code refused at signup is stashed rather than shown. We only PEEK at it
+  // here — the box that explains and retries it lives in ReferralCard, which
+  // read-and-clears it on mount. Consuming it here would eat the message before
+  // the box that fixes it ever rendered.
+  const [refStashed, setRefStashed] = useState("");
   const [plans, setPlans]           = useState<any[]>([]);
   const [busyPlan, setBusyPlan]     = useState<string|null>(null);
   const [newVisitTime, setNewVisitTime] = useState<string>("");
@@ -189,6 +306,44 @@ export default function ClientDashboard() {
   const [claimOpen, setClaimOpen]   = useState(false);
   const [claimJobs, setClaimJobs]   = useState<ClaimJob[]>([]);
   const [bugOpen, setBugOpen]       = useState(false);
+  const [search, setSearch]         = useState("");
+
+  /**
+   * Dismissals, in two stores on purpose.
+   *
+   * `dismissed` is the PERSISTED set from `ui_dismissals` — the profile banner
+   * and every non-money attention row, gone for good on this account. It starts
+   * EMPTY and stays empty when the read fails, because a failed read is not an
+   * empty result and the safe direction here is to show a banner twice rather
+   * than hide one that is telling somebody they still owe money.
+   *
+   * `hiddenNow` is session-only, for the money rows. A client can clear a
+   * contract, balance, price-change, hike, confirm or release row off the
+   * screen when they've read it, and it comes back on the next load for as
+   * long as the underlying state is still true. Some of those rows are the only
+   * place anyone is told a payment is outstanding, so "never show me this
+   * again" is not an option we can honestly offer for them.
+   */
+  const [dismissed, setDismissed]   = useState<Set<string>>(new Set());
+  const [hiddenNow, setHiddenNow]   = useState<Set<string>>(new Set());
+
+  /**
+   * Hide something the client has waved away.
+   *
+   * `forever` writes to `ui_dismissals`; the write is fire-and-forget, because
+   * a failed write only means the banner comes back next time — which is
+   * exactly the direction this whole module errs in. Local state updates first
+   * either way, so the row leaves the screen on the tap rather than on a
+   * round-trip.
+   */
+  const hide = (key: string, forever: boolean) => {
+    if (forever) {
+      setDismissed(prev => new Set(prev).add(key));
+      dismissKey(profile?.id, key);
+    } else {
+      setHiddenNow(prev => new Set(prev).add(key));
+    }
+  };
 
   // One hook feeds the Messages tab, the sidebar badge and every unread pill —
   // so a badge can never disagree with the list it links to.
@@ -209,7 +364,7 @@ export default function ClientDashboard() {
     if (c.unread > 0) void markConvRead(c.job_id);
   };
 
-  // "File a claim" (sidebar footer): load every job tied to this client's
+  // "File a claim" (top-nav gear menu): load every job tied to this client's
   // requests so they can pick which one the claim is about, then hand off to
   // the existing ReportProblem flow inside FileClaimModal.
   const openClaim = async () => {
@@ -230,6 +385,23 @@ export default function ClientDashboard() {
     }
   };
 
+  // Account actions now live in the TopNav gear, which cannot reach into this
+  // page's state — so it dispatches and we listen, the same pattern as
+  // `ff:open-settings`. Re-registered whenever `requests` changes because
+  // openClaim closes over it; a stale closure here would offer an empty job
+  // picker to a client who has jobs.
+  useEffect(() => {
+    const claim = () => { void openClaim(); };
+    const bug = () => setBugOpen(true);
+    window.addEventListener("ff:file-claim", claim);
+    window.addEventListener("ff:report-bug", bug);
+    return () => {
+      window.removeEventListener("ff:file-claim", claim);
+      window.removeEventListener("ff:report-bug", bug);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requests]);
+
   const askConfirm = (o: Omit<ConfirmState, "resolve">) =>
     new Promise<boolean>(resolve => setConfirmState({ ...o, resolve }));
 
@@ -241,12 +413,12 @@ export default function ClientDashboard() {
 
   // A code typed at signup that the DB refused. Neither signup surface can show
   // it — ClientOnboarding is mid-submit and AuthCallback is a redirect — so the
-  // reason is stashed and read exactly once, here, where it renders immediately
-  // above the manual entry box. The explanation and the retry arrive together.
-  useEffect(() => {
-    const t = takeReferralError();
-    if (t) setRefMsg({ ok: false, text: t });
-  }, []);
+  // reason is stashed for the redeem box to explain. That box now lives in
+  // Settings, and this is still the page the client actually lands on, so the
+  // dashboard's job is to POINT them at it: peek at the stash to push an
+  // attention row, and let ReferralCard consume and explain it there. Reading
+  // it here would leave the client with an explanation and no way to retry.
+  useEffect(() => { setRefStashed(peekReferralError()); }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -280,6 +452,7 @@ export default function ClientDashboard() {
         if (!profData) {
           try {
             const { data: role } = await supabase.rpc("ensure_profile", { p_role: "client" });
+            clearMyProfile();  // a profile row now exists where it didn't
             if (role && role !== "client") {
               setLocation(role === "admin" ? "/admin-dashboard" : "/contractor-dashboard");
               return;
@@ -293,6 +466,11 @@ export default function ClientDashboard() {
         setPros(myPros.data ?? []);
         setReferral(ref.data ?? null);
         setPlans(planRows.data ?? []);
+        // Which banners this account has already waved away. Fired here rather
+        // than inside the Promise.all above because it must not be able to fail
+        // the whole load: a dismissal read that errors resolves to "nothing
+        // dismissed", so every banner simply shows, which is the safe direction.
+        void getDismissals(user.id).then(d => { if (d.ok) setDismissed(new Set(d.keys)); });
         // All clients pay the standard 3% service fee unless a referral waives it
         // for a specific first job (checked per-job in the active-job effect below).
       } catch {
@@ -310,6 +488,23 @@ export default function ClientDashboard() {
   const activeReq =
     (selectedReqId && requests.find(r => r.id === selectedReqId)) ||
     openReqs[0] || requests[0];
+
+  // Switching requests used to dump the client at whatever scroll offset they
+  // happened to be at, against a page whose height had just changed by
+  // hundreds of pixels — a request with five estimates and a request waiting
+  // on its first bid are nothing like the same length, so the viewport landed
+  // somewhere arbitrary and often below the end of the new content. Land them
+  // on the switcher every time instead, and reset the two per-request
+  // disclosure states so the new request opens in its own default shape
+  // rather than inheriting the last one's.
+  const selectRequest = (id: string) => {
+    setSelectedReqId(id);
+    setReqDetailOpen(false);
+    setShowChangeTime(false);
+    requestAnimationFrame(() => {
+      document.getElementById(REQ_SWITCH_ANCHOR)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
 
   // ── Notification deep links ─────────────────────────────────────────────────
   // Tapping a 🔔 lands here two ways: from another page it navigates with
@@ -390,6 +585,13 @@ export default function ClientDashboard() {
   // (mount, or the client switching between open requests).
   useEffect(() => {
     if (!activeReq) { setContractor(null); setActiveJob(null); return; }
+    // Drop a job belonging to the PREVIOUSLY selected request before the new
+    // read resolves. Leaving it is not merely a visual jump: for the length of
+    // that round trip the pay, confirm and message buttons render under the new
+    // request's header while still acting on the OTHER job. Only clear on a
+    // genuine mismatch, so a re-render for any other reason doesn't flash the
+    // payment surface off and on.
+    setActiveJob((prev: any) => (prev && prev.request_id !== activeReq.id ? null : prev));
     let cancelled = false;
     (async () => {
       const [{ data: con }, { data: job, error: jobErr }] = await Promise.all([
@@ -476,6 +678,19 @@ export default function ClientDashboard() {
     }, 60));
   };
   const focusContract = () => focusAnchor(CONTRACT_ANCHOR);
+  /**
+   * The photo panel lives inside the request-detail block, which is COLLAPSED
+   * whenever estimates are on screen — which is exactly when someone is most
+   * likely to be told their request has no photo. Expanding first is what makes
+   * the row's button land on something; focusAnchor would otherwise measure an
+   * element that isn't in the DOM and fall back to scrolling to the top, which
+   * reads as a button that does nothing.
+   *
+   * setReqDetailOpen and focusAnchor are batched into the same render, and
+   * focusAnchor already waits a frame plus 60ms before measuring, so the panel
+   * has painted by the time it looks for the id.
+   */
+  const focusPhoto = () => { setReqDetailOpen(true); focusAnchor(PHOTO_ANCHOR); };
   // Spreads an id + the pulse ring onto whichever card an attention row targets.
   // scrollMarginTop clears the fixed top nav so the card isn't tucked under it.
   const anchor = (id: string) => ({ id, className: pulseAnchor === id ? "ff-pulse" : undefined });
@@ -495,7 +710,6 @@ export default function ClientDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeReq?.id]);
 
-  const handleSignOut = async () => { await supabase.auth.signOut(); setLocation("/"); };
 
   const toggleFav = async (contractorId: string) => {
     // optimistic flip
@@ -518,54 +732,9 @@ export default function ClientDashboard() {
     setLocation("/client-onboarding?" + q.toString());
   };
 
-  const copyReferral = async () => {
-    const code = referral?.code;
-    if (!code) return;
-    try {
-      await navigator.clipboard.writeText(`Get your first Freddy Fix It service fee waived with my code ${code}: https://freddyfixit.ca/?ref=${code}`);
-      setRefCopied(true); setTimeout(() => setRefCopied(false), 2000);
-    } catch { notify("Couldn't copy automatically — your code is " + code + " (shown on the card)."); }
-  };
-
-  // Apply a friend's code by hand. Until now the ONLY way a code could be used
-  // was clicking a ?ref= link, so a code heard in person — or a link pasted
-  // somewhere that strips the query string — was silently unusable. That is why
-  // no referral had ever been recorded.
-  //
-  // Every rule (unknown code, your own code, already referred) is enforced in
-  // apply_referral_code, which is SECURITY DEFINER and keyed on auth.uid(); this
-  // only translates its reason codes into English. Nothing here decides
-  // eligibility, so a client cannot talk their way into a waived fee.
-  const applyReferral = async () => {
-    const code = refInput.trim().toUpperCase();
-    if (!code || refBusy) return;
-    setRefBusy(true); setRefMsg(null);
-    try {
-      const { data, error } = await supabase.rpc("apply_referral_code", { p_code: code });
-      if (error) throw error;
-      const res = data as any;
-      if (res?.ok === true) {
-        setRefInput("");
-        setRefMsg({ ok: true, text: "Code applied — your 3% service fee is waived on your first job." });
-        // Refresh the card so the entry box disappears, then re-check the live
-        // fee line so an unpaid job's total drops without needing a reload.
-        try { const { data: r } = await supabase.rpc("get_my_referral"); setReferral(r ?? null); } catch {}
-        if (activeJob && activeJob.payment_status !== "released" && activeJob.total_charged == null && activeReq?.user_id) {
-          try {
-            const { data: elig } = await supabase.rpc("referral_waiver_eligible", { p_client: activeReq.user_id, p_job_id: activeJob.id });
-            setWaivedForJob(elig === true ? activeJob.id : null);
-          } catch { /* the fee line just stays as it was until the next load */ }
-        }
-      } else {
-        // Same wording the signup path stashes, from the same map — a code
-        // refused at signup and the same code refused here must not be
-        // explained two different ways.
-        setRefMsg({ ok: false, text: referralReasonText(String(res?.reason ?? "")) });
-      }
-    } catch {
-      setRefMsg({ ok: false, text: "Couldn't apply that code just now. Please try again." });
-    } finally { setRefBusy(false); }
-  };
+  // `copyReferral` and `applyReferral` moved to ReferralCard with the card they
+  // served. ReferralCard does its own `get_my_referral` read, so there is one
+  // implementation rather than a dashboard copy and a Settings copy that drift.
 
   const startEdit = (r: any) => {
     setEditingId(r.id);
@@ -669,6 +838,21 @@ export default function ClientDashboard() {
     if (error) { notify("Couldn't confirm: " + error.message); return; }
     setActiveJob({ ...activeJob, client_confirmed_visit_at: new Date().toISOString() });
   };
+
+  // Mirrors the 24h guard now inside `client_reschedule_visit`, so the button can
+  // explain itself BEFORE the tap instead of after a rejected RPC. The RPC stays
+  // the authority — this only exists to avoid a dead-end click.
+  //
+  // `!contractBlocked` is the frontend's read of `contract_signed`, and gating on
+  // it is what keeps this from colliding with `release_unconfirmed_visits`: that
+  // sweep only ever releases a visit that is BOTH unsigned and unpaid, at
+  // scheduled_at - 12h. Locking an UNSIGNED job at 24h would give the client a
+  // wall and then take the slot anyway. Note contractBlocked is also true when the
+  // check itself failed, so an unreadable gate leaves the button enabled and lets
+  // the RPC answer — a failed read is not a signed agreement.
+  const visitLocked = !!activeJob?.scheduled_at
+    && !contractBlocked
+    && new Date(activeJob.scheduled_at).getTime() - Date.now() < 24 * 3600 * 1000;
 
   const changeVisitTime = async () => {
     if (!activeJob || !newVisitTime) { notify("Pick a new date and time first."); return; }
@@ -894,6 +1078,64 @@ export default function ClientDashboard() {
     }
   };
 
+  // The client's consent switch for card-on-file collection of the balance.
+  // set_job_autopay is owner-only in the DB; turning it back ON also clears a
+  // stale failure so the hourly sweep retries rather than staying stuck.
+  const setAutopay = async (on: boolean) => {
+    if (!activeJob) return;
+    setBusyAutopay(true);
+    try {
+      const { error } = await supabase.rpc("set_job_autopay", { p_job_id: activeJob.id, p_on: on });
+      if (error) throw error;
+      setActiveJob((j: any) => (j && j.id === activeJob.id
+        ? { ...j, autopay_balance: on, ...(on ? { autopay_last_error: null, autopay_attempts: 0 } : {}) }
+        : j));
+      notify(on
+        ? "Automatic payment is back on — we'll charge your saved card."
+        : "Automatic payment is off. You can pay the balance yourself below.", "ok");
+    } catch (e: any) {
+      notify("Couldn't change that: " + (e?.message || String(e)));
+    }
+    setBusyAutopay(false);
+  };
+
+  // ONE renderer, mounted in BOTH balance panels, so the "we'll charge your
+  // card" promise and the manual Pay button can never disagree about what is
+  // about to happen. Renders nothing when there is no saved card — most jobs.
+  const autopayNote = (j: any, whenText: string) => {
+    if (!j?.stripe_payment_method_id) return null;
+    const err = j.autopay_last_error as string | null;
+    const attempts = Number(j.autopay_attempts || 0);
+    const line = { fontSize:".82rem", lineHeight:1.5, marginBottom:".55rem" };
+    const link = {
+      background:"none", border:"none", padding:".5rem 0", minHeight:44, cursor:"pointer",
+      fontFamily:"'DM Sans',sans-serif", fontSize:".78rem", color:"rgba(var(--ff-muted), .8)",
+      textDecoration:"underline", display:"inline-flex", alignItems:"center",
+    } as const;
+    if (err) return (
+      <div style={{ ...line, color:"var(--ff-warn)" }}>
+        <Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />
+        We tried to charge your saved card and it didn't go through: {err}{" "}
+        {attempts < 3 ? "We'll try again tomorrow — or pay below to settle it now." : "We won't try again — please pay below."}
+      </div>
+    );
+    if (j.autopay_balance) return (
+      <div style={{ marginBottom:".55rem" }}>
+        <div style={{ ...line, color:"rgba(var(--ff-muted), .8)", marginBottom:".15rem" }}>
+          <Ic name="dollar" size={13} style={{ marginRight:4 }} />
+          Your card is saved, so the remaining <strong>${jobBalance(j).toFixed(2)}</strong> will be charged automatically {whenText}. It's still <strong>held</strong> — confirming the work is what releases it.
+        </div>
+        <button style={link} disabled={busyAutopay} onClick={() => setAutopay(false)}>Turn off automatic payment</button>
+      </div>
+    );
+    return (
+      <div style={{ marginBottom:".55rem" }}>
+        <div style={{ ...line, color:"rgba(var(--ff-muted), .8)", marginBottom:".15rem" }}>Automatic payment is off — pay the balance yourself below.</div>
+        <button style={link} disabled={busyAutopay} onClick={() => setAutopay(true)}>Turn it back on</button>
+      </div>
+    );
+  };
+
   const confirmCompletion = async () => {
     if (!activeJob) return;
     const willRelease = activeJob.payment_status === "held";
@@ -909,18 +1151,23 @@ export default function ClientDashboard() {
     const { error } = await supabase.rpc("confirm_job_completion", { p_job_id: activeJob.id });
     setBusyReq(false);
     if (error) { notify("Couldn't confirm: " + error.message); return; }
-    // First-ever completed job is the best goodwill moment to ask for a
-    // referral share, so it takes this one slot instead of the Google review
-    // ask -- stacking two "please help us" prompts on the same click would
-    // hurt both. Every completion after the first falls back to the review
-    // ask exactly as before. If the referral ask doesn't fire (no code, or
-    // nothing to share), requestReferralShare no-ops and nothing is shown.
-    const isFirstCompletion = !requests.some(r => r.status === "completed");
-    if (isFirstCompletion) {
-      requestReferralShare("job_done", { code: referral?.code, codeStatus: referral?.code_status });
-    } else {
-      requestGoogleReview("job_done", { jobId: activeJob.id });
-    }
+    // A finished job is the peak-goodwill moment, and it now carries BOTH asks
+    // in one modal — review first, then the referral code. This used to be an
+    // either/or keyed on whether it was the client's first completion, on the
+    // reasoning that stacking two "please help us" prompts on one click would
+    // hurt both. That was right about two overlays and wrong about two asks:
+    // one modal saying "Loved the service? Rate us on Google and give your
+    // friends a discount" is a single sentence, and it means a repeat client
+    // is no longer silently skipped for the referral half forever.
+    //
+    // `requestCompletionThanks` decides which halves are live (opt-outs,
+    // cooldowns, and whether the code is still shareable at all) and shows
+    // nothing if neither is.
+    requestCompletionThanks({
+      jobId: activeJob.id,
+      code: referral?.code,
+      codeStatus: referral?.code_status,
+    });
     setActiveJob({ ...activeJob, status: "completed", client_confirmed_at: new Date().toISOString() });
     setRequests(prev => prev.map(r => r.id === activeJob.request_id ? { ...r, status: "completed" } : r));
     if (activeJob.payment_status === "held") {
@@ -946,17 +1193,35 @@ export default function ClientDashboard() {
           // and unfinished payout setup is retried forever by reconcile-payouts
           // without ever succeeding. Telling someone to do nothing in either case
           // strands the money.
+          // Branch on the JOB'S OWN funding state, never on substring-matching an
+          // arbitrary server error. "Insufficient funds in Stripe account" is a
+          // PLATFORM settlement message the client can do nothing about, and it
+          // contains the word "fund" -- so the old test told a client who had paid
+          // in full to go and pay a balance, while jobBalance() was 0 so there was
+          // no button anywhere on the page. That is exactly what was reported on
+          // the first real job.
           const r = reason.toLowerCase();
-          if (r.includes("fund") || r.includes("balance")) {
-            // "err" not "ok": this is the only branch the client can act on, and
-            // notify() gives an err toast 6s instead of 3s to read it in.
-            notify("Job confirmed — but the payment can't be released until the remaining balance is paid. Use the payment button on this job to finish it.");
-          } else if (r.includes("payout") || r.includes("connect") || r.includes("onboard") || r.includes("transfer")) {
-            notify("Job confirmed. Your contractor hasn't finished their payout setup yet, so the money stays held until they do — we've let them know. Nothing is lost and nothing more is owed by you.");
+          if (!jobFullyFunded(activeJob)) {
+            // The one branch the client can act on. notify() gives an err toast 6s
+            // instead of 3s, and the note below keeps it on screen afterwards.
+            const t = "The remaining $" + jobBalance(activeJob).toFixed(2) + " on this job still needs to be paid before the payment can be released. Nothing is lost — pay it below and it completes.";
+            setReleaseNote({ kind: "balance", text: t });
+            notify("Job confirmed — but " + t.charAt(0).toLowerCase() + t.slice(1));
+            focusAnchor("ffc-confirm");
+          } else if (r.includes("payout setup") || r.includes("connect") || r.includes("onboard")) {
+            const t = "Your contractor hasn't finished their payout setup yet, so your payment stays held until they do — we've let them know. Nothing is lost and nothing more is owed by you.";
+            setReleaseNote({ kind: "payout", text: t });
+            notify("Job confirmed. " + t);
           } else {
-            notify("Job confirmed. The payment is being processed and will complete automatically — nothing more for you to do.", "ok");
+            // Paid in full, nothing owed, release didn't land. Do NOT ask the
+            // client for money or for an action -- there isn't one. Say plainly
+            // that their side is finished and that we are watching it.
+            const t = "Your payment is complete and nothing more is owed by you. Sending it on to your contractor is taking a little longer than usual — that happens automatically, and we're watching it.";
+            setReleaseNote({ kind: "delayed", text: t });
+            notify("Job confirmed. " + t, "ok");
           }
         } else {
+          setReleaseNote(null);
           setActiveJob((j: any) => j ? { ...j, payment_status: "released" } : j);
         }
       } catch {
@@ -1221,23 +1486,21 @@ export default function ClientDashboard() {
         + " .ffdash .ff-pulse{outline:2px solid rgba(234,107,20,.75); outline-offset:6px; border-radius:12px; animation:ff-pulse-ring 1.5s ease-out 3}"
         + " @media (prefers-reduced-motion: reduce){.ffdash .ff-pulse{animation:none; background:rgba(234,107,20,.12)}}"}</style>
       {toast && (
-        <div onClick={() => setToast(null)} className="ff-toast-in" style={{ position:"fixed", left:"50%", bottom:"1.5rem", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
+        <div onClick={() => setToast(null)} className="ff-toast-in" style={{ position:"fixed", left:"50%", bottom:"calc(1.5rem + var(--ff-fsb-h, 0px))", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
       )}
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 
       <div style={{ height: "3.75rem" }} />
       <div style={{ display:"flex", alignItems:"flex-start" as const }}>
         <DashboardSidebar
-          items={CLIENT_NAV.map(it => (it.key === "messages" && totalUnread > 0 ? { ...it, badge: totalUnread } : it))}
+          items={visibleNav({
+            pros: pros.length,
+            plans: plans.length,
+            past: requests.filter(r => r.status === "completed" || r.status === "cancelled").length,
+          }).map(it => (it.key === "messages" && totalUnread > 0 ? { ...it, badge: totalUnread } : it))}
           active={activeTab}
           onSelect={(k) => setActiveTab(k as ClientTab)}
           title="Dashboard"
-          bell={profile?.id ? <NotificationBell userId={profile.id} dashboardPath="/client-dashboard" /> : undefined}
-          actions={[
-            { key: "claim",   label: "File a claim", icon: "alert-triangle", onClick: openClaim },
-            { key: "bug",     label: "Report a bug", icon: "message-square", onClick: () => setBugOpen(true) },
-            { key: "logout",  label: "Log out",    icon: "door", onClick: handleSignOut, danger: true },
-          ] as SidebarAction[]}
         />
         <div style={{ flex:1, minWidth:0 }}>
 
@@ -1249,17 +1512,31 @@ export default function ClientDashboard() {
           <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .6)", marginTop:".2rem" }}>Here's what's happening with your requests.</div>
         </div>
         <div style={{ display:"flex", gap:".75rem", flexWrap:"wrap" as const }}>
-          <button style={{ ...s.tab, display:"inline-flex", alignItems:"center", gap:".35rem" }} onClick={() => setRewindOpen(true)}><Ic name="star" size={13} color="#ea6b14" />My Rewind</button>
+          {/* Rewind is a year-in-review of jobs you've had done. For a client on
+              day one it opens on an empty retrospective, which is a worse first
+              impression than not offering it — so it appears once there is
+              something to look back on. */}
+          {requests.some(r => r.status === "completed") && (
+            <button style={{ ...s.tab, display:"inline-flex", alignItems:"center", gap:".35rem" }} onClick={() => setRewindOpen(true)}><Ic name="star" size={13} color="#ea6b14" />My Rewind</button>
+          )}
           <button style={s.primaryBtn} onClick={() => setLocation("/client-onboarding")}>+ New Request</button>
         </div>
       </div>
 
       <div style={s.content} className={tabAnim}>
         {(() => {
+          // Keys, not sentences: the dismissal is stored against WHAT is missing,
+          // so it survives a copy change and — more importantly — returns on its
+          // own if the gaps later change. Same idiom as the contractor's
+          // `profile_nudge:<sorted gap keys>`.
+          const gaps: string[] = [];
           const missing: string[] = [];
-          if (!profile?.first_name || !profile?.last_name) missing.push("your name");
-          if (!profile?.phone) missing.push("phone number");
-          return missing.length > 0 ? (
+          if (!profile?.first_name || !profile?.last_name) { gaps.push("name"); missing.push("your name"); }
+          if (!profile?.phone) { gaps.push("phone"); missing.push("phone number"); }
+          if (missing.length === 0) return null;
+          const key = "profile_banner:client:" + gaps.slice().sort().join(",");
+          if (dismissed.has(key)) return null;
+          return (
             <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.45)", display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".75rem", justifyContent:"space-between" }}>
               <div style={{ flex:"1 1 260px" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".85rem", fontWeight:600, color:"#ea6b14", marginBottom:".3rem" }}>
@@ -1269,11 +1546,14 @@ export default function ClientDashboard() {
                   Add {missing.join(" and ")} so your pros can reach you.
                 </div>
               </div>
-              <button style={{ ...s.primaryBtn, whiteSpace:"nowrap" as const }} onClick={() => { setActiveTab("profile"); window.scrollTo({ top:0, behavior:"smooth" }); }}>
-                Complete profile
-              </button>
+              <div style={{ display:"flex", alignItems:"center", gap:".5rem", flexShrink:0 }}>
+                <button style={{ ...s.primaryBtn, whiteSpace:"nowrap" as const }} onClick={() => { setActiveTab("profile"); window.scrollTo({ top:0, behavior:"smooth" }); }}>
+                  Complete profile
+                </button>
+                <DismissX onClick={() => hide(key, true)} label="Don't show this again" title="Don't show this again" />
+              </div>
             </div>
-          ) : null;
+          );
         })()}
         <ProfileCompletionModal role="client" profile={profile} />
         {rewindOpen && <FreddyRewind mode="client" onClose={() => setRewindOpen(false)} />}
@@ -1341,6 +1621,15 @@ export default function ClientDashboard() {
               ? { key: "contract", text: "Your pro sent the service agreement — sign it so you can pay and lock in your visit.", cta: "Review & sign", onClick: focusContract, ownsScroll: true }
               : { key: "contract", text: "Waiting on your pro to send the service agreement. You'll be able to pay and book once it's signed by both of you.", cta: "See job", onClick: focusContract, ownsScroll: true });
           }
+          // A release that didn't complete outranks everything: it is the only
+          // state in which money has been taken and not yet reached anybody. It
+          // sits here rather than in the job card because confirming flips the
+          // job to 'completed', which unmounts the surface the toast came from.
+          if (releaseNote) {
+            attn.push(releaseNote.kind === "balance"
+              ? { key: "release", text: releaseNote.text, cta: "Pay now", onClick: () => focusAnchor("ffc-confirm"), ownsScroll: true }
+              : { key: "release", text: releaseNote.text, cta: "See job", onClick: () => focusAnchor("ffc-confirm"), ownsScroll: true });
+          }
           // Work is finished and only the deposit is held: the balance is now the
           // thing standing between the pro and their money, so it outranks
           // everything except the agreement.
@@ -1357,6 +1646,32 @@ export default function ClientDashboard() {
           if (activeJob?.status === "assigned" && activeJob?.schedule_proposed_at && !activeJob?.client_approved_at && !(activeJob?.client_rescheduled_at && !activeJob?.reschedule_accepted_at)) attn.push({ key: "sched", text: "Your pro proposed a time and price — approve it to book the visit.", cta: "Review proposal", onClick: () => focusAnchor("ffc-sched"), ownsScroll: true });
           if (activeJob?.status === "assigned" && activeJob?.walkthrough_proposed_at && !activeJob?.walkthrough_approved_at) attn.push({ key: "walkthrough", text: "Your pro wants to do a free walkthrough before pricing — confirm the visit time.", cta: "Review time", onClick: () => focusAnchor("ffc-walkthrough"), ownsScroll: true });
           if (!activeJob && clientBids.length > 0) attn.push({ key: "bids", text: clientBids.length + " pro" + (clientBids.length === 1 ? " has" : "s have") + " bid on your request — pick the one you like.", cta: "See bids", onClick: () => focusAnchor("ffc-bids"), ownsScroll: true });
+          // A live request with no photo. This is the only row here that isn't
+          // about something already owed — it's about the quality of the
+          // estimates still to come, which is why it sits below every money row
+          // and above the conversational ones. It is scoped to `pending`
+          // deliberately: once a pro is picked the photo has done its job, and
+          // asking for it then is noise.
+          if (activeReq?.status === "pending" && !activeReq?.photo_path) {
+            attn.push({ key: "photo", text: "Your request has no photo — adding one usually turns a rough ballpark into a firm price.", cta: "Add a photo", onClick: focusPhoto, ownsScroll: true });
+          }
+          // A referral code the DB refused during signup. Neither signup surface
+          // can show it — ClientOnboarding is mid-submit, AuthCallback is a
+          // redirect — so the reason is stashed, and the box that explains and
+          // retries it now lives in Settings. This row is the pointer: it carries
+          // the explanation to the page the client actually lands on, and its
+          // button opens the box that can fix it. `peekReferralError` deliberately
+          // does NOT consume the stash — ReferralCard read-and-clears it as it
+          // renders the message, so the explanation and the second chance still
+          // arrive together. It is left OUT of PERMANENT_ATTN because it clears
+          // itself the moment that card mounts; a permanent dismissal would be a
+          // promise about a row that cannot come back anyway.
+          if (refStashed) attn.push({
+            key: "refcode",
+            text: refStashed + " You can enter another code in Settings.",
+            cta: "Open Settings",
+            onClick: () => setActiveTab("settings"),
+          });
           // ── Conversational rows last (see the ordering note above) ──────────
           if (chatTimeJob) attn.push({
             key: "chattime",
@@ -1375,18 +1690,44 @@ export default function ClientDashboard() {
               onClick: () => { setActiveTab("messages"); openConversation(c); },
             });
           }
-          if (attn.length === 0) return null;
+          // ── Dismissal ──────────────────────────────────────────────────────
+          //
+          // THE FILTER MUST RUN BEFORE `.slice(0, 3)`. Only the first three rows
+          // ever render, so filtering after the slice would make an × remove a
+          // row and reveal nothing — the fourth row would stay invisible and the
+          // client would be left with a shorter list for no reason.
+          //
+          // The key is scoped to the request it is about, so waving away "no
+          // photo" on one request says nothing about the next one. `msg-<job>`
+          // rows already carry their own job id; scoping them again is harmless
+          // and keeps one rule instead of two.
+          const rowKey = (k: string) => "attn:client:" + k + ":" + (activeReq?.id ?? "-");
+          const shown = attn.filter(a => {
+            const k = rowKey(a.key);
+            return !dismissed.has(k) && !hiddenNow.has(k);
+          });
+          if (shown.length === 0) return null;
           return (
             <div style={{ ...s.card, padding:"1.1rem 1.25rem", marginBottom:"1.25rem", border:"1px solid rgba(234,107,20,.3)" }}>
               <div style={{ display:"flex", alignItems:"center", gap:".45rem", fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"#ea6b14", fontWeight:700 }}>
                 <Ic name="alert-triangle" size={13} />Needs your attention
               </div>
-              {attn.slice(0, 3).map((a, i) => (
+              {shown.slice(0, 3).map((a, i) => {
+                const forever = PERMANENT_ATTN.has(a.key);
+                return (
                 <div key={a.key} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".75rem", padding:".6rem 0", borderTop: i === 0 ? "none" : "1px solid rgba(var(--ff-fg), .06)", marginTop: i === 0 ? ".5rem" : 0 }}>
                   <div style={{ fontSize:".85rem", color:"var(--ff-text)", lineHeight:1.45 }}>{a.text}</div>
-                  <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", whiteSpace:"nowrap" as const, flexShrink:0 }} onClick={() => { setActiveTab("requests"); if (!a.ownsScroll) window.scrollTo({ top: 0, behavior: "smooth" }); a.onClick?.(); }}>{a.cta}</button>
+                  <div style={{ display:"flex", alignItems:"center", gap:".4rem", flexShrink:0 }}>
+                    <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", whiteSpace:"nowrap" as const, flexShrink:0 }} onClick={() => { setActiveTab("requests"); if (!a.ownsScroll) window.scrollTo({ top: 0, behavior: "smooth" }); a.onClick?.(); }}>{a.cta}</button>
+                    <DismissX
+                      onClick={() => hide(rowKey(a.key), forever)}
+                      label={forever ? "Don't show this again" : "Hide for now"}
+                      title={forever ? "Don't show this again" : "Hide until next time you open the dashboard"}
+                    />
+                  </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           );
         })()}
@@ -1402,14 +1743,15 @@ export default function ClientDashboard() {
           />
         )}
 
-        {activeTab === "profile" && (
+        {/* Account = the old Profile and Settings tabs in one place. They were two
+            sidebar entries rendering 5 and 3 lines of JSX respectively, which is
+            two decisions asked of someone who just wants to change their phone
+            number. Both keys still resolve here so existing deep links work. */}
+        {(activeTab === "profile" || activeTab === "settings") && (
           <>
             <ProfileBar role="client" />
+            <SettingsPanel role="client" />
           </>
-        )}
-
-        {activeTab === "settings" && (
-          <SettingsPanel role="client" />
         )}
 
         {activeTab === "pros" && (pros.length > 0 ? (
@@ -1419,10 +1761,15 @@ export default function ClientDashboard() {
             <div style={{ display:"flex", gap:".8rem", overflowX:"auto" as const, paddingBottom:".3rem" }}>
               {pros.map(pro => (
                 <div key={pro.contractor_id} style={{ minWidth:"210px", flex:"0 0 auto", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"12px", padding:"1rem", background:"rgba(var(--ff-fg), .03)" }}>
+                  {/* The card is a fixed 210px in a horizontal scroller, so the
+                      name column has nowhere to grow — without minWidth:0 a long
+                      company name could not shrink and pushed the favourite heart
+                      off the right of the card. The sibling strip on the Requests
+                      tab already clipped its name; this one didn't. */}
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:".5rem" }}>
-                    <div>
-                      <div style={{ fontSize:".95rem", fontWeight:600, color:"var(--ff-text)" }}>{pro.company_name || pro.name || "Your pro"}</div>
-                      <div style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .5)" }}>
+                    <div style={{ minWidth:0, flex:"1 1 auto" }}>
+                      <div style={{ fontSize:".95rem", fontWeight:600, color:"var(--ff-text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{pro.company_name || pro.name || "Your pro"}</div>
+                      <div style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .5)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
                         {pro.rating ? `⭐ ${Number(pro.rating).toFixed(1)}` : "New"}{pro.jobs_together ? ` · ${pro.jobs_together} job${pro.jobs_together===1?"":"s"} together` : ""}
                       </div>
                     </div>
@@ -1444,86 +1791,18 @@ export default function ClientDashboard() {
           </div>
         ))}
 
-        {/* A code invites ONE friend and then becomes a badge. code_status comes
-            from get_my_referral and is the single source of truth for which of
-            the three states this card is in — the same rule apply_referral_code
-            enforces server-side, so the card and the code can't disagree.
-              active  — share it
-              in_use  — a friend has taken it; it frees up 30 days after they did
-              retired — a friend booked and paid; the badge replaces the code
-            The copy button is hidden in the last two states on purpose: sharing
-            a code that will be refused is a dead end the sharer can't see. */}
-        {activeTab === "requests" && referral?.code && (() => {
-          const codeStatus = String(referral.code_status ?? "active");
-          const retired    = codeStatus === "retired";
-          const inUse      = codeStatus === "in_use";
-          let rewardedOn = "";
-          try { if (referral.rewarded_at) rewardedOn = new Date(referral.rewarded_at).toLocaleDateString("en-CA", { month:"long", day:"numeric", year:"numeric" }); } catch {}
-          return (
-          <div style={{ ...s.card,
-            background: retired ? "linear-gradient(135deg, rgba(34,197,94,.10), rgba(var(--ff-fg),.03))" : "linear-gradient(135deg, rgba(234,107,20,.10), rgba(var(--ff-fg),.03))",
-            borderColor: retired ? "rgba(34,197,94,.32)" : "rgba(234,107,20,.28)" }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".75rem", flexWrap:"wrap" as const }}>
-              <div style={{ minWidth:0 }}>
-                <div style={{ ...s.cardTitle, marginBottom:".2rem" }}>{retired ? "Friend referred" : "Invite a friend, they save"}</div>
-                <div style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.5 }}>
-                  {retired ? (
-                    <>You referred a friend and they booked their first job{rewardedOn ? ` on ${rewardedOn}` : ""} — we covered their <strong>3% service fee</strong>. Your code has done its job, so it's retired. Thanks for the introduction.</>
-                  ) : inUse ? (
-                    <>A friend has your code right now. Each code is good for <strong>one friend</strong>, so it's on hold until they book — and if they haven't within 30 days it frees up on its own.</>
-                  ) : (
-                    <>Your code waives the <strong>3% service fee on a friend's first job</strong>. It's good for <strong>one friend</strong> — once they book, the code retires and you keep the badge.</>
-                  )}
-                </div>
-              </div>
-              {retired ? (
-                <div style={{ textAlign:"center", padding:".6rem 1.1rem", border:"1px solid rgba(34,197,94,.42)", background:"rgba(34,197,94,.12)", borderRadius:"12px" }}>
-                  <div style={{ marginBottom:".2rem" }}><Ic name="user-check" size={26} color="#22c55e" /></div>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.05rem", letterSpacing:".08em", color:"#22c55e", lineHeight:1.1 }}>Friend Referred</div>
-                </div>
-              ) : (
-                <div style={{ textAlign:"center" }}>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.8rem", letterSpacing:".12em", color:"#ea6b14", border:"1px dashed rgba(234,107,20,.5)", borderRadius:"10px", padding:".35rem .9rem", ...(inUse ? { opacity:.45 } : {}) }}>{referral.code}</div>
-                  {inUse ? (
-                    <div style={{ marginTop:".5rem", fontSize:".74rem", color:"rgba(var(--ff-muted), .55)" }}>On hold with a friend</div>
-                  ) : (
-                    <button style={{ ...s.tab, marginTop:".45rem", fontSize:".78rem", ...(refCopied ? { color:"#22c55e", borderColor:"rgba(34,197,94,.4)", background:"rgba(34,197,94,.1)" } : {}) }} onClick={copyReferral}>{refCopied ? "Copied ✓" : "Copy invite link"}</button>
-                  )}
-                </div>
-              )}
-            </div>
-            {/* Only offered to someone who hasn't been referred yet. Once
-                apply_referral_code succeeds it refuses a second code, so
-                leaving the box up would just be a button that always fails. */}
-            {!referral.i_was_referred && (
-              <div style={{ marginTop:".9rem", paddingTop:".85rem", borderTop:"1px solid rgba(var(--ff-fg), .1)" }}>
-                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".5rem", lineHeight:1.5 }}>
-                  Got a code from a friend? Enter it before your first job and we'll waive your 3% service fee.
-                </div>
-                <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
-                  <input
-                    value={refInput}
-                    onChange={e => { setRefInput(e.target.value.toUpperCase()); setRefMsg(null); }}
-                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void applyReferral(); } }}
-                    placeholder="Friend's code"
-                    aria-label="Friend's referral code"
-                    autoCapitalize="characters" autoCorrect="off" spellCheck={false} maxLength={24}
-                    style={{ flex:"1 1 9rem", minWidth:0, padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", letterSpacing:".08em", boxSizing:"border-box" as const }}
-                  />
-                  <button
-                    onClick={() => void applyReferral()}
-                    disabled={refBusy || !refInput.trim()}
-                    style={{ ...s.tab, fontSize:".8rem", ...(refBusy || !refInput.trim() ? { opacity:.5, cursor:"not-allowed" } : {}) }}
-                  >{refBusy ? "Applying…" : "Apply"}</button>
-                </div>
-                {refMsg && (
-                  <div style={{ marginTop:".5rem", fontSize:".8rem", lineHeight:1.5, color: refMsg.ok ? "#22c55e" : "#f87171" }}>{refMsg.text}</div>
-                )}
-              </div>
-            )}
-          </div>
-          );
-        })()}
+        {/* The referral card used to live here. It moved to Settings on
+            2026-09-01 (`src/components/ReferralCard.tsx`), because this tab is
+            where a client acts on a job already in flight — pick a pro, sign,
+            pay, confirm — and a permanent promotion was competing with rows
+            that gate money. The ask now happens in two places instead of one
+            constant one: Settings, where somebody has come looking for their
+            code, and the completion prompt after a finished job, where the
+            favour is asked immediately after one was delivered.
+
+            `referral` state stays in this file — `requestReferralShare` needs
+            the code and its status to decide whether that prompt may fire at
+            all, and a retired code must never be offered for sharing. */}
 
         {activeTab === "recurring" && (plans.length > 0 ? (
           <div style={{ ...s.card }}>
@@ -1581,41 +1860,158 @@ export default function ClientDashboard() {
 
         {activeTab === "requests" && (
         <>
-            {/* Rebooking is the cheapest job on the platform to win, and it was
-                buried one tab deep. Surface the same pros here on the home tab
-                so "get the guy who did it last time" is one tap from landing.
-                Sits BELOW Needs-your-attention on purpose — money-gating rows
-                still come first. The full list, favourites and last-service
-                detail stay on the My Pros tab. */}
-            {pros.length > 0 && (
-              <div style={{ ...s.card, padding:"1rem 1.25rem" }}>
-                <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:".75rem", flexWrap:"wrap" as const, marginBottom:".75rem" }}>
-                  <div>
-                    <div style={{ ...s.cardTitle, marginBottom:".15rem" }}>Book a pro you've used before</div>
-                    <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .55)" }}>They get first refusal for 48 hours — no need to compare estimates again.</div>
-                  </div>
-                  {pros.length > 3 && (
-                    <button onClick={() => setActiveTab("pros")} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".8rem", fontWeight:600, cursor:"pointer", padding:0 }}>
-                      All {pros.length} pros →
-                    </button>
+            {/* "Your open requests" now sits at the TOP of the tab, above the
+                estimates block, because it is the control that decides what
+                everything below it is about. It used to sit under the estimates
+                and the rebook strip, so a client with three live requests had to
+                scroll past one request's bids to discover they could switch to
+                another — and the Current Request card underneath would then be
+                describing a request they hadn't chosen.
+
+                The search box only appears alongside it, for the same reason:
+                with one open request there is nothing to narrow, and an empty
+                filter above a single row is just furniture. */}
+            {openReqs.length > 1 && (() => {
+              const tokens = searchTokens(search);
+              const hits = openReqs.filter(r => matchesSearch(tokens, reqSearchFields(r)));
+              return (
+                <div id={REQ_SWITCH_ANCHOR} style={{ ...s.card, ...anchorPad, padding:"1rem 1.25rem" }}>
+                  <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)", marginBottom:".6rem" }}>Your open requests ({openReqs.length})</div>
+                  {openReqs.length > 3 && (
+                    <DashSearch
+                      value={search}
+                      onChange={setSearch}
+                      placeholder="Search your requests"
+                      resultText={hits.length + " of " + openReqs.length + " shown"}
+                    />
                   )}
+                  <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
+                    {hits.length === 0 ? (
+                      <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .5)" }}>No open request matches that.</div>
+                    ) : hits.map(r => {
+                      const on = r.id === activeReq?.id;
+                      return (
+                        <button key={r.id} onClick={() => selectRequest(r.id)} style={{ ...s.tab, ...(on ? s.activeTab : {}), display:"flex", alignItems:"center", gap:".4rem" }}>
+                          <Ic name={STATUS_META[r.status]?.icon as any} size={12} color={STATUS_META[r.status]?.color} />
+                          <span style={{ maxWidth:160, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{r.service_needed}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div style={{ display:"flex", gap:".7rem", overflowX:"auto" as const, paddingBottom:".3rem" }}>
-                  {pros.slice(0, 6).map(pro => (
-                    <div key={pro.contractor_id} style={{ minWidth:"178px", flex:"0 0 auto", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"12px", padding:".8rem", background:"rgba(var(--ff-fg), .03)" }}>
-                      <div style={{ fontSize:".88rem", fontWeight:600, color:"var(--ff-text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
-                        {pro.company_name || pro.name || "Your pro"}
-                      </div>
-                      <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .5)", marginTop:".15rem", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
-                        {pro.rating ? "⭐ " + Number(pro.rating).toFixed(1) : "New"}
-                        {pro.last_service ? " · " + pro.last_service : ""}
-                      </div>
-                      <button style={{ ...s.primaryBtn, width:"100%", marginTop:".6rem", padding:".45rem", fontSize:".8rem" }} onClick={() => rehire(pro)}>Book again</button>
+              );
+            })()}
+
+            {/* THE point of this page. Hoisted out of the Current Request card on
+                2026-08-28 — it used to sit BELOW the metadata grid, the job
+                description, the photo panel and a status badge, so a client who
+                had just been emailed "you have 3 estimates" landed on a screen
+                whose first 600px was a read-only copy of the form they had already
+                filled in. Choosing a pro is the only thing on this page that moves
+                the job forward, so it goes first.
+
+                Keeps {...anchor("ffc-bids")} and anchorPad: the "See bids"
+                attention row still calls focusAnchor("ffc-bids"), and so does the
+                deep link from the bid email. */}
+            {activeReq && activeReq.status === "pending" && clientBids.length > 0 && (
+              <div {...anchor("ffc-bids")} style={{ ...anchorPad, marginBottom:"1.25rem", padding:"1.25rem", borderRadius:"12px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)" }}>
+                <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:".75rem", flexWrap:"wrap" as const, marginBottom:".2rem" }}>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.35rem", letterSpacing:".03em", lineHeight:1.1, color:"var(--ff-text)" }}>Your estimates</div>
+                  {/* Deliberately a bare count, not "N of 5". The bid cap is 7 and the
+                      marketing under-promise is 5, so a denominator here would either
+                      render "6 of 5" or promise a number we don't control. */}
+                  <div style={{ fontSize:".78rem", fontWeight:700, color:"#ea6b14" }}>{clientBids.length} estimate{clientBids.length === 1 ? "" : "s"}</div>
+                </div>
+                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", marginBottom:".75rem", lineHeight:1.5 }}>
+                  For <strong style={{ color:"var(--ff-text)", fontWeight:600 }}>{activeReq.service_needed}</strong>. Pick the pro you want — nothing is charged until you approve their price and sign the agreement.
+                </div>
+                {Object.keys(bidMatch).length > 0 && (
+                  <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .55)", marginBottom:".6rem", display:"flex", alignItems:"center", gap:".35rem" }}>
+                    <Ic name="sparkles" size={12} color="#ea6b14" />Ranked by match quality — rating, jobs done, response speed and area fit.
+                  </div>
+                )}
+                {[...clientBids].sort((a, b) => (Number(bidMatch[b.contractor_id]?.score ?? -1)) - (Number(bidMatch[a.contractor_id]?.score ?? -1)) || (Number(a.amount ?? Infinity)) - (Number(b.amount ?? Infinity))).map((b, bi) => (
+                  <div key={b.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", padding:".6rem .7rem", marginBottom:".5rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px", flexWrap:"wrap" as const }}>
+                    {/* Who you'd be letting into your home. Falls back to initials
+                        rather than a broken image when the pro hasn't added a photo. */}
+                    <div style={{ width:44, height:44, borderRadius:"50%", overflow:"hidden", flex:"0 0 auto", alignSelf:"flex-start",
+                      background:"rgba(234,107,20,.14)", border:"1px solid rgba(var(--ff-fg), .1)",
+                      display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      {bidPhoto[b.contractor_id]
+                        ? <FadeImg src={bidPhoto[b.contractor_id]} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" as const }} />
+                        : <span style={{ fontSize:".85rem", fontWeight:700, color:"#ea6b14" }}>
+                            {(bidNames[b.contractor_id] ?? "Contractor").split(/\s+/).map((w: string) => w[0] ?? "").join("").slice(0,2).toUpperCase()}
+                          </span>}
                     </div>
-                  ))}
-                </div>
+                    <div style={{ flex:"1 1 160px", minWidth:0 }}>
+                      <div style={{ fontSize:".88rem", color:"var(--ff-text)", display:"flex", alignItems:"center", gap:".45rem", flexWrap:"wrap" as const }}>
+                        {/* A walkthrough bid has no b.amount, so without the range fallback the
+                            headline showed a name and no number at all — nothing to compare. */}
+                        {bidNames[b.contractor_id] ?? "Contractor"}{b.amount != null
+                          ? " — $" + b.amount
+                          : (b.price_low != null && b.price_high != null ? " — $" + b.price_low + "–$" + b.price_high : "")}
+                        {bi === 0 && clientBids.length > 1 && bidMatch[b.contractor_id] != null && (
+                          <span style={{ padding:".14rem .5rem", borderRadius:"999px", fontSize:".66rem", fontWeight:700, background:"rgba(234,107,20,.14)", border:"1px solid rgba(234,107,20,.4)", color:"#ea6b14" }}>Best match</span>
+                        )}
+                        {/* How this pro's prices sit against the category average. Price only — quality is the star rating. */}
+                        <PriceGrade grade={bidGrade[b.contractor_id] as Grade} kind="pro" size="sm" />
+                      </div>
+                      {(() => { const m = bidMatch[b.contractor_id]; if (!m) return null;
+                        const bits: string[] = [];
+                        if (m.rating != null && Number(m.rating_count) > 0) bits.push("\u2b50 " + Number(m.rating).toFixed(1) + "/10 (" + m.rating_count + ")");
+                        if (Number(m.total_jobs) > 0) bits.push(m.total_jobs + " job" + (Number(m.total_jobs) === 1 ? "" : "s") + " done");
+                        if (m.area_match) bits.push("works your area");
+                        if (!bits.length) return null;
+                        return <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .6)", marginTop:".2rem" }}>{bits.join(" \u00b7 ")}</div>;
+                      })()}
+                      {bidResp[b.contractor_id] != null && (
+                        <div style={{ display:"inline-block", marginTop:".25rem", padding:".15rem .5rem", borderRadius:"999px", fontSize:".68rem", fontWeight:600, background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.3)", color:"#22c55e" }}>
+                          ⚡ Usually responds in {respText(bidResp[b.contractor_id])}
+                        </div>
+                      )}
+                      <VerifiedMarks flags={bidVerif[b.contractor_id]} size="sm" style={{ marginTop:".3rem" }} />
+                      {b.walkthrough_requested && (
+                        <div style={{ display:"inline-flex", alignItems:"center", gap:".35rem", padding:".22rem .55rem", borderRadius:"99px", background:"rgba(234,107,20,.14)", color:"#ea6b14", fontSize:".72rem", fontWeight:700, marginTop:".3rem" }}>
+                          <Ic name="search" size={11} />Wants a free walkthrough first
+                        </div>
+                      )}
+                      {b.walkthrough_requested && (
+                        <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .65)", marginTop:".25rem", lineHeight:1.45 }}>
+                          This pro prefers to see the space before giving a firm price{b.price_low != null && b.price_high != null ? " — ballpark $" + b.price_low + "–$" + b.price_high : ""}. If you choose them, they'll propose a quick free visit, then send your estimate.
+                        </div>
+                      )}
+                      {b.message && <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .65)", marginTop:".15rem" }}>{b.message}</div>}
+                      {!b.walkthrough_requested && <QuoteBreakdownView row={b} assumptionsKey="assumptions" />}
+                    </div>
+                    {/* Ask before you commit. Every pro on this list can be
+                        messaged privately — they can only reply, never cold-call. */}
+                    <div style={{ display:"flex", flexDirection:"column", gap:".4rem", flex:"0 0 auto" }}>
+                      <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f", padding:".5rem 1rem" }} disabled={busyPick === b.id} onClick={() => pickBid(b.id)}>{busyPick === b.id ? "…" : "Choose"}</button>
+                      <button
+                        style={{ ...s.btn, padding:".4rem .8rem", fontSize:".78rem", position:"relative" as const }}
+                        onClick={() => setBidChat({ requestId: activeReq.id, contractorId: b.contractor_id, name: bidNames[b.contractor_id] ?? "Contractor", title: activeReq.service_needed })}
+                      >
+                        <Ic name="message-square" size={12} style={{ marginRight:4 }} />Ask a question
+                        {Number(bidUnread[b.contractor_id] ?? 0) > 0 && (
+                          <span style={{ position:"absolute", top:-6, right:-6, minWidth:16, height:16, padding:"0 4px", borderRadius:999, background:"#ea6b14", color:"#fff", fontSize:".62rem", fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                            {Number(bidUnread[b.contractor_id]) > 9 ? "9+" : bidUnread[b.contractor_id]}
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
+
+            {/* The "Book a pro you've used before" strip used to live here. It
+                moved to NewRequest on 2026-09-01: this tab is where a client
+                comes to act on a job already in flight — pick a pro, sign, pay,
+                confirm — and a promo to start ANOTHER job was competing with
+                those. The rebook offer belongs at the moment somebody is
+                actually starting a new request, which is exactly where it now
+                sits. The full list, favourites and last-service detail were and
+                still are on the My Pros tab, so nothing is unreachable. */}
             {requests.length === 0 ? (
               <div style={{ textAlign:"center", padding:"3rem 2rem" }}>
                 <div style={{ marginBottom:"1rem" }}><Ic name="home" size={44} color="#ea6b14" /></div>
@@ -1626,29 +2022,44 @@ export default function ClientDashboard() {
               </div>
             ) : (
               <>
-                {openReqs.length > 1 && (
-                  <div style={{ ...s.card, padding:"1rem 1.25rem" }}>
-                    <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)", marginBottom:".6rem" }}>Your open requests ({openReqs.length})</div>
-                    <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
-                      {openReqs.map(r => {
-                        const on = r.id === activeReq?.id;
-                        return (
-                          <button key={r.id} onClick={() => setSelectedReqId(r.id)} style={{ ...s.tab, ...(on ? s.activeTab : {}), display:"flex", alignItems:"center", gap:".4rem" }}>
-                            <Ic name={STATUS_META[r.status]?.icon as any} size={12} color={STATUS_META[r.status]?.color} />
-                            <span style={{ maxWidth:160, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{r.service_needed}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-                {activeReq && (
+                {activeReq && (() => {
+                  /* Collapsed ONLY while there are estimates to choose between. When
+                     the request is still waiting on bids this is the whole page, so
+                     it stays open and the toggle never appears. */
+                  const bidsOnScreen = activeReq.status === "pending" && clientBids.length > 0;
+                  const showReqDetail = reqDetailOpen || !bidsOnScreen;
+                  return (
                   <div style={s.card}>
-                    <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:".75rem", flexWrap:"wrap" as const }}>
-                      <div style={s.cardTitle}>Current Request</div>
-                      {activeJob?.id && <div style={{ fontSize:".72rem", fontFamily:"monospace", color:"#ea6b14" }} title="Quote this Job ID when filing a claim">{jobCode(activeJob.id)}</div>}
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".75rem", flexWrap:"wrap" as const, marginBottom: showReqDetail ? undefined : ".25rem" }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const, minWidth:0 }}>
+                        <div style={{ ...s.cardTitle, marginBottom:0 }}>Current Request</div>
+                        <div style={{ display:"inline-block", padding:".28rem .7rem", borderRadius:"99px", fontSize:".74rem", fontWeight:500, color: STATUS_META[activeReq.status]?.color, border:`1px solid ${STATUS_META[activeReq.status]?.color}` }}>
+                          <Ic name={STATUS_META[activeReq.status]?.icon as any} size={12} color={STATUS_META[activeReq.status]?.color} style={{ marginRight:4 }} />{STATUS_META[activeReq.status]?.label}
+                        </div>
+                      </div>
+                      <div style={{ display:"flex", alignItems:"center", gap:".75rem", flexShrink:0 }}>
+                        {activeJob?.id && <div style={{ fontSize:".72rem", fontFamily:"monospace", color:"#ea6b14" }} title="Quote this Job ID when filing a claim">{jobCode(activeJob.id)}</div>}
+                        {bidsOnScreen && (
+                          <button
+                            onClick={() => setReqDetailOpen(v => !v)}
+                            aria-expanded={reqDetailOpen}
+                            style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".8rem", fontWeight:600, cursor:"pointer", padding:0, display:"inline-flex", alignItems:"center", gap:".3rem" }}
+                          >
+                            {reqDetailOpen ? "Hide details" : "Details"}
+                            <Ic name={reqDetailOpen ? "chevron-up" : "chevron-down"} size={13} color="#ea6b14" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:".75rem 1.5rem", marginBottom:"1.25rem" }}>
+                    {/* One-line recap so the collapsed card still says WHICH request
+                        this is — the sidebar chips only appear past one open request. */}
+                    {!showReqDetail && (
+                      <div style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.5, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
+                        {activeReq.service_needed}{activeReq.location ? " · " + activeReq.location : ""}{activeReq.preferred_schedule ? " · " + activeReq.preferred_schedule : ""}
+                      </div>
+                    )}
+                    {showReqDetail && (<>
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:".75rem 1.5rem", margin:"1rem 0 1.25rem" }}>
                       {[["Service", activeReq.service_needed], ["Location", activeReq.location], ["Schedule", activeReq.preferred_schedule], ["Submitted", new Date(activeReq.created_at).toLocaleDateString()]].map(([l,v]) => (
                         <div key={l}>
                           <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)" }}>{l}</div>
@@ -1658,103 +2069,12 @@ export default function ClientDashboard() {
                     </div>
                     <div style={{ background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .06)", borderRadius:"8px", padding:"1rem", marginBottom:"1rem" }}>
                       <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".4rem" }}>Job Description</div>
-                      <div style={{ fontSize:".88rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.6 }}>{activeReq.job_description}</div>
+                      {/* Same tidy + clamp the contractor sees on the feed, so
+                          the client is reading exactly what the pros price off. */}
+                      <JobDescription text={activeReq.job_description} size=".88rem" color="rgba(var(--ff-muted), .75)" lines={5} />
                     </div>
-                    <RequestPhotoQuote requestId={activeReq.id} photoPath={activeReq.photo_path} estimatedQuote={activeReq.estimated_quote} quoteNotes={activeReq.quote_notes} canUpload />
-                    <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" }}>
-                      <div style={{ display:"inline-block", padding:".4rem .9rem", borderRadius:"99px", fontSize:".78rem", fontWeight:500, color: STATUS_META[activeReq.status]?.color, border:`1px solid ${STATUS_META[activeReq.status]?.color}` }}>
-                        <Ic name={STATUS_META[activeReq.status]?.icon as any} size={13} color={STATUS_META[activeReq.status]?.color} style={{ marginRight:4 }} />{STATUS_META[activeReq.status]?.label}
-                      </div>
-                      {(() => { const { score, max, label, color } = calcJobScore(activeReq); return (
-                        <div title={`Listing score: ${score}/${max}`} style={{ display:"inline-flex", alignItems:"center", gap:".4rem", padding:".4rem .9rem", borderRadius:"99px", fontSize:".78rem", fontWeight:500, color, border:`1px solid ${color}44`, background:`${color}11` }}>
-                          <span style={{ fontWeight:700 }}>{score}/{max}</span>
-                          <span>{label}</span>
-                          {label === "Add more details" && <span style={{ fontSize:".72rem", opacity:.7 }}>— add photo or description</span>}
-                        </div>
-                      ); })()}
-                    </div>
-
-                    {activeReq.status === "pending" && clientBids.length > 0 && (
-                      <div {...anchor("ffc-bids")} style={{ ...anchorPad, marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)" }}>
-                        <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".6rem" }}>Choose your contractor ({clientBids.length} bid{clientBids.length === 1 ? "" : "s"})</div>
-                        {Object.keys(bidMatch).length > 0 && (
-                          <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .55)", marginBottom:".6rem", display:"flex", alignItems:"center", gap:".35rem" }}>
-                            <Ic name="sparkles" size={12} color="#ea6b14" />Ranked by match quality — rating, jobs done, response speed and area fit.
-                          </div>
-                        )}
-                        {[...clientBids].sort((a, b) => (Number(bidMatch[b.contractor_id]?.score ?? -1)) - (Number(bidMatch[a.contractor_id]?.score ?? -1)) || (Number(a.amount ?? Infinity)) - (Number(b.amount ?? Infinity))).map((b, bi) => (
-                          <div key={b.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", padding:".6rem .7rem", marginBottom:".5rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px", flexWrap:"wrap" as const }}>
-                            {/* Who you'd be letting into your home. Falls back to initials
-                                rather than a broken image when the pro hasn't added a photo. */}
-                            <div style={{ width:44, height:44, borderRadius:"50%", overflow:"hidden", flex:"0 0 auto", alignSelf:"flex-start",
-                              background:"rgba(234,107,20,.14)", border:"1px solid rgba(var(--ff-fg), .1)",
-                              display:"flex", alignItems:"center", justifyContent:"center" }}>
-                              {bidPhoto[b.contractor_id]
-                                ? <FadeImg src={bidPhoto[b.contractor_id]} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" as const }} />
-                                : <span style={{ fontSize:".85rem", fontWeight:700, color:"#ea6b14" }}>
-                                    {(bidNames[b.contractor_id] ?? "Contractor").split(/\s+/).map((w: string) => w[0] ?? "").join("").slice(0,2).toUpperCase()}
-                                  </span>}
-                            </div>
-                            <div style={{ flex:"1 1 160px", minWidth:0 }}>
-                              <div style={{ fontSize:".88rem", color:"var(--ff-text)", display:"flex", alignItems:"center", gap:".45rem", flexWrap:"wrap" as const }}>
-                                {/* A walkthrough bid has no b.amount, so without the range fallback the
-                                    headline showed a name and no number at all — nothing to compare. */}
-                                {bidNames[b.contractor_id] ?? "Contractor"}{b.amount != null
-                                  ? " — $" + b.amount
-                                  : (b.price_low != null && b.price_high != null ? " — $" + b.price_low + "–$" + b.price_high : "")}
-                                {bi === 0 && clientBids.length > 1 && bidMatch[b.contractor_id] != null && (
-                                  <span style={{ padding:".14rem .5rem", borderRadius:"999px", fontSize:".66rem", fontWeight:700, background:"rgba(234,107,20,.14)", border:"1px solid rgba(234,107,20,.4)", color:"#ea6b14" }}>Best match</span>
-                                )}
-                                {/* How this pro's prices sit against the category average. Price only — quality is the star rating. */}
-                                <PriceGrade grade={bidGrade[b.contractor_id] as Grade} kind="pro" size="sm" />
-                              </div>
-                              {(() => { const m = bidMatch[b.contractor_id]; if (!m) return null;
-                                const bits: string[] = [];
-                                if (m.rating != null && Number(m.rating_count) > 0) bits.push("\u2b50 " + Number(m.rating).toFixed(1) + "/10 (" + m.rating_count + ")");
-                                if (Number(m.total_jobs) > 0) bits.push(m.total_jobs + " job" + (Number(m.total_jobs) === 1 ? "" : "s") + " done");
-                                if (m.area_match) bits.push("works your area");
-                                if (!bits.length) return null;
-                                return <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .6)", marginTop:".2rem" }}>{bits.join(" \u00b7 ")}</div>;
-                              })()}
-                              {bidResp[b.contractor_id] != null && (
-                                <div style={{ display:"inline-block", marginTop:".25rem", padding:".15rem .5rem", borderRadius:"999px", fontSize:".68rem", fontWeight:600, background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.3)", color:"#22c55e" }}>
-                                  ⚡ Usually responds in {respText(bidResp[b.contractor_id])}
-                                </div>
-                              )}
-                              <VerifiedMarks flags={bidVerif[b.contractor_id]} size="sm" style={{ marginTop:".3rem" }} />
-                              {b.walkthrough_requested && (
-                                <div style={{ display:"inline-flex", alignItems:"center", gap:".35rem", padding:".22rem .55rem", borderRadius:"99px", background:"rgba(234,107,20,.14)", color:"#ea6b14", fontSize:".72rem", fontWeight:700, marginTop:".3rem" }}>
-                                  <Ic name="search" size={11} />Wants a free walkthrough first
-                                </div>
-                              )}
-                              {b.walkthrough_requested && (
-                                <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .65)", marginTop:".25rem", lineHeight:1.45 }}>
-                                  This pro prefers to see the space before giving a firm price{b.price_low != null && b.price_high != null ? " — ballpark $" + b.price_low + "–$" + b.price_high : ""}. If you choose them, they'll propose a quick free visit, then send your estimate.
-                                </div>
-                              )}
-                              {b.message && <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .65)", marginTop:".15rem" }}>{b.message}</div>}
-                              {!b.walkthrough_requested && <QuoteBreakdownView row={b} assumptionsKey="assumptions" />}
-                            </div>
-                            {/* Ask before you commit. Every pro on this list can be
-                                messaged privately — they can only reply, never cold-call. */}
-                            <div style={{ display:"flex", flexDirection:"column", gap:".4rem", flex:"0 0 auto" }}>
-                              <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f", padding:".5rem 1rem" }} disabled={busyPick === b.id} onClick={() => pickBid(b.id)}>{busyPick === b.id ? "…" : "Choose"}</button>
-                              <button
-                                style={{ ...s.btn, padding:".4rem .8rem", fontSize:".78rem", position:"relative" as const }}
-                                onClick={() => setBidChat({ requestId: activeReq.id, contractorId: b.contractor_id, name: bidNames[b.contractor_id] ?? "Contractor", title: activeReq.service_needed })}
-                              >
-                                <Ic name="message-square" size={12} style={{ marginRight:4 }} />Ask a question
-                                {Number(bidUnread[b.contractor_id] ?? 0) > 0 && (
-                                  <span style={{ position:"absolute", top:-6, right:-6, minWidth:16, height:16, padding:"0 4px", borderRadius:999, background:"#ea6b14", color:"#fff", fontSize:".62rem", fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                                    {Number(bidUnread[b.contractor_id]) > 9 ? "9+" : bidUnread[b.contractor_id]}
-                                  </span>
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    <RequestPhotoQuote requestId={activeReq.id} photoPath={activeReq.photo_path} estimatedQuote={activeReq.estimated_quote} quoteNotes={activeReq.quote_notes} canUpload highlight={pulseAnchor === PHOTO_ANCHOR} />
+                    </>)}
 
                     {activeJob && (activeJob.client_approved_at || activeJob.status === "scheduled" || activeJob.status === "in_progress" || activeJob.status === "pending_confirmation" || activeJob.status === "completed") && (
                       <div style={{ marginTop:"1rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .07)" }}>
@@ -1913,18 +2233,31 @@ export default function ClientDashboard() {
                             )}
                             {activeJob.status === "scheduled" && (
                             <div style={{ margin:".25rem 0 .9rem", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .1)" }}>
-                              {activeJob.client_confirmed_visit_at ? (
+                              {/* Inside 24h on a signed job the time is fixed here — the pro
+                                  has set the day aside. It is a lock, not a dead end: chat
+                                  stays open and `chat_agree_time` still writes a new time
+                                  when BOTH sides agree in the thread, so the notice points
+                                  there rather than just refusing. */}
+                              {visitLocked ? (
+                                <div style={{ fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.55 }}>
+                                  <Ic name="clock" size={13} color="#ea6b14" style={{ marginRight:4 }} />
+                                  <strong>Your visit is less than 24 hours away.</strong> The time is locked in now — your pro has set the day aside for you. If something has come up, message them in the job chat and agree a new time together; it updates automatically once you both do.
+                                </div>
+                              ) : activeJob.client_confirmed_visit_at ? (
                                 <div style={{ fontSize:".82rem", color:"var(--ff-success)", lineHeight:1.5 }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />You confirmed this visit. Need to change it? <button onClick={() => setShowChangeTime(v => !v)} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer", padding:0, textDecoration:"underline" }}>Change the time</button></div>
                               ) : (
                                 <>
-                                  <div style={{ fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.5, marginBottom:".6rem" }}>Is this time still good? Confirm it, or pick a new day/time. The day before is your last easy change.</div>
+                                  <div style={{ fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.5, marginBottom:".6rem" }}>Is this time still good? Confirm it, or pick a new day/time. Changes close 24 hours before the visit.</div>
                                   <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                                     <button style={{ ...s.btn, color:"var(--ff-success)", borderColor:"rgba(34,197,94,.4)", background:"rgba(34,197,94,.1)" }} disabled={busyReq} onClick={confirmVisit}>{busyReq ? "…" : "✓ Confirm this time"}</button>
                                     <button style={s.btn} disabled={busyReq} onClick={() => setShowChangeTime(v => !v)}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Change the time</button>
                                   </div>
                                 </>
                               )}
-                              {showChangeTime && (
+                              {/* `!visitLocked` as well, because the panel can be left open
+                                  while the clock runs into the 24h window — without it the
+                                  client keeps a Send button that the RPC will now refuse. */}
+                              {showChangeTime && !visitLocked && (
                                 <div style={{ marginTop:".7rem" }}>
                                   <div style={{ fontSize:".78rem", color:"var(--ff-warn)", lineHeight:1.5, marginBottom:".5rem" }}><Ic name="alert-triangle" size={12} style={{ marginRight:4 }} />Your pro already blocked off the current time. If you change it, they have to accept the new time and may decline if they're not free — they'll then suggest another time.</div>
                                   <input type="datetime-local" value={newVisitTime} onChange={e => setNewVisitTime(e.target.value)} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, marginBottom:".55rem" }} />
@@ -1949,6 +2282,7 @@ export default function ClientDashboard() {
                                   <div style={{ marginBottom:".7rem", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.18)" }}>
                                     <div style={{ fontSize:".82rem", color:"var(--ff-success)", marginBottom:".4rem", lineHeight:1.5 }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Deposit of ${jobFunded(activeJob).toFixed(2)} paid — your pro is booked in.</div>
                                     <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", marginBottom:".6rem", lineHeight:1.5 }}>The remaining <strong>${jobBalance(activeJob).toFixed(2)}</strong> is due once the work is finished — you can pay it now or wait until then. It's <strong>held safely</strong> with your deposit, and everything is released to your contractor only after you confirm the job is done.</div>
+                                    {autopayNote(activeJob, "once your pro marks the job complete")}
                                     {contractBlocked && (
                                       <div style={{ fontSize:".82rem", color:"var(--ff-warn)", marginBottom:".6rem", lineHeight:1.5 }}>
                                         <Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />{contractCheckError ? "We couldn't verify the service agreement. Please refresh the page and try again." : "Please sign the service agreement above before paying the balance."}
@@ -2009,6 +2343,7 @@ export default function ClientDashboard() {
                                   <div style={{ marginBottom:".75rem", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.18)" }}>
                                     <div style={{ fontSize:".82rem", color:"var(--ff-success)", marginBottom:".4rem", lineHeight:1.5 }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Deposit of ${jobFunded(activeJob).toFixed(2)} already paid.</div>
                                     <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", marginBottom:".6rem", lineHeight:1.5 }}>Your pro has finished, so the remaining <strong>${jobBalance(activeJob).toFixed(2)}</strong> is now due. It's <strong>held safely</strong> alongside your deposit — nothing reaches your contractor until you confirm the work below.</div>
+                                    {autopayNote(activeJob, "shortly")}
                                     {contractBlocked && (
                                       <div style={{ fontSize:".82rem", color:"var(--ff-warn)", marginBottom:".6rem", lineHeight:1.5 }}>
                                         <Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />{contractCheckError ? "We couldn't verify the service agreement. Please refresh the page and try again." : "Please sign the service agreement above before paying the balance."}
@@ -2021,9 +2356,27 @@ export default function ClientDashboard() {
                                 )}
                                 <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                                   <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq || !!activeJob.price_change_pending || (activeJob.payment_status === "held" && !jobFullyFunded(activeJob))} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm & release payment"}</button>
-                                  <button style={{ ...s.btn, color:"var(--ff-warn)", borderColor:"rgba(251,191,36,.35)", background:"rgba(251,191,36,.08)" }} disabled={busyReq} onClick={() => setReportOpen(true)}><Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />File a claim</button>
                                   <button style={s.btn} onClick={() => downloadReceipt(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Download receipt</button>
                                 </div>
+                                {/* Demoted from a third equal-weight button to a
+                                    quiet link, NOT removed. This is the client's
+                                    remedy and this is the one screen where they
+                                    are deciding whether to use it — the gear menu
+                                    carries the same action for every other moment,
+                                    but sending someone hunting for a menu at the
+                                    point of dispute is not a simplification. */}
+                                <button
+                                  onClick={() => setReportOpen(true)}
+                                  disabled={busyReq}
+                                  style={{
+                                    background:"none", border:"none", padding:".55rem 0", marginTop:".15rem",
+                                    minHeight:44, cursor:"pointer", fontFamily:"'DM Sans',sans-serif",
+                                    fontSize:".8rem", color:"var(--ff-warn)", textDecoration:"underline",
+                                    display:"inline-flex", alignItems:"center", gap:".3rem",
+                                  }}
+                                >
+                                  <Ic name="alert-triangle" size={13} />Something wrong? File a claim
+                                </button>
                                 {activeJob.payment_status === "held" && !jobFullyFunded(activeJob) && (
                                   <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .65)", marginTop:".5rem", lineHeight:1.5 }}>Pay the balance above to unlock confirming. If something isn't right with the work, file a claim instead — that freezes everything while we look into it.</div>
                                 )}
@@ -2104,11 +2457,12 @@ export default function ClientDashboard() {
                     ) : (
                       <div style={{ display:"flex", gap:".6rem", marginTop:"1rem" }}>
                         <button style={s.btn} onClick={() => startEdit(activeReq)}><Ic name="pencil" size={13} style={{ marginRight:4 }} />Edit</button>
-                        <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyReq} onClick={() => removeRequest(activeReq)}><Ic name="trash" size={13} style={{ marginRight:4 }} />Delete</button>
+                        {canRemoveRequest(activeReq, activeJob) && <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyReq} onClick={() => removeRequest(activeReq)}><Ic name="trash" size={13} style={{ marginRight:4 }} />Delete</button>}
                       </div>
                     )}
                   </div>
-                )}
+                  );
+                })()}
 
                 {contractor && (
                   <div style={s.card}>
@@ -2154,7 +2508,11 @@ export default function ClientDashboard() {
                     histFilter === "completed" ? r.status === "completed" :
                     histFilter === "cancelled" ? r.status === "cancelled" :
                     (r.status !== "completed" && r.status !== "cancelled");
-                  const filtered = histAll.filter(matches);
+                  // Search narrows WITHIN the chosen status filter rather than
+                  // replacing it, so the two controls compose instead of one
+                  // silently overriding the other.
+                  const histTokens = searchTokens(search);
+                  const filtered = histAll.filter(r => matches(r) && matchesSearch(histTokens, reqSearchFields(r)));
                   const shown = filtered.slice(0, histLimit);
                   const FILTERS: { key: typeof histFilter; label: string }[] = [
                     { key: "all", label: "All" },
@@ -2170,22 +2528,42 @@ export default function ClientDashboard() {
                           <button key={f.key} onClick={() => { setHistFilter(f.key); setHistLimit(5); }} style={{ ...s.tab, padding:".4rem .85rem", fontSize:".8rem", ...(histFilter === f.key ? s.activeTab : {}) }}>{f.label}</button>
                         ))}
                       </div>
+                      {histAll.length > 3 && (
+                        <DashSearch
+                          value={search}
+                          onChange={v => { setSearch(v); setHistLimit(5); }}
+                          placeholder="Search your history"
+                          resultText={filtered.length + " of " + histAll.filter(matches).length + " shown"}
+                        />
+                      )}
                       {shown.length === 0 ? (
-                        <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .5)", padding:".5rem 0" }}>No {histFilter === "all" ? "" : histFilter + " "}requests to show.</div>
+                        <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .5)", padding:".5rem 0" }}>
+                          {searchTokens(search).length > 0
+                            ? "Nothing matches that."
+                            : "No " + (histFilter === "all" ? "" : histFilter + " ") + "requests to show."}
+                        </div>
                       ) : shown.map(r => (
-                        <div key={r.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:".85rem 0", borderBottom:"1px solid rgba(var(--ff-fg), .06)", gap:"1rem", flexWrap:"wrap" as const }}>
-                          <div>
+                        <div key={r.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:".85rem 0", borderBottom:"1px solid rgba(var(--ff-fg), .06)", gap:".75rem", flexWrap:"wrap" as const }}>
+                          {/* minWidth:0 so a long service label shrinks instead of
+                              forcing the whole row wider than a phone screen, and
+                              flexBasis keeps the controls beside it until there is
+                              genuinely no room, rather than wrapping on every row. */}
+                          <div style={{ minWidth:0, flex:"1 1 140px" }}>
                             <div style={{ fontSize:".9rem" }}>{r.service_needed}</div>
                             <div style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .4)" }}>{new Date(r.created_at).toLocaleDateString()}</div>
                           </div>
-                          <div style={{ display:"flex", alignItems:"center", gap:".75rem" }}>
+                          <div style={{ display:"flex", alignItems:"center", gap:".5rem", flexShrink:0 }}>
                             {r.status !== "completed" && r.status !== "cancelled" && (
                               <button style={{ ...s.btn, padding:".3rem .7rem" }} onClick={() => { setSelectedReqId(r.id); setActiveTab("requests"); window.scrollTo({ top: 0 }); }}>View</button>
                             )}
-                            <div style={{ fontSize:".78rem", fontWeight:500, color: STATUS_META[r.status]?.color, whiteSpace:"nowrap" as const }}>
-                              <Ic name={STATUS_META[r.status]?.icon as any} size={13} color={STATUS_META[r.status]?.color} style={{ marginRight:4 }} />{STATUS_META[r.status]?.label}
+                            {/* A bordered chip rather than coloured body text. Down a
+                                list of past requests the state is the thing being
+                                scanned for, and it now reads the same as the badge
+                                on the Current Request card above. */}
+                            <div style={{ display:"inline-block", padding:".22rem .6rem", borderRadius:"99px", fontSize:".72rem", fontWeight:600, color: STATUS_META[r.status]?.color, border:`1px solid ${STATUS_META[r.status]?.color}`, whiteSpace:"nowrap" as const }}>
+                              <Ic name={STATUS_META[r.status]?.icon as any} size={12} color={STATUS_META[r.status]?.color} style={{ marginRight:4 }} />{STATUS_META[r.status]?.label}
                             </div>
-                            {r.status !== "cancelled" && (
+                            {canRemoveRequest(r, null) && (
                               <button style={{ ...s.btn, padding:".3rem .55rem", color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyReq} onClick={() => removeRequest(r)}><Ic name="trash" size={13} /></button>
                             )}
                           </div>
