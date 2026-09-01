@@ -54,6 +54,26 @@ export function reviewOptOut() {
 }
 
 /**
+ * The dedupe/opt-out/cooldown test and the stamp, exposed so a caller that
+ * shows the review ask inside a DIFFERENT surface can reuse them.
+ *
+ * `src/lib/completionPrompt.ts` is that caller: the job-done moment now asks
+ * for a review and a referral share in one modal, and it must obey exactly the
+ * rules a standalone review prompt would. Exporting the two predicates keeps
+ * ONE implementation of "have we already asked, and are they still willing" —
+ * a third set of localStorage keys would silently drift out of step with the
+ * opt-out this file already owns, and the failure would look like a client who
+ * pressed "Don't ask again" being asked again.
+ */
+export function reviewAskAllowed(reason: ReviewReason, jobId?: string): boolean {
+  return reviewUrlReady() && !alreadyHandled(reason, jobId);
+}
+
+export function markReviewAsked(reason: ReviewReason, jobId?: string) {
+  markHandled(reason, jobId);
+}
+
+/**
  * Ask for a Google review. Fires a window CustomEvent the modal listens for.
  * No-ops if the URL is still a placeholder, the user opted out, the cooldown
  * is active, or this exact reason/job was already prompted.

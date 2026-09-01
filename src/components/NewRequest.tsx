@@ -215,6 +215,33 @@ export default function NewRequest() {
     if (pro) setPreferredPro(pro);
   }, []);
 
+  /**
+   * Pros this client has worked with or favourited, for the "book again" strip.
+   *
+   * This used to sit on the client dashboard home tab, where it competed with
+   * the money-gating attention rows for the top of the page. It belongs HERE:
+   * rebooking is a decision about the request being written, so the shortcut
+   * lives on the form that writes it.
+   *
+   * Read on its OWN, deliberately outside the `Promise.all` above — that block
+   * sets `loadError`, which replaces the entire page with a retry screen. A
+   * convenience strip must never be able to stop someone posting a job, so a
+   * failed read here leaves `pros` empty and the strip simply doesn't render.
+   * There is nothing for the client to do about it either way, and the full
+   * list is still on the dashboard's My Pros tab.
+   */
+  const [pros, setPros] = useState<any[]>([]);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const { data, error } = await supabase.rpc("list_my_pros");
+      if (!alive || error) return;
+      setPros(data ?? []);
+    })();
+    return () => { alive = false; };
+  }, []);
+  const chosenPro = preferredPro ? pros.find(p => p.contractor_id === preferredPro) : null;
+
   // Pre-select a service if the home page linked here with ?service=…
   useEffect(() => {
     const raw = new URLSearchParams(window.location.search).get("service");
@@ -609,9 +636,20 @@ export default function NewRequest() {
         <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:"2rem" }}>{STEP_TITLES[step-1]}</h1>
 
         {preferredPro && (
-          <div style={{ ...s.card, marginBottom:"1rem", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.07)", display:"flex", alignItems:"center", gap:".6rem" }}>
-            <Ic name="star" size={16} color="#ea6b14" />
-            <div style={{ fontSize:".86rem", color:"var(--ff-text)" }}>You're rebooking a pro you've worked with — they'll be notified directly to send you an estimate.</div>
+          <div style={{ ...s.card, marginBottom:"1rem", padding:"1rem 1.25rem", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.07)", display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const }}>
+            <Ic name="star" size={16} color="#ea6b14" style={{ flexShrink:0 }} />
+            <div style={{ fontSize:".86rem", color:"var(--ff-text)", flex:"1 1 auto", minWidth:0 }}>
+              {chosenPro
+                ? "This request goes to " + (chosenPro.company_name || chosenPro.name || "your pro") + " first — they'll be notified directly to send you an estimate."
+                : "You're rebooking a pro you've worked with — they'll be notified directly to send you an estimate."}
+            </div>
+            {/* A reservation hides the request from every other pro for 48 hours,
+                so the client has to be able to change their mind before posting.
+                Clearing it here is enough: the value is read off state at submit,
+                not off the URL. */}
+            <button type="button" onClick={() => setPreferredPro(null)} style={{ background:"none", border:"none", padding:0, cursor:"pointer", fontFamily:"inherit", fontSize:".8rem", fontWeight:600, color:"rgba(var(--ff-muted), .75)", textDecoration:"underline", flexShrink:0 }}>
+              Send to everyone instead
+            </button>
           </div>
         )}
 
@@ -630,6 +668,43 @@ export default function NewRequest() {
               </div>
               <p style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .4)", marginTop:".5rem" }}>Need to change your name or phone? Update it in your profile.</p>
             </div>
+
+            {/* Rebooking is the cheapest job on the platform to win. This strip
+                used to live on the client dashboard home tab, above the fold and
+                below nothing — which put a marketing card in the same space as
+                the money-gating attention rows. It belongs on the form that
+                actually writes `preferred_contractor_id`.
+
+                Hidden once a pro is chosen: the banner above already names them
+                and offers the undo, and leaving the row on screen would invite a
+                second tap that changes nothing visible. */}
+            {pros.length > 0 && !preferredPro && (
+              <div style={{ marginBottom:"1.75rem", paddingBottom:"1.25rem", borderBottom:"1px solid rgba(var(--ff-fg), .08)" }}>
+                <div style={s.label}>Used us before?</div>
+                <p style={{ margin:"0 0 .7rem", fontSize:".8rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.45 }}>
+                  Send this straight to a pro you&rsquo;ve worked with. They get first refusal for 48 hours — no need to compare estimates again.
+                </p>
+                <div style={{ display:"flex", gap:".7rem", overflowX:"auto" as const, paddingBottom:".3rem" }}>
+                  {pros.slice(0, 6).map(pro => (
+                    <div key={pro.contractor_id} style={{ minWidth:"178px", flex:"0 0 auto", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"12px", padding:".8rem", background:"rgba(var(--ff-fg), .03)" }}>
+                      <div style={{ fontSize:".88rem", fontWeight:600, color:"var(--ff-text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
+                        {pro.company_name || pro.name || "Your pro"}
+                      </div>
+                      <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .5)", marginTop:".15rem", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
+                        {pro.rating ? "⭐ " + Number(pro.rating).toFixed(1) : "New"}
+                        {pro.last_service ? " · " + pro.last_service : ""}
+                      </div>
+                      {/* Sets state rather than navigating — we are already on the
+                          form, so a trip through ?pro= would throw away everything
+                          typed so far. */}
+                      <button type="button" onClick={() => setPreferredPro(pro.contractor_id)} style={{ width:"100%", marginTop:".6rem", padding:".45rem", fontSize:".8rem", fontFamily:"inherit", fontWeight:600, cursor:"pointer", borderRadius:"8px", border:"1px solid rgba(234,107,20,.4)", background:"rgba(234,107,20,.12)", color:"#ea6b14" }}>
+                        Book again
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* The description drives everything downstream — the service we pick,
                 the questions we ask, and what the pro reads. So it comes first and

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import DeleteAccount from "@/components/DeleteAccount";
 import TwoStepPanel from "@/components/TwoStepPanel";
+import ReferralCard from "@/components/ReferralCard";
 import {
   getTheme, setTheme, getTextScale, setTextScale,
   TEXT_SCALES, SCALE_LABELS, type Theme,
@@ -124,6 +125,13 @@ export function SettingsPanel({ role }: { role: Role }) {
           <a href="/privacy-policy" style={{ color:"#ea6b14", textDecoration:"underline" }}>Privacy Policy</a>
         </p>
       </div>
+
+      {/* Referral — clients only, and only here. It was on the ClientDashboard
+          Requests tab permanently, competing with the money-gating rows a
+          client opens that tab to act on. Settings is where somebody who wants
+          their code comes looking; the completion prompt after a finished job
+          is where we go to them. */}
+      {role === "client" && <ReferralCard />}
 
       {/* Payment + account — only when signed in */}
       {role && (

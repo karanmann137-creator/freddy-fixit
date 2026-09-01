@@ -49,6 +49,25 @@ export function referralPromptOptOut() {
 }
 
 /**
+ * The dedupe/opt-out/cooldown test and the stamp, exposed for the same reason
+ * `reviewPrompt.ts` exposes its pair: `src/lib/completionPrompt.ts` shows this
+ * ask inside a combined modal at the job-done moment and must obey exactly the
+ * rules a standalone referral prompt would. One implementation of each, so an
+ * opt-out honoured here can't be ignored there.
+ *
+ * The `codeStatus` test is deliberately NOT folded in — it isn't a preference,
+ * it's whether there is anything to share at all, and the caller is the one
+ * holding the code.
+ */
+export function referralAskAllowed(reason: ReferralPromptReason): boolean {
+  return !alreadyHandled(reason);
+}
+
+export function markReferralAsked(reason: ReferralPromptReason) {
+  markHandled(reason);
+}
+
+/**
  * Ask a client to share their referral code. Fires a window CustomEvent the
  * modal listens for. No-ops if there's nothing to share (no code, or the
  * code is already `in_use`/`retired`), the user opted out, the cooldown is

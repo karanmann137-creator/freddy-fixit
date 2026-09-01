@@ -19,6 +19,7 @@ import { DashboardSkeleton, PageSkeleton } from "@/components/Skeleton";
 import ChatWidget from "@/components/ChatWidget";
 import GoogleReviewModal from "@/components/GoogleReviewModal";
 import ReferralShareModal from "@/components/ReferralShareModal";
+import CompletionThanksModal from "@/components/CompletionThanksModal";
 import FinishSignupBanner from "@/components/FinishSignupBanner";
 import CookieConsent from "@/components/CookieConsent";
 import OverhaulNotice from "@/components/OverhaulNotice";
@@ -203,6 +204,12 @@ export default function App() {
       <ChatWidget />
       <GoogleReviewModal />
       <ReferralShareModal />
+      {/* The completion moment asks for a review AND a referral in one modal.
+          The two above still serve their other moments — signup / job posted,
+          and the rehire fallback — so all three are mounted. Only one can ever
+          be open at a time: each fires on its own event, and no two of those
+          events are dispatched from the same click. */}
+      <CompletionThanksModal />
       <FinishSignupBanner />
       <CookieConsent />
       <OverhaulNotice />

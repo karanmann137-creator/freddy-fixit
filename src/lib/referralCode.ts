@@ -47,6 +47,19 @@ export function stashedReferralCode(): string {
   try { return localStorage.getItem(REF_CODE_KEY) || ""; } catch { return ""; }
 }
 
+/**
+ * Look without consuming.
+ *
+ * The redeem box lives in Settings, but the dashboard is where the client
+ * actually lands — so the dashboard has to know a refusal is waiting in order
+ * to point them at it, WITHOUT eating the message before the box that explains
+ * it has rendered. Reading it in both places with `takeReferralError` would
+ * mean whichever mounted first won, and the other showed nothing.
+ */
+export function peekReferralError(): string {
+  try { return localStorage.getItem(REF_ERROR_KEY) || ""; } catch { return ""; }
+}
+
 /** Read-and-clear. The message is shown once, next to the box that retries it. */
 export function takeReferralError(): string {
   try {

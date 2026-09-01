@@ -4,8 +4,12 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { clearMyProfile } from "@/lib/myProfile";
-import { requestGoogleReview } from "@/lib/reviewPrompt";
+// The standalone review ask is no longer fired from this page — the completion
+// moment is the only one it had here, and that now goes through
+// `requestCompletionThanks`, which asks for the review AND the referral in one
+// modal. `requestReferralShare` stays for the separate `rehire` fallback below.
 import { requestReferralShare } from "@/lib/referralPrompt";
+import { requestCompletionThanks } from "@/lib/completionPrompt";
 import RequestPhotoQuote, { PHOTO_ANCHOR } from "@/components/RequestPhotoQuote";
 import JobDescription from "@/components/JobDescription";
 import ProfileBar from "@/components/ProfileBar";
@@ -22,7 +26,11 @@ import ReportProblem from "@/components/ReportProblem";
 import FileClaimModal, { type ClaimJob } from "@/components/FileClaimModal";
 import RequestHelpModal from "@/components/RequestHelpModal";
 import { jobCode } from "@/lib/jobCode";
-import { referralReasonText, takeReferralError } from "@/lib/referralCode";
+import { getDismissals, dismiss as dismissKey } from "@/lib/dismissals";
+import { searchTokens, matchesSearch } from "@/lib/dashSearch";
+import DashSearch from "@/components/DashSearch";
+import DismissX from "@/components/DismissX";
+import { peekReferralError } from "@/lib/referralCode";
 import { sendContractCopy, CONTRACT_COPY_FAILED } from "@/lib/contractCopy";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
@@ -156,6 +164,55 @@ const canRemoveRequest = (r: any, job: any): boolean => {
 // an id typed twice is an id that drifts, and a missed one scrolls to nothing.
 const REQ_SWITCH_ANCHOR = "ffc-requests";
 
+/**
+ * Attention rows whose × means "never again". Everything else clears for the
+ * SESSION only and comes back on the next load while its state is still true.
+ *
+ * The test is deliberately NOT "does this row mention money". It is: can this
+ * key ever come back carrying NEW information? If it can, a permanent mute
+ * hides that information with nothing on screen to say so.
+ *
+ *  - `photo` and `bids` are pointers to something already on the page, scoped
+ *    to one request, so muting them loses nothing. They are the whole list.
+ *  - `contract` / `release` / `balance` / `price` / `hike` / `confirm` name
+ *    money that is owed or stuck. The balance row in particular is often the
+ *    only place a client is told the job is under-funded, which is what leaves
+ *    the contractor waiting indefinitely.
+ *  - `sched` and `walkthrough` re-fire on the SAME job when a pro counters a
+ *    proposal, so a permanent mute would swallow the counter.
+ *  - `chattime` exists precisely so a time suggested in chat can never be lost
+ *    — dismissing the modal already leaves this row standing on purpose.
+ *  - `msg-*` regenerates from live unread state, so muting one job's row would
+ *    silently hide every future message on it.
+ *
+ * When in doubt leave a key OUT of this set. The cost is a banner the client
+ * has to wave away twice; the cost of the other mistake is a hidden bill.
+ */
+const PERMANENT_ATTN = new Set(["photo", "bids"]);
+
+/**
+ * What a client can search their own requests by.
+ *
+ * The status LABEL is included rather than the raw enum, because "waiting on
+ * estimates" is what the screen says and "pending" is what the column holds —
+ * searching for the word you can see is the only behaviour that isn't a
+ * surprise. The date is formatted for the same reason.
+ *
+ * Deliberately NO job code. The code is derived from the JOB's uuid, and this
+ * dashboard only ever loads the job for the request currently selected, so a
+ * code typed here could match at most one row and would silently miss every
+ * other. Adding it would mean a job read per request on every load — a new
+ * query for a search that is otherwise free. The contractor and admin
+ * dashboards hold their jobs already, and match on the code there.
+ */
+function reqSearchFields(r: any): (string | number | null | undefined)[] {
+  return [
+    r?.service_needed, r?.location, r?.preferred_schedule, r?.description,
+    STATUS_META[r?.status]?.label ?? r?.status,
+    r?.created_at ? new Date(r.created_at).toLocaleDateString() : null,
+  ];
+}
+
 export default function ClientDashboard() {
   const [, setLocation] = useLocation();
   const [profile, setProfile]       = useState<any>(null);
@@ -225,10 +282,11 @@ export default function ClientDashboard() {
    * thing on the page and folding it away would leave a near-empty screen.
    */
   const [reqDetailOpen, setReqDetailOpen] = useState(false);
-  const [refCopied, setRefCopied]   = useState(false);
-  const [refInput, setRefInput]     = useState("");        // a friend's code, typed in by hand
-  const [refBusy, setRefBusy]       = useState(false);
-  const [refMsg, setRefMsg]         = useState<{ ok: boolean; text: string } | null>(null);
+  // A code refused at signup is stashed rather than shown. We only PEEK at it
+  // here — the box that explains and retries it lives in ReferralCard, which
+  // read-and-clears it on mount. Consuming it here would eat the message before
+  // the box that fixes it ever rendered.
+  const [refStashed, setRefStashed] = useState("");
   const [plans, setPlans]           = useState<any[]>([]);
   const [busyPlan, setBusyPlan]     = useState<string|null>(null);
   const [newVisitTime, setNewVisitTime] = useState<string>("");
@@ -248,6 +306,44 @@ export default function ClientDashboard() {
   const [claimOpen, setClaimOpen]   = useState(false);
   const [claimJobs, setClaimJobs]   = useState<ClaimJob[]>([]);
   const [bugOpen, setBugOpen]       = useState(false);
+  const [search, setSearch]         = useState("");
+
+  /**
+   * Dismissals, in two stores on purpose.
+   *
+   * `dismissed` is the PERSISTED set from `ui_dismissals` — the profile banner
+   * and every non-money attention row, gone for good on this account. It starts
+   * EMPTY and stays empty when the read fails, because a failed read is not an
+   * empty result and the safe direction here is to show a banner twice rather
+   * than hide one that is telling somebody they still owe money.
+   *
+   * `hiddenNow` is session-only, for the money rows. A client can clear a
+   * contract, balance, price-change, hike, confirm or release row off the
+   * screen when they've read it, and it comes back on the next load for as
+   * long as the underlying state is still true. Some of those rows are the only
+   * place anyone is told a payment is outstanding, so "never show me this
+   * again" is not an option we can honestly offer for them.
+   */
+  const [dismissed, setDismissed]   = useState<Set<string>>(new Set());
+  const [hiddenNow, setHiddenNow]   = useState<Set<string>>(new Set());
+
+  /**
+   * Hide something the client has waved away.
+   *
+   * `forever` writes to `ui_dismissals`; the write is fire-and-forget, because
+   * a failed write only means the banner comes back next time — which is
+   * exactly the direction this whole module errs in. Local state updates first
+   * either way, so the row leaves the screen on the tap rather than on a
+   * round-trip.
+   */
+  const hide = (key: string, forever: boolean) => {
+    if (forever) {
+      setDismissed(prev => new Set(prev).add(key));
+      dismissKey(profile?.id, key);
+    } else {
+      setHiddenNow(prev => new Set(prev).add(key));
+    }
+  };
 
   // One hook feeds the Messages tab, the sidebar badge and every unread pill —
   // so a badge can never disagree with the list it links to.
@@ -317,12 +413,12 @@ export default function ClientDashboard() {
 
   // A code typed at signup that the DB refused. Neither signup surface can show
   // it — ClientOnboarding is mid-submit and AuthCallback is a redirect — so the
-  // reason is stashed and read exactly once, here, where it renders immediately
-  // above the manual entry box. The explanation and the retry arrive together.
-  useEffect(() => {
-    const t = takeReferralError();
-    if (t) setRefMsg({ ok: false, text: t });
-  }, []);
+  // reason is stashed for the redeem box to explain. That box now lives in
+  // Settings, and this is still the page the client actually lands on, so the
+  // dashboard's job is to POINT them at it: peek at the stash to push an
+  // attention row, and let ReferralCard consume and explain it there. Reading
+  // it here would leave the client with an explanation and no way to retry.
+  useEffect(() => { setRefStashed(peekReferralError()); }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -370,6 +466,11 @@ export default function ClientDashboard() {
         setPros(myPros.data ?? []);
         setReferral(ref.data ?? null);
         setPlans(planRows.data ?? []);
+        // Which banners this account has already waved away. Fired here rather
+        // than inside the Promise.all above because it must not be able to fail
+        // the whole load: a dismissal read that errors resolves to "nothing
+        // dismissed", so every banner simply shows, which is the safe direction.
+        void getDismissals(user.id).then(d => { if (d.ok) setDismissed(new Set(d.keys)); });
         // All clients pay the standard 3% service fee unless a referral waives it
         // for a specific first job (checked per-job in the active-job effect below).
       } catch {
@@ -631,54 +732,9 @@ export default function ClientDashboard() {
     setLocation("/client-onboarding?" + q.toString());
   };
 
-  const copyReferral = async () => {
-    const code = referral?.code;
-    if (!code) return;
-    try {
-      await navigator.clipboard.writeText(`Get your first Freddy Fix It service fee waived with my code ${code}: https://freddyfixit.ca/?ref=${code}`);
-      setRefCopied(true); setTimeout(() => setRefCopied(false), 2000);
-    } catch { notify("Couldn't copy automatically — your code is " + code + " (shown on the card)."); }
-  };
-
-  // Apply a friend's code by hand. Until now the ONLY way a code could be used
-  // was clicking a ?ref= link, so a code heard in person — or a link pasted
-  // somewhere that strips the query string — was silently unusable. That is why
-  // no referral had ever been recorded.
-  //
-  // Every rule (unknown code, your own code, already referred) is enforced in
-  // apply_referral_code, which is SECURITY DEFINER and keyed on auth.uid(); this
-  // only translates its reason codes into English. Nothing here decides
-  // eligibility, so a client cannot talk their way into a waived fee.
-  const applyReferral = async () => {
-    const code = refInput.trim().toUpperCase();
-    if (!code || refBusy) return;
-    setRefBusy(true); setRefMsg(null);
-    try {
-      const { data, error } = await supabase.rpc("apply_referral_code", { p_code: code });
-      if (error) throw error;
-      const res = data as any;
-      if (res?.ok === true) {
-        setRefInput("");
-        setRefMsg({ ok: true, text: "Code applied — your 3% service fee is waived on your first job." });
-        // Refresh the card so the entry box disappears, then re-check the live
-        // fee line so an unpaid job's total drops without needing a reload.
-        try { const { data: r } = await supabase.rpc("get_my_referral"); setReferral(r ?? null); } catch {}
-        if (activeJob && activeJob.payment_status !== "released" && activeJob.total_charged == null && activeReq?.user_id) {
-          try {
-            const { data: elig } = await supabase.rpc("referral_waiver_eligible", { p_client: activeReq.user_id, p_job_id: activeJob.id });
-            setWaivedForJob(elig === true ? activeJob.id : null);
-          } catch { /* the fee line just stays as it was until the next load */ }
-        }
-      } else {
-        // Same wording the signup path stashes, from the same map — a code
-        // refused at signup and the same code refused here must not be
-        // explained two different ways.
-        setRefMsg({ ok: false, text: referralReasonText(String(res?.reason ?? "")) });
-      }
-    } catch {
-      setRefMsg({ ok: false, text: "Couldn't apply that code just now. Please try again." });
-    } finally { setRefBusy(false); }
-  };
+  // `copyReferral` and `applyReferral` moved to ReferralCard with the card they
+  // served. ReferralCard does its own `get_my_referral` read, so there is one
+  // implementation rather than a dashboard copy and a Settings copy that drift.
 
   const startEdit = (r: any) => {
     setEditingId(r.id);
@@ -1095,18 +1151,23 @@ export default function ClientDashboard() {
     const { error } = await supabase.rpc("confirm_job_completion", { p_job_id: activeJob.id });
     setBusyReq(false);
     if (error) { notify("Couldn't confirm: " + error.message); return; }
-    // First-ever completed job is the best goodwill moment to ask for a
-    // referral share, so it takes this one slot instead of the Google review
-    // ask -- stacking two "please help us" prompts on the same click would
-    // hurt both. Every completion after the first falls back to the review
-    // ask exactly as before. If the referral ask doesn't fire (no code, or
-    // nothing to share), requestReferralShare no-ops and nothing is shown.
-    const isFirstCompletion = !requests.some(r => r.status === "completed");
-    if (isFirstCompletion) {
-      requestReferralShare("job_done", { code: referral?.code, codeStatus: referral?.code_status });
-    } else {
-      requestGoogleReview("job_done", { jobId: activeJob.id });
-    }
+    // A finished job is the peak-goodwill moment, and it now carries BOTH asks
+    // in one modal — review first, then the referral code. This used to be an
+    // either/or keyed on whether it was the client's first completion, on the
+    // reasoning that stacking two "please help us" prompts on one click would
+    // hurt both. That was right about two overlays and wrong about two asks:
+    // one modal saying "Loved the service? Rate us on Google and give your
+    // friends a discount" is a single sentence, and it means a repeat client
+    // is no longer silently skipped for the referral half forever.
+    //
+    // `requestCompletionThanks` decides which halves are live (opt-outs,
+    // cooldowns, and whether the code is still shareable at all) and shows
+    // nothing if neither is.
+    requestCompletionThanks({
+      jobId: activeJob.id,
+      code: referral?.code,
+      codeStatus: referral?.code_status,
+    });
     setActiveJob({ ...activeJob, status: "completed", client_confirmed_at: new Date().toISOString() });
     setRequests(prev => prev.map(r => r.id === activeJob.request_id ? { ...r, status: "completed" } : r));
     if (activeJob.payment_status === "held") {
@@ -1464,10 +1525,18 @@ export default function ClientDashboard() {
 
       <div style={s.content} className={tabAnim}>
         {(() => {
+          // Keys, not sentences: the dismissal is stored against WHAT is missing,
+          // so it survives a copy change and — more importantly — returns on its
+          // own if the gaps later change. Same idiom as the contractor's
+          // `profile_nudge:<sorted gap keys>`.
+          const gaps: string[] = [];
           const missing: string[] = [];
-          if (!profile?.first_name || !profile?.last_name) missing.push("your name");
-          if (!profile?.phone) missing.push("phone number");
-          return missing.length > 0 ? (
+          if (!profile?.first_name || !profile?.last_name) { gaps.push("name"); missing.push("your name"); }
+          if (!profile?.phone) { gaps.push("phone"); missing.push("phone number"); }
+          if (missing.length === 0) return null;
+          const key = "profile_banner:client:" + gaps.slice().sort().join(",");
+          if (dismissed.has(key)) return null;
+          return (
             <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.45)", display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".75rem", justifyContent:"space-between" }}>
               <div style={{ flex:"1 1 260px" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".85rem", fontWeight:600, color:"#ea6b14", marginBottom:".3rem" }}>
@@ -1477,11 +1546,14 @@ export default function ClientDashboard() {
                   Add {missing.join(" and ")} so your pros can reach you.
                 </div>
               </div>
-              <button style={{ ...s.primaryBtn, whiteSpace:"nowrap" as const }} onClick={() => { setActiveTab("profile"); window.scrollTo({ top:0, behavior:"smooth" }); }}>
-                Complete profile
-              </button>
+              <div style={{ display:"flex", alignItems:"center", gap:".5rem", flexShrink:0 }}>
+                <button style={{ ...s.primaryBtn, whiteSpace:"nowrap" as const }} onClick={() => { setActiveTab("profile"); window.scrollTo({ top:0, behavior:"smooth" }); }}>
+                  Complete profile
+                </button>
+                <DismissX onClick={() => hide(key, true)} label="Don't show this again" title="Don't show this again" />
+              </div>
             </div>
-          ) : null;
+          );
         })()}
         <ProfileCompletionModal role="client" profile={profile} />
         {rewindOpen && <FreddyRewind mode="client" onClose={() => setRewindOpen(false)} />}
@@ -1583,6 +1655,23 @@ export default function ClientDashboard() {
           if (activeReq?.status === "pending" && !activeReq?.photo_path) {
             attn.push({ key: "photo", text: "Your request has no photo — adding one usually turns a rough ballpark into a firm price.", cta: "Add a photo", onClick: focusPhoto, ownsScroll: true });
           }
+          // A referral code the DB refused during signup. Neither signup surface
+          // can show it — ClientOnboarding is mid-submit, AuthCallback is a
+          // redirect — so the reason is stashed, and the box that explains and
+          // retries it now lives in Settings. This row is the pointer: it carries
+          // the explanation to the page the client actually lands on, and its
+          // button opens the box that can fix it. `peekReferralError` deliberately
+          // does NOT consume the stash — ReferralCard read-and-clears it as it
+          // renders the message, so the explanation and the second chance still
+          // arrive together. It is left OUT of PERMANENT_ATTN because it clears
+          // itself the moment that card mounts; a permanent dismissal would be a
+          // promise about a row that cannot come back anyway.
+          if (refStashed) attn.push({
+            key: "refcode",
+            text: refStashed + " You can enter another code in Settings.",
+            cta: "Open Settings",
+            onClick: () => setActiveTab("settings"),
+          });
           // ── Conversational rows last (see the ordering note above) ──────────
           if (chatTimeJob) attn.push({
             key: "chattime",
@@ -1601,18 +1690,44 @@ export default function ClientDashboard() {
               onClick: () => { setActiveTab("messages"); openConversation(c); },
             });
           }
-          if (attn.length === 0) return null;
+          // ── Dismissal ──────────────────────────────────────────────────────
+          //
+          // THE FILTER MUST RUN BEFORE `.slice(0, 3)`. Only the first three rows
+          // ever render, so filtering after the slice would make an × remove a
+          // row and reveal nothing — the fourth row would stay invisible and the
+          // client would be left with a shorter list for no reason.
+          //
+          // The key is scoped to the request it is about, so waving away "no
+          // photo" on one request says nothing about the next one. `msg-<job>`
+          // rows already carry their own job id; scoping them again is harmless
+          // and keeps one rule instead of two.
+          const rowKey = (k: string) => "attn:client:" + k + ":" + (activeReq?.id ?? "-");
+          const shown = attn.filter(a => {
+            const k = rowKey(a.key);
+            return !dismissed.has(k) && !hiddenNow.has(k);
+          });
+          if (shown.length === 0) return null;
           return (
             <div style={{ ...s.card, padding:"1.1rem 1.25rem", marginBottom:"1.25rem", border:"1px solid rgba(234,107,20,.3)" }}>
               <div style={{ display:"flex", alignItems:"center", gap:".45rem", fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"#ea6b14", fontWeight:700 }}>
                 <Ic name="alert-triangle" size={13} />Needs your attention
               </div>
-              {attn.slice(0, 3).map((a, i) => (
+              {shown.slice(0, 3).map((a, i) => {
+                const forever = PERMANENT_ATTN.has(a.key);
+                return (
                 <div key={a.key} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".75rem", padding:".6rem 0", borderTop: i === 0 ? "none" : "1px solid rgba(var(--ff-fg), .06)", marginTop: i === 0 ? ".5rem" : 0 }}>
                   <div style={{ fontSize:".85rem", color:"var(--ff-text)", lineHeight:1.45 }}>{a.text}</div>
-                  <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", whiteSpace:"nowrap" as const, flexShrink:0 }} onClick={() => { setActiveTab("requests"); if (!a.ownsScroll) window.scrollTo({ top: 0, behavior: "smooth" }); a.onClick?.(); }}>{a.cta}</button>
+                  <div style={{ display:"flex", alignItems:"center", gap:".4rem", flexShrink:0 }}>
+                    <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", whiteSpace:"nowrap" as const, flexShrink:0 }} onClick={() => { setActiveTab("requests"); if (!a.ownsScroll) window.scrollTo({ top: 0, behavior: "smooth" }); a.onClick?.(); }}>{a.cta}</button>
+                    <DismissX
+                      onClick={() => hide(rowKey(a.key), forever)}
+                      label={forever ? "Don't show this again" : "Hide for now"}
+                      title={forever ? "Don't show this again" : "Hide until next time you open the dashboard"}
+                    />
+                  </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           );
         })()}
@@ -1676,90 +1791,18 @@ export default function ClientDashboard() {
           </div>
         ))}
 
-        {/* A code invites ONE friend and then becomes a badge. code_status comes
-            from get_my_referral and is the single source of truth for which of
-            the three states this card is in — the same rule apply_referral_code
-            enforces server-side, so the card and the code can't disagree.
-              active  — share it
-              in_use  — a friend has taken it; it frees up 30 days after they did
-              retired — a friend booked and paid; the badge replaces the code
-            The copy button is hidden in the last two states on purpose: sharing
-            a code that will be refused is a dead end the sharer can't see. */}
-        {/* Held back until the client has actually finished a job with us. Asking
-            someone to invite a friend while their own request still has no
-            estimates on it is a favour requested before a favour delivered — and
-            it was sitting on the home tab from the moment they signed up. */}
-        {activeTab === "requests" && referral?.code && requests.some(r => r.status === "completed") && (() => {
-          const codeStatus = String(referral.code_status ?? "active");
-          const retired    = codeStatus === "retired";
-          const inUse      = codeStatus === "in_use";
-          let rewardedOn = "";
-          try { if (referral.rewarded_at) rewardedOn = new Date(referral.rewarded_at).toLocaleDateString("en-CA", { month:"long", day:"numeric", year:"numeric" }); } catch {}
-          return (
-          <div style={{ ...s.card,
-            background: retired ? "linear-gradient(135deg, rgba(34,197,94,.10), rgba(var(--ff-fg),.03))" : "linear-gradient(135deg, rgba(234,107,20,.10), rgba(var(--ff-fg),.03))",
-            borderColor: retired ? "rgba(34,197,94,.32)" : "rgba(234,107,20,.28)" }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".75rem", flexWrap:"wrap" as const }}>
-              <div style={{ minWidth:0 }}>
-                <div style={{ ...s.cardTitle, marginBottom:".2rem" }}>{retired ? "Friend referred" : "Invite a friend, they save"}</div>
-                <div style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.5 }}>
-                  {retired ? (
-                    <>You referred a friend and they booked their first job{rewardedOn ? ` on ${rewardedOn}` : ""} — we covered their <strong>3% service fee</strong>. Your code has done its job, so it's retired. Thanks for the introduction.</>
-                  ) : inUse ? (
-                    <>A friend has your code right now. Each code is good for <strong>one friend</strong>, so it's on hold until they book — and if they haven't within 30 days it frees up on its own.</>
-                  ) : (
-                    <>Your code waives the <strong>3% service fee on a friend's first job</strong>. It's good for <strong>one friend</strong> — once they book, the code retires and you keep the badge.</>
-                  )}
-                </div>
-              </div>
-              {retired ? (
-                <div style={{ textAlign:"center", padding:".6rem 1.1rem", border:"1px solid rgba(34,197,94,.42)", background:"rgba(34,197,94,.12)", borderRadius:"12px" }}>
-                  <div style={{ marginBottom:".2rem" }}><Ic name="user-check" size={26} color="#22c55e" /></div>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.05rem", letterSpacing:".08em", color:"#22c55e", lineHeight:1.1 }}>Friend Referred</div>
-                </div>
-              ) : (
-                <div style={{ textAlign:"center" }}>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.8rem", letterSpacing:".12em", color:"#ea6b14", border:"1px dashed rgba(234,107,20,.5)", borderRadius:"10px", padding:".35rem .9rem", ...(inUse ? { opacity:.45 } : {}) }}>{referral.code}</div>
-                  {inUse ? (
-                    <div style={{ marginTop:".5rem", fontSize:".74rem", color:"rgba(var(--ff-muted), .55)" }}>On hold with a friend</div>
-                  ) : (
-                    <button style={{ ...s.tab, marginTop:".45rem", fontSize:".78rem", ...(refCopied ? { color:"#22c55e", borderColor:"rgba(34,197,94,.4)", background:"rgba(34,197,94,.1)" } : {}) }} onClick={copyReferral}>{refCopied ? "Copied ✓" : "Copy invite link"}</button>
-                  )}
-                </div>
-              )}
-            </div>
-            {/* Only offered to someone who hasn't been referred yet. Once
-                apply_referral_code succeeds it refuses a second code, so
-                leaving the box up would just be a button that always fails. */}
-            {!referral.i_was_referred && (
-              <div style={{ marginTop:".9rem", paddingTop:".85rem", borderTop:"1px solid rgba(var(--ff-fg), .1)" }}>
-                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".5rem", lineHeight:1.5 }}>
-                  Got a code from a friend? Enter it before your first job and we'll waive your 3% service fee.
-                </div>
-                <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
-                  <input
-                    value={refInput}
-                    onChange={e => { setRefInput(e.target.value.toUpperCase()); setRefMsg(null); }}
-                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void applyReferral(); } }}
-                    placeholder="Friend's code"
-                    aria-label="Friend's referral code"
-                    autoCapitalize="characters" autoCorrect="off" spellCheck={false} maxLength={24}
-                    style={{ flex:"1 1 9rem", minWidth:0, padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", letterSpacing:".08em", boxSizing:"border-box" as const }}
-                  />
-                  <button
-                    onClick={() => void applyReferral()}
-                    disabled={refBusy || !refInput.trim()}
-                    style={{ ...s.tab, fontSize:".8rem", ...(refBusy || !refInput.trim() ? { opacity:.5, cursor:"not-allowed" } : {}) }}
-                  >{refBusy ? "Applying…" : "Apply"}</button>
-                </div>
-                {refMsg && (
-                  <div style={{ marginTop:".5rem", fontSize:".8rem", lineHeight:1.5, color: refMsg.ok ? "#22c55e" : "#f87171" }}>{refMsg.text}</div>
-                )}
-              </div>
-            )}
-          </div>
-          );
-        })()}
+        {/* The referral card used to live here. It moved to Settings on
+            2026-09-01 (`src/components/ReferralCard.tsx`), because this tab is
+            where a client acts on a job already in flight — pick a pro, sign,
+            pay, confirm — and a permanent promotion was competing with rows
+            that gate money. The ask now happens in two places instead of one
+            constant one: Settings, where somebody has come looking for their
+            code, and the completion prompt after a finished job, where the
+            favour is asked immediately after one was delivered.
+
+            `referral` state stays in this file — `requestReferralShare` needs
+            the code and its status to decide whether that prompt may fire at
+            all, and a retired code must never be offered for sharing. */}
 
         {activeTab === "recurring" && (plans.length > 0 ? (
           <div style={{ ...s.card }}>
@@ -1817,6 +1860,48 @@ export default function ClientDashboard() {
 
         {activeTab === "requests" && (
         <>
+            {/* "Your open requests" now sits at the TOP of the tab, above the
+                estimates block, because it is the control that decides what
+                everything below it is about. It used to sit under the estimates
+                and the rebook strip, so a client with three live requests had to
+                scroll past one request's bids to discover they could switch to
+                another — and the Current Request card underneath would then be
+                describing a request they hadn't chosen.
+
+                The search box only appears alongside it, for the same reason:
+                with one open request there is nothing to narrow, and an empty
+                filter above a single row is just furniture. */}
+            {openReqs.length > 1 && (() => {
+              const tokens = searchTokens(search);
+              const hits = openReqs.filter(r => matchesSearch(tokens, reqSearchFields(r)));
+              return (
+                <div id={REQ_SWITCH_ANCHOR} style={{ ...s.card, ...anchorPad, padding:"1rem 1.25rem" }}>
+                  <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)", marginBottom:".6rem" }}>Your open requests ({openReqs.length})</div>
+                  {openReqs.length > 3 && (
+                    <DashSearch
+                      value={search}
+                      onChange={setSearch}
+                      placeholder="Search your requests"
+                      resultText={hits.length + " of " + openReqs.length + " shown"}
+                    />
+                  )}
+                  <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
+                    {hits.length === 0 ? (
+                      <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .5)" }}>No open request matches that.</div>
+                    ) : hits.map(r => {
+                      const on = r.id === activeReq?.id;
+                      return (
+                        <button key={r.id} onClick={() => selectRequest(r.id)} style={{ ...s.tab, ...(on ? s.activeTab : {}), display:"flex", alignItems:"center", gap:".4rem" }}>
+                          <Ic name={STATUS_META[r.status]?.icon as any} size={12} color={STATUS_META[r.status]?.color} />
+                          <span style={{ maxWidth:160, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{r.service_needed}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* THE point of this page. Hoisted out of the Current Request card on
                 2026-08-28 — it used to sit BELOW the metadata grid, the job
                 description, the photo panel and a status badge, so a client who
@@ -1919,41 +2004,14 @@ export default function ClientDashboard() {
               </div>
             )}
 
-            {/* Rebooking is the cheapest job on the platform to win, and it was
-                buried one tab deep. Surface the same pros here on the home tab
-                so "get the guy who did it last time" is one tap from landing.
-                Sits BELOW Needs-your-attention on purpose — money-gating rows
-                still come first. The full list, favourites and last-service
-                detail stay on the My Pros tab. */}
-            {pros.length > 0 && (
-              <div style={{ ...s.card, padding:"1rem 1.25rem" }}>
-                <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:".75rem", flexWrap:"wrap" as const, marginBottom:".75rem" }}>
-                  <div style={{ minWidth:0, flex:"1 1 auto" }}>
-                    <div style={{ ...s.cardTitle, marginBottom:".15rem" }}>Book a pro you've used before</div>
-                    <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .55)" }}>They get first refusal for 48 hours — no need to compare estimates again.</div>
-                  </div>
-                  {pros.length > 3 && (
-                    <button onClick={() => setActiveTab("pros")} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".8rem", fontWeight:600, cursor:"pointer", padding:0 }}>
-                      All {pros.length} pros →
-                    </button>
-                  )}
-                </div>
-                <div style={{ display:"flex", gap:".7rem", overflowX:"auto" as const, paddingBottom:".3rem" }}>
-                  {pros.slice(0, 6).map(pro => (
-                    <div key={pro.contractor_id} style={{ minWidth:"178px", flex:"0 0 auto", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"12px", padding:".8rem", background:"rgba(var(--ff-fg), .03)" }}>
-                      <div style={{ fontSize:".88rem", fontWeight:600, color:"var(--ff-text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
-                        {pro.company_name || pro.name || "Your pro"}
-                      </div>
-                      <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .5)", marginTop:".15rem", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
-                        {pro.rating ? "⭐ " + Number(pro.rating).toFixed(1) : "New"}
-                        {pro.last_service ? " · " + pro.last_service : ""}
-                      </div>
-                      <button style={{ ...s.primaryBtn, width:"100%", marginTop:".6rem", padding:".45rem", fontSize:".8rem" }} onClick={() => rehire(pro)}>Book again</button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* The "Book a pro you've used before" strip used to live here. It
+                moved to NewRequest on 2026-09-01: this tab is where a client
+                comes to act on a job already in flight — pick a pro, sign, pay,
+                confirm — and a promo to start ANOTHER job was competing with
+                those. The rebook offer belongs at the moment somebody is
+                actually starting a new request, which is exactly where it now
+                sits. The full list, favourites and last-service detail were and
+                still are on the My Pros tab, so nothing is unreachable. */}
             {requests.length === 0 ? (
               <div style={{ textAlign:"center", padding:"3rem 2rem" }}>
                 <div style={{ marginBottom:"1rem" }}><Ic name="home" size={44} color="#ea6b14" /></div>
@@ -1964,22 +2022,6 @@ export default function ClientDashboard() {
               </div>
             ) : (
               <>
-                {openReqs.length > 1 && (
-                  <div id={REQ_SWITCH_ANCHOR} style={{ ...s.card, ...anchorPad, padding:"1rem 1.25rem" }}>
-                    <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)", marginBottom:".6rem" }}>Your open requests ({openReqs.length})</div>
-                    <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
-                      {openReqs.map(r => {
-                        const on = r.id === activeReq?.id;
-                        return (
-                          <button key={r.id} onClick={() => selectRequest(r.id)} style={{ ...s.tab, ...(on ? s.activeTab : {}), display:"flex", alignItems:"center", gap:".4rem" }}>
-                            <Ic name={STATUS_META[r.status]?.icon as any} size={12} color={STATUS_META[r.status]?.color} />
-                            <span style={{ maxWidth:160, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{r.service_needed}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
                 {activeReq && (() => {
                   /* Collapsed ONLY while there are estimates to choose between. When
                      the request is still waiting on bids this is the whole page, so
@@ -2466,7 +2508,11 @@ export default function ClientDashboard() {
                     histFilter === "completed" ? r.status === "completed" :
                     histFilter === "cancelled" ? r.status === "cancelled" :
                     (r.status !== "completed" && r.status !== "cancelled");
-                  const filtered = histAll.filter(matches);
+                  // Search narrows WITHIN the chosen status filter rather than
+                  // replacing it, so the two controls compose instead of one
+                  // silently overriding the other.
+                  const histTokens = searchTokens(search);
+                  const filtered = histAll.filter(r => matches(r) && matchesSearch(histTokens, reqSearchFields(r)));
                   const shown = filtered.slice(0, histLimit);
                   const FILTERS: { key: typeof histFilter; label: string }[] = [
                     { key: "all", label: "All" },
@@ -2482,8 +2528,20 @@ export default function ClientDashboard() {
                           <button key={f.key} onClick={() => { setHistFilter(f.key); setHistLimit(5); }} style={{ ...s.tab, padding:".4rem .85rem", fontSize:".8rem", ...(histFilter === f.key ? s.activeTab : {}) }}>{f.label}</button>
                         ))}
                       </div>
+                      {histAll.length > 3 && (
+                        <DashSearch
+                          value={search}
+                          onChange={v => { setSearch(v); setHistLimit(5); }}
+                          placeholder="Search your history"
+                          resultText={filtered.length + " of " + histAll.filter(matches).length + " shown"}
+                        />
+                      )}
                       {shown.length === 0 ? (
-                        <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .5)", padding:".5rem 0" }}>No {histFilter === "all" ? "" : histFilter + " "}requests to show.</div>
+                        <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .5)", padding:".5rem 0" }}>
+                          {searchTokens(search).length > 0
+                            ? "Nothing matches that."
+                            : "No " + (histFilter === "all" ? "" : histFilter + " ") + "requests to show."}
+                        </div>
                       ) : shown.map(r => (
                         <div key={r.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:".85rem 0", borderBottom:"1px solid rgba(var(--ff-fg), .06)", gap:".75rem", flexWrap:"wrap" as const }}>
                           {/* minWidth:0 so a long service label shrinks instead of

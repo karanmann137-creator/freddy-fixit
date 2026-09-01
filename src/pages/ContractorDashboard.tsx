@@ -32,6 +32,9 @@ import JobPhotos, { photosMissing } from "@/components/JobPhotos";
 import JobExpenses, { type JobExpense } from "@/components/JobExpenses";
 import ContractPanel, { CONTRACT_ANCHOR } from "@/components/ContractPanel";
 import BidChat from "@/components/BidChat";
+import DismissX from "@/components/DismissX";
+import DashSearch from "@/components/DashSearch";
+import { searchTokens, matchesSearch } from "@/lib/dashSearch";
 
 const CONTRACTOR_NAV: SidebarItem[] = [
   { key: "jobs",      label: "My Jobs",        icon: "briefcase" },
@@ -95,6 +98,24 @@ const contractorMissing = (c: any): string[] => contractorGaps(c).map(g => g.lab
 // The token records WHICH gaps were dismissed, so if the set later changes
 // (e.g. insurance lapses) the nudge comes back rather than staying silent.
 const nudgeToken = (gaps: ProfileGap[]) => "profile_nudge:" + gaps.map(g => g.key).sort().join(",");
+
+/**
+ * What a search query is matched against — one definition per list, so the
+ * box and the rows can't disagree about what "searchable" means.
+ *
+ * The job code is included because it is the identifier a client quotes on the
+ * phone, and it is the only thing on the card that is unique. Nothing private
+ * to the other party goes in here: matching is done on text already rendered.
+ */
+const jobSearchFields = (j: any): (string | number | null | undefined)[] => [
+  j?.request?.service_needed, j?.request?.location, j?.client?.first_name,
+  j?.status?.replace("_", " "), j?.amount, jobCode(j?.id ?? ""),
+  j?.scheduled_at ? new Date(j.scheduled_at).toLocaleDateString() : null,
+];
+const openJobSearchFields = (r: any): (string | number | null | undefined)[] => [
+  r?.service_needed, r?.location, r?.preferred_schedule, r?.description,
+  r?.recurring_frequency,
+];
 import FreddyRewind from "@/components/FreddyRewind";
 import MilestonePanel from "@/components/MilestonePanel";
 import { useServicePricing, rangeText, money, benchmarkFor, type ServicePrice, type Grade } from "@/lib/servicePricing";
@@ -202,6 +223,23 @@ export default function ContractorDashboard() {
   const [activeTab, setActiveTab]     = useState<"jobs"|"available"|"messages"|"calendar"|"profile"|"earnings"|"reviews">("jobs");
   const tabAnim = useEnterAnim(activeTab); // replays a 220ms fade+rise on tab change; nothing remounts
   const [jobFilter, setJobFilter]     = useState<string|null>(null); // pipeline-strip stage filter for the My Jobs list
+  const [search, setSearch]           = useState(""); // client-side filter over already-loaded rows; no query, no new RLS surface
+  /**
+   * Attention rows the contractor has hidden — SESSION ONLY, deliberately.
+   *
+   * Nothing in this list is safe to dismiss forever. `claim-`, `bal-`,
+   * `contract-` and `photo-` are money and payout gates; `resched-`, `wt-`,
+   * `wtdone-`, `slot-`, `propose-` and `soon-` are action-required state that
+   * changes underneath the row; `reserved` and `msg-` carry NEW information on
+   * every load, so a permanent dismissal of "3 unread" would silence every
+   * future message. Note the contractor `photo-` row is the opposite of the
+   * client's "photo" row — theirs is an optional advisory, this one is what
+   * stops them marking the job complete and getting paid.
+   *
+   * So there is no `ui_dismissals` write here. The banner above it persists its
+   * dismissal, because "my profile is complete" is a fact that stays true.
+   */
+  const [hiddenNow, setHiddenNow]     = useState<Set<string>>(new Set());
   const [pendingJobId, setPendingJobId] = useState<string|null>(null); // job a notification pointed at, waiting for the list to load
   const [bidsCount, setBidsCount]     = useState(0); // lifetime bids — drives the "place your first bid" setup step
   const [showProfileCongrats, setShowProfileCongrats] = useState(false);
@@ -371,6 +409,12 @@ export default function ContractorDashboard() {
       if (!data.session) setLocation("/login");
     });
   }, []);
+
+  // One search box, two lists — so the query is cleared on every tab change.
+  // Carrying "kitchen" from My Jobs over to Available Jobs would present an
+  // empty tab as if there were no work, which is the worst possible lie to
+  // tell a contractor looking for leads.
+  useEffect(() => { setSearch(""); }, [activeTab]);
 
   // Pull the service-agreement status for a set of jobs. Called on load for every
   // job, and again after ContractPanel signs so the attention row clears without
@@ -1225,6 +1269,10 @@ export default function ContractorDashboard() {
                   Ignore — my profile is complete
                 </button>
               </div>
+              {/* Same call as the link beside it, deliberately. The × is the
+                  faster affordance; giving it its OWN store for the same fact is
+                  how two answers to one question start disagreeing. */}
+              <DismissX onClick={() => skipSetupStep(nudgeToken(gaps))} label="Don't show this again" title="Don't show this again" />
             </div>
           );
         })()}
@@ -1252,6 +1300,7 @@ export default function ContractorDashboard() {
                 Not now
               </button>
             </div>
+            <DismissX onClick={dismissGuide} label="Hide this" title="Hide this" />
           </div>
         )}
 
@@ -1372,16 +1421,29 @@ export default function ContractorDashboard() {
               onClick: () => { setActiveTab("messages"); openConversation(c); window.scrollTo({ top: 0, behavior: "smooth" }); },
             });
           }
-          if (attn.length === 0) return null;
+          // Filter BEFORE the slice, or an × would remove a row and reveal
+          // nothing — only the first four ever render.
+          const rowKey = (k: string) => "attn:contractor:" + k;
+          const shownAttn = attn.filter(a => !hiddenNow.has(rowKey(a.key)));
+          if (shownAttn.length === 0) return null;
           return (
             <div style={{ ...s.card, padding:"1.1rem 1.25rem", marginBottom:"1.25rem", border:"1px solid rgba(234,107,20,.3)" }}>
               <div style={{ display:"flex", alignItems:"center", gap:".45rem", fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"#ea6b14", fontWeight:700 }}>
                 <Ic name="alert-triangle" size={13} />Needs your attention
               </div>
-              {attn.slice(0, 4).map((a, i) => (
+              {shownAttn.slice(0, 4).map((a, i) => (
                 <div key={a.key} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".75rem", padding:".6rem 0", borderTop: i === 0 ? "none" : "1px solid rgba(var(--ff-fg), .06)", marginTop: i === 0 ? ".5rem" : 0 }}>
                   <div style={{ fontSize:".85rem", color:"var(--ff-text)", lineHeight:1.45 }}>{a.text}</div>
-                  <button style={{ ...s.btn, background: a.danger ? "rgba(239,68,68,.12)" : "#ea6b14", color: a.danger ? "#ef4444" : "#fff", border: a.danger ? "1px solid rgba(239,68,68,.35)" : "none", whiteSpace:"nowrap" as const, flexShrink:0 }} onClick={a.onClick}>{a.cta}</button>
+                  <div style={{ display:"flex", alignItems:"center", gap:".4rem", flexShrink:0 }}>
+                    <button style={{ ...s.btn, background: a.danger ? "rgba(239,68,68,.12)" : "#ea6b14", color: a.danger ? "#ef4444" : "#fff", border: a.danger ? "1px solid rgba(239,68,68,.35)" : "none", whiteSpace:"nowrap" as const, flexShrink:0 }} onClick={a.onClick}>{a.cta}</button>
+                    {/* Hide for now only — see the hiddenNow docblock. Every row
+                        here is either a money gate or state that changes. */}
+                    <DismissX
+                      onClick={() => setHiddenNow(prev => new Set(prev).add(rowKey(a.key)))}
+                      label="Hide for now"
+                      title="Hide until next time you open the dashboard"
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -1389,9 +1451,23 @@ export default function ContractorDashboard() {
         })()}
 
         {activeTab === "jobs" && (() => {
-          const shown = jobFilter && STAGE_MATCH[jobFilter] ? myJobs.filter(STAGE_MATCH[jobFilter]) : myJobs;
+          // Search COMPOSES with the pipeline-stage filter rather than replacing
+          // it — a pro who clicked "Scheduled" and then typed an address means
+          // both, and silently dropping either would show them a job the
+          // controls on screen say is hidden.
+          const staged = jobFilter && STAGE_MATCH[jobFilter] ? myJobs.filter(STAGE_MATCH[jobFilter]) : myJobs;
+          const tokens = searchTokens(search);
+          const shown = staged.filter(j => matchesSearch(tokens, jobSearchFields(j)));
           return (
           <div>
+            {myJobs.length > 3 && (
+              <DashSearch
+                value={search}
+                onChange={setSearch}
+                placeholder="Search jobs — service, client, address or job code"
+                resultText={shown.length + " of " + staged.length + " shown"}
+              />
+            )}
             {jobFilter && myJobs.length > 0 && (
               <div style={{ display:"flex", alignItems:"center", gap:".6rem", marginBottom:"1rem", flexWrap:"wrap" as const }}>
                 <span style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .6)" }}>
@@ -1400,9 +1476,14 @@ export default function ContractorDashboard() {
                 <button onClick={() => setJobFilter(null)} style={{ ...s.btn, padding:".3rem .75rem", borderRadius:"99px", fontSize:".75rem" }}>Show all ×</button>
               </div>
             )}
-            {jobFilter && myJobs.length > 0 && shown.length === 0 && (
+            {/* Two different nothings, said differently. "No jobs in this stage"
+                is the truth about the pipeline; when a query is what emptied
+                the list, saying that would be a lie the pro can't correct. */}
+            {myJobs.length > 0 && shown.length === 0 && (
               <div style={{ textAlign:"center" as const, padding:"2.5rem 1.5rem", color:"rgba(var(--ff-muted), .5)", fontSize:".9rem" }}>
-                No jobs {STAGE_LABEL[jobFilter] ?? "in this stage"} right now.
+                {tokens.length > 0
+                  ? <>No jobs match “{search}”. <button type="button" onClick={() => setSearch("")} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer", padding:0 }}>Clear search</button></>
+                  : <>No jobs {jobFilter ? (STAGE_LABEL[jobFilter] ?? "in this stage") : "here"} right now.</>}
               </div>
             )}
             {(() => {
@@ -1829,7 +1910,10 @@ export default function ContractorDashboard() {
           />
         )}
 
-        {activeTab === "available" && (
+        {activeTab === "available" && (() => {
+          const openTokens = searchTokens(search);
+          const openHits = availableJobs.filter(r => matchesSearch(openTokens, openJobSearchFields(r)));
+          return (
           <div>
             {contractor?.status !== "active" ? (
               <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
@@ -1843,14 +1927,26 @@ export default function ContractorDashboard() {
             ) : (
             <>
             <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .45)", marginBottom:"1rem" }}>Open jobs that match your trades — lowest-competition first.</p>
-            {availableJobs.length === 0 ? (
+            {availableJobs.length > 3 && (
+              <DashSearch
+                value={search}
+                onChange={setSearch}
+                placeholder="Search open jobs — service or area"
+                resultText={openHits.length + " of " + availableJobs.length + " shown"}
+              />
+            )}
+            {availableJobs.length > 0 && openHits.length === 0 ? (
+              <div style={{ textAlign:"center" as const, padding:"2.5rem 1.5rem", color:"rgba(var(--ff-muted), .5)", fontSize:".9rem" }}>
+                No open jobs match “{search}”. <button type="button" onClick={() => setSearch("")} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer", padding:0 }}>Clear search</button>
+              </div>
+            ) : availableJobs.length === 0 ? (
               <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
                 <div style={{ marginBottom:"1rem" }}><Ic name="clipboard-list" size={48} color="#ea6b14" /></div>
                 <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".03em", lineHeight:1.1, marginBottom:".5rem" }}>No Open Jobs Right Now</h2>
                 <p style={{ color:"rgba(var(--ff-muted), .5)" }}>New jobs matching your specialties will show up here. Add more specialties in your profile to see more work.</p>
                 <button onClick={() => setActiveTab("profile")} style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", marginTop:"1.25rem" }}>Update your specialties</button>
               </div>
-            ) : availableJobs.map(r => (
+            ) : openHits.map(r => (
               <div key={r.id} style={s.jobCard}>
                 {r.my_amount == null && !r.my_walkthrough && (
                   <div style={{ display:"inline-flex", alignItems:"center", gap:".3rem", padding:".22rem .55rem", borderRadius:"99px", background:"rgba(234,107,20,.16)", color:"#ea6b14", fontSize:".68rem", fontWeight:800, letterSpacing:".04em", textTransform:"uppercase" as const, marginBottom:".6rem", marginRight:".4rem" }}>
@@ -2062,7 +2158,8 @@ export default function ContractorDashboard() {
             </>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {activeTab === "profile" && (
           <div>
