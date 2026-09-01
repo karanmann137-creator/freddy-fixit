@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { getDbPosts, fmtDate, readTime, type DbPost } from "../lib/blogDb";
+import { upsertMeta } from "../lib/seo";
 
 const POSTS = [
   {
@@ -130,6 +131,19 @@ const tagColor = (tag: string) => TAG_COLORS[tag] ?? "#a855f7";
 export default function Blog() {
   const [, setLocation] = useLocation();
   const [dbPosts, setDbPosts] = useState<DbPost[]>([]);
+  useEffect(() => {
+    const url = "https://freddyfixit.ca/blog";
+    const desc = "Straight answers on Calgary home and vehicle repair \u2014 what jobs actually cost, how to hire a pro you can trust, and what to check before you pay.";
+    const title = "Calgary Home & Vehicle Repair Advice | Freddy Fix It Blog";
+    const prev = document.title;
+    document.title = title;
+    upsertMeta('meta[name="description"]', "name", "description", desc);
+    upsertMeta('link[rel="canonical"]', "rel", "canonical", url, "href");
+    upsertMeta('meta[property="og:title"]', "property", "og:title", title);
+    upsertMeta('meta[property="og:description"]', "property", "og:description", desc);
+    upsertMeta('meta[property="og:url"]', "property", "og:url", url);
+    return () => { document.title = prev; };
+  }, []);
   useEffect(() => {
     let alive = true;
     getDbPosts().then(posts => { if (alive) setDbPosts(posts); });
