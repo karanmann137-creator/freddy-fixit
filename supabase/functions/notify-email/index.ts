@@ -7,6 +7,27 @@
 //                                 (starts the Alberta 10-day cancellation clock; stamps jobs.contract_copy_sent_at)
 // Deploy: supabase functions deploy notify-email --no-verify-jwt
 // Secret needed: RESEND_API_KEY  (SUPABASE_URL / SERVICE_ROLE_KEY are auto-injected)
+//
+// CALLER GATE (v9). This function took {event, job_id} straight from the body
+// with no gate at all, so anyone holding a job uuid could fire the three
+// lifecycle emails an UNLIMITED number of times at that job's client and
+// contractor, from noreply@freddyfixit.ca. Since 2026-08-30 GoTrue auth mail
+// rides the same Resend domain, key and quota, so abusing this could silence
+// signup confirmation and password reset -- the exact Aug 2026 lockout shape.
+// contract_copy was blunted by its write-once stamp but not closed: burning
+// `contract_copy_sent_at` early starts the Alberta 10-day cancellation clock at
+// a moment of the caller's choosing AND makes the real send at approval time
+// skip, so the client never receives a document the law requires them to have.
+//
+// verify_jwt stays false and buys nothing as always -- the anon key is itself a
+// valid project-signed JWT and ships publicly in the bundle. The gate is in
+// code and accepts exactly two callers:
+//   * Postgres, proving itself with a single-use x-ff-internal token minted by
+//     public.notify_email() and redeemed through consume_internal_token; or
+//   * a real user JWT belonging to a PARTY TO THAT JOB (client or contractor),
+//     or an admin.
+// It fails CLOSED: any error resolving either one is a refusal, never a send.
+// Identity comes from the JWT and the job row, never from the request body.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
@@ -20,7 +41,7 @@ const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-ff-internal",
 };
 
 type EventType = "schedule_proposed" | "job_completed_client" | "job_confirmed_contractor" | "contract_copy";
@@ -72,6 +93,39 @@ serve(async (req) => {
       });
     }
 
+    // --- caller gate, part 1: who is asking? ---------------------------------
+    // Resolved BEFORE the job is read, so an unauthenticated caller cannot use
+    // 404-vs-403 to test whether a job uuid exists.
+    let internal = false;
+    let callerId: string | null = null;
+    let callerIsAdmin = false;
+
+    const tok = req.headers.get("x-ff-internal");
+    if (tok) {
+      try {
+        const { data } = await admin.rpc("consume_internal_token", { p_token: tok, p_purpose: "edge-internal" });
+        internal = data === true;
+      } catch (_) { internal = false; }
+    }
+    if (!internal) {
+      const bearer = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
+      if (bearer) {
+        try {
+          const { data: { user } } = await admin.auth.getUser(bearer);
+          if (user) {
+            callerId = user.id;
+            const { data: p } = await admin.from("profiles").select("role").eq("id", user.id).maybeSingle();
+            callerIsAdmin = p?.role === "admin";
+          }
+        } catch (_) { /* stays null -- fail closed */ }
+      }
+      if (!callerId) {
+        return new Response(JSON.stringify({ error: "forbidden" }), {
+          status: 403, headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     const { data: job, error: jobErr } = await admin
       .from("jobs")
       .select(`
@@ -86,6 +140,13 @@ serve(async (req) => {
     if (jobErr || !job) {
       return new Response(JSON.stringify({ error: "Job not found" }), {
         status: 404, headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+
+    // --- caller gate, part 2: are they a party to THIS job? ------------------
+    if (!internal && !callerIsAdmin && callerId !== job.client_id && callerId !== job.contractor_id) {
+      return new Response(JSON.stringify({ error: "forbidden" }), {
+        status: 403, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 

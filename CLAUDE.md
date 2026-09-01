@@ -962,7 +962,7 @@ Consumer-facing wording: say **"held securely"**, never "escrow" — the Stripe 
 
 `run_reminders()` steps: 0 recurring generation · 1 recurring-due nudges · 2 seasonal nudges (one per engaged client per season, `reminder_log` dedupe) · 3 day-before visit confirm · 4–7 48h stall nudges (bids waiting / approval owed / price change pending / contractor estimate owed) · 8 balance owed after completion (24h → 3d → 7d, then stops).
 
-**Storage buckets:** `contractor-docs` (private; admin SELECT via `contractor_docs_admin_select`), `completion-photos` (private, job-party), `problem-photos` (private, dispute parties), `message-media` (private, job-party), `contracts` (private, job-party), `contractor-photos` + `portfolio-photos` (public — **note: these allow public listing**). Every upload is rate-limited by the `ff_upload_rate_guard` trigger, and **objects cannot be deleted in SQL** (`storage.protect_delete()`) — removal needs the Storage API from a service-role edge function.
+**Storage buckets:** `contractor-docs` (private; admin SELECT via `contractor_docs_admin_select`), `completion-photos` (private, job-party), `problem-photos` (private, dispute parties), `message-media` (private, job-party), `contracts` (private, job-party), `contractor-photos` + `portfolio-photos` (public objects, **but no longer listable** — see Security model). Every upload is rate-limited by the `ff_upload_rate_guard` trigger, and **objects cannot be deleted in SQL** (`storage.protect_delete()`) — removal needs the Storage API from a service-role edge function.
 
 **Auth deadlock rule: never call a supabase query inside `onAuthStateChange`.** Do it on route change instead.
 
@@ -1010,6 +1010,96 @@ Their DKIM reputation is shared with every transactional email we send, and a DK
 The full ranked findings live in `SECURITY-AUDIT-PRIVATE.md`, which is **gitignored** — the repo is public and must never carry a map of holes.
 
 ---
+
+## A public bucket is not a listable bucket (2026-09-01)
+
+`contractor-photos` and `portfolio-photos` are public, and each carried a
+blanket `for select to public using (bucket_id = '...')` policy. **That policy
+was never what made the images display.** A public bucket serves
+`/storage/v1/object/public/<bucket>/<path>` **without consulting RLS at all**;
+RLS on `storage.objects` governs only the authenticated API surface — list,
+signed URLs, move, upload. So the blanket policy bought nothing except
+**enumeration**.
+
+What that leaked is the point. **A folder name in either bucket IS the
+contractor's auth uid** (`contractors.id` is the auth uid), so anyone could
+list every contractor's uid, their filenames and their counts — undoing part of
+what the 2026-08-04 audit closed when it took `public.contractors` away from
+anon. It also exposed the avatars and portfolios of **pending and deactivated**
+contractors, which `get_contractor_directory`, `get_top_pros` and
+`get_contractor_profile` all deliberately hide.
+
+Both blanket policies are replaced by owner-or-admin reads, and the three
+`contractor-photos` write policies were re-scoped `{public}` → `{authenticated}`
+to match the `portfolio-photos` pair. **The write re-scope changes no
+behaviour** — the USING clause already required a non-null `auth.uid()` — it
+stops the ACL depending on the predicate being correct, the same lesson as
+`set_job_autopay`'s null-unsafe owner check.
+
+**Tightening a read policy is the dangerous direction**, so it was proven safe
+*before* applying: nothing in `src/` lists either bucket (every frontend use is
+`getPublicUrl` / `upload` / `remove`), and the only `.list()` calls anywhere are
+in `delete-account` and `admin-delete-account`, both on **service-role** clients
+that bypass RLS. Proven *after* applying by a rolled-back probe **9/9** (anon
+lists 0; an owner sees only their own folder; a second contractor sees 0 of the
+first's; admin still sees all; both buckets still `public=true`; all four
+`contractor-photos` policies now `{authenticated}`; both blanket policies gone)
+**plus a live `net.http_get` on a real avatar with no auth header returning
+`200 image/png`** — the public URL was verified still serving, not assumed.
+
+## `notify-email` was an open emitter (2026-09-01)
+
+The open-queue note said only that `contract_copy` was callable by anyone with
+a job_id, blunted by its write-once stamp. Reading the source showed it was
+worse: the function took `{event, job_id}` **straight from the body with no gate
+at all**, so the other three events — `schedule_proposed`,
+`job_completed_client`, `job_confirmed_contractor` — could be fired an
+**unlimited** number of times at a job's client and contractor from
+`noreply@freddyfixit.ca`. Since 2026-08-30 GoTrue auth mail rides the same
+Resend domain, DKIM key and quota, so abusing it could silence signup
+confirmation and password reset — **the exact Aug 2026 lockout shape**, reached
+from the other end.
+
+And `contract_copy` was not merely spam-blunted. Burning
+`contract_copy_sent_at` early **starts the Alberta 10-day cancellation clock at
+a moment of the caller's choosing** *and* makes the real send at approval time
+skip — so the client never receives a document the law requires them to have.
+The write-once guard was protecting the stamp, not the client.
+
+**Two halves, and the order between them is load-bearing.**
+
+`public.notify_email()` now mints `issue_internal_token('edge-internal')` and
+sends it as `x-ff-internal`, instead of the **hardcoded anon JWT bearer** it
+used to carry — which proved nothing and sat in publicly-readable
+`pg_proc.prosrc` on a public repo. **This migration goes FIRST**: an
+`x-ff-internal` header sent to a still-ungated function is harmless, whereas
+deploying the gate first would break the `job_confirmed_contractor` email in the
+window between the two steps. The mint stays **inside** the function's existing
+catch-all, because `confirm_job_completion` — **payout guard 1** — calls it, and
+a notification is never worth a payout.
+
+`notify-email` **v9** then gates in code, accepting exactly two callers:
+Postgres proving itself with the single-use token redeemed through
+`consume_internal_token`, or a real user JWT belonging to a **party to that
+job** (client or contractor) or an admin. `verify_jwt` stays false and buys
+nothing, as always.
+
+**The caller is resolved BEFORE the job row is read**, so an unauthenticated
+caller cannot use 404-vs-403 to test whether a job uuid exists. Identity comes
+from the JWT and the job row, **never from the request body**. It fails CLOSED —
+any error resolving either credential is a refusal, never a send.
+
+**No frontend change was needed.** `src/lib/contractCopy.ts` calls
+`supabase.functions.invoke`, which automatically attaches the signed-in user's
+JWT, and both call sites (`MilestonePanel`, `ClientDashboard`) sit behind
+`ProtectedRoute` as that job's client — so the party check passes.
+
+**MONEY: touches none of the four payout guards.** Verified live **4/4**: no
+auth → `403 {"error":"forbidden"}`; a valid, publicly-shipped **anon bearer** →
+403 (the realistic attacker credential); a fresh internal token → `404 {"error":
+"Job not found"}` on a bogus uuid, which proves the gate passed **without
+sending any email**; the same token replayed → 403, so single-use holds.
+`platform_health_check()` 7/7 after.
 
 ---
 
@@ -1157,8 +1247,6 @@ no-op.
 - **Prepaid-contracting licensing** (contractor licence + bond; whether the platform needs its own) — lawyer + Service Alberta. Blocking-risk item.
 - **The dispute branch is still production-untested** — the held→release path ran live on 2026-08-30, but no job has ever reached `disputed`, so `resolve-dispute` has never executed against real money.
 - **The ghost client is now covered end to end (2026-08-31)** — card-on-file collects the balance automatically, `run_reminders()` step 8 nudges when it can't (24h/3d/7d), and `escalate_unpaid_balances()` hands the job to the owner at 10 days. **Card-on-file has never charged a real card**, only an empty candidate set; treat it as unproven until it has.
-- `notify-email` is `verify_jwt=false`, so `contract_copy` is callable by anyone with a job_id — consider gating or rate-limiting (the write-once guard blunts it).
-- `contractor-photos` + `portfolio-photos` buckets allow public listing.
 - Seed contractors Slone (`a01c49f7-0ba6-4e0a-bc81-aba53baebcb7`) and Justin (`44748517-72d6-440a-ab06-b13e2660cc80`) still have NULL `company_name` + vetting answers — owner to provide.
 - `review-contractor` sometimes records `review_status='rejected'` with an empty `review_result={}`.
 - **Decide the social bot's fate — finish it or delete it whole.** `social-bot-brain` and `social-bot-harness` are deployed and, by design, can only write a PROPOSAL into `social_actions` and wait for a human. `admin_list_social_actions` / `admin_review_social_action` are that human-approval half — and **no UI was ever built for them**, so they read as dead code. They were deliberately spared in the 2026-08-23 cleanup: cherry-picking the approval half out of a human-in-the-loop safety design is the worst of both worlds, because switching the bot on would then pile up proposals with no way to review them. All of `social_actions` / `social_conversations` / `social_messages` / `social_leads` are at **0 rows** — the bot has never run. Either build the admin tab or drop the two RPCs, the two edge functions and the four tables together.
