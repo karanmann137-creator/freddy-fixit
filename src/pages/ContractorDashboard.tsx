@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { clearMyProfile } from "@/lib/myProfile";
+import { getCommissionRate } from "@/lib/platformRates";
 import { compressImage } from "@/lib/imageCompress";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import JobDescription from "@/components/JobDescription";
@@ -392,7 +393,7 @@ export default function ContractorDashboard() {
       new Date(j.created_at).toLocaleDateString(),
       j.status.replace("_", " "),
       j.amount != null ? j.amount : "",
-      j.amount != null ? netPayout(j).toFixed(2) : "",
+      j.amount != null ? (netPayout(j)?.toFixed(2) ?? "") : "",
     ].map(esc).join(","));
     const csv = [header, ...lines].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -1046,10 +1047,25 @@ export default function ContractorDashboard() {
     setEarn((e: any) => e ? { ...e, weekly_goal: g || null } : e);
   };
 
-  // What the contractor actually receives = 93% of the quote (platform keeps 7%).
-  const netPayout = (job: any) => job?.contractor_payout != null
-    ? Number(job.contractor_payout)
-    : Math.round(Number(job?.amount ?? 0) * 0.93 * 100) / 100;
+  // The contractor's share is 1 - platform_commission_rate(), read from the DB
+  // rather than hardcoded here. The five hardcoded 0.07/0.93 literals on this
+  // platform are all on the CHARGE path, where a network read would turn an
+  // unreadable constant into a blocked checkout. A dashboard label is not the
+  // charge path, so there is no sixth copy.
+  const [commission, setCommission] = useState<number | null>(null);
+  useEffect(() => { getCommissionRate().then(r => { if (r.ok) setCommission(r.rate); }); }, []);
+
+  // What the contractor actually receives. The stored contractor_payout is
+  // stamped at checkout and always wins — it is what will really be paid, even
+  // if the platform rate changes later. The estimate below is only for a job
+  // that has not been charged yet, and returns null rather than guessing when
+  // the rate could not be read: a failed read is not an empty result, and a
+  // wrong payout figure is worse to a contractor than a missing one.
+  const netPayout = (job: any): number | null => {
+    if (job?.contractor_payout != null) return Number(job.contractor_payout);
+    if (commission == null) return null;
+    return Math.round(Number(job?.amount ?? 0) * (1 - commission) * 100) / 100;
+  };
   // Jobs are collected in two charges — a deposit that books the pro, and the
   // balance once the work is done — so a job sitting at payment_status='held'
   // is not necessarily paid in full. This is what stands between the pro and
@@ -1061,7 +1077,12 @@ export default function ContractorDashboard() {
   };
   const awaitingBalance = (j: any) => j?.payment_status === "held" && !j?.is_milestone && jobBalanceDue(j) > 0.005;
   const awaitingJobs = myJobs.filter(j => j.status === "pending_confirmation" || j.status === "scheduled" || j.status === "in_progress");
-  const awaitingTotal = awaitingJobs.reduce((t,j) => t + (j.amount ? netPayout(j) : 0), 0);
+  // If the rate could not be read, no estimate is trustworthy, so the whole
+  // "coming your way" card is withheld rather than shown short. Keeping this a
+  // plain number means the two render sites below need no change: a 0 total
+  // simply doesn't render.
+  const awaitingUnknown = awaitingJobs.some(j => j.amount && netPayout(j) == null);
+  const awaitingTotal = awaitingUnknown ? 0 : awaitingJobs.reduce((t,j) => t + (j.amount ? (netPayout(j) ?? 0) : 0), 0);
   const STATUS_COLORS: Record<string,string> = { pending:"#f59e0b", matched:"#3b82f6", in_progress:"#ea6b14", completed:"#22c55e", cancelled:"#ef4444", assigned:"#3b82f6", scheduled:"#8b5cf6", pending_confirmation:"#f59e0b" };
   // "Reliability streak" — consecutive most-recent finished jobs that were completed & confirmed with no claim.
   const streak = (() => {
@@ -2540,8 +2561,14 @@ export default function ContractorDashboard() {
                   <div style={{ textAlign:"right" }}>
                     {job.amount ? (
                       <>
-                        <div style={{ fontSize:".95rem", fontWeight:600, color:"#22c55e" }}>${netPayout(job).toFixed(2)}</div>
-                        <div style={{ fontSize:".66rem", color:"rgba(var(--ff-muted), .4)" }}>your payout · ${job.amount} estimate</div>
+                        {netPayout(job) != null ? (
+                          <>
+                            <div style={{ fontSize:".95rem", fontWeight:600, color:"#22c55e" }}>${netPayout(job)!.toFixed(2)}</div>
+                            <div style={{ fontSize:".66rem", color:"rgba(var(--ff-muted), .4)" }}>your payout · ${job.amount} estimate</div>
+                          </>
+                        ) : (
+                          <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)" }}>${job.amount} estimate</div>
+                        )}
                       </>
                     ) : <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)" }}>TBD</div>}
                     <div style={{ fontSize:".72rem", textTransform:"capitalize", color: STATUS_COLORS[job.status] ?? "#94a3b8", marginTop:".15rem" }}>{job.status.replace("_"," ")}</div>
