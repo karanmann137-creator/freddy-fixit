@@ -9,12 +9,27 @@
 // never scans other people's posts, groups, or profiles (that would violate
 // Meta's Platform Terms and risk the Page).
 //
-// DORMANT until secrets are set: META_PAGE_TOKEN (long-lived Page access
-// token) + META_PAGE_ID (+ optional META_IG_ID for Instagram). Setup guide:
-// ~/Desktop/Website/Meta-Setup-Guide.docx. Once configured, schedule via
-// pg_cron like reddit-lead-scout was planned (every 2h, net.http_post anon).
+// Secrets: META_PAGE_TOKEN (long-lived Page access token) + META_PAGE_ID
+// (+ optional META_IG_ID for Instagram). Armed by pg_cron `meta-lead-scout`
+// every 2h via public.kick_meta_lead_scout().
 // Test: POST { "test": true } → runs a scan and always sends a digest email.
-// verify_jwt = false (called by the DB, not users).
+//
+// AUTH (v7): verify_jwt = false buys nothing — the anon key is itself a valid
+// project-signed JWT and ships publicly in the JS bundle. So this gates in
+// code, two ways: an `x-ff-internal` single-use token redeemed through
+// consume_internal_token (proving the caller is Postgres), or a real admin
+// JWT. Everything else is 403. This matters because the function SENDS EMAIL
+// from noreply@freddyfixit.ca — since 2026-08-30 GoTrue auth mail rides the
+// same Resend domain, DKIM key and quota, so an open emitter here could
+// silence signup confirmation and password reset. Fails CLOSED: any error
+// resolving either credential is a refusal, never a send.
+//
+// FAILURE ALERT (v8): a Page token that expires, is revoked, or loses a scope
+// makes every Graph call 400 — and the cron would go on reporting "0 leads"
+// forever with nobody told. That silence is the real risk, so a non-2xx from
+// any Graph endpoint emails the owner, throttled through alert_should_send()
+// to once per 12h per distinct failure. The throttle FAILS OPEN, because a
+// throttle that silences an alert on its own bug is worse than a duplicate.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
@@ -35,8 +50,35 @@ const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-ff-internal",
 };
+
+// ── Auth gate ──────────────────────────────────────────────────────────────
+// Postgres (single-use internal token) or a real admin JWT. Nothing else.
+async function isAuthorized(req: Request): Promise<boolean> {
+  const internal = req.headers.get("x-ff-internal");
+  if (internal) {
+    try {
+      const { data, error } = await admin.rpc("consume_internal_token", {
+        p_token: internal, p_purpose: "edge-internal",
+      });
+      if (!error && data === true) return true;
+    } catch { /* fail closed */ }
+  }
+  const auth = req.headers.get("Authorization") ?? "";
+  const jwt = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  if (jwt) {
+    try {
+      const { data: u } = await admin.auth.getUser(jwt);
+      if (u?.user?.id) {
+        const { data: p } = await admin
+          .from("profiles").select("role").eq("id", u.user.id).maybeSingle();
+        if (p?.role === "admin") return true;
+      }
+    } catch { /* fail closed */ }
+  }
+  return false;
+}
 
 // ── Classification (own-Page audience — looser than the Reddit scout) ───────
 const CLIENT_ASK = /(how much|price|pricing|cost|estimate|book(ing)?|available|availab\w*|do you (do|fix|service|cover|come|install|repair)|can you (fix|help|come|do)|need (a|an|some(one)?|help)|looking for|interested in|dm me|pm me|send me (a )?(quote|estimate|price)|broke|broken|leak\w*|not working)/i;
@@ -57,6 +99,9 @@ function classify(text: string): "client" | "contractor" | null {
   return null;
 }
 
+// Module-level, but RESET at the top of every request — a warm isolate is
+// reused across invocations, so without the reset a later run would report a
+// previous run's HTTP codes and make diagnosis lie.
 const scanStatus: Record<string, string> = {};
 const cutoffMs = () => Date.now() - MAX_AGE_HOURS * 3600 * 1000;
 
@@ -171,6 +216,18 @@ function digestHtml(leads: Array<Lead & { id: string }>): string {
   </div>`;
 }
 
+function alertHtml(detail: string, hits: number): string {
+  return `
+  <div style="font-family:sans-serif;max-width:640px;margin:0 auto;background:#1a2236;color:#f0f4ff;padding:1.5rem;border-radius:12px;">
+    <h2 style="color:#ea6b14;margin:0 0 .5rem;">Lead scout can't read the Facebook Page</h2>
+    <p style="margin:0 0 1rem;font-size:14px;line-height:1.6;">The scout runs every 2 hours and Facebook is refusing it, so any comments or Page messages coming in right now are <strong>not</strong> being flagged to you.</p>
+    <div style="background:#0f1526;border-radius:8px;padding:.75rem;font-size:13px;color:#e2e8f0;font-family:monospace;">${esc(detail)}</div>
+    <p style="margin:1rem 0 .35rem;font-size:14px;font-weight:600;">Most likely cause</p>
+    <p style="margin:0 0 1rem;font-size:14px;line-height:1.6;">The Page access token expired or was revoked — usually because the Facebook password changed, the app's permissions were removed, or the Page's admin list changed. Fix: generate a fresh long-lived Page token in the Graph API Explorer and replace the <code>META_PAGE_TOKEN</code> secret in Supabase.</p>
+    <p style="margin:0;font-size:11px;color:#6b7280;">Freddy lead scout · ${hits} occurrence${hits === 1 ? "" : "s"} since the last alert · next alert no sooner than 12h from now.</p>
+  </div>`;
+}
+
 let lastResend = "";
 
 async function sendEmail(subject: string, html: string) {
@@ -189,9 +246,42 @@ async function sendEmail(subject: string, html: string) {
   }
 }
 
+// A non-2xx from any Graph endpoint means the scout is blind. Tell the owner,
+// throttled per distinct failure. FAILS OPEN — if the throttle can't be read,
+// send anyway.
+async function alertOnGraphFailure(): Promise<string> {
+  const bad = Object.entries(scanStatus).filter(([, v]) => !v.startsWith("HTTP 2"));
+  if (bad.length === 0) return "none";
+  const detail = bad.map(([k, v]) => `${k}: ${v}`).join("  ·  ");
+  const key = ("meta-lead-scout|graph|" +
+    bad.map(([k, v]) => `${k}:${v.slice(0, 40)}`).sort().join(",")).slice(0, 300);
+  let send = true, hits = 1;
+  try {
+    const { data } = await admin.rpc("alert_should_send", { p_key: key, p_cooldown_mins: 720 });
+    if (data && typeof data === "object") {
+      if ((data as any).send === false) send = false;
+      hits = Number((data as any).hits ?? 1);
+    }
+  } catch { /* fails OPEN */ }
+  if (!send) return "throttled";
+  const ok = await sendEmail("⚠️ Freddy lead scout — Facebook scan is failing", alertHtml(detail, hits));
+  return ok ? "alerted" : "alert-send-failed";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+
+  // Gate BEFORE anything else — no scan, no email, no state touched.
+  if (!(await isAuthorized(req))) {
+    return new Response(JSON.stringify({ error: "forbidden" }),
+      { status: 403, headers: { ...cors, "Content-Type": "application/json" } });
+  }
+
   try {
+    // Warm isolates are reused — clear last run's diagnostics.
+    for (const k of Object.keys(scanStatus)) delete scanStatus[k];
+    lastResend = "";
+
     const body = await req.json().catch(() => ({}));
     const isTest = body?.test === true;
 
@@ -237,7 +327,12 @@ serve(async (req) => {
       }
     }
 
-    const result: Record<string, unknown> = { ok: true, configured: true, scanned: found.length, new: fresh.length, emailed };
+    // 4) Silence is the real failure mode — shout if Facebook refused us.
+    const alerted = await alertOnGraphFailure();
+
+    const result: Record<string, unknown> = {
+      ok: true, configured: true, scanned: found.length, new: fresh.length, emailed, alerted,
+    };
     if (isTest) { result.scanStatus = scanStatus; result.resend = lastResend; }
     return new Response(JSON.stringify(result),
       { headers: { ...cors, "Content-Type": "application/json" } });
