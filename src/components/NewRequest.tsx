@@ -1,7 +1,7 @@
 import { Ic } from "@/components/Ic";
 import { Sk, SkText, SkCard, StalledNotice } from "@/components/Skeleton";
-import AddressAutocomplete from "@/components/AddressAutocomplete";
 import VoiceDictate from "@/components/VoiceDictate";
+import { AREAS, areasFromPostal, formatApproxLocation, isPostalCode, parseApproxLocation } from "@/lib/calgaryAreas";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
@@ -57,23 +57,33 @@ export default function NewRequest() {
    * runs on mount too and a later read would see the freshly-written empty form.
    */
   const { draft, restored, startOver } = useStoredDraft(NEWREQUEST_DRAFT_KEY);
-  // Captured once, because the profile/address read below resolves AFTER mount and
-  // would otherwise overwrite a restored choice with its own default. Empty string
-  // means "the draft had nothing to say", which is the same as no draft at all.
-  const draftAddrChoice = dStr(draft, "addrChoice");
+  // Captured once, because the profile/last-request read below resolves AFTER mount
+  // and would otherwise overwrite a restored choice with its own default. Empty
+  // string means "the draft had nothing to say", which is the same as no draft.
+  const draftLocChoice = dStr(draft, "locChoice");
   const draftVehChoice  = dStr(draft, "vehChoice");
 
   const [selectedServices, setSelectedServices] = useState<string[]>(() => dArr(draft, "selectedServices").filter(l => SERVICES.some(sv => sv.label === l)));
   const pricing = useServicePricing();
   const [schedule, setSchedule] = useState(() => dStr(draft, "schedule"));
-  const [sameAddress, setSameAddress] = useState(true);
-  const [newLocation, setNewLocation] = useState(() => dStr(draft, "newLocation"));
+  /**
+   * APPROXIMATE location only — a postal code plus an area, never a street address.
+   *
+   * A posted request is read by up to seven pros bidding on it, and none of them
+   * needs to know which house it is. The full address is confirmed once, later,
+   * immediately before the deposit. See the warning at the top of
+   * `src/lib/calgaryAreas.ts`: BOTH halves have to be present, because a missing
+   * area token throws no error and shows no empty state — it just quietly makes
+   * the request out-of-zone for every contractor.
+   */
+  const [locChoice, setLocChoice] = useState<string>(() => dStr(draft, "locChoice", "last")); // "last" | "new"
+  const [postalCode, setPostalCode] = useState(() => dStr(draft, "postalCode"));
+  const [area, setArea] = useState(() => dStr(draft, "area"));
 
-  // Saved addresses & vehicles (reused across requests).
-  const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
+  // Saved vehicles (reused across requests). Saved ADDRESSES are deliberately no
+  // longer read here — this form doesn't collect a street address any more, and
+  // the pre-deposit address confirmation is what owns that list now.
   const [savedVehicles, setSavedVehicles] = useState<any[]>([]);
-  const [addrChoice, setAddrChoice] = useState<string>(() => dStr(draft, "addrChoice", "last")); // saved id | "last" | "new"
-  const [saveNewAddress, setSaveNewAddress] = useState(true);
   const [vehChoice, setVehChoice] = useState<string>(() => dStr(draft, "vehChoice", "new"));    // saved id | "new"
   const [vehYear, setVehYear] = useState(() => dStr(draft, "vehYear"));
   const [vehMake, setVehMake] = useState(() => dStr(draft, "vehMake"));
@@ -170,32 +180,38 @@ export default function NewRequest() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLocation("/login"); return; }
       // A PostgREST error resolves rather than throwing, so destructuring only
-      // `data` let one failed read (say saved_addresses) look like "you have no
-      // saved addresses" — the client re-types an address they already gave us,
-      // and `loadError` never fires. Check each result explicitly.
-      const [pRes, rRes, aRes, vRes] = await Promise.all([
+      // `data` let one failed read (say saved_vehicles) look like "you have no
+      // saved vehicles" — the client re-types details they already gave us, and
+      // `loadError` never fires. Check each result explicitly.
+      const [pRes, rRes, vRes] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
         supabase.from("client_requests").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1),
-        supabase.from("saved_addresses").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
         supabase.from("saved_vehicles").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
       ]);
-      const firstErr = [pRes, rRes, aRes, vRes].find(r => (r as any).error);
+      const firstErr = [pRes, rRes, vRes].find(r => (r as any).error);
       if (firstErr) throw (firstErr as any).error;
-      const prof = pRes.data, reqs = rRes.data, addrs = aRes.data, vehs = vRes.data;
+      const prof = pRes.data, reqs = rRes.data, vehs = vRes.data;
       setProfile(prof);
       const last = (reqs ?? [])[0] ?? null;
       setLastReq(last);
-      setSavedAddresses(addrs ?? []);
       setSavedVehicles(vehs ?? []);
-      // Default address choice: last-used if we have one, else first saved, else fresh entry.
-      // DEFAULT, not override — a restored draft already carries a choice the client
-      // made, and this read resolves after mount, so without the guard it would land
-      // a second later and silently move them off the address they picked (hiding a
-      // new one they had already typed).
-      if (draftAddrChoice) { setSameAddress(draftAddrChoice !== "new"); }
-      else if (last?.location) { setAddrChoice("last"); setSameAddress(true); }
-      else if ((addrs ?? []).length) { setAddrChoice((addrs as any[])[0].id); setSameAddress(true); }
-      else { setAddrChoice("new"); setSameAddress(false); }
+      /**
+       * Default location choice: reuse last time's approximate location, but ONLY
+       * when both halves of it read back. The previous request may predate this
+       * form and hold a full street address, out of which `parseApproxLocation`
+       * recovers a postal code and nothing else — offering that as "same as last
+       * time" would write half a location, which is the silent in-zone-ranking
+       * failure `calgaryAreas.ts` warns about.
+       *
+       * DEFAULT, not override — a restored draft already carries a choice the
+       * client made, and this read resolves after mount, so without the guard it
+       * would land a second later and silently move them off the answer they
+       * picked (wiping a postal code they had already typed).
+       */
+      if (!draftLocChoice) {
+        const prev = parseApproxLocation(last?.location ?? "");
+        setLocChoice(prev.postal && prev.area ? "last" : "new");
+      }
       if ((vehs ?? []).length && !draftVehChoice) setVehChoice((vehs as any[])[0].id);
       if (last?.client_type === "business") setRecurring(!!last.recurring);
       } catch (e) {
@@ -256,18 +272,48 @@ export default function NewRequest() {
     }
   }, []);
 
-  const prevAddress = lastReq?.location ?? "";
+  /**
+   * Last time's location, read back as an APPROXIMATE one.
+   *
+   * `.text` is empty unless BOTH halves parsed, and that emptiness is what hides
+   * the "same as last time" option for a client whose previous request holds a
+   * legacy street address. It deliberately does NOT fall back to the raw string:
+   * re-posting a street address is the exact thing this change exists to stop.
+   */
+  const prevApprox = (() => {
+    const p = parseApproxLocation(lastReq?.location ?? "");
+    return { ...p, text: p.postal && p.area ? formatApproxLocation(p.postal, p.area) : "" };
+  })();
   const isBusiness = lastReq?.client_type === "business";
 
   const VEHICLE_SERVICES = ["Oil Change","Tire Swap / Rotation","Battery / Brakes","Vehicle Maintenance"];
   const isVehicle = selectedServices.some(sv => VEHICLE_SERVICES.includes(sv));
 
-  // Resolve the address string from the current choice.
-  const resolveLocation = () => {
-    if (addrChoice === "new") return newLocation.trim();
-    if (addrChoice === "last") return prevAddress;
-    const found = savedAddresses.find(a => a.id === addrChoice);
-    return found?.address ?? "";
+  /**
+   * ONE answer to "is the client entering a fresh location?", shared by the
+   * renderer, `validate()` and `resolveLocation()`.
+   *
+   * `locChoice` alone is not safe to branch on: when `prevApprox.text` is empty
+   * the two radio buttons aren't rendered at all, so a restored draft (or the
+   * initial default, before the profile read resolves) holding "last" would
+   * leave the client on a screen with no location control AND a validation
+   * error they have no way to clear. Emptiness of `prevApprox.text` therefore
+   * overrides the stored choice everywhere, not just in the renderer.
+   */
+  const enteringNew = locChoice === "new" || !prevApprox.text;
+
+  // Resolve the approximate location from the current choice. Everything goes
+  // through `formatApproxLocation`, so `client_requests.location` can only ever
+  // hold a value `mask_location()` maps to itself — postal code AND area token.
+  const resolveLocation = () => (enteringNew ? formatApproxLocation(postalCode, area) : prevApprox.text);
+
+  // Typing a recognised postal code pre-ticks its area — a SUGGESTION only, and
+  // only into an empty answer, so a deliberate correction is never overwritten
+  // (several Calgary FSAs straddle a quadrant boundary).
+  const onPostal = (v: string) => {
+    setPostalCode(v);
+    setErrors(e => ({ ...e, location: "" }));
+    if (!area) { const a = areasFromPostal(v)[0]; if (a) setArea(a); }
   };
 
   const toggleService = (label: string) => {
@@ -312,7 +358,7 @@ export default function NewRequest() {
   useDraftAutosave(NEWREQUEST_DRAFT_KEY, {
     step, tags, answers, detectedFor, showAllServices,
     selectedServices, description, schedule,
-    addrChoice, newLocation, vehChoice, vehYear, vehMake, vehModel,
+    locChoice, postalCode, area, vehChoice, vehYear, vehMake, vehModel,
     recurring, recurringFrequency, sliderIdx, recurringDates,
     recurringKm, prepayPref, recurringStartDate, recurringEndDate,
     budgetMax, budgetFlexible,
@@ -379,8 +425,22 @@ export default function NewRequest() {
     }
     if (step === 4) {
       if (!schedule) e.schedule = "Please choose a timeframe";
-      const loc = resolveLocation();
-      if (!loc) e.location = addrChoice === "new" ? "Address required" : "No address on file — please enter one";
+      /**
+       * BOTH halves are required, and separately — a postal code with no area
+       * still produces a non-empty string, so a bare "is it blank?" check would
+       * pass and the request would then rank out-of-zone for every contractor
+       * with nothing anywhere saying so. Each half gets its own message, because
+       * "location required" beside a filled-in postal box reads like a bug.
+       */
+      if (!enteringNew) {
+        // "Same as last time" is only ever offered when it parses, so this
+        // branch can't fail — but it stays as the belt to the renderer's braces.
+        if (!prevApprox.text) e.location = "Please tell us where this job is";
+      } else if (!isPostalCode(postalCode)) {
+        e.location = "Please enter a full postal code (e.g. T3A 1B2)";
+      } else if (!area) {
+        e.location = "Please choose the area this job is in";
+      }
       // Budget is optional, but if given it has to make sense. The minimum is
       // ours and can't be typed wrong, so only the max is validated — and a max
       // under our floor is a soft warning inside BudgetPicker, not a hard block:
@@ -470,13 +530,10 @@ export default function NewRequest() {
         }
       }
 
+      // Postal code + area token, never a street address — see resolveLocation().
+      // Nothing is written to `saved_addresses` here any more: this form has no
+      // street address to save, and the pre-deposit confirmation owns that list.
       const location = resolveLocation();
-
-      // Persist a newly-typed address to the user's saved list (best effort).
-      if (addrChoice === "new" && saveNewAddress && location) {
-        const dup = savedAddresses.some(a => (a.address ?? "").trim().toLowerCase() === location.toLowerCase());
-        if (!dup) await supabase.from("saved_addresses").insert({ user_id: user.id, address: location });
-      }
 
       // Resolve the vehicle (saved pick or newly typed) for vehicle jobs.
       let vehicleDetails: any = null;
@@ -986,42 +1043,59 @@ export default function NewRequest() {
             </div>
           )}
 
-          {/* Address */}
-          <p style={{ ...s.label, marginTop:"1.75rem" }}>Where is this job?</p>
-          {(() => {
-            // De-dupe the "last used" option if it's already a saved address.
-            const lastIsSaved = prevAddress && savedAddresses.some(a => (a.address ?? "").trim().toLowerCase() === prevAddress.trim().toLowerCase());
-            const pick = (val: string) => { setAddrChoice(val); setSameAddress(val !== "new"); setErrors(e => ({ ...e, location:"" })); };
-            return (
-              <>
-                {prevAddress && !lastIsSaved && (
-                  <button style={{ ...s.addrBtn, ...(addrChoice === "last" ? s.addrBtnSel : {}) }} onClick={() => pick("last")}>
-                    <span><Ic name={addrChoice === "last" ? "radio-on" : "radio-off"} size={16} color="#ea6b14" /></span>
-                    <span>Same as last time — <span style={{ color:"rgba(var(--ff-muted), .6)" }}>{prevAddress}</span></span>
-                  </button>
-                )}
-                {savedAddresses.map(a => (
-                  <button key={a.id} style={{ ...s.addrBtn, ...(addrChoice === a.id ? s.addrBtnSel : {}) }} onClick={() => pick(a.id)}>
-                    <span><Ic name={addrChoice === a.id ? "radio-on" : "radio-off"} size={16} color="#ea6b14" /></span>
-                    <span>{a.label ? <strong style={{ marginRight:6 }}>{a.label}</strong> : null}<span style={{ color:"rgba(var(--ff-muted), .75)" }}>{a.address}</span></span>
-                  </button>
-                ))}
-                <button style={{ ...s.addrBtn, ...(addrChoice === "new" ? s.addrBtnSel : {}) }} onClick={() => pick("new")}>
-                  <span><Ic name={addrChoice === "new" ? "radio-on" : "radio-off"} size={16} color="#ea6b14" /></span>
-                  <span>A different address</span>
-                </button>
-                {addrChoice === "new" && (
-                  <>
-                    <AddressAutocomplete autoComplete="street-address" style={{ ...inp, marginTop:".4rem", borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="e.g. 123 Main St NW" value={newLocation} onChange={v => { setNewLocation(v); setErrors(er => ({ ...er, location:"" })); }} />
-                    <label style={{ display:"flex", alignItems:"center", gap:".5rem", cursor:"pointer", fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginTop:".5rem" }}>
-                      <input type="checkbox" checked={saveNewAddress} onChange={e => setSaveNewAddress(e.target.checked)} style={{ width:"15px", height:"15px", accentColor:"#ea6b14" }} />
-                      Save this address for next time
-                    </label>
-                  </>
-                )}
-              </>
-            );
-          })()}
+          {/* Approximate location — postal code + area, never a street address.
+              Both parts are asked for because both are load-bearing on the
+              server: mask_location() builds the pro-facing string from a postal
+              code AND a zone, and list_open_jobs() reads the zone out of the raw
+              text to rank in-zone jobs. The chips are pre-ticked from the postal
+              code as a convenience and are always the client's to correct.
+
+              "Same as last time" is offered ONLY when the previous request's
+              location parses into both halves — see `prevApprox`. A returning
+              client whose last request predates this form has a street address
+              on file, and re-posting it is precisely what this change removes. */}
+          <p style={{ ...s.label, marginTop:"1.75rem" }}>Where is this job? <span style={{ color:"rgba(var(--ff-muted), .4)", textTransform:"none", letterSpacing:0 }}>(postal code &mdash; we'll ask for the address once you've picked a pro)</span></p>
+          {prevApprox.text && (
+            <button style={{ ...s.addrBtn, ...(locChoice === "last" ? s.addrBtnSel : {}) }} onClick={() => { setLocChoice("last"); setErrors(e => ({ ...e, location:"" })); }}>
+              <span><Ic name={locChoice === "last" ? "radio-on" : "radio-off"} size={16} color="#ea6b14" /></span>
+              <span>Same as last time — <span style={{ color:"rgba(var(--ff-muted), .6)" }}>{prevApprox.text}</span></span>
+            </button>
+          )}
+          {prevApprox.text && (
+            <button style={{ ...s.addrBtn, ...(locChoice === "new" ? s.addrBtnSel : {}) }} onClick={() => { setLocChoice("new"); setErrors(e => ({ ...e, location:"" })); }}>
+              <span><Ic name={locChoice === "new" ? "radio-on" : "radio-off"} size={16} color="#ea6b14" /></span>
+              <span>Somewhere else</span>
+            </button>
+          )}
+          {enteringNew && (
+            <>
+              <input
+                autoComplete="postal-code" inputMode="text" autoCapitalize="characters" autoCorrect="off" spellCheck={false} maxLength={7}
+                style={{ ...inp, marginTop:".4rem", borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)", letterSpacing:".06em" }}
+                placeholder="e.g. T2P 1J9"
+                value={postalCode}
+                onChange={e => onPostal(e.target.value.toUpperCase())}
+              />
+              <p style={{ ...s.label, marginTop:"1rem", marginBottom:".5rem" }}>Which part of town?</p>
+              <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
+                {AREAS.map(a => {
+                  const on = area === a;
+                  return (
+                    <button key={a} type="button" onClick={() => { setArea(on ? "" : a); setErrors(e => ({ ...e, location:"" })); }}
+                      style={{ padding:".55rem .9rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".85rem", fontWeight: on ? 500 : 400, cursor:"pointer",
+                        background: on ? "rgba(234,107,20,.15)" : "rgba(var(--ff-fg), .04)",
+                        border: on ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .12)",
+                        color: on ? "var(--ff-text)" : "rgba(var(--ff-muted), .8)" }}>
+                      {a}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+          <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginTop:".55rem", lineHeight:1.5 }}>
+            Pros bidding on your job see the area and postal code only. Your full address goes to the one pro you choose, and not before.
+          </p>
           {errors.location && <p id="nr-err-location" style={s.err}>{errors.location}</p>}
 
           {/* Vehicle (only for vehicle services) */}

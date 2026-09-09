@@ -71,6 +71,30 @@ const canWithdraw = (j: any): boolean =>
   !j?.is_milestone &&
   !j?.prepayment_id;
 
+/**
+ * Where this pro is actually going, and whether it is the real address.
+ *
+ * Since the approximate-location change, `client_requests.location` is a postal
+ * code and a quadrant ("T3A 1B2 · NW Calgary") — deliberately, because that row
+ * is readable by all seven pros a job is dispatched to. The street address is
+ * collected once, at deposit time, into `jobs.service_address`, which only the
+ * two job parties can read.
+ *
+ * So a job card has TWO possible destinations and they mean different things:
+ * navigating to a postal centroid drops a pro somewhere on the right block and
+ * nowhere near the right door. This is the ONE place that decides between them,
+ * shared by the card list and the directions tile, so a pro can never be shown
+ * an exact address in one and sent to the centroid by the other.
+ *
+ * `exact` is what the callers key their wording on. Never label an approximate
+ * area as an address: a pro who believes they have the address will not ask.
+ */
+const jobDestination = (j: any): { text: string; exact: boolean } => {
+  const exact = String(j?.service_address || "").trim();
+  if (exact) return { text: exact, exact: true };
+  return { text: String(j?.request?.location || "").trim(), exact: false };
+};
+
 const STAGE_LABEL: Record<string, string> = {
   propose: "needs your estimate",
   awaiting: "awaiting client approval",
@@ -109,7 +133,7 @@ const nudgeToken = (gaps: ProfileGap[]) => "profile_nudge:" + gaps.map(g => g.ke
  * to the other party goes in here: matching is done on text already rendered.
  */
 const jobSearchFields = (j: any): (string | number | null | undefined)[] => [
-  j?.request?.service_needed, j?.request?.location, j?.client?.first_name,
+  j?.request?.service_needed, jobDestination(j).text, j?.client?.first_name,
   j?.status?.replace("_", " "), j?.amount, jobCode(j?.id ?? ""),
   j?.scheduled_at ? new Date(j.scheduled_at).toLocaleDateString() : null,
 ];
@@ -1583,10 +1607,11 @@ export default function ContractorDashboard() {
                     <div style={{ fontSize:"1rem", fontWeight:500, marginBottom:".2rem" }}>{job.request?.service_needed ?? "Job"}</div>
                     <div style={{ fontSize:".72rem", fontFamily:"monospace", color:"#ea6b14", marginBottom:".3rem" }}>{jobCode(job.id)}</div>
                     <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", marginBottom:".2rem" }}><Ic name="user" size={13} style={{ marginRight:4 }} />{job.client?.first_name || "Your client"}</div>
-                    {job.request?.location && (
-                      <a href={mapsUrl(job.request.location)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                    {jobDestination(job).text && (
+                      <a href={mapsUrl(jobDestination(job).text)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                        title={jobDestination(job).exact ? undefined : "Approximate area — the client confirms their full address when they pay the deposit."}
                         style={{ display:"inline-block", maxWidth:"100%", fontSize:".82rem", color:"rgba(var(--ff-muted), .65)", textDecoration:"underline", textUnderlineOffset:"3px" }}>
-                        <Ic name="map-pin" size={13} color="#ea6b14" style={{ marginRight:4 }} />{job.request.location}
+                        <Ic name="map-pin" size={13} color="#ea6b14" style={{ marginRight:4 }} />{jobDestination(job).text}{jobDestination(job).exact ? "" : " (approx.)"}
                       </a>
                     )}
                   </div>
@@ -1822,13 +1847,17 @@ export default function ContractorDashboard() {
                             onAdd={r => setExpenses(p => [r, ...p])} onDelete={id => setExpenses(p => p.filter(e => e.id !== id))} onError={m => notify(m)} />
                           {/* Heading out: tappable map + on-my-way, side by side */}
                           <div {...jobAnchor(A_ONWAY, { display:"flex", gap:".6rem", flexWrap:"wrap" as const, alignItems:"stretch" })}>
-                            {job.request?.location && (
-                              <a href={mapsUrl(job.request.location)} target="_blank" rel="noopener noreferrer"
+                            {/* The label is keyed on `exact`, not decoration. A pro
+                                who reads "Job location" over a postal centroid drives
+                                to the right block and the wrong door, and — because
+                                the copy sounded definite — never thinks to ask. */}
+                            {jobDestination(job).text && (
+                              <a href={mapsUrl(jobDestination(job).text)} target="_blank" rel="noopener noreferrer"
                                 style={{ flex:"1 1 230px", minWidth:0, display:"flex", alignItems:"center", gap:".65rem", padding:".75rem .9rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .05)", border:"1px solid rgba(var(--ff-fg), .12)", textDecoration:"none" }}>
                                 <Ic name="map-pin" size={20} color="#ea6b14" style={{ flexShrink:0 }} />
                                 <div style={{ minWidth:0 }}>
-                                  <div style={{ fontSize:".66rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .5)", marginBottom:".15rem" }}>Job location — tap for directions</div>
-                                  <div style={{ fontSize:".86rem", fontWeight:600, color:"var(--ff-text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{job.request.location}</div>
+                                  <div style={{ fontSize:".66rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .5)", marginBottom:".15rem" }}>{jobDestination(job).exact ? "Service address — tap for directions" : "Approximate area only — ask the client to confirm"}</div>
+                                  <div style={{ fontSize:".86rem", fontWeight:600, color:"var(--ff-text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{jobDestination(job).text}</div>
                                 </div>
                               </a>
                             )}

@@ -40,7 +40,8 @@ export default function PrivacyPolicy() {
 
           <p><strong>3.2 Client Information</strong></p>
           <ul>
-            <li>Service address and location</li>
+            <li>Postal code and general area when you post a request; the full service address only once you have chosen a contractor</li>
+            <li>Device location, only if you tap "Use my current location" and allow it in your browser. It is used once, to suggest an address for you to check and confirm. We do not store it and we do not track your location in the background.</li>
             <li>Service history and job descriptions</li>
             <li>Photos of problems or issues uploaded with requests</li>
             <li>Ratings and reviews given to contractors</li>
@@ -130,7 +131,7 @@ export default function PrivacyPolicy() {
               <tr><td>Stripe, Inc.</td><td>Payment processing</td><td>United States</td></tr>
               <tr><td>Google LLC</td><td>Website analytics (Google Analytics 4) and optional "Sign in with Google" authentication</td><td>United States</td></tr>
               <tr><td>PostHog, Inc.</td><td>Product analytics and session replay (understanding how the Platform is used so we can improve it)</td><td>United States</td></tr>
-              <tr><td>Komoot GmbH (Photon)</td><td>Address auto-complete: as you type a service address, the text you type is sent to the Photon geocoding service to suggest matching Calgary-area addresses. No account information is sent with it.</td><td>Germany</td></tr>
+              <tr><td>Komoot GmbH (Photon)</td><td>Address look-up: as you type a service address, the text you type is sent to the Photon geocoding service to suggest matching Calgary-area addresses. If you tap "Use my current location" and allow it, your device's coordinates are sent instead, once, to suggest an address. No account information is sent with either.</td><td>Germany</td></tr>
             </tbody>
           </table>
           <p><strong>6.3 Advertising.</strong> We do not currently share your personal information with advertising partners. In the future, we may work with third-party advertising networks to display relevant advertisements on the Platform. If and when we do so, we will update this Policy and, where required by PIPA, obtain your express consent before sharing your information for advertising purposes. You will have the right to opt out.</p>

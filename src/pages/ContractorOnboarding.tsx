@@ -11,7 +11,7 @@ import OAuthButtons from "@/components/OAuthButtons";
 import OnboardingProgress from "@/components/OnboardingProgress";
 import ServicePicker from "@/components/ServicePicker";
 import VoiceDictate from "@/components/VoiceDictate";
-import AddressAutocomplete from "@/components/AddressAutocomplete";
+import { AREAS, areasFromPostal, isPostalCode } from "@/lib/calgaryAreas";
 import { validateEmail, validatePhone } from "@/lib/emailValidation";
 
 const SPECIALTIES = [
@@ -41,7 +41,12 @@ const SPECIALTIES = [
   { iconName: "sun", label: "Solar" },
 ];
 
-const AREAS = ["NW","NE","SW","SE","Downtown / Beltline","Airdrie","Cochrane","Chestermere"];
+// AREAS is imported from `src/lib/calgaryAreas.ts`, not declared here. It used
+// to be a local copy, which meant the contractor side and the client side each
+// held their own list of the same eight zones — and one of those lists is
+// matched against the other by every matcher on the platform. Two copies of a
+// list that MUST agree is a drift waiting to happen, and a drift here shows up
+// as jobs quietly never reaching a pro rather than as an error.
 
 // Primary work classification. This decides which credentials we actually
 // require: only regulated trades (electrical, gas, plumbing, HVAC) need a
@@ -64,23 +69,12 @@ const WORK_TYPES = [
 // (see OnboardingProgress for the numbered bar that carries the step count).
 const STEP_TITLES = ["Let's start with the basics", "Tell us what you do", "Set your area and availability", "Add your credentials", "Upload your photo and documents"];
 
-// Turn a picked address into our service zones. Calgary street addresses carry
-// the quadrant ("123 Whiteram Mews NE") and the surrounding towns are zones of
-// their own, so a regex is enough — nothing new is stored and the contractor
-// can untick anything we get wrong.
-function zonesFromAddress(addr: string): string[] {
-  const a = " " + addr.toLowerCase() + " ";
-  const out: string[] = [];
-  if (/\bn\.?w\.?\b/.test(a)) out.push("NW");
-  if (/\bn\.?e\.?\b/.test(a)) out.push("NE");
-  if (/\bs\.?w\.?\b/.test(a)) out.push("SW");
-  if (/\bs\.?e\.?\b/.test(a)) out.push("SE");
-  if (/\bairdrie\b/.test(a)) out.push("Airdrie");
-  if (/\bcochrane\b/.test(a)) out.push("Cochrane");
-  if (/\bchestermere\b/.test(a)) out.push("Chestermere");
-  if (/\bbeltline\b|\bdowntown\b|\beau claire\b/.test(a)) out.push("Downtown / Beltline");
-  return out;
-}
+// The local `zonesFromAddress` that used to live here is gone with the address
+// box it served. Its job — turning "roughly where are you" into zone chips — is
+// now done by `areasFromPostal` from the shared module, which is the same
+// function the client's request form uses to pre-tick the same eight chips.
+// That symmetry is the point: a pro's `service_area` is matched against a
+// client's request area, so both sides have to derive them the same way.
 
 type DocFiles = { insurance: File|null; wcb: File|null; certification: File|null; gov_id: File|null };
 
@@ -111,9 +105,17 @@ export default function ContractorOnboarding() {
   const [pwBreached, setPwBreached] = useState(false);
   const [selectedSpec,  setSelectedSpec]  = useState<string[]>([]);
   const [selectedArea,  setSelectedArea]  = useState<string[]>([]);
-  // Convenience only — the address is never stored. It exists to pre-tick the
-  // zone chips, which ARE what service_area saves and what the matcher reads.
-  const [baseAddress, setBaseAddress] = useState("");
+  /**
+   * A postal code, and only ever as a CONVENIENCE — it is never stored.
+   *
+   * This replaced a street-address autocomplete. The address was never saved
+   * either, but asking for one at all set the wrong expectation on a form whose
+   * only real location answer is the zone chips: `service_area` is what the
+   * matcher reads, and a home address tells us nothing it doesn't. A postal
+   * code pre-ticks the same chips from three characters, and it's the same
+   * question the client's request form now asks, derived by the same function.
+   */
+  const [postalCode, setPostalCode] = useState("");
   const [zoneHint, setZoneHint] = useState<string[]>([]);
   const [availDays, setAvailDays] = useState<string[]>([...WEEKDAYS]);
   const [availStart, setAvailStart] = useState<string>(DEFAULT_START);
@@ -165,7 +167,11 @@ export default function ContractorOnboarding() {
         if (d.form) setForm(f => ({ ...f, ...d.form, password: "", email: d.form.email || f.email }));
         if (Array.isArray(d.selectedSpec)) setSelectedSpec(d.selectedSpec);
         if (Array.isArray(d.selectedArea)) setSelectedArea(d.selectedArea);
-        if (typeof d.baseAddress === "string") setBaseAddress(d.baseAddress);
+        // A draft written before this form dropped the address box carries
+        // `baseAddress` and no `postalCode`. Nothing reads it any more, so it is
+        // simply ignored — and nothing is lost, because `selectedArea` (the
+        // chips the address only ever pre-ticked) restores on the line above.
+        if (typeof d.postalCode === "string") setPostalCode(d.postalCode);
         if (Array.isArray(d.availDays)) setAvailDays(d.availDays);
         if (d.availStart) setAvailStart(d.availStart);
         if (d.availEnd) setAvailEnd(d.availEnd);
@@ -180,11 +186,11 @@ export default function ContractorOnboarding() {
     if (!hydrated || success || verifyEmail) return;
     try {
       localStorage.setItem("ff_contractor_draft", JSON.stringify({
-        form: { ...form, password: "" }, selectedSpec, selectedArea, baseAddress,
+        form: { ...form, password: "" }, selectedSpec, selectedArea, postalCode,
         availDays, availStart, availEnd, step,
       }));
     } catch {}
-  }, [hydrated, success, verifyEmail, form, selectedSpec, selectedArea, baseAddress, availDays, availStart, availEnd, step]);
+  }, [hydrated, success, verifyEmail, form, selectedSpec, selectedArea, postalCode, availDays, availStart, availEnd, step]);
 
   const wt = WORK_TYPES.find(w => w.id === form.workType);
   const insuranceRequired = wt?.insurance === "required";
@@ -206,14 +212,14 @@ export default function ContractorOnboarding() {
   const toggleDay = (d: string) => { setAvailDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]); setErrors(e => ({ ...e, avail: "" })); };
   const setDays = (days: string[]) => { setAvailDays(days); setErrors(e => ({ ...e, avail: "" })); };
 
-  // The address box only ever ADDS zones — it never unticks one, so a pro who
-  // deliberately picked SW and then typed an NE address keeps both.
-  const onAddress = (v: string) => {
-    setBaseAddress(v);
-    if (v.trim().length < 3) { setZoneHint([]); return; }
-    const zones = zonesFromAddress(v).filter(z => AREAS.includes(z));
-    if (!zones.length) return;
-    const added = zones.filter(z => !selectedArea.includes(z));
+  // The postal box only ever ADDS zones — it never unticks one, so a pro who
+  // deliberately picked SW and then typed an NE postal code keeps both. An
+  // unrecognised code suggests nothing rather than guessing, and the chips are
+  // always the pro's to correct; several Calgary FSAs straddle a boundary.
+  const onPostal = (v: string) => {
+    setPostalCode(v);
+    if (!isPostalCode(v)) { setZoneHint([]); return; }
+    const added = areasFromPostal(v).filter(z => AREAS.includes(z) && !selectedArea.includes(z));
     if (!added.length) return;
     setSelectedArea(prev => [...prev, ...added.filter(z => !prev.includes(z))]);
     setZoneHint(added);
@@ -580,21 +586,23 @@ export default function ContractorOnboarding() {
             <div>
               <p style={s.label}>Where You Work</p>
               <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .55)", marginBottom:".75rem", fontWeight:300, lineHeight:1.6 }}>
-                Type your home base and we&rsquo;ll tick the closest area — then add any others you&rsquo;ll travel to.
+                Enter your postal code and we&rsquo;ll tick the closest area — then add any others you&rsquo;ll travel to.
               </p>
-              {/* This address is a shortcut for ticking the zone chips. It is
-                  deliberately never saved: service_area (the chips) is what the
-                  job matcher reads, and storing a pro's home address would be
-                  personal information we have no use for. */}
-              <AddressAutocomplete
-                value={baseAddress}
-                onChange={onAddress}
-                placeholder="Start typing your address or neighbourhood (optional)"
-                style={{ ...inp, marginBottom:".6rem" }}
+              {/* A postal code, not an address. It is a shortcut for ticking the
+                  zone chips and is never saved anywhere: service_area (the
+                  chips) is what the job matcher reads, and a pro's home address
+                  is personal information we have no use for. The chips below
+                  are the real answer — this box just fills in the obvious one. */}
+              <input
+                autoComplete="postal-code" inputMode="text" autoCapitalize="characters" autoCorrect="off" spellCheck={false} maxLength={7}
+                value={postalCode}
+                onChange={e => onPostal(e.target.value.toUpperCase())}
+                placeholder="Your postal code (optional) — e.g. T2P 1J9"
+                style={{ ...inp, marginBottom:".6rem", letterSpacing:".06em" }}
               />
               {zoneHint.length > 0 && (
                 <p style={{ fontSize:".78rem", color:"#ea6b14", marginBottom:".75rem" }}>
-                  ✓ Added {zoneHint.join(" and ")} from your address — tap any others below.
+                  ✓ Added {zoneHint.join(" and ")} from your postal code — tap any others below.
                 </p>
               )}
               <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:".7rem" }}>

@@ -11,7 +11,7 @@ import { useServicePricing, fromText, floorFor } from "@/lib/servicePricing";
 import { isPerKmService, freqLabel, SLIDER_STOPS, SLIDER_SHORT } from "@/lib/recurrence";
 import NewRequest from "@/components/NewRequest";
 import OAuthButtons from "@/components/OAuthButtons";
-import AddressAutocomplete from "@/components/AddressAutocomplete";
+import { AREAS, areasFromPostal, formatApproxLocation, isPostalCode, normalizePostal } from "@/lib/calgaryAreas";
 import ServicePicker from "@/components/ServicePicker";
 import BudgetPicker from "@/components/BudgetPicker";
 import { validateEmail, validatePhone } from "@/lib/emailValidation";
@@ -70,14 +70,55 @@ export const SCHEDULES = [
   { iconName: "refresh", label: "Recurring",       sub: "Regular maintenance" },
 ];
 
+/**
+ * The step IDs, and why they are IDs rather than positions.
+ *
+ * `confirm` is skipped whenever the keyword map already read a trade out of the
+ * description, so the visible path is either four screens or five. Renumbering
+ * the remaining screens when one is skipped would mean `step === 3` no longer
+ * names one screen, and every step-keyed site in validate() would have to know
+ * which path it was on. So `step` is a stable ID and `visiblePath` below is what
+ * the progress bar and the Back button walk.
+ *
+ * ⚠️ `S_PHOTO` is 5 even though the photo screen sits SECOND on the visible
+ * path, and that is deliberate. The ids are append-only: renumbering `details`
+ * and `account` to make the numbers run in screen order would silently change
+ * what an already-saved draft means (a restored `step: 3` would land on the
+ * photo screen instead of the details screen it was written for), and it would
+ * re-point every historical `step` value in the PostHog funnel at a different
+ * screen. Order lives in FULL_PATH / SHORT_PATH; the ids only have to be unique.
+ */
+const S_DESCRIBE = 1, S_CONFIRM = 2, S_DETAILS = 3, S_ACCOUNT = 4, S_PHOTO = 5;
+const FULL_PATH = [S_DESCRIBE, S_CONFIRM, S_PHOTO, S_DETAILS, S_ACCOUNT];
+const SHORT_PATH = [S_DESCRIBE, S_PHOTO, S_DETAILS, S_ACCOUNT];
+
 // One short, plain-language line per step — replaces both the old
 // STEP_TITLES/STEP_SUBS pair and the Freddy speech-bubble reframe
 // (see OnboardingProgress for the numbered bar that carries the step count).
-const STEP_TITLES = ["Describe your problem", "Confirm what we found", "Answer a few quick questions", "Add the job details", "Create your free account"];
+//
+// ⚠️ BOTH arrays below are indexed by `step - 1`, i.e. by ID, NOT by position on
+// the visible path. So the fifth entry is the photo screen even though the photo
+// screen is shown second. Add a step id and you must append here, in id order.
+const STEP_TITLES = ["Describe your problem", "Confirm what we found", "A few quick details", "Create your free account", "Add a photo"];
 // Stable machine names for the drop-off funnel in PostHog (do not rename — insights
 // key off these). "details" and "account" are deliberately unchanged so the existing
-// funnel keeps working; "service" is gone because that screen no longer exists.
-const STEP_NAMES  = ["describe", "confirm", "questions", "details", "account"];
+// funnel keeps working; "service" is gone because that screen no longer exists, and
+// "questions" went the same way — the per-trade follow-ups now sit at the top of the
+// "details" screen rather than on a screen of their own. "photo" is APPENDED rather
+// than inserted, for the same reason the id is: an inserted name would re-point the
+// existing "details" and "account" steps at different screens mid-funnel.
+const STEP_NAMES  = ["describe", "confirm", "details", "account", "photo"];
+
+/**
+ * The clamp a restored draft's `step` is put through — ONE copy, because it is
+ * needed twice (the `step` state and the `confirmShown` belt-and-braces below)
+ * and a bound that drifts between the two is exactly how `step` ends up off
+ * `visiblePath`. The upper bound is derived from FULL_PATH rather than written
+ * out, so adding a step id can't leave a stale maximum behind that silently
+ * clamps the new screen away.
+ */
+const MAX_STEP_ID = Math.max(...FULL_PATH);
+const draftStep = (d: any) => dNum(d, "step", S_DESCRIBE, S_DESCRIBE, MAX_STEP_ID);
 
 const HOME_TO_SERVICE: Record<string,string> = {
   "General Repairs": "General Handyman",
@@ -121,6 +162,72 @@ function namesFromEmail(email: string): { first: string; last: string } {
   return { first, last };
 }
 
+/**
+ * "What happens next" — ONE renderer, mounted on BOTH terminal screens.
+ *
+ * There are two of those screens and only one of them is the common path.
+ * `verifyEmail` is what almost everybody sees (signup with email confirmation
+ * on returns no session, so submit() returns early there); `success` is the
+ * session-exists path. They looked like one screen to whoever wrote them and
+ * have drifted ever since, which is exactly the shape `autopayNote` was made
+ * to stop — a promise rendered twice is a promise that ends up made twice,
+ * differently. So the steps live here and the caller passes only what differs.
+ *
+ * ⚠️ THE SPAM LINE IS THE LOAD-BEARING ONE, and it is not padding.
+ * In Aug 2026 the GoTrue confirmation mail stopped arriving and three accounts
+ * were silently locked out — we found out because one of them phoned. Signup
+ * confirmation still travels a different TRANSPORT from everything else we send
+ * (SMTP via GoTrue, not the Resend API), and it is the one path nothing in our
+ * code can retry into. So this names the second email, says plainly that they
+ * cannot sign in until they click it, and tells them to look in spam. The
+ * wording deliberately agrees with `client-welcome`, which already says the
+ * same three things — a client who reads both should not find them
+ * contradicting each other about which email is which.
+ */
+function NextSteps({ email, signedIn }: { email: string; signedIn: boolean }) {
+  const row: React.CSSProperties = {
+    display: "flex", gap: ".75rem", alignItems: "flex-start",
+    padding: ".85rem 0", borderTop: "1px solid rgba(var(--ff-fg), .08)",
+  };
+  const num: React.CSSProperties = {
+    flex: "0 0 auto", width: "26px", height: "26px", borderRadius: "50%",
+    background: "rgba(234,107,20,.14)", border: "1px solid rgba(234,107,20,.35)",
+    color: "#ea6b14", fontSize: ".8rem", fontWeight: 600,
+    display: "flex", alignItems: "center", justifyContent: "center", marginTop: "1px",
+  };
+  const body: React.CSSProperties = { fontSize: ".88rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .75)" };
+  const head: React.CSSProperties = { color: "var(--ff-text)", fontWeight: 600, display: "block", marginBottom: ".15rem" };
+
+  // The order is the order things actually happen to them. A signed-in client
+  // can open the dashboard right now, so that goes first; someone still waiting
+  // on a confirmation link cannot, so for them the email comes first and the
+  // dashboard second. Listing a step they can't do yet at the top reads as an
+  // instruction that doesn't work.
+  const steps = signedIn
+    ? [
+        { t: "Open your dashboard", b: "Estimates land there as pros send them. That's also where you'll pick who you want and message them." },
+        { t: "Watch your email", b: "We'll email you the moment an estimate arrives, so you don't have to keep checking." },
+        { t: "Nothing in your inbox? Check spam", b: <>Our mail comes from <strong>noreply@freddyfixit.ca</strong>. If it landed in spam, marking it "not spam" once keeps the rest coming through.</> },
+      ]
+    : [
+        { t: "Click the link in your email", b: <>We've sent it to <strong>{email}</strong>. Your account isn't active until you click it, so nothing else can happen first.</> },
+        { t: "Can't find it? Check your spam folder", b: <>It comes from <strong>noreply@freddyfixit.ca</strong> and can take a couple of minutes. Still nothing after that, reply to any of our emails or write to <strong>hello@freddyfixit.ca</strong> and we'll sort it out — you won't be stuck.</> },
+        { t: "Then sign in to your dashboard", b: "Your request is already posted and pros can already quote it. The dashboard is where those estimates show up and where you pick one." },
+      ];
+
+  return (
+    <div style={{ textAlign: "left", background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .1)", borderRadius: "12px", padding: "1.25rem 1.4rem", marginBottom: "2rem" }}>
+      <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.3rem", letterSpacing: ".05em", marginBottom: ".35rem" }}>What happens next</div>
+      {steps.map((st, i) => (
+        <div key={st.t} style={i === 0 ? { ...row, borderTop: "none", paddingTop: ".35rem" } : row}>
+          <div style={num}>{i + 1}</div>
+          <div style={body}><strong style={head}>{st.t}</strong>{st.b}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function ClientOnboarding() {
   const [, setLocation] = useLocation();
   // A signed-in user starting a new request gets the streamlined returning-user
@@ -160,8 +267,27 @@ export default function ClientOnboarding() {
    */
   const { draft, restored, startOver } = useStoredDraft(ONBOARDING_DRAFT_KEY);
 
-  const [step, setStep] = useState(() => dNum(draft, "step", 1, 1, 5));
-  const TOTAL = 5;
+  const [step, setStep] = useState(() => draftStep(draft));
+  /**
+   * Was the confirm screen shown on this run?
+   *
+   * It has to be REMEMBERED, not recomputed. Recomputing "did detection find a
+   * trade?" at Back time reads the state AFTER the client has confirmed on
+   * screen 2 — at which point services are always non-empty, so Back from the
+   * details screen would skip over the screen they just filled in and land on
+   * the description. Persisted in the draft so a restore lands on the same path.
+   *
+   * The `|| step === S_CONFIRM` half is the belt to that braces. `step` and
+   * `confirmShown` are saved together and should always agree, but if a draft
+   * ever arrives holding S_CONFIRM with the flag false, `visiblePath` would be
+   * SHORT_PATH — which does not CONTAIN S_CONFIRM, so `indexOf` returns -1 and
+   * Next walks to `SHORT_PATH[0]`, i.e. the button moves the client BACKWARDS
+   * with no way forward. Deriving the flag from the step instead guarantees the
+   * invariant every path walk assumes: `step` is always on `visiblePath`.
+   */
+  const [confirmShown, setConfirmShown] = useState(() =>
+    dBool(draft, "confirmShown") || draftStep(draft) === S_CONFIRM);
+  const visiblePath = confirmShown ? FULL_PATH : SHORT_PATH;
   // What the keyword map pulled out of the description, and the exact text it was
   // read from. Storing the text lets us re-run detection only when the description
   // actually changed, so a client who edits their chips then steps back and forward
@@ -186,8 +312,13 @@ export default function ClientOnboarding() {
     phone:             dStr(draft, "phone"),
     password:          "",
     preferredSchedule: dStr(draft, "preferredSchedule"),
-    location:          dStr(draft, "location"),
+    // APPROXIMATE LOCATION ONLY — a postal code and a quadrant, never a street
+    // address. Nobody needs the address until a pro has been chosen, and the
+    // client confirms it once, on the dashboard, immediately before the deposit
+    // (see `confirm_job_address`). src/lib/calgaryAreas.ts turns these two into
+    // the one string `client_requests.location` stores.
     postalCode:        dStr(draft, "postalCode"),
+    area:              dStr(draft, "area"),
     jobDescription:    dStr(draft, "jobDescription"),
     businessName:      dStr(draft, "businessName"),
     businessType:      dStr(draft, "businessType"),
@@ -252,7 +383,9 @@ export default function ClientOnboarding() {
   // Onboarding drop-off funnel: fire a step-view event each time a logged-out
   // visitor lands on / advances through a signup step. Lets PostHog pinpoint
   // exactly which internal step people abandon (steps live on one URL, so
-  // $pageview alone can't see them). Named steps: service -> details -> account.
+  // $pageview alone can't see them). `step` is a stable ID, so STEP_NAMES stays
+  // aligned whether or not the confirm screen was shown — a run that skipped it
+  // simply reports no "confirm" view, which is exactly what the funnel should see.
   useEffect(() => {
     if (mode !== "signup") return;
     trackEvent("onboarding_step_view", { flow: "client", step, step_name: STEP_NAMES[step-1] || String(step) });
@@ -317,9 +450,9 @@ export default function ClientOnboarding() {
    * can't be raced into resurrecting a request that now exists in the database.
    */
   useDraftAutosave(ONBOARDING_DRAFT_KEY, {
-    step, tags, answers, detectedFor, showAllServices,
+    step, confirmShown, tags, answers, detectedFor, showAllServices,
     email: form.email, phone: form.phone, preferredSchedule: form.preferredSchedule,
-    location: form.location, postalCode: form.postalCode, jobDescription: form.jobDescription,
+    postalCode: form.postalCode, area: form.area, jobDescription: form.jobDescription,
     businessName: form.businessName, businessType: form.businessType,
     locations: form.locations, billingPreference: form.billingPreference,
     referralCode: form.referralCode,
@@ -374,16 +507,28 @@ export default function ClientOnboarding() {
     return Array.isArray(v) ? v.length > 0 : !!v;
   }).length;
 
-  // Read the description and pre-fill services + descriptive tags. Runs when the
-  // client leaves the description screen, never on every keystroke — and never
-  // overwrites services they picked themselves (or a ?service= deep link).
-  const runDetect = () => {
+  /**
+   * Read the description and pre-fill services + descriptive tags. Runs when the
+   * client leaves the description screen, never on every keystroke — and never
+   * overwrites services they picked themselves (or a ?service= deep link).
+   *
+   * It RETURNS what it found, and the caller must use the returned value rather
+   * than reading `tags` / `selectedServices` straight after calling it. Those are
+   * React state setters: they don't apply until the next render, so `next()`
+   * reading them inline would decide whether to show the confirm screen from the
+   * PREVIOUS description every time. On the no-op path (empty text, or text we've
+   * already read) it hands back the current values, which is what makes stepping
+   * back to the description and forward again land on the same screen.
+   */
+  const runDetect = (): { tags: string[]; services: string[] } => {
     const text = form.jobDescription.trim();
-    if (!text || text === detectedFor) return;
+    if (!text || text === detectedFor) return { tags, services: selectedServices };
     const d = detectFromText(text);
     setDetectedFor(text);
     setTags(d.tags);
+    const services = selectedServices.length ? selectedServices : d.services;
     if (d.services.length) setSelectedServices(prev => prev.length ? prev : d.services);
+    return { tags: d.tags, services };
   };
 
   // What the contractor actually reads. The answers and tags are folded into the
@@ -399,17 +544,36 @@ export default function ClientOnboarding() {
 
   const validate = () => {
     const errs: Record<string,string> = {};
-    // 1 describe · 2 confirm · 3 questions (nothing required — every one is skippable)
-    // · 4 details · 5 account
-    if (step === 1) {
+    // The step-keyed gates below name STABLE IDS, not positions — S_CONFIRM is
+    // skipped whenever the keyword map already read a trade, and renumbering on
+    // that path would mean each of these blocks no longer names one screen.
+    // The per-trade follow-ups have nothing required (every one is skippable),
+    // so they carry no gate of their own; they now sit at the top of S_DETAILS.
+    if (step === S_DESCRIBE) {
       if (form.jobDescription.trim().length < 10) errs.jobDescription = "Tell us a little more — at least 10 characters";
+      // APPROXIMATE LOCATION ONLY, and it is asked FIRST — with the description —
+      // because it is what decides which pros ever see the job at all. Everything
+      // after this screen is refinement; a request with no readable area is
+      // dispatched to nobody in particular no matter how good the rest of it is.
+      //
+      // The street address is not asked for here and is not needed until a pro
+      // has been chosen — the client confirms it once, on the dashboard,
+      // immediately before the deposit. Both parts are required because
+      // `mask_location()` needs a postal code AND a zone token, and
+      // `list_open_jobs()` reads the zone token out of the raw location to rank
+      // in-zone jobs. A missing zone throws no error and shows no empty state;
+      // it just quietly makes every new request out-of-zone for everyone.
+      if (!form.postalCode.trim()) errs.location = "Enter your postal code";
+      else if (!isPostalCode(form.postalCode)) errs.location = "Enter a valid postal code (e.g. T2P 1J9)";
+      else if (!form.area.trim()) errs.location = "Pick the area you're in";
     }
-    if (step === 2) {
+    if (step === S_CONFIRM) {
       if (selectedServices.length === 0) errs.serviceNeeded = "Please select at least one service";
     }
-    if (step === 4) {
-      if (!form.location.trim() && !form.postalCode.trim()) errs.location = "Enter your address or postal code";
-      else if (!form.location.trim() && form.postalCode.trim() && !/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(form.postalCode.trim())) errs.location = "Enter a valid postal code (e.g. T2P 1J9) or your address";
+    // S_PHOTO carries no gate. The photo is optional by policy — it is nudged
+    // once in next() and never blocked — so a validate() branch for it would
+    // have nothing to say.
+    if (step === S_DETAILS) {
       if (!form.preferredSchedule) errs.preferredSchedule = "Please select a schedule";
       // Budget is optional, but if given it has to make sense. The minimum is
       // ours and can't be typed wrong, so only the max is validated — and a max
@@ -420,7 +584,7 @@ export default function ClientOnboarding() {
         if (bHi != null && (!isFinite(bHi) || bHi < 0)) errs.budget = "Budget must be a positive number";
       }
     }
-    if (step === 5) {
+    if (step === S_ACCOUNT) {
       { const ev = validateEmail(form.email); if (!ev.ok) errs.email = ev.error!; }
       { const pv = validatePhone(form.phone); if (!pv.ok) errs.phone = pv.error!; }
       if (form.password.length < 8) errs.password = "Minimum 8 characters";
@@ -447,11 +611,18 @@ export default function ClientOnboarding() {
      * someone who genuinely can't photograph the problem — it's in a crawlspace,
      * it's intermittent, they're posting from a desk at work — is never stuck.
      *
-     * It runs AFTER validate() on purpose. If the description is also too short,
-     * that error is the one that matters and it should not be competing with an
-     * advisory for the same scroll position.
+     * It runs AFTER validate() on purpose. A real error is always the one that
+     * matters and should never compete with an advisory for the same scroll
+     * position — that ordering has to hold even though S_PHOTO currently has
+     * nothing to validate, because the next person to add a field here will not
+     * think to re-check it.
+     *
+     * ⚠️ It is keyed to S_PHOTO, the screen the uploader is ON. It used to be
+     * keyed to S_DESCRIBE, where the uploader used to live. A nudge keyed to the
+     * wrong screen doesn't error — it pulses an element that isn't in the DOM
+     * and swallows one press of Next, which reads as a button that did nothing.
      */
-    if (step === 1 && !photoFile && !photoNudged.current) {
+    if (step === S_PHOTO && !photoFile && !photoNudged.current) {
       photoNudged.current = true;
       setPhotoPulse(true);
       setTimeout(() => {
@@ -463,13 +634,50 @@ export default function ClientOnboarding() {
       return;
     }
 
-    // Read the description on the way out of screen 1 so screen 2 has something
-    // to confirm.
-    if (step === 1) runDetect();
-    setStep(s => s + 1);
+    /**
+     * The confirm screen is CONDITIONAL, and this is where that is decided.
+     *
+     * Reading the description is the only thing that can answer "do we already
+     * know what trade this is?", so the answer is only available on the way out
+     * of the description screen. When the keyword map found both a trade and
+     * some descriptive tags there is nothing left to confirm, and showing a
+     * screen whose entire content is "yes, that's right" is a step that only
+     * ever collects a tap. When it found nothing, that screen is the one place
+     * the client can say what the job actually is, so it is not optional.
+     *
+     * The decision is RECORDED in `confirmShown` rather than recomputed, because
+     * by the time Back is pressed the client has picked a service on screen 2 —
+     * at which point re-asking "did detection find a trade?" answers yes for
+     * everyone, and Back would skip the screen they just filled in.
+     *
+     * `runDetect()` is used by its RETURN value, never by reading `tags` /
+     * `selectedServices` straight afterwards: those are React state setters and
+     * do not apply until the next render, so reading them here would decide the
+     * path from the PREVIOUS description every time.
+     */
+    if (step === S_DESCRIBE) {
+      const d = runDetect();
+      const needConfirm = d.services.length === 0 || d.tags.length === 0;
+      setConfirmShown(needConfirm);
+      // The skip target is the screen that FOLLOWS S_CONFIRM on the visible
+      // path, which is S_PHOTO — not S_DETAILS. Written as a literal because
+      // this branch is the one place the path is jumped rather than walked.
+      setStep(needConfirm ? S_CONFIRM : S_PHOTO);
+      window.scrollTo(0,0);
+      return;
+    }
+
+    const i = visiblePath.indexOf(step);
+    setStep(visiblePath[Math.min(visiblePath.length - 1, i + 1)]);
     window.scrollTo(0,0);
   };
-  const back = () => { if (step === 1) setLocation("/"); else { setStep(s => s - 1); window.scrollTo(0,0); } };
+  /** Walks the SAME derived path forward and back, so a skipped screen stays skipped in both directions. */
+  const back = () => {
+    const i = visiblePath.indexOf(step);
+    if (i <= 0) { setLocation("/"); return; }
+    setStep(visiblePath[i - 1]);
+    window.scrollTo(0,0);
+  };
 
   const handleSubmit = async () => {
     if (!validate()) return;
@@ -493,8 +701,13 @@ export default function ClientOnboarding() {
         budget_min: budgetFloor == null ? "" : String(budgetFloor),
         budget_max: budgetFlexible || budgetMax.trim() === "" ? "" : String(Number(budgetMax)),
         preferred_schedule: form.preferredSchedule,
-        location: form.location.trim() || form.postalCode.trim(),
-        postal_code: form.postalCode.trim(),
+        // `client_requests.location` now holds an APPROXIMATE location — the
+        // shape "T3A 1B2 · NW Calgary", which is precisely what mask_location()
+        // maps to itself, and which still carries the zone token list_open_jobs()
+        // reads to rank in-zone jobs. The street address is collected later, on
+        // the dashboard, once a pro has actually been chosen.
+        location: formatApproxLocation(form.postalCode, form.area),
+        postal_code: normalizePostal(form.postalCode),
         // The description a pro reads already has the answers + tags folded in, so
         // this works today with no schema change. The structured copies ride along
         // separately for a later migration that wants them as real columns.
@@ -644,7 +857,8 @@ export default function ClientOnboarding() {
         </div>
         <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:".5rem" }}>Check Your <span style={{ color:"#ea6b14" }}>Email</span></h1>
         <p style={{ color:"rgba(var(--ff-muted), .7)", marginBottom:".5rem", lineHeight:1.6 }}>We sent a confirmation link to <strong>{form.email}</strong>. Click it to activate your account.</p>
-        <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".85rem", marginBottom:"2rem", fontWeight:300 }}>Your request is saved — we'll start matching you with contractors right away.{photoFile ? " Once you've verified, you can add your photo from your dashboard." : ""}</p>
+        <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".85rem", marginBottom:"1.75rem", fontWeight:300 }}>Your request is saved — we'll start matching you with contractors right away.{photoFile ? " Once you've verified, you can add your photo from your dashboard." : ""}</p>
+        <NextSteps email={form.email} signedIn={false} />
         <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff", maxWidth:"260px", margin:"0 auto" }} onClick={() => setLocation("/login")}>Go to Sign In →</button>
       </div>
     </div>
@@ -672,6 +886,11 @@ export default function ClientOnboarding() {
             {photoReject} Your request was posted without it — you can add a different photo from your dashboard.
           </p>
         )}
+        {/* Sits AFTER the two photo notices and BEFORE the referral card on
+            purpose. A photo that didn't upload is something that just went
+            wrong and has to be read first; the referral card is an ask, and an
+            ask never goes above the instructions. */}
+        <NextSteps email={form.email} signedIn={true} />
         {referral?.code && (
           <div style={{ background:"linear-gradient(135deg, rgba(234,107,20,.10), rgba(var(--ff-fg),.03))", border:"1px solid rgba(234,107,20,.28)", borderRadius:"12px", padding:"1.25rem", marginBottom:"2rem", textAlign:"left" }}>
             <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.3rem", letterSpacing:".04em", marginBottom:".35rem" }}>Invite a friend, they save</div>
@@ -730,9 +949,14 @@ export default function ClientOnboarding() {
         + " @media (prefers-reduced-motion: reduce){.ff-photo-pulse{animation:none; background:rgba(234,107,20,.12)}}"}</style>
       <div style={s.inner}>
         <button onClick={back} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".82rem", textTransform:"uppercase", letterSpacing:".08em", padding:0, marginBottom:"2rem", display:"block" }}>
-          {step === 1 ? "← Home" : "← Back"}
+          {step === S_DESCRIBE ? "← Home" : "← Back"}
         </button>
-        <OnboardingProgress step={step} total={TOTAL} />
+        {/* OnboardingProgress counts POSITIONS — it fills circles 1..step and
+            announces "Step N of M" — so it must be handed where we are on the
+            path actually being walked, not the stable id. Passing the id with a
+            fixed total would leave a visible hole in the bar and announce a
+            count the client can't reach on a run that skipped the confirm screen. */}
+        <OnboardingProgress step={Math.max(1, visiblePath.indexOf(step) + 1)} total={visiblePath.length} />
         {/* The form has already filled itself in by the time this renders — it says
             so rather than asking. A "we found a draft, restore it?" prompt is a
             decision about something you can't see yet, put to someone who has just
@@ -757,8 +981,10 @@ export default function ClientOnboarding() {
         <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:"2rem" }}>{STEP_TITLES[step-1]}</h1>
 
         <div style={s.card}>
-          {/* ── 5 · Account ─────────────────────────────────────────────── */}
-          {step === 5 && (
+          {/* ── S_ACCOUNT · Account ─────────────────────────────────────── */}
+          {/* NOTE: these blocks are NOT in step order — account renders first,
+              then describe, confirm, details. Key off these banners, not position. */}
+          {step === S_ACCOUNT && (
             <div>
               <OAuthButtons role="client" label="sign up in one tap with" />
               <p style={{ textAlign:"center", fontSize:".78rem", color:"rgba(var(--ff-muted), .4)", margin:"1.25rem 0" }}>or create your account with email</p>
@@ -822,8 +1048,8 @@ export default function ClientOnboarding() {
             </div>
           )}
 
-          {/* ── 1 · Describe ────────────────────────────────────────────── */}
-          {step === 1 && (
+          {/* ── S_DESCRIBE · Describe ───────────────────────────────────── */}
+          {step === S_DESCRIBE && (
             <div>
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>What needs fixing?</label>
@@ -839,6 +1065,81 @@ export default function ClientOnboarding() {
                 </p>
                 {errors.jobDescription && <p id="co-err-jobDescription" style={s.err}>{errors.jobDescription}</p>}
               </div>
+              {/* WHEREABOUTS, NOT AN ADDRESS.
+                  A street address is what a pro needs to turn up, and nobody is
+                  turning up yet — the request goes out to several strangers, any
+                  of whom might never be hired. So this screen asks only what the
+                  matcher genuinely uses: a postal code and a quadrant. The full
+                  address is confirmed once, on the dashboard, right before the
+                  deposit, by which point exactly one pro is going to see it.
+
+                  It sits on the FIRST screen, with the description, because
+                  between them they are the whole of what dispatch needs: what
+                  the job is and where it is. Everything after this point is
+                  refinement, and a request that reaches the right pros with a
+                  vague schedule beats a perfectly-specified one that reaches
+                  nobody.
+
+                  Both parts are asked for because both are load-bearing on the
+                  server: mask_location() builds the pro-facing string from a
+                  postal code AND a zone, and list_open_jobs() reads the zone out
+                  of the raw text to rank in-zone jobs. The chips are pre-ticked
+                  from the postal code as a convenience and are always the
+                  client's to correct — an unrecognised FSA suggests nothing
+                  rather than guessing wrong. */}
+              <div style={{ marginBottom:"1.2rem" }}>
+                <label style={s.label}>Where's the job? <span style={{ color:"rgba(var(--ff-muted), .4)", textTransform:"none", letterSpacing:0 }}>(postal code &mdash; we'll ask for the address once you've picked a pro)</span></label>
+                <input
+                  autoComplete="postal-code" inputMode="text" autoCapitalize="characters" autoCorrect="off" spellCheck={false} maxLength={7}
+                  style={{ ...inp, borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)", letterSpacing:".06em" }}
+                  placeholder="e.g. T2P 1J9"
+                  value={form.postalCode}
+                  onChange={e => {
+                    const v = e.target.value.toUpperCase();
+                    set("postalCode", v);
+                    // Suggest only. It fills the area in when we recognise the
+                    // FSA and the client hasn't already chosen one, and it never
+                    // overwrites a deliberate pick.
+                    if (!form.area) { const guess = areasFromPostal(v)[0]; if (guess) set("area", guess); }
+                  }}
+                />
+                <p style={{ ...s.label, marginTop:"1rem", marginBottom:".5rem" }}>Which part of town?</p>
+                <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
+                  {AREAS.map(a => {
+                    const on = form.area === a;
+                    return (
+                      <button key={a} type="button" onClick={() => set("area", on ? "" : a)}
+                        style={{ padding:".55rem .9rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".85rem", fontWeight: on ? 500 : 400, cursor:"pointer",
+                          background: on ? "rgba(234,107,20,.15)" : "rgba(var(--ff-fg), .04)",
+                          border: on ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .12)",
+                          color: on ? "var(--ff-text)" : "rgba(var(--ff-muted), .8)" }}>
+                        {a}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginTop:".55rem", lineHeight:1.5 }}>
+                  Pros bidding on your job see the area and postal code only. Your full address goes to the one pro you choose, and not before.
+                </p>
+                {errors.location && <p id="co-err-location" style={s.err}>{errors.location}</p>}
+              </div>
+            </div>
+          )}
+
+          {/* ── S_PHOTO · Photo ─────────────────────────────────────────
+              Its own screen, second on the visible path. It used to be the
+              bottom half of the describe screen, where it competed with the
+              description for attention and was routinely scrolled past — and
+              the nudge that exists to catch exactly that then had to fire on a
+              screen the client thought they had already finished.
+
+              ⚠️ It carries its own `submitError` render. The 10MB guard on the
+              file input writes to `submitError`, and that state is rendered in
+              only the branches that spell it out — leave it off and an
+              oversized photo is rejected with the picker silently cleared and
+              nothing anywhere saying why. */}
+          {step === S_PHOTO && (
+            <div>
               <div id="co-photo" className={photoPulse ? "ff-photo-pulse" : undefined} style={{ marginBottom:"1.2rem", scrollMarginTop:"5.5rem" }}>
                 <label style={s.label}>
                   Photo of the Problem{" "}
@@ -872,10 +1173,16 @@ export default function ClientOnboarding() {
             </div>
           )}
 
-          {/* ── 2 · Confirm ─────────────────────────────────────────────
+          {/* ── S_CONFIRM · Confirm ─────────────────────────────────────
               What we read out of the description, shown as chips the client can
-              tap off. They always get the last word — nothing here is locked in. */}
-          {step === 2 && (
+              tap off. They always get the last word — nothing here is locked in.
+
+              CONDITIONAL: only reached when the keyword map came up short (see
+              next()). When it did find a trade there is nothing here to correct,
+              so the screen is skipped rather than shown as a formality. The
+              empty-detection copy below is therefore the COMMON case on this
+              screen now, not the edge case it used to be. */}
+          {step === S_CONFIRM && (
             <div>
               <p style={s.label}>The service we picked</p>
               {selectedServices.length > 0 ? (
@@ -932,15 +1239,28 @@ export default function ClientOnboarding() {
             </div>
           )}
 
-          {/* ── 3 · Questions ───────────────────────────────────────────
-              Tap-only, and every one is skippable. The answers are folded into
-              the description a contractor reads, so a skipped question costs
-              detail but never blocks the request. */}
-          {step === 3 && (
+          {/* ── S_DETAILS · Details ─────────────────────────────────────
+              The per-trade follow-ups AND the details that used to be a screen
+              of their own. Merging them dropped a SCREEN, not a single question:
+              every field below is byte-identical to the one it replaced, minus
+              the street-address input (see the location block). Same call the
+              contractor flow made going 8 steps to 5.
+
+              The follow-ups are tap-only and every one is skippable — the answers
+              are folded into the description a contractor reads, so a skipped
+              question costs detail but never blocks the request. They lead
+              because they are the cheapest thing on the screen to answer.
+
+              Because schedule and budget always render here, this screen can
+              never be empty, which is why there is no "skip when there are no
+              questions" branch to get wrong. */}
+          {step === S_DETAILS && (
             <div>
-              <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", marginBottom:"1.5rem" }}>
-                {answeredCount} of {activeQuestions.length} answered · every one is optional
-              </p>
+              {activeQuestions.length > 0 && (
+                <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", marginBottom:"1.5rem" }}>
+                  {answeredCount} of {activeQuestions.length} answered · every one is optional
+                </p>
+              )}
               {activeQuestions.map(q => (
                 <div key={q.id} style={{ marginBottom:"1.75rem" }}>
                   <p style={{ fontSize:".95rem", fontWeight:500, color:"var(--ff-text)", marginBottom:".7rem", lineHeight:1.45 }}>
@@ -963,12 +1283,9 @@ export default function ClientOnboarding() {
                   </div>
                 </div>
               ))}
-            </div>
-          )}
-
-          {/* ── 4 · Details ─────────────────────────────────────────────── */}
-          {step === 4 && (
-            <div>
+              {activeQuestions.length > 0 && (
+                <div style={{ height:1, background:"rgba(var(--ff-fg), .08)", margin:"0 0 1.75rem" }} />
+              )}
               <div style={{ marginBottom:"1.5rem" }}>
                 <label style={s.label}>I am requesting as</label>
                 <div style={{ display:"flex", gap:".6rem", marginTop:".4rem" }}>
@@ -1008,18 +1325,10 @@ export default function ClientOnboarding() {
                   </label>
                 </div>
               )}
-              <div style={{ marginBottom:"1.2rem" }}>
-                <label style={s.label}>Where's the job? <span style={{ color:"rgba(var(--ff-muted), .4)", textTransform:"none", letterSpacing:0 }}>(address or postal code — either one)</span></label>
-                <AddressAutocomplete autoComplete="street-address" style={{ ...inp, borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="e.g. 123 Main St NW" value={form.location} onChange={v => set("location", v)} />
-                <div style={{ display:"flex", alignItems:"center", gap:".6rem", margin:".55rem 0" }}>
-                  <div style={{ flex:1, height:1, background:"rgba(var(--ff-fg), .12)" }} />
-                  <span style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .5)" }}>or just a postal code</span>
-                  <div style={{ flex:1, height:1, background:"rgba(var(--ff-fg), .12)" }} />
-                </div>
-                <input autoComplete="postal-code" style={{ ...inp, borderColor: errors.location ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="e.g. T2P 1J9" value={form.postalCode} onChange={e => set("postalCode", e.target.value)} />
-                {errors.location && <p id="co-err-location" style={s.err}>{errors.location}</p>}
-              </div>
-
+              {/* The location block used to sit here. It is on S_DESCRIBE now —
+                  it is the answer that decides which pros ever see the job, so
+                  it belongs with the description rather than three screens
+                  later, behind a photo step someone may bounce off. */}
               <p style={{ ...s.label, marginTop:"1.5rem" }}>When Do You Need It?</p>
               {SCHEDULES.map(sc => (
                 <button key={sc.label} style={{ ...s.schedBtn, ...(form.preferredSchedule===sc.label ? s.schedBtnSel : {}) }} onClick={() => set("preferredSchedule",sc.label)}>
@@ -1178,8 +1487,12 @@ export default function ClientOnboarding() {
         </div>
 
         <div style={{ display:"flex", gap:".75rem", marginTop:"2rem" }}>
-          <button style={{ ...s.navBtn, background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"1px solid rgba(var(--ff-fg), .1)" }} onClick={back}>{step===1 ? "← Home" : "← Back"}</button>
-          {step < TOTAL
+          <button style={{ ...s.navBtn, background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"1px solid rgba(var(--ff-fg), .1)" }} onClick={back}>{step===S_DESCRIBE ? "← Home" : "← Back"}</button>
+          {/* Keyed on the ACCOUNT screen's stable id, never on a path length:
+              SHORT_PATH and FULL_PATH both END on S_ACCOUNT but are different
+              lengths, so `step < path.length` would show Submit one screen early
+              on the run that skipped the confirm screen. */}
+          {step !== S_ACCOUNT
             ? <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff" }} onClick={next}>Next →</button>
             : <button style={{ ...s.navBtn, background:"linear-gradient(135deg,#ea6b14,#f09020)", color:"#fff", opacity: loading ? .6 : 1 }} onClick={handleSubmit} disabled={loading}>
                 {loading ? <><span className="ff-btn-spin" aria-hidden="true" />Submitting…</> : "Submit Request →"}

@@ -19,6 +19,7 @@ import { formatWhen } from "@/lib/chatParse";
 import JobTimeline from "@/components/JobTimeline";
 import MilestonePanel from "@/components/MilestonePanel";
 import ContractPanel, { CONTRACT_ANCHOR } from "@/components/ContractPanel";
+import ConfirmAddress, { ADDRESS_ANCHOR, addressMissing } from "@/components/ConfirmAddress";
 import JobTimer from "@/components/JobTimer";
 import JobChecklist from "@/components/JobChecklist";
 import JobPhotos from "@/components/JobPhotos";
@@ -691,6 +692,19 @@ export default function ClientDashboard() {
    * has painted by the time it looks for the id.
    */
   const focusPhoto = () => { setReqDetailOpen(true); focusAnchor(PHOTO_ANCHOR); };
+  const focusAddress = () => focusAnchor(ADDRESS_ANCHOR);
+  /**
+   * Patch our copy of the job the moment the address saves, so the Pay button
+   * unblocks on the tap rather than on the round trip. The realtime `jobs`
+   * subscription above delivers the same value a beat later and would do this
+   * on its own — this is what removes the beat.
+   *
+   * Both ConfirmAddress mounts share this ONE handler, the same rule as
+   * `autopayNote`: two money surfaces that write their own patch are two places
+   * to disagree about what just happened.
+   */
+  const patchJobAddress = (address: string) =>
+    setActiveJob((j: any) => (j ? { ...j, service_address: address, service_address_at: new Date().toISOString() } : j));
   // Spreads an id + the pulse ring onto whichever card an attention row targets.
   // scrollMarginTop clears the fixed top nav so the card isn't tucked under it.
   const anchor = (id: string) => ({ id, className: pulseAnchor === id ? "ff-pulse" : undefined });
@@ -1014,6 +1028,17 @@ export default function ClientDashboard() {
       notify(contractCheckError
         ? "We couldn't verify the service agreement. Please refresh the page and try again."
         : "Please sign the service agreement above before paying for this job.");
+      return;
+    }
+    // Same predicate the button reads, so the two can never disagree — the
+    // `photosMissing` / `canWithdraw` idiom. This one is OURS rather than the
+    // server's: create-payment-intent has no address gate and deliberately
+    // doesn't get one, because a fail-closed payment gate has taken every job
+    // on the platform unpayable twice. The cost of a bypass here is a pro
+    // asking in chat; the cost of a wrong fail-closed gate is nobody can pay.
+    if (addressMissing(activeJob)) {
+      notify("Please confirm the service address just above before paying — your pro needs it to show up.");
+      focusAddress();
       return;
     }
     const dueNow = jobDueNow(activeJob);
@@ -1620,6 +1645,23 @@ export default function ClientDashboard() {
             attn.push(contractStatus === "sent"
               ? { key: "contract", text: "Your pro sent the service agreement — sign it so you can pay and lock in your visit.", cta: "Review & sign", onClick: focusContract, ownsScroll: true }
               : { key: "contract", text: "Waiting on your pro to send the service agreement. You'll be able to pay and book once it's signed by both of you.", cta: "See job", onClick: focusContract, ownsScroll: true });
+          }
+          // The other hard pay-gate, and it sits beside the agreement for the
+          // same reason: until it's done the deposit button is disabled, so the
+          // pro is never dispatched. We only ever held a postal code while the
+          // client was comparing estimates, so this is the first moment a street
+          // address exists anywhere — and the client has no way to guess that
+          // from a greyed-out button.
+          //
+          // Scoped to the DEPOSIT branches only (unpaid + quoted), exactly like
+          // the button it mirrors. A job already 'held' or 'released' predates
+          // this feature or has been through the gate; chasing an address there
+          // would stall money that is already owed.
+          if (activeJob && !activeJob.is_milestone && activeJob.amount
+              && ["scheduled", "in_progress", "pending_confirmation"].includes(activeJob.status)
+              && !["held", "released"].includes(activeJob.payment_status ?? "unpaid")
+              && addressMissing(activeJob)) {
+            attn.push({ key: "address", text: "Confirm your full service address — it's the last step before your deposit, and your pro can't find you without it.", cta: "Confirm address", onClick: focusAddress, ownsScroll: true });
           }
           // A release that didn't complete outranks everything: it is the only
           // state in which money has been taken and not yet reached anybody. It
@@ -2320,7 +2362,8 @@ export default function ClientDashboard() {
                                     <Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />{contractCheckError ? "We couldn't verify the service agreement. Please refresh the page and try again." : "Please sign the service agreement above before paying for this job."}
                                   </div>
                                 )}
-                                <button style={s.primaryBtn} disabled={busyPay || contractBlocked} onClick={payForJob}>{busyPay ? "Opening checkout…" : activeJob.payment_status === "processing" ? "Start a new payment" : depositSplit(activeJob) ? "Pay $" + jobDueNow(activeJob).toFixed(2) + " deposit" : "Pay $" + jobTotal(activeJob).toFixed(2) + " (held until you confirm)"}</button>
+                                <ConfirmAddress job={activeJob} highlight={pulseAnchor === ADDRESS_ANCHOR} onConfirmed={patchJobAddress} />
+                                <button style={s.primaryBtn} disabled={busyPay || contractBlocked || addressMissing(activeJob)} onClick={payForJob}>{busyPay ? "Opening checkout…" : activeJob.payment_status === "processing" ? "Start a new payment" : depositSplit(activeJob) ? "Pay $" + jobDueNow(activeJob).toFixed(2) + " deposit" : "Pay $" + jobTotal(activeJob).toFixed(2) + " (held until you confirm)"}</button>
                               </>
                             ) : null}
                           </>
@@ -2402,7 +2445,8 @@ export default function ClientDashboard() {
                                     <Ic name="alert-triangle" size={13} style={{ marginRight:4 }} />{contractCheckError ? "We couldn't verify the service agreement. Please refresh the page and try again." : "Please sign the service agreement above before paying for this job."}
                                   </div>
                                 )}
-                                <button style={s.primaryBtn} disabled={busyPay || contractBlocked} onClick={payForJob}>{busyPay ? "Opening checkout…" : activeJob.payment_status === "processing" ? "Start a new payment" : depositSplit(activeJob) ? "Pay $" + jobDueNow(activeJob).toFixed(2) + " deposit" : "Pay $" + jobTotal(activeJob).toFixed(2) + " now"}</button>
+                                <ConfirmAddress job={activeJob} highlight={pulseAnchor === ADDRESS_ANCHOR} onConfirmed={patchJobAddress} />
+                                <button style={s.primaryBtn} disabled={busyPay || contractBlocked || addressMissing(activeJob)} onClick={payForJob}>{busyPay ? "Opening checkout…" : activeJob.payment_status === "processing" ? "Start a new payment" : depositSplit(activeJob) ? "Pay $" + jobDueNow(activeJob).toFixed(2) + " deposit" : "Pay $" + jobTotal(activeJob).toFixed(2) + " now"}</button>
                               </>
                             ) : (
                               <>

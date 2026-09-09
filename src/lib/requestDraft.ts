@@ -44,8 +44,17 @@ import { useEffect, useRef, useState } from "react";
 export const ONBOARDING_DRAFT_KEY = "ff_req_draft_signup";
 export const NEWREQUEST_DRAFT_KEY = "ff_req_draft_return";
 
-/** Bump when a saved shape stops being readable by the current form. */
-const DRAFT_VERSION = 1;
+/**
+ * Bump when a saved shape stops being readable by the current form.
+ *
+ * v2 (2026-09-08): ClientOnboarding dropped a screen and stopped asking for a
+ * street address. A v1 draft holds a `step` from the old five-screen numbering
+ * and a `location` field that no longer exists, so restoring one would land
+ * somebody on a screen that isn't there with an address we can't use. The
+ * version check in readDraft() is what makes that impossible — a stale blob is
+ * simply not returned.
+ */
+const DRAFT_VERSION = 2;
 
 /**
  * How long a draft stays offerable, in hours.
