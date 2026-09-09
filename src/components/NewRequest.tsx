@@ -13,6 +13,7 @@ import { SERVICES, SCHEDULES } from "@/pages/ClientOnboarding";
 import { useServicePricing, fromText, floorFor } from "@/lib/servicePricing";
 import ServicePicker from "@/components/ServicePicker";
 import BudgetPicker from "@/components/BudgetPicker";
+import PhotoPicker from "@/components/PhotoPicker";
 import { isPerKmService, freqLabel, SLIDER_STOPS, SLIDER_SHORT } from "@/lib/recurrence";
 import WaitlistForm from "@/components/WaitlistForm";
 import { usePlatformStatus, acceptingRequests } from "@/lib/platformStatus";
@@ -820,18 +821,19 @@ export default function NewRequest() {
                   : <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span>}
               </label>
               <p style={{ margin:"0 0 .5rem", fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.45 }}>A clear photo helps contractors give you a faster, more accurate estimate — and means fewer surprises on the day.</p>
-              <label htmlFor="nr-photo-upload" style={{ display:"flex", alignItems:"center", gap:".75rem", border:"2px dashed " + (photoFile ? "rgba(234,107,20,.5)" : "rgba(var(--ff-fg), .12)"), borderRadius:"10px", padding:"1rem 1.25rem", cursor:"pointer", background: photoFile ? "rgba(234,107,20,.05)" : "transparent", transition:"border-color .2s,background .2s" }}>
-                <Ic name="camera" size={22} color="#ea6b14" style={{ flexShrink:0 }} />
-                <div>
-                  <p style={{ margin:0, fontSize:".85rem", color: photoFile ? "#ea6b14" : "rgba(var(--ff-muted), .7)", fontWeight:500 }}>
-                    {photoFile ? photoFile.name : "Attach a photo"}
-                  </p>
-                  <p style={{ margin:".2rem 0 0", fontSize:".74rem", color:"rgba(var(--ff-muted), .4)" }}>
-                    {photoFile ? "Tap to change" : "Tap to choose — max 10 MB"}
-                  </p>
-                </div>
-                <input id="nr-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 10*1024*1024) { setSubmitError("That photo is over 10 MB. Please choose a smaller one."); e.target.value = ""; return; } setSubmitError(""); setPhotoFile(f); setPhotoPulse(false); }} style={{ display:"none" }} />
-              </label>
+              {/* One shared control — see PhotoPicker.tsx. This form and
+                  ClientOnboarding ask for the photo in the same words on the
+                  same kind of screen, and their two copies of this box had
+                  ALREADY drifted on the oversized-file wording. The picker owns
+                  the size cap, the cancelled-picker rule and the reject reset;
+                  this screen keeps the pulse wrapper, the asterisk and the
+                  advisory below, because those are what genuinely differ. */}
+              <PhotoPicker
+                id="nr-photo-upload"
+                file={photoFile}
+                onPick={f => { setSubmitError(""); setPhotoFile(f); setPhotoPulse(false); }}
+                onError={setSubmitError}
+              />
               {/* The advisory outlives the pulse on purpose: the animation is
                   what draws the eye, the words are what answer "why does it
                   matter?", and those are two different jobs. */}

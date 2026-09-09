@@ -1,6 +1,7 @@
 import { Ic } from "@/components/Ic";
 import VoiceDictate from "@/components/VoiceDictate";
 import PasswordField from "@/components/PasswordField";
+import PhotoPicker from "@/components/PhotoPicker";
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
@@ -577,6 +578,15 @@ export default function ClientOnboarding() {
     // so they carry no gate of their own; they now sit at the top of S_DETAILS.
     if (step === S_DESCRIBE) {
       if (form.jobDescription.trim().length < 10) errs.jobDescription = "Tell us a little more — at least 10 characters";
+      // Email is checked on BOTH this screen and S_ACCOUNT, deliberately.
+      // Asking for it here is what makes the rest of the form recoverable, but
+      // the field stays editable at the end — a password manager fills it, and
+      // it is the last chance to fix a typo — so the later gate is what
+      // actually stands between a typed address and signUp(). Dropping the
+      // S_ACCOUNT check because "it was already validated" would let an address
+      // edited to nonsense on the final screen through. Same rule as the payout
+      // guards: a second check may be stricter, never looser.
+      { const ev = validateEmail(form.email); if (!ev.ok) errs.email = ev.error!; }
       // APPROXIMATE LOCATION ONLY, and it is asked FIRST — with the description —
       // because it is what decides which pros ever see the job at all. Everything
       // after this screen is refinement; a request with no readable area is
@@ -618,7 +628,11 @@ export default function ClientOnboarding() {
     }
     setErrors(errs);
     // On a long step the errored field can sit below the fold — scroll it into view.
-    const order = ["jobDescription","serviceNeeded","location","preferredSchedule","budget","email","phone","password"];
+    // Order follows what's ON SCREEN, not the shape of the form object: email
+    // now renders directly under the description on S_DESCRIBE. (Cross-step
+    // ordering is moot — only one step's errors ever exist at a time — but a
+    // reader shouldn't have to work that out to trust the array.)
+    const order = ["jobDescription","email","serviceNeeded","location","preferredSchedule","budget","phone","password"];
     const first = order.find(k => errs[k]);
     if (first) setTimeout(() => { document.getElementById("co-err-" + first)?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 60);
     return Object.keys(errs).length === 0;
@@ -1014,9 +1028,21 @@ export default function ClientOnboarding() {
             <div>
               <OAuthButtons role="client" label="sign up in one tap with" />
               <p style={{ textAlign:"center", fontSize:".78rem", color:"rgba(var(--ff-muted), .4)", margin:"1.25rem 0" }}>or create your account with email</p>
+              {/* Asked on step 1 and shown again HERE, still as a real,
+                  editable input — deliberately not a read-only "confirm" row
+                  with a Change link. A browser only offers to save a login when
+                  it can see a visible username field beside the password field,
+                  so hiding this one costs every client their saved credential.
+                  It is prefilled, so for most people it is a glance, not a
+                  retype; the helper line below says which of the two it is. */}
               <div style={{ marginBottom:"1.2rem" }}>
                 <label style={s.label}>Email</label>
-                <input autoComplete="email" style={{ ...inp, borderColor: errors.email ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="email" placeholder="alex@email.com" value={form.email} onChange={e => set("email",e.target.value)} />
+                <input autoComplete="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} style={{ ...inp, borderColor: errors.email ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="email" placeholder="alex@email.com" value={form.email} onChange={e => set("email",e.target.value)} />
+                <p style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .55)", margin:".3rem 0 0", lineHeight:1.4 }}>
+                  {form.email.trim()
+                    ? "This is the address you gave us at the start — change it here if it’s wrong."
+                    : "Your estimates and your sign-in confirmation both go here."}
+                </p>
                 {errors.email && <p id="co-err-email" style={s.err}>{errors.email}</p>}
               </div>
               <div style={{ marginBottom:"1.2rem" }}>
@@ -1090,6 +1116,45 @@ export default function ClientOnboarding() {
                   No need to know the trade name — plain English is perfect. We'll work out who to send.
                 </p>
                 {errors.jobDescription && <p id="co-err-jobDescription" style={s.err}>{errors.jobDescription}</p>}
+              </div>
+              {/* EMAIL IS ASKED HERE, NOT ONLY AT THE END.
+                  It is the one answer that makes everything after this screen
+                  recoverable. Someone who describes their problem and then walks
+                  away at the password field has told us what they need and given
+                  us no way to say anything back — and this form has four screens
+                  after this one, so that is a real share of the people who start.
+
+                  It is still ASKED here rather than merely repeated at the end:
+                  the field on S_ACCOUNT stays editable (the address a
+                  password manager fills, and the last chance to fix a typo), so
+                  validate() gates on email on BOTH screens. Stricter on the
+                  later one, never looser — an address edited to nonsense on the
+                  final screen must not sail into signUp because it passed here.
+
+                  Two `co-err-email` nodes therefore exist in this file. That is
+                  safe for the same reason the contractor job anchors are bare
+                  ids: the two steps are mutually exclusive, so only one is ever
+                  mounted.
+
+                  ⚠️ Nothing is persisted server-side by typing here. An
+                  abandoned form still leaves no trace anywhere — capturing
+                  partial leads would be a schema change with CASL and
+                  privacy-policy consequences, and it is not what this does.
+                  Google one-tap on the final screen takes the address from
+                  Google, so on that path what is typed here is simply unused. */}
+              <div style={{ marginBottom:"1.2rem" }}>
+                <label style={s.label}>Your email</label>
+                <input
+                  autoComplete="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false}
+                  style={{ ...inp, borderColor: errors.email ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }}
+                  type="email" placeholder="alex@email.com"
+                  value={form.email}
+                  onChange={e => set("email", e.target.value)}
+                />
+                <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginTop:".4rem", lineHeight:1.5 }}>
+                  This is where your estimates land. You'll pick a password at the end &mdash; nothing is sent until then.
+                </p>
+                {errors.email && <p id="co-err-email" style={s.err}>{errors.email}</p>}
               </div>
               {/* WHEREABOUTS, NOT AN ADDRESS.
                   A street address is what a pro needs to turn up, and nobody is
@@ -1212,13 +1277,19 @@ export default function ClientOnboarding() {
                     ? <span aria-hidden="true" style={{ color:"#ea6b14", fontWeight:600 }}>*</span>
                     : <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span>}
                 </label>
-                {/* accept has no `capture`, so this offers the camera AND the
-                    gallery — a photo taken earlier is just as useful, and forcing
-                    the camera means anyone not standing in front of the problem
-                    right now has nothing to attach. */}
-                <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 10*1024*1024) { setSubmitError("That photo is over 10MB — please pick a smaller one."); e.target.value = ""; return; } setSubmitError(""); setPhotoFile(f); setPhotoPulse(false); }} style={{ ...inp, padding:".6rem", cursor:"pointer" }} />
-                <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginTop:".4rem" }}>We shrink it for you before it's sent, so a photo straight off your phone is fine.</p>
-                {photoFile && <p style={{ fontSize:".78rem", color:"var(--ff-success)", marginTop:".3rem" }}>Attached: {photoFile.name}</p>}
+                {/* One shared control — see PhotoPicker.tsx. It owns the size
+                    guard, the cancelled-picker rule and the reject reset; this
+                    screen owns the pulse wrapper, the asterisk and the advisory
+                    below, because those are what differ between the two forms.
+                    The picker already names the file it's holding, so the old
+                    separate "Attached: …" line went with the old input. */}
+                <PhotoPicker
+                  id="co-photo-upload"
+                  file={photoFile}
+                  onPick={f => { setSubmitError(""); setPhotoFile(f); setPhotoPulse(false); }}
+                  onError={setSubmitError}
+                />
+                <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginTop:".5rem", textAlign:"center" }}>We shrink it for you before it's sent, so a photo straight off your phone is fine.</p>
                 {/* The advisory. It stays on screen after the pulse ends — the
                     animation is what draws the eye, the words are what answer
                     "why does it matter?", and those are not the same job. */}
