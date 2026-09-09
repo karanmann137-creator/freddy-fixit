@@ -1,7 +1,7 @@
 import { Ic } from "@/components/Ic";
 import { Sk, SkText, SkCard, StalledNotice } from "@/components/Skeleton";
 import VoiceDictate from "@/components/VoiceDictate";
-import { AREAS, areasFromPostal, formatApproxLocation, isPostalCode, parseApproxLocation } from "@/lib/calgaryAreas";
+import { AREAS, areaToken, areasFromPostal, formatApproxLocation, fsaOf, isPostalCode, parseApproxLocation } from "@/lib/calgaryAreas";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
@@ -79,6 +79,26 @@ export default function NewRequest() {
   const [locChoice, setLocChoice] = useState<string>(() => dStr(draft, "locChoice", "last")); // "last" | "new"
   const [postalCode, setPostalCode] = useState(() => dStr(draft, "postalCode"));
   const [area, setArea] = useState(() => dStr(draft, "area"));
+  /**
+   * THE AREA IS DERIVED FROM THE POSTAL CODE, NOT ASKED FOR — same as
+   * ClientOnboarding step 1, and it has to stay the same, because these are the
+   * two entry points that write the identical `client_requests.location` string.
+   *
+   * `area` is still the stored answer (the server reads the token out of the raw
+   * text), the client just no longer answers a second "which part of town?"
+   * question to produce it. This flag is the ESCAPE HATCH, true only when the
+   * chips are the real control: the client asked to correct the guess, or we
+   * don't recognise the FSA and have nothing to guess with.
+   *
+   * It restores from the draft by COMPARISON rather than by storing a flag of
+   * its own — if the saved area isn't the one the saved postal code produces,
+   * it was a manual pick and the chips belong back on screen. That covers the
+   * unmapped-FSA case for free and adds no field to `requestDraft.ts`.
+   */
+  const [areaOverride, setAreaOverride] = useState(() => {
+    const a = dStr(draft, "area");
+    return !!a && a !== (areasFromPostal(dStr(draft, "postalCode"))[0] || "");
+  });
 
   // Saved vehicles (reused across requests). Saved ADDRESSES are deliberately no
   // longer read here — this form doesn't collect a street address any more, and
@@ -307,13 +327,24 @@ export default function NewRequest() {
   // hold a value `mask_location()` maps to itself — postal code AND area token.
   const resolveLocation = () => (enteringNew ? formatApproxLocation(postalCode, area) : prevApprox.text);
 
-  // Typing a recognised postal code pre-ticks its area — a SUGGESTION only, and
-  // only into an empty answer, so a deliberate correction is never overwritten
-  // (several Calgary FSAs straddle a quadrant boundary).
+  // What the postal code says, and whether the chips have to be on screen.
+  // `fsaOf` reads the first three characters, so the tag resolves the moment
+  // "T3A" is typed rather than waiting for the full six — and an FSA we don't
+  // recognise reveals the chips immediately, while the client is still looking
+  // at the field, instead of failing validation at the bottom of the form.
+  const derivedArea = areasFromPostal(postalCode)[0] || "";
+  const showAreaChips = areaOverride || (!!fsaOf(postalCode) && !derivedArea);
+
   const onPostal = (v: string) => {
     setPostalCode(v);
     setErrors(e => ({ ...e, location: "" }));
-    if (!area) { const a = areasFromPostal(v)[0]; if (a) setArea(a); }
+    // The postal code OWNS the area while the chips are hidden, including
+    // CLEARING it. The old rule here was suggest-into-empty-only, which meant
+    // typing T3A (NW) and then correcting to T2P left the job tagged NW — the
+    // client silently dispatched to the quadrant they just corrected away from.
+    // Once they've taken the chips over, their pick stands and typing stops
+    // touching it.
+    if (!areaOverride) setArea(areasFromPostal(v)[0] || "");
   };
 
   const toggleService = (label: string) => {
@@ -1044,11 +1075,21 @@ export default function NewRequest() {
           )}
 
           {/* Approximate location — postal code + area, never a street address.
-              Both parts are asked for because both are load-bearing on the
-              server: mask_location() builds the pro-facing string from a postal
-              code AND a zone, and list_open_jobs() reads the zone out of the raw
-              text to rank in-zone jobs. The chips are pre-ticked from the postal
-              code as a convenience and are always the client's to correct.
+
+              ONE QUESTION, NOT TWO. Both parts are load-bearing on the server —
+              mask_location() builds the pro-facing string from a postal code AND
+              a zone, and list_open_jobs() reads the zone out of the raw text to
+              rank in-zone jobs — but only one of them has to be ASKED. The area
+              is derived from the FSA and shown back as a tag the client can
+              override. Dropping the area instead of deriving it would be the
+              silent failure: formatApproxLocation filters empties, so the stored
+              string would still be non-empty and pass every blank check, and the
+              request would then rank out-of-zone for every contractor forever
+              with nothing anywhere saying so.
+
+              The chips did not go away, they demoted to a fallback — shown when
+              the client says the guess is wrong, or when the FSA isn't one we
+              map. The area is never dropped, only derived.
 
               "Same as last time" is offered ONLY when the previous request's
               location parses into both halves — see `prevApprox`. A returning
@@ -1076,21 +1117,45 @@ export default function NewRequest() {
                 value={postalCode}
                 onChange={e => onPostal(e.target.value.toUpperCase())}
               />
-              <p style={{ ...s.label, marginTop:"1rem", marginBottom:".5rem" }}>Which part of town?</p>
-              <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
-                {AREAS.map(a => {
-                  const on = area === a;
-                  return (
-                    <button key={a} type="button" onClick={() => { setArea(on ? "" : a); setErrors(e => ({ ...e, location:"" })); }}
-                      style={{ padding:".55rem .9rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".85rem", fontWeight: on ? 500 : 400, cursor:"pointer",
-                        background: on ? "rgba(234,107,20,.15)" : "rgba(var(--ff-fg), .04)",
-                        border: on ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .12)",
-                        color: on ? "var(--ff-text)" : "rgba(var(--ff-muted), .8)" }}>
-                      {a}
-                    </button>
-                  );
-                })}
-              </div>
+              {/* The derived tag. It prints the TOKEN that actually gets stored
+                  ("NW Calgary", "Downtown"), not the chip label, so what the
+                  client reads here is what the pro will read on the job. */}
+              {!showAreaChips && derivedArea && (
+                <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const, marginTop:".6rem" }}>
+                  <span style={{ display:"inline-flex", alignItems:"center", gap:".35rem", padding:".4rem .75rem", borderRadius:"999px", fontSize:".82rem", fontWeight:500,
+                    background:"rgba(234,107,20,.13)", border:"1px solid rgba(234,107,20,.45)", color:"var(--ff-text)" }}>
+                    {areaToken(derivedArea) || derivedArea}
+                  </span>
+                  <button type="button" onClick={() => setAreaOverride(true)}
+                    style={{ background:"none", border:"none", padding:0, fontFamily:"inherit", fontSize:".8rem", cursor:"pointer", textDecoration:"underline", color:"rgba(var(--ff-muted), .7)" }}>
+                    Not right? Pick the area
+                  </button>
+                </div>
+              )}
+              {showAreaChips && (
+                <>
+                  <p style={{ ...s.label, marginTop:"1rem", marginBottom:".5rem" }}>Which part of town?</p>
+                  {!derivedArea && (
+                    <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", marginTop:"-.25rem", marginBottom:".55rem", lineHeight:1.5 }}>
+                      We don't recognise that postal code, so pick the closest area — it's what decides which pros see your job.
+                    </p>
+                  )}
+                  <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
+                    {AREAS.map(a => {
+                      const on = area === a;
+                      return (
+                        <button key={a} type="button" onClick={() => { setArea(on ? "" : a); setErrors(e => ({ ...e, location:"" })); }}
+                          style={{ padding:".55rem .9rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".85rem", fontWeight: on ? 500 : 400, cursor:"pointer",
+                            background: on ? "rgba(234,107,20,.15)" : "rgba(var(--ff-fg), .04)",
+                            border: on ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .12)",
+                            color: on ? "var(--ff-text)" : "rgba(var(--ff-muted), .8)" }}>
+                          {a}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </>
           )}
           <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginTop:".55rem", lineHeight:1.5 }}>
