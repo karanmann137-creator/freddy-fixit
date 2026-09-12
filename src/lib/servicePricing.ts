@@ -139,6 +139,43 @@ export function floorFor(
   return hits > 0 && total > 0 ? Math.round(total) : null;
 }
 
+/**
+ * THE TARGET BID — what we suggest a contractor aim at (2026-09-11).
+ *
+ * The client no longer names a number. They used to type a maximum, and the
+ * maximum was the worst question on the form: someone who is asking us what the
+ * work costs cannot also tell us what it costs, and a low guess quietly killed
+ * the request — pros read it as a client who will be unhappy with a real quote
+ * and simply didn't bid. So the only price signal on a new request is now the
+ * category BENCHMARK, which is a real number: the completed-job average once a
+ * category has 5+ of them, otherwise the midpoint of the curated price book.
+ *
+ * `targetBid` is 25% under that benchmark, and it is a SUGGESTION, never a cap.
+ * Nothing validates against it, nothing hides a higher bid, and the existing
+ * base-price and typical-range hints stay exactly where they were.
+ *
+ * **It returns null rather than dipping below the platform's base price.** For
+ * some categories 0.75 × benchmark lands under `base_price`, which is the
+ * cheapest the honest version of this job can be done for — suggesting a number
+ * beneath it would be telling a pro to bid at a loss on our authority. The
+ * caller hides the hint and falls back to the base/typical box, following the
+ * rule `floorFor` already states: a number we made up is worse than no number.
+ */
+export const TARGET_BID_DISCOUNT = 0.25;
+
+export function targetBid(
+  benchmark: number | null | undefined,
+  floor: number | null | undefined,
+): number | null {
+  const b = benchmark == null ? null : Number(benchmark);
+  if (b == null || !isFinite(b) || b <= 0) return null;
+  const t = Math.round(b * (1 - TARGET_BID_DISCOUNT));
+  if (t <= 0) return null;
+  const f = floor == null ? null : Number(floor);
+  if (f != null && isFinite(f) && t < f) return null;
+  return t;
+}
+
 // Budget grade — shown to CONTRACTORS. Higher budget vs market = better grade.
 // Mirrors public.budget_grade() in SQL; keep the thresholds in sync.
 export function gradeBudget(budgetMid: number | null, benchmark: number | null): Grade | null {

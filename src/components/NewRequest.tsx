@@ -126,17 +126,17 @@ export default function NewRequest() {
   });
   const [detectedFor, setDetectedFor] = useState(() => dStr(draft, "detectedFor"));
   const [showAllServices, setShowAllServices] = useState(() => dBool(draft, "showAllServices"));
-  const [budgetMax, setBudgetMax]           = useState(() => dStr(draft, "budgetMax"));
-  const [budgetFlexible, setBudgetFlexible] = useState(() => dBool(draft, "budgetFlexible"));
   /**
    * The platform's starting price for whatever is currently selected. Derived,
-   * never typed — the client picks a maximum only (see BudgetPicker).
+   * never typed — as of 2026-09-11 the client names no number at all (see
+   * BudgetPicker for why the max field was removed).
    *
-   * Computed HERE rather than inside BudgetPicker so the number the client is
-   * shown and the number written into `client_requests.budget_min` are the same
-   * value, not two evaluations that could drift apart. Null while `pricing` is
-   * still loading or when nothing selected is in the price book, in which case
-   * the floor is hidden and budget_min is left NULL rather than guessed.
+   * It is still computed and still written into `client_requests.budget_min`,
+   * because it describes the WORK rather than a preference of theirs, and it is
+   * what stops the contractor-side `targetBid()` suggesting a price below the
+   * cheapest honest version of the job. Null while `pricing` is still loading or
+   * when nothing selected is in the price book, in which case budget_min is left
+   * NULL rather than guessed.
    */
   const budgetFloor = floorFor(selectedServices.join(", "), pricing);
   const [recurring, setRecurring] = useState(() => dBool(draft, "recurring"));
@@ -393,7 +393,6 @@ export default function NewRequest() {
     locChoice, postalCode, area, vehChoice, vehYear, vehMake, vehModel,
     recurring, recurringFrequency, sliderIdx, recurringDates,
     recurringKm, prepayPref, recurringStartDate, recurringEndDate,
-    budgetMax, budgetFlexible,
   }, !submitting);
 
   const setAnswer = (q: { id: string; multi?: boolean }, option: string) => {
@@ -473,19 +472,14 @@ export default function NewRequest() {
       } else if (!area) {
         e.location = "Please choose the area this job is in";
       }
-      // Budget is optional, but if given it has to make sense. The minimum is
-      // ours and can't be typed wrong, so only the max is validated — and a max
-      // under our floor is a soft warning inside BudgetPicker, not a hard block:
-      // someone genuinely willing to pay less should still be allowed to ask.
-      if (!budgetFlexible) {
-        const bHi = budgetMax.trim() === "" ? null : Number(budgetMax);
-        if (bHi != null && (!isFinite(bHi) || bHi < 0)) e.budget = "Budget must be a positive number";
-      }
+      // No budget branch: as of 2026-09-11 the client types no money figure on
+      // this form, so there is nothing here that can be wrong. BudgetPicker is
+      // read-only.
     }
     setErrors(e);
     // Scroll the first problem into view — on a long form the submit button is
     // at the bottom and an error near the top is otherwise invisible.
-    const first = ["description", "services", "budget", "schedule", "location"].find(k => e[k]);
+    const first = ["description", "services", "schedule", "location"].find(k => e[k]);
     if (first) {
       setTimeout(() => {
         document.getElementById("nr-err-" + first)?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -594,13 +588,18 @@ export default function NewRequest() {
         job_description: composedDescription(),
         photo_path: photoPath,
         status: "pending",
-        budget_flexible: budgetFlexible,
-        // budget_min is OURS now (see BudgetPicker) — the platform starting
-        // price for the chosen services, stored even when the client says
-        // they're flexible, because it describes the work rather than their
-        // preference and it is the anchor the contractor actually wants.
+        // The client states no budget at all any more (see BudgetPicker).
+        //
+        // `budget_flexible` is FALSE on purpose: `true` renders to a contractor
+        // as "the client told us they're flexible", which they never did —
+        // telling a pro something the client didn't say is the quiet
+        // misinformation that gets priced into a bid.
+        budget_flexible: false,
+        // budget_min is OURS — the platform starting price for the chosen
+        // services. It describes the work rather than a preference of theirs,
+        // and it is the floor `targetBid()` refuses to suggest beneath.
         budget_min: budgetFloor,
-        budget_max: budgetFlexible || budgetMax.trim() === "" ? null : Number(budgetMax),
+        budget_max: null,
         client_type: lastReq?.client_type ?? "individual",
         business_name: isBusiness ? (lastReq?.business_name ?? null) : null,
         business_type: isBusiness ? (lastReq?.business_type ?? null) : null,
@@ -1205,18 +1204,8 @@ export default function NewRequest() {
             </label>
           )}
 
-          {/* Budget — our starting price is shown read-only; the client picks a max. */}
-          <BudgetPicker
-            services={selectedServices}
-            pricing={pricing}
-            floor={budgetFloor}
-            max={budgetMax}
-            flexible={budgetFlexible}
-            onMax={v => { setBudgetMax(v); setErrors(e => ({ ...e, budget: "" })); }}
-            onFlexible={v => { setBudgetFlexible(v); setErrors(e => ({ ...e, budget: "" })); }}
-            error={errors.budget}
-            errorId="nr-err-budget"
-          />
+          {/* What this usually costs — read-only. The client names no number. */}
+          <BudgetPicker services={selectedServices} pricing={pricing} />
 
           <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", marginTop:"1.5rem", padding:"1rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
             <input

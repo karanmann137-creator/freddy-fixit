@@ -143,7 +143,7 @@ const openJobSearchFields = (r: any): (string | number | null | undefined)[] => 
 ];
 import FreddyRewind from "@/components/FreddyRewind";
 import MilestonePanel from "@/components/MilestonePanel";
-import { useServicePricing, rangeText, money, benchmarkFor, type ServicePrice, type Grade } from "@/lib/servicePricing";
+import { useServicePricing, rangeText, money, benchmarkFor, targetBid, TARGET_BID_DISCOUNT, type ServicePrice, type Grade } from "@/lib/servicePricing";
 import PriceGrade from "@/components/PriceGrade";
 import { freqLabel } from "@/lib/recurrence";
 import { respShort } from "@/lib/respTime";
@@ -177,13 +177,42 @@ function quoteTotal(f: any): number | null {
   return f?.amount ? Number(f.amount) : null;
 }
 
-function QuoteBreakdown({ v, on, calloutHint, price }: { v: any; on: (patch: any) => void; calloutHint?: number | null; price?: ServicePrice | null }) {
+/**
+ * `target` is the suggested bid — 25% under the category average, computed by
+ * `targetBid()` (2026-09-11). It is passed at the BID call site only.
+ *
+ * Deliberately NOT passed to the propose or requote forms: both of those price
+ * a job whose scope is already known and often larger than what was bid, and
+ * suggesting a discount off a category average there would be actively wrong.
+ *
+ * It is a suggestion in the strict sense — it prefills the amount when tapped
+ * and does nothing otherwise. Nothing validates against it, no bid is flagged
+ * or hidden for exceeding it, and the platform base price and typical range
+ * below it are unchanged.
+ */
+function QuoteBreakdown({ v, on, calloutHint, price, target }: { v: any; on: (patch: any) => void; calloutHint?: number | null; price?: ServicePrice | null; target?: number | null }) {
   const keys: [string,string,string][] = [["labour","Labour",""],["parts","Parts",""],["callout","Call-out", calloutHint != null ? String(calloutHint) : ""]];
   const any = ["labour","parts","callout"].some(k => v?.[k] !== "" && v?.[k] != null);
   const sum = ["labour","parts","callout"].reduce((t,k) => t + (v?.[k] ? Number(v[k]) : 0), 0);
   const hasRef = !!price && (price.base_price != null || (price.typical_low != null && price.typical_high != null));
+  const tgt = target != null && isFinite(Number(target)) && Number(target) > 0 ? Math.round(Number(target)) : null;
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:".55rem", flexBasis:"100%", width:"100%" }}>
+      {tgt != null && (
+        <div style={{ display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".5rem", padding:".5rem .6rem", background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.35)", borderRadius:"8px" }}>
+          <span style={{ fontSize:".8rem", color:"var(--ff-text)" }}>
+            <span style={{ color:"rgba(var(--ff-muted), .7)" }}>Suggested bid </span>
+            <strong style={{ color:"#ea6b14" }}>{money(tgt)}</strong>
+            <span style={{ display:"block", marginTop:"2px", fontSize:".72rem", color:"rgba(var(--ff-muted), .6)" }}>
+              {Math.round(TARGET_BID_DISCOUNT * 100)}% under the category average — a guide, not a limit.
+            </span>
+          </span>
+          <button type="button" onClick={() => on({ amount: String(tgt), labour:"", parts:"", callout:"", used_base_price: false })}
+            style={{ marginLeft:"auto", padding:".3rem .6rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"6px", fontSize:".74rem", fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+            Use suggested
+          </button>
+        </div>
+      )}
       {hasRef && (
         <div style={{ display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".5rem", padding:".5rem .6rem", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.25)", borderRadius:"8px" }}>
           <span style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .8)" }}>
@@ -2060,16 +2089,32 @@ export default function ContractorDashboard() {
                   const grade = (r.budget_grade ?? null) as Grade | null;
                   // A max the client actually chose is the only thing that counts
                   // as "they told us a budget" — the base price is ours and is
-                  // present on essentially every new request.
+                  // present on essentially every new request. As of 2026-09-11 no
+                  // NEW request can carry one; this stays for the legacy rows that do.
                   const hasBudget = !r.budget_flexible && bHi != null;
+                  /**
+                   * THE TARGET BID — 25% under the category average, and the only
+                   * price signal on a request posted after 2026-09-11.
+                   *
+                   * It is a SUGGESTION, never a cap. Nothing validates against it,
+                   * nothing hides or flags a higher bid, and the base-price and
+                   * typical-range hints in the bid form below are untouched.
+                   * `targetBid` returns null rather than landing beneath the
+                   * platform base price, and nothing is shown in that case —
+                   * suggesting a number under the cheapest honest version of the
+                   * job would be telling a pro to bid at a loss on our authority.
+                   */
+                  const target = targetBid(bench, bLo);
                   if (!hasBudget && bLo == null && !r.budget_flexible && bench == null) return null;
+                  // Lit when there is actually something to aim at.
+                  const lit = hasBudget || target != null;
 
                   return (
                     <div style={{
                       display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".5rem",
                       padding:".55rem .7rem", marginBottom:".6rem", borderRadius:"10px",
-                      background: hasBudget ? "rgba(234,107,20,.08)" : "rgba(var(--ff-fg), .04)",
-                      border: hasBudget ? "1px solid rgba(234,107,20,.24)" : "1px solid rgba(var(--ff-fg), .08)",
+                      background: lit ? "rgba(234,107,20,.08)" : "rgba(var(--ff-fg), .04)",
+                      border: lit ? "1px solid rgba(234,107,20,.24)" : "1px solid rgba(var(--ff-fg), .08)",
                     }}>
                       <Ic name="dollar" size={14} color="#ea6b14" style={{ flexShrink:0 }} />
                       {(bLo != null || hasBudget) ? (
@@ -2091,7 +2136,22 @@ export default function ContractorDashboard() {
                           {r.budget_flexible ? "Client is flexible — send your quote" : "No budget set"}
                         </span>
                       )}
-                      {grade && <PriceGrade grade={grade} kind="budget" />}
+                      {/* The grade is computed from the client's own min–max, and
+                          with the max field gone `budget_mid` collapses to our own
+                          base price — so an ungated chip would stamp EVERY new
+                          request "Below market" to every pro who read it, on the
+                          strength of a number the client never chose. It is shown
+                          only where a client-stated maximum actually exists. */}
+                      {hasBudget && grade && <PriceGrade grade={grade} kind="budget" />}
+                      {target != null && (
+                        <span style={{ fontSize:".82rem", color:"var(--ff-text)", flexBasis:"100%" }}>
+                          <span style={{ color:"rgba(var(--ff-muted), .6)" }}>Suggested bid </span>
+                          <strong style={{ color:"#ea6b14" }}>{money(target)}</strong>
+                          <span style={{ color:"rgba(var(--ff-muted), .5)", display:"block", marginTop:"2px", fontSize:".74rem" }}>
+                            {Math.round(TARGET_BID_DISCOUNT * 100)}% under the category average — a guide, not a limit. Bid what the job is worth to you.
+                          </span>
+                        </span>
+                      )}
                       {bench != null && (
                         <span style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .5)", flexBasis:"100%" }}>
                           Category average {money(Math.round(bench))}
@@ -2186,7 +2246,19 @@ export default function ContractorDashboard() {
                         <input type="number" min="0" placeholder="Price $" value={bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "")} onChange={e => setBid(r.id, { amount: e.target.value, message: bidForm[r.id]?.message ?? (r.my_message ?? ""), used_base_price:false })} style={{ flex:"1 1 130px", minWidth:0, maxWidth:"170px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
                       )}
                       <input placeholder="Short message (optional)" value={bidForm[r.id]?.message ?? (r.my_message ?? "")} onChange={e => setBid(r.id, { message: e.target.value, amount: bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "") })} style={{ ...ffInp, flexBasis:"100%" }} />
-                      {!wtOn && <QuoteBreakdown v={bidForm[r.id] ?? {}} on={patch => setBid(r.id, patch)} calloutHint={contractor?.min_callout ?? null} price={priceFor(r.service_needed)} />}
+                      {/* `target` is passed HERE and only here. The bench/floor
+                          derivation is character-for-character the one used by
+                          the budget box on this same card a few hundred lines
+                          above, so the card and the form can never suggest two
+                          different numbers. The propose and requote forms are
+                          deliberately NOT given a target — both price a job
+                          whose scope is already known, and often larger than
+                          what was bid. */}
+                      {!wtOn && <QuoteBreakdown v={bidForm[r.id] ?? {}} on={patch => setBid(r.id, patch)} calloutHint={contractor?.min_callout ?? null} price={priceFor(r.service_needed)}
+                        target={targetBid(
+                          r.benchmark != null ? Number(r.benchmark) : (benchmarkFor(r.service_needed, pricing)?.benchmark ?? null),
+                          r.budget_min != null ? Number(r.budget_min) : null,
+                        )} />}
                       <input placeholder="Assumptions (optional, e.g. price assumes parts are accessible)" value={bidForm[r.id]?.assumptions ?? ""} onChange={e => setBid(r.id, { assumptions: e.target.value })} style={{ ...ffInp, flexBasis:"100%" }} />
                       {/* Submit moved BELOW the breakdown and the assumptions
                           field, and made full-width. It used to sit directly
