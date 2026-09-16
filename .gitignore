@@ -66,3 +66,7 @@ loadtest-*.json
 SECURITY-AUDIT-PRIVATE.md
 AUTH_SETUP.md
 _skills-to-install/
+
+# Python bytecode from tools/
+__pycache__/
+*.pyc
