@@ -9,6 +9,7 @@ import { AVAIL_DAYS, WEEKDAYS, TIME_OPTIONS, DEFAULT_START, DEFAULT_END } from "
 import { trackEvent } from "@/lib/analytics";
 import OAuthButtons from "@/components/OAuthButtons";
 import OnboardingProgress from "@/components/OnboardingProgress";
+import OnboardingVideo from "@/components/OnboardingVideo";
 import ServicePicker from "@/components/ServicePicker";
 import VoiceDictate from "@/components/VoiceDictate";
 import { AREAS, areasFromPostal, isPostalCode } from "@/lib/calgaryAreas";
@@ -373,7 +374,7 @@ export default function ContractorOnboarding() {
 
   const inp = { width:"100%", padding:".75rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".95rem", outline:"none", boxSizing:"border-box" as const };
   const s = {
-    wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"linear-gradient(rgba(var(--ff-bg-rgb), 0.90), rgba(var(--ff-bg-rgb), 0.95)), radial-gradient(ellipse 50% 32% at 18% -4%, rgba(234,107,20,0.30) 0%, transparent 68%), radial-gradient(ellipse 55% 36% at 84% -8%, rgba(234,107,20,0.18) 0%, transparent 70%), repeating-linear-gradient(45deg, transparent 0 26px, rgba(var(--ff-fg), 0.022) 26px, rgba(var(--ff-fg), 0.022) 27px), repeating-linear-gradient(-45deg, transparent 0 26px, rgba(var(--ff-fg), 0.018) 26px, rgba(var(--ff-fg), 0.018) 27px), url(\"https://images.unsplash.com/photo-1685320198649-781e83a61de4?auto=format&fit=crop&w=1600&q=65\")", backgroundSize:"auto, auto, auto, auto, auto, cover", backgroundPosition:"center, center, center, center, center, center", backgroundAttachment:"fixed", padding:"3rem 1rem 4rem", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
+    wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"linear-gradient(rgba(var(--ff-bg-rgb), 0.90), rgba(var(--ff-bg-rgb), 0.95)), radial-gradient(ellipse 50% 32% at 18% -4%, rgba(234,107,20,0.30) 0%, transparent 68%), radial-gradient(ellipse 55% 36% at 84% -8%, rgba(234,107,20,0.18) 0%, transparent 70%), repeating-linear-gradient(45deg, transparent 0 26px, rgba(var(--ff-fg), 0.022) 26px, rgba(var(--ff-fg), 0.022) 27px), repeating-linear-gradient(-45deg, transparent 0 26px, rgba(var(--ff-fg), 0.018) 26px, rgba(var(--ff-fg), 0.018) 27px), url(\"https://images.unsplash.com/photo-1685320198649-781e83a61de4?auto=format&fit=crop&w=1600&q=65\")", backgroundSize:"auto, auto, auto, auto, auto, cover", backgroundPosition:"center, center, center, center, center, center", backgroundAttachment:"fixed", padding:"3rem 1rem 4rem", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)", position:"relative" as const },
     inner: { maxWidth:"580px", margin:"0 auto" },
     card: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"2rem" },
     label: { display:"block", fontSize:".78rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .6)", marginBottom:".6rem" },
@@ -442,6 +443,20 @@ export default function ContractorOnboarding() {
             <span style={{ flex:1 }}>We saved your progress — pick up where you left off. You'll just need to re-attach any files.</span>
             <button onClick={() => { try { localStorage.removeItem("ff_contractor_draft"); } catch {} window.location.reload(); }} style={{ background:"none", border:"none", color:"#ea6b14", cursor:"pointer", fontFamily:"inherit", fontSize:".78rem", textDecoration:"underline", flexShrink:0 }}>Start over</button>
           </div>
+        )}
+
+        {/* The walkthrough, on the first screen only — the same rule as the
+            client side. Someone already three screens deep has worked out how
+            this goes; the video is for the moment before that. Step 1 is the
+            landing point of "Join Freddy's team", so it is still there the
+            moment they arrive. Steps are positional here (unlike the client
+            flow's append-only IDs), so a literal 1 is the first screen. */}
+        {step === 1 && (
+          <OnboardingVideo
+            src="/onboarding-videos/freddy-contractor-onboarding.mp4"
+            title="See how it works"
+            seconds={31}
+          />
         )}
 
         <div style={s.card}>
