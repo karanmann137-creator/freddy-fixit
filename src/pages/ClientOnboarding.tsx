@@ -258,6 +258,41 @@ export default function ClientOnboarding() {
       setSelectedServices(prev => prev.includes(mapped) ? prev : [...prev, mapped]);
     }
   }, []);
+
+  /**
+   * Pre-fill the description if the home page hero linked here with ?desc=…
+   *
+   * The hero box is a real field now, so somebody can arrive having already
+   * written their problem. Asking them to type it a second time is exactly
+   * what makes a box feel decorative, so it lands here and they carry on with
+   * the email and postal code — which live on this same first screen, so the
+   * screen is not skipped; the TYPING is.
+   *
+   * Three rules, each mirroring one that already exists in this file:
+   *
+   * - ADD, never replace, same as ?service= directly above. It writes only
+   *   into an EMPTY description, so a restored draft — somebody who wrote
+   *   three paragraphs, wandered off and came back via the home page — is
+   *   never overwritten by a sentence typed in a hero box.
+   * - Strip the param afterwards with replaceState, the same idiom
+   *   clearDashNavFromUrl uses. A refresh must not re-apply it over an edit
+   *   the client has since made, and their own words should not sit in the
+   *   address bar to be pasted into a screenshot or a support email.
+   * - Capped and trimmed here as well as at the sending end, because a URL
+   *   is user input wherever it came from.
+   */
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get("desc");
+    const d = (raw || "").trim().slice(0, 400);
+    if (d) setForm(f => (f.jobDescription.trim() ? f : { ...f, jobDescription: d }));
+    if (raw !== null) {
+      try {
+        const u = new URL(window.location.href);
+        u.searchParams.delete("desc");
+        window.history.replaceState({}, "", u.pathname + u.search + u.hash);
+      } catch { /* a URL we can't rewrite is cosmetic — the prefill already happened */ }
+    }
+  }, []);
   /**
    * A half-finished request, remembered for the length of the browsing session.
    *

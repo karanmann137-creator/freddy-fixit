@@ -239,14 +239,37 @@ const HERO_EXAMPLES = [
   "Need a TV mounted on the living room wall",
 ];
 
+// What the hero box accepts, and what it will carry in the URL. Kept short on
+// purpose: this is the one-sentence version of the problem, and the real
+// description field on the request form has room for the rest. It also keeps
+// the query string well inside every browser's URL limit, so the handoff can
+// never silently truncate somebody's words.
+const HERO_DESC_MAX = 400;
+
 export default function Home() {
   const [, setLocation] = useLocation();
   const [reviews, setReviews] = useState<HomeReview[]>([]);
   const [topPros, setTopPros] = useState<any[]>([]);
 
   // ── Hero panel typewriter ────────────────────────────────────────────
-  // Types each HERO_EXAMPLES line out, holds it, deletes it, moves on.
+  // Types each HERO_EXAMPLES line out, holds it, deletes it, moves on — into
+  // the box's PLACEHOLDER, because the box is a real textarea the client can
+  // type into. `typed` is therefore the prompt; `heroDesc` is their answer.
   const [typed, setTyped] = useState("");
+  const [heroDesc, setHeroDesc] = useState("");
+  const [heroBoxFocused, setHeroBoxFocused] = useState(false);
+  /**
+   * Is the animation allowed to run?
+   *
+   * The moment somebody puts a cursor in the box, the examples have done
+   * their job and become interference — text appearing and vanishing under
+   * a live caret reads as the field fighting you. So it stops on focus AND
+   * on any typed character, and resumes only if the box is empty and left
+   * alone again. Focus alone is not enough on its own: most browsers keep
+   * showing a placeholder on an empty focused field, so a half-typed
+   * example would freeze there mid-word until the first keystroke.
+   */
+  const heroBoxIdle = !heroBoxFocused && heroDesc.trim() === "";
   // Gate on visibility, the same reasoning as NotificationBell's poll: a
   // timer that keeps firing while the section is off screen is pure waste,
   // and the point of the effect is that it animates WHILE somebody is
@@ -268,7 +291,11 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!heroSeen) return;
+    // Clearing on the way out matters as much as stopping. Leaving the last
+    // partial line in `typed` would park a frozen half-sentence in the
+    // placeholder of a box the client has just clicked into — and would show
+    // it again, mid-word, the moment they scrolled back.
+    if (!heroSeen || !heroBoxIdle) { setTyped(""); return; }
 
     // Reduced motion gets whole strings swapped on a slow interval instead
     // of a per-character animation — the examples still cycle, nothing
@@ -313,7 +340,7 @@ export default function Home() {
     };
     timer = window.setTimeout(tick, 600);
     return () => { if (timer !== undefined) window.clearTimeout(timer); };
-  }, [heroSeen]);
+  }, [heroSeen, heroBoxIdle]);
 
   // Pull real, completed-job reviews (with a written comment) to display as
   // social proof. Empty result = graceful fallback to the trust cards below.
@@ -514,10 +541,20 @@ export default function Home() {
         }
         /* The left column keeps the modular stack the whole hero used to
            have, so the rhythm is unchanged — it just no longer spans the
-           full width. */
+           full width.
+
+           Flex column, NOT grid, and that swap is what makes the raise
+           below possible at all. 'margin-top: auto' absorbs the free space
+           of a flex container, but in a grid it can only absorb space
+           inside the ROW the item sits in — and 'grid-auto-rows:
+           min-content' gives every row exactly its content's height, so
+           there is never any to absorb. The rhythm is identical either
+           way: 'gap' replaces 'row-gap', 'align-items' replaces
+           'justify-items', and the per-item margin rules below still add
+           on top of the gap exactly as they did. */
         .ff-hero-left {
-          display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: min-content;
-          justify-items: center; row-gap: var(--ff-mod); width: 100%; min-width: 0;
+          display: flex; flex-direction: column; align-items: center;
+          gap: var(--ff-mod); width: 100%; min-width: 0;
         }
         /* Group breaks, expressed in modules rather than eyeballed pixels. */
         .ff-hero-left > .ff-h1       { margin-top: var(--ff-mod); }
@@ -532,8 +569,36 @@ export default function Home() {
             align-items: center; justify-items: stretch;
             text-align: left;
           }
-          .ff-hero-left { justify-items: start; }
+          .ff-hero-left { align-items: flex-start; }
           .ff-hero-left > .ff-sub { margin-left: 0; margin-right: 0; }
+        }
+        /* The raise: logo, tagline, headline and the three steps move UP,
+           and the bottom pair — the orange button and the tradesperson
+           link — stay anchored low. The left column stretches to the full
+           height of its grid row and '.ff-cta' takes every pixel of the
+           slack with 'margin-top: auto', so the top group is pushed to the
+           top and the bottom pair falls to the foot of the column. The gap
+           between the two groups is whatever height is left over, which is
+           why this is one declaration rather than a pile of tuned margins.
+
+           'align-self: stretch' is required and easy to miss: the 901px
+           block above sets 'align-items: center' on the body, so without
+           it the column would be centred inside its now-taller row and the
+           auto margin would have nothing to push against.
+
+           Guarded on BOTH width and height, deliberately. Below 901px
+           there is no "left" — the two halves are stacked, and dragging
+           the button to the bottom of a stacked block would tear it away
+           from the headline it belongs to. And '.ff-hero' is
+           'overflow: hidden', so on a short or landscape viewport an
+           unbounded spread pushes the bottom pair past the clip instead of
+           down the column; 640px of height is the floor at which there is
+           genuinely slack to spend. Under either threshold this block
+           simply doesn't apply and the hero is exactly what it was. */
+        @media (min-width: 901px) and (min-height: 640px) {
+          .ff-hero-body { align-content: stretch; grid-auto-rows: minmax(min-content, 1fr); }
+          .ff-hero-left { align-self: stretch; }
+          .ff-hero-left > .ff-cta { margin-top: auto; }
         }
         /* One column, so the flex-era justify-content that used to push the
            body into the thumb arc becomes align-content. On a short phone a
@@ -615,35 +680,48 @@ export default function Home() {
            it or the panel reads as a quote rather than a prompt. */
         .ff-panel-label { font-family: 'DM Sans', sans-serif; font-weight: 500;
           font-size: 1.15rem; line-height: 1.3; color: var(--ff-ink-1); margin: 0; }
-        /* The typing surface. min-height holds two lines so the card never
-           changes height as lines of different length cycle through — a
-           panel that grows and shrinks on its own is the kind of movement
-           that reads as a bug. */
+        /* A REAL textarea, not a button dressed as one. The examples type
+           themselves into the PLACEHOLDER, so the same animation that used
+           to be a demonstration is now an invitation — the client can put
+           the cursor in and answer it. min-height holds two lines so the
+           card never changes height as lines of different length cycle
+           through; a panel that grows and shrinks on its own is the kind
+           of movement that reads as a bug.
+
+           1rem here is load-bearing, not cosmetic. '--ff-font-scale' is
+           1.1, so this computes to ~17.6px — safely over the 16px floor
+           below which iOS Safari zooms the viewport on focus and never
+           zooms back out. The '@media (pointer: coarse)' rule in main.tsx
+           is the belt to that braces. Do not shrink it to .85rem to match
+           the rest of the codebase's habit; that computes to ~15px, which
+           is exactly the bug that made bidding unusable on a phone. */
         .ff-panel-box {
           display: block; width: 100%; min-height: 5.2rem; text-align: left;
-          padding: 0.85rem 0.95rem; cursor: pointer;
+          padding: 0.85rem 0.95rem; resize: vertical;
           background: rgba(var(--ff-bg-rgb), 0.35);
           border: 1px solid rgba(var(--ff-fg), 0.10);
           border-radius: 12px;
           font-family: 'DM Sans', sans-serif; font-weight: 300; font-size: 1rem; line-height: 1.5;
-          color: var(--ff-ink-2);
+          color: var(--ff-ink-1);
           transition: border-color 0.18s ease, background 0.18s ease;
         }
+        /* The example lines are a prompt, not an answer, so they sit a
+           step back from what the client types. opacity:1 because Firefox
+           dims placeholders on its own and would compound it. */
+        .ff-panel-box::placeholder { color: var(--ff-ink-3); opacity: 1; }
         .ff-hero-panel:hover .ff-panel-box { border-color: rgba(var(--ff-fg), 0.18); }
+        /* :focus first, :focus-visible after — a mouse user gets the warm
+           border, a keyboard user gets that plus the ring, and the later
+           rule is what makes the ring survive the outline:none above it. */
+        .ff-panel-box:focus { outline: none; border-color: var(--ff-accent-400);
+          background: rgba(var(--ff-bg-rgb), 0.5); }
         .ff-panel-box:focus-visible { outline: 2px solid var(--ff-accent-400); outline-offset: 2px; }
-        /* steps(1) so it snaps rather than fading — a caret that eases in and
-           out looks like a pulsing dot, not a cursor. */
-        .ff-caret { display: inline-block; width: 2px; height: 1.05em; margin-left: 1px;
-          vertical-align: text-bottom; background: var(--ff-c10);
-          animation: ff-caret-blink 1.05s steps(1) infinite; }
-        @keyframes ff-caret-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
-        @media (prefers-reduced-motion: reduce) { .ff-caret { animation: none; } }
         /* Smaller than the orange hero button, deliberately. There are two
            routes to the same screen on one hero; the left one is the primary
            and this is the shortcut from the demonstration, so it must not
            read as a competing second decision. */
         .ff-panel-next {
-          align-self: flex-start; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+          align-self: flex-end; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
           min-height: 44px; padding: 0.6rem 1.5rem;
           border: none; border-radius: 11px; cursor: pointer;
           background: linear-gradient(180deg, var(--ff-accent-400) 0%, var(--ff-accent-500) 100%);
@@ -885,27 +963,40 @@ export default function Home() {
             </div>
           </div>
 
-          {/* The right column shows rather than tells: the box types out real
-              requests, so a visitor learns what to write by watching somebody
-              write it. The typed text is aria-hidden and a static sentence
-              carries the meaning for a screen reader — an element whose text
-              content changes every 38ms is announced as a stream of
-              fragments otherwise. */}
+          {/* The right column shows rather than tells AND takes the answer:
+              the examples type themselves into the placeholder, so a visitor
+              learns what to write by watching somebody write it, and can then
+              write it here rather than being sent somewhere else to start
+              over. The label is the field's own <label>, so the examples
+              cycling in the placeholder are never announced as the field's
+              name — a name that changes every 38ms is a stream of fragments
+              to a screen reader. */}
           <div className="ff-hero-panel ff-anim ff-d3">
-            <p className="ff-panel-label">Describe your problem</p>
-            <button
-              type="button"
+            <label className="ff-panel-label" htmlFor="ff-hero-desc">Describe your problem</label>
+            <textarea
+              id="ff-hero-desc"
               className="ff-panel-box"
-              onClick={() => setLocation("/client-onboarding")}
-              aria-label="Describe your problem and get free estimates"
-            >
-              <span aria-hidden="true">{typed}</span>
-              <span className="ff-caret" aria-hidden="true" />
-            </button>
+              value={heroDesc}
+              onChange={(e) => setHeroDesc(e.target.value)}
+              onFocus={() => setHeroBoxFocused(true)}
+              onBlur={() => setHeroBoxFocused(false)}
+              placeholder={typed}
+              rows={3}
+              maxLength={HERO_DESC_MAX}
+            />
+            {/* Carries what they wrote through to the request form, so the
+                first thing we do with somebody's words is not ask for them
+                again. An empty box is not an error — it goes to the same
+                screen the orange button goes to, and they type it there. */}
             <button
               type="button"
               className="ff-panel-next"
-              onClick={() => setLocation("/client-onboarding")}
+              onClick={() => {
+                const d = heroDesc.trim().slice(0, HERO_DESC_MAX);
+                setLocation(d
+                  ? "/client-onboarding?desc=" + encodeURIComponent(d)
+                  : "/client-onboarding");
+              }}
             >
               Next
             </button>

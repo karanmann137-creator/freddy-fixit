@@ -294,6 +294,38 @@ export default function NewRequest() {
   }, []);
 
   /**
+   * Pre-fill the description if the home page hero linked here with ?desc=…
+   *
+   * This is the SIGNED-IN twin of the same effect in ClientOnboarding. It has to
+   * exist there and here, because ClientOnboarding renders <NewRequest/> outright
+   * for a logged-in client — so without this, exactly the people who have used us
+   * before would type their problem into the hero box, press Next, and be asked
+   * for it again. That is the "decorative box" failure, and it would hit our
+   * returning clients only, which is the worst half to lose it on.
+   *
+   * Same three rules as the ClientOnboarding copy:
+   * - ADD, never replace, matching the ?service= guard directly above — a
+   *   restored draft's description outranks a hero line, since it is the longer
+   *   thought and the client can still edit it.
+   * - Strip the param afterwards with replaceState (the clearDashNavFromUrl
+   *   idiom), so a refresh mid-form can't re-apply a line they deleted.
+   * - Trimmed and capped here as well as at the sending end, because a URL is
+   *   user input wherever it came from.
+   */
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get("desc");
+    const d = (raw || "").trim().slice(0, 400);
+    if (d) setDescription(prev => (prev.trim() ? prev : d));
+    if (raw !== null) {
+      try {
+        const u = new URL(window.location.href);
+        u.searchParams.delete("desc");
+        window.history.replaceState({}, "", u.pathname + u.search + u.hash);
+      } catch { /* a URL we can't rewrite is cosmetic — the prefill already happened */ }
+    }
+  }, []);
+
+  /**
    * Last time's location, read back as an APPROXIMATE one.
    *
    * `.text` is empty unless BOTH halves parsed, and that emptiness is what hides
