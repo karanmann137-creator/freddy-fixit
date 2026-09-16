@@ -223,10 +223,97 @@ const SHOW_PRO_IDS = [
   "23d832ce-656a-4b0c-99cc-e7ce42aa4327", // Phase Canada Inc
 ];
 
+// The hero panel types these out one after another, so the box demonstrates
+// what a request looks like instead of describing it. Every line is drawn from
+// the real service vocabulary (see service_specialty_map) and is written the
+// way somebody actually types on a phone — a symptom and a room, not a trade
+// name. A visitor who reads two of these knows what to write in the box.
+const HERO_EXAMPLES = [
+  "My kitchen tap has been dripping for a week",
+  "Garage door won't close all the way",
+  "Need the gutters cleared before the snow",
+  "Basement light keeps flickering",
+  "Fence panel came down in the wind",
+  "Furnace is making a loud rattling noise",
+  "Bathroom drain is backing up",
+  "Need a TV mounted on the living room wall",
+];
+
 export default function Home() {
   const [, setLocation] = useLocation();
   const [reviews, setReviews] = useState<HomeReview[]>([]);
   const [topPros, setTopPros] = useState<any[]>([]);
+
+  // ── Hero panel typewriter ────────────────────────────────────────────
+  // Types each HERO_EXAMPLES line out, holds it, deletes it, moves on.
+  const [typed, setTyped] = useState("");
+  // Gate on visibility, the same reasoning as NotificationBell's poll: a
+  // timer that keeps firing while the section is off screen is pure waste,
+  // and the point of the effect is that it animates WHILE somebody is
+  // looking at it. Starts true and falls back to true when
+  // IntersectionObserver is missing — failing open means the text is
+  // present rather than an empty box.
+  const [heroSeen, setHeroSeen] = useState(true);
+  const heroRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = heroRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      (entries) => { for (const e of entries) setHeroSeen(e.isIntersecting); },
+      { threshold: 0.12 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!heroSeen) return;
+
+    // Reduced motion gets whole strings swapped on a slow interval instead
+    // of a per-character animation — the examples still cycle, nothing
+    // moves. matchMedia is guarded because it isn't universal.
+    let reduced = false;
+    try { reduced = !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches; } catch { /* default: animate */ }
+
+    let i = 0;
+    if (reduced) {
+      setTyped(HERO_EXAMPLES[0]);
+      const id = window.setInterval(() => {
+        i = (i + 1) % HERO_EXAMPLES.length;
+        setTyped(HERO_EXAMPLES[i]);
+      }, 4000);
+      return () => window.clearInterval(id);
+    }
+
+    let pos = 0;
+    let deleting = false;
+    let timer: number | undefined;
+
+    const tick = () => {
+      const full = HERO_EXAMPLES[i];
+      if (!deleting) {
+        pos += 1;
+        setTyped(full.slice(0, pos));
+        if (pos >= full.length) { deleting = true; timer = window.setTimeout(tick, 2200); return; }
+        timer = window.setTimeout(tick, 38);
+      } else {
+        pos -= 4;
+        if (pos <= 0) {
+          pos = 0;
+          setTyped("");
+          deleting = false;
+          i = (i + 1) % HERO_EXAMPLES.length;
+          timer = window.setTimeout(tick, 420);
+          return;
+        }
+        setTyped(full.slice(0, pos));
+        timer = window.setTimeout(tick, 16);
+      }
+    };
+    timer = window.setTimeout(tick, 600);
+    return () => { if (timer !== undefined) window.clearTimeout(timer); };
+  }, [heroSeen]);
 
   // Pull real, completed-job reviews (with a written comment) to display as
   // social proof. Empty result = graceful fallback to the trust cards below.
@@ -276,7 +363,7 @@ export default function Home() {
   return (
     <div style={{ fontFamily:"'DM Sans', sans-serif", background:"var(--ff-bg)", color:"var(--ff-text)", overflowX:"clip" as const }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=Fraunces:opsz,wght@9..144,300..700&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         /* ── Hero ────────────────────────────────────────────────────────────
@@ -393,7 +480,7 @@ export default function Home() {
            undercuts the exact steadiness it is there to project. */
         .ff-herolock { display: block; line-height: 0; }
         .ff-herolock svg { display: block;
-          width: clamp(76px, 20vw, 132px); height: clamp(76px, 20vw, 132px); }
+          width: clamp(88px, 22vw, 152px); height: clamp(88px, 22vw, 152px); }
 
         /* ── Hero layout: axial + modular ─────────────────────────────
            AXIAL — one vertical centre line, and every block is centred on
@@ -407,7 +494,17 @@ export default function Home() {
            hand-picked margin (1.15rem, then 1.1rem, then a clamp, then
            0.75rem, then another clamp), which is precisely why the old
            spacing never felt intentional. The rhythm is now arithmetic, and
-           re-tuning the whole hero is one number. */
+           re-tuning the whole hero is one number.
+
+           TWO COLUMNS above 900px — 58/42, deliberately not half and half.
+           An even split reads as two things of equal weight with no answer
+           to "which do I do first?"; the wider side carries the promise and
+           the narrower one carries the box, so the eye lands left, reads,
+           and moves right into the thing it can act on. Both tracks are
+           minmax(0, …) because a bare fr is minmax(auto, fr) and the
+           headline's longest word would otherwise set a floor the grid
+           can't shrink under. Below 900px the two stack and the whole
+           thing returns to the centred single column it was. */
         .ff-hero-body {
           --ff-mod: clamp(0.62rem, 1.9vh, 0.95rem);
           position: relative; z-index: 1; flex: 1; width: 100%; max-width: 46rem; margin: 0 auto;
@@ -415,31 +512,65 @@ export default function Home() {
           justify-items: center; align-content: center; row-gap: var(--ff-mod);
           text-align: center;
         }
+        /* The left column keeps the modular stack the whole hero used to
+           have, so the rhythm is unchanged — it just no longer spans the
+           full width. */
+        .ff-hero-left {
+          display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: min-content;
+          justify-items: center; row-gap: var(--ff-mod); width: 100%; min-width: 0;
+        }
         /* Group breaks, expressed in modules rather than eyeballed pixels. */
-        .ff-hero-body > .ff-h1       { margin-top: var(--ff-mod); }
-        .ff-hero-body > .ff-cta      { margin-top: calc(var(--ff-mod) * 2); }
-        .ff-hero-body > .ff-hero-alt { margin-top: calc(var(--ff-mod) * 2); }
+        .ff-hero-left > .ff-h1       { margin-top: var(--ff-mod); }
+        .ff-hero-left > .ff-cta      { margin-top: calc(var(--ff-mod) * 2); }
+        .ff-hero-left > .ff-hero-alt { margin-top: calc(var(--ff-mod) * 2); }
+
+        @media (min-width: 901px) {
+          .ff-hero-body {
+            max-width: 72rem;
+            grid-template-columns: minmax(0, 58fr) minmax(0, 42fr);
+            column-gap: clamp(2rem, 5vw, 4.5rem);
+            align-items: center; justify-items: stretch;
+            text-align: left;
+          }
+          .ff-hero-left { justify-items: start; }
+          .ff-hero-left > .ff-sub { margin-left: 0; margin-right: 0; }
+        }
         /* One column, so the flex-era justify-content that used to push the
-           body into the thumb arc becomes align-content. The "safe" keyword
-           matters: on a short phone a plain "end" would overflow the TOP of
-           the section and slide the logo up under the fixed nav. */
+           body into the thumb arc becomes align-content. On a short phone a
+           plain "end" would overflow the TOP of the section, so the stacked
+           layout stays centred and .ff-hero's min-height lets it grow
+           instead of being clipped by the section's overflow:hidden. */
         @media (max-width: 640px) {
-          .ff-hero-body { --ff-mod: clamp(0.5rem, 1.4vh, 0.8rem);
-            align-content: end; align-content: safe end; padding-bottom: 3vh; }
+          .ff-hero-body { --ff-mod: clamp(0.5rem, 1.4vh, 0.8rem); }
         }
 
-        .ff-h1 { font-family: 'Bebas Neue', sans-serif; font-weight: 400;
-          font-size: clamp(3rem, 11.5vw, 5.6rem); line-height: 0.9; letter-spacing: 0.02em;
+        /* Fraunces, not Bebas. Bebas is a condensed all-caps display face —
+           it has no lowercase at all, so the headline was being SHOUTED at
+           a first-time visitor in 5.6rem type. A serif with real upper and
+           lower case reads as a sentence somebody wrote rather than a
+           poster, which is the whole point of the change: the promise is
+           meant to be read, not announced. It is also smaller now, because
+           lowercase letters carry far more width per character than Bebas's
+           condensed caps — the line occupies about the same space on screen
+           at two-thirds the font-size.
+
+           Weight 500, not 700: the ask was "less bold". No
+           font-variation-settings here — setting 'wght' there would
+           override the font-weight declaration, and Fraunces' SOFT/WONK
+           axes aren't in the subset we request. */
+        .ff-h1 { font-family: 'Fraunces', Georgia, serif; font-weight: 500;
+          font-size: clamp(2.35rem, 5.2vw, 3.6rem); line-height: 1.06; letter-spacing: -0.015em;
           color: var(--ff-ink-1); margin: 0; }
         .ff-h1 em { font-style: normal; color: var(--ff-c10); }
-        /* The three steps. Bebas so it reads as a continuation of the headline
-           rather than as body copy, but a third of its size and widely tracked
-           so it can't compete with it. Deliberately NOT orange: the 10 of
-           60/30/10 is spent on the h1 accent and the CTA, and a third orange
-           thing in a 400px-tall hero is what turns an accent into wallpaper. */
-        .ff-steps { font-family: 'Bebas Neue', sans-serif; font-weight: 400;
-          font-size: clamp(1.05rem, 3.4vw, 1.5rem); line-height: 1.1; letter-spacing: 0.14em;
-          color: var(--ff-ink-2); margin: 0; }
+        /* The three steps. Now DM Sans, since the headline it used to echo is
+           no longer Bebas — kept small and widely tracked so it still reads as
+           a caption under the promise rather than as body copy. Deliberately
+           NOT orange: the 10 of 60/30/10 is spent on the h1 accent and the
+           CTA, and a third orange thing in a hero is what turns an accent
+           into wallpaper. */
+        .ff-steps { font-family: 'DM Sans', sans-serif; font-weight: 500;
+          font-size: clamp(0.92rem, 2.4vw, 1.05rem); line-height: 1.2; letter-spacing: 0.12em;
+          text-transform: uppercase; color: var(--ff-ink-2); margin: 0; }
         .ff-sub { font-size: clamp(1rem, 2.5vw, 1.15rem); font-weight: 300; line-height: 1.62;
           color: var(--ff-ink-3); max-width: 33rem; margin: 0; }
         .ff-sub strong { color: var(--ff-ink-2); font-weight: 500; }
@@ -450,14 +581,84 @@ export default function Home() {
           width: 100%; max-width: 23rem; min-height: 56px;
           padding: 1rem 1.5rem; border: none; border-radius: 14px; cursor: pointer;
           background: linear-gradient(180deg, var(--ff-accent-400) 0%, var(--ff-accent-500) 100%);
-          color: #fff; font-family: 'Bebas Neue', sans-serif; font-size: 1.55rem; letter-spacing: 0.06em;
+          color: #fff; font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 1.05rem; letter-spacing: 0.02em;
           box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 10px 30px rgba(234,107,20,0.28);
           transition: transform 0.18s cubic-bezier(0.2,0.7,0.3,1), box-shadow 0.18s ease, filter 0.18s ease; }
         .ff-cta:hover { transform: translateY(-2px); filter: brightness(1.04);
           box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), 0 16px 40px rgba(234,107,20,0.38); }
         .ff-cta:active { transform: translateY(0) scale(0.994); }
         .ff-cta:focus-visible { outline: 2px solid var(--ff-accent-400); outline-offset: 3px; }
-        .ff-cta-note { margin: 0; font-size: 0.8rem; letter-spacing: 0.04em; color: var(--ff-ink-4); }
+
+        /* ── Hero panel: "describe your problem" ──────────────────────────
+           A dark translucent card sitting on the navy ground, so it reads as
+           a surface on the hero rather than a box bolted onto it. It is not
+           a form: there is no <input>, because a real field on the homepage
+           would need validation, submission and an error state for a job
+           that is actually posted three screens later in onboarding. The
+           box demonstrates and then hands off — tapping anywhere in it, or
+           pressing Next, goes to the same place the orange button does.
+
+           That also sidesteps the iOS zoom trap entirely: the 16px computed
+           font-size floor applies to inputs, and there is no input here. */
+        .ff-hero-panel {
+          width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 0.85rem;
+          padding: clamp(1.15rem, 2.4vw, 1.6rem);
+          background: rgba(var(--ff-fg), 0.045);
+          border: 1px solid rgba(var(--ff-fg), 0.12);
+          border-radius: 20px;
+          -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+          box-shadow: 0 24px 60px rgba(0,0,0,0.30);
+          text-align: left;
+        }
+        /* Slightly bigger than the hero's body copy on purpose — it is the
+           instruction, and it has to out-rank the example text underneath
+           it or the panel reads as a quote rather than a prompt. */
+        .ff-panel-label { font-family: 'DM Sans', sans-serif; font-weight: 500;
+          font-size: 1.15rem; line-height: 1.3; color: var(--ff-ink-1); margin: 0; }
+        /* The typing surface. min-height holds two lines so the card never
+           changes height as lines of different length cycle through — a
+           panel that grows and shrinks on its own is the kind of movement
+           that reads as a bug. */
+        .ff-panel-box {
+          display: block; width: 100%; min-height: 5.2rem; text-align: left;
+          padding: 0.85rem 0.95rem; cursor: pointer;
+          background: rgba(var(--ff-bg-rgb), 0.35);
+          border: 1px solid rgba(var(--ff-fg), 0.10);
+          border-radius: 12px;
+          font-family: 'DM Sans', sans-serif; font-weight: 300; font-size: 1rem; line-height: 1.5;
+          color: var(--ff-ink-2);
+          transition: border-color 0.18s ease, background 0.18s ease;
+        }
+        .ff-hero-panel:hover .ff-panel-box { border-color: rgba(var(--ff-fg), 0.18); }
+        .ff-panel-box:focus-visible { outline: 2px solid var(--ff-accent-400); outline-offset: 2px; }
+        /* steps(1) so it snaps rather than fading — a caret that eases in and
+           out looks like a pulsing dot, not a cursor. */
+        .ff-caret { display: inline-block; width: 2px; height: 1.05em; margin-left: 1px;
+          vertical-align: text-bottom; background: var(--ff-c10);
+          animation: ff-caret-blink 1.05s steps(1) infinite; }
+        @keyframes ff-caret-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+        @media (prefers-reduced-motion: reduce) { .ff-caret { animation: none; } }
+        /* Smaller than the orange hero button, deliberately. There are two
+           routes to the same screen on one hero; the left one is the primary
+           and this is the shortcut from the demonstration, so it must not
+           read as a competing second decision. */
+        .ff-panel-next {
+          align-self: flex-start; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+          min-height: 44px; padding: 0.6rem 1.5rem;
+          border: none; border-radius: 11px; cursor: pointer;
+          background: linear-gradient(180deg, var(--ff-accent-400) 0%, var(--ff-accent-500) 100%);
+          color: #fff; font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 0.98rem; letter-spacing: 0.02em;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 6px 18px rgba(234,107,20,0.24);
+          transition: transform 0.18s cubic-bezier(0.2,0.7,0.3,1), filter 0.18s ease; }
+        .ff-panel-next:hover { transform: translateY(-1px); filter: brightness(1.04); }
+        .ff-panel-next:active { transform: translateY(0) scale(0.994); }
+        .ff-panel-next:focus-visible { outline: 2px solid var(--ff-accent-400); outline-offset: 3px; }
+        /* Stacked, the panel is below the fold on most phones and a
+           full-width card there adds height for no gain, so it is capped to
+           the same measure the button uses and centred with it. */
+        @media (max-width: 900px) {
+          .ff-hero-panel { max-width: 30rem; margin: calc(var(--ff-mod) * 2) auto 0; }
+        }
 
         /* A notch larger than the contractor line's neighbours, so a tradesperson
            scanning the page actually registers it — but still well under the
@@ -620,67 +821,94 @@ export default function Home() {
           <span style={{ top:"86%", right:"14%", transform:"rotate(13deg)" }}><Ic name="tree" size={42} color="currentColor" /></span>
         </div>
 
-        <div className="ff-hero-body">
-          {/* The mark, large and dead centre on the axis, with no entrance
-              animation — see .ff-herolock. role="img" + a label because the
-              wordmark that used to name the company is gone, so this SVG is
-              now the only thing carrying the brand in this section. */}
-          <div className="ff-herolock" role="img" aria-label="Freddy Fix It">
-            <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <polygon points="65.9,50.7 50.7,65.9 29.3,65.9 14.1,50.7 14.1,29.3 29.3,14.1 50.7,14.1 65.9,29.3" fill="rgba(234,107,20,0.10)" stroke="#ea6b14" strokeWidth="3"/>
-              <path d="M28 54 L28 38 L40 28 L52 38 L52 54 Z" stroke="var(--ff-text)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-              <path d="M36 54 L36 43 L44 43 L44 54" stroke="#ea6b14" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-            </svg>
+        <div className="ff-hero-body" ref={heroRef}>
+          <div className="ff-hero-left">
+            {/* The mark, with no entrance animation — see .ff-herolock.
+                role="img" + a label because the wordmark that used to name the
+                company is gone, so this SVG is now the only thing carrying the
+                brand in this section. */}
+            <div className="ff-herolock" role="img" aria-label="Freddy Fix It">
+              <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <polygon points="65.9,50.7 50.7,65.9 29.3,65.9 14.1,50.7 14.1,29.3 29.3,14.1 50.7,14.1 65.9,29.3" fill="rgba(234,107,20,0.10)" stroke="#ea6b14" strokeWidth="3"/>
+                <path d="M28 54 L28 38 L40 28 L52 38 L52 54 Z" stroke="var(--ff-text)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                <path d="M36 54 L36 43 L44 43 L44 54" stroke="#ea6b14" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              </svg>
+            </div>
+
+            {/* Tagline sits directly under the mark and above the headline — a
+                short trust line read before anything else on the page. Reuses
+                .ff-sub so the type size matches the rest of the hero body. */}
+            <p className="ff-sub ff-anim">
+              A Canadian and Family-Owned business.
+            </p>
+
+            {/* Says what the visitor GETS, not what we are like. "Fix it once,
+                fix it right" was a promise about workmanship we cannot make on a
+                contractor's behalf; this is a description of the mechanism, and
+                every word of it is enforced in code. "You pick the price" rather
+                than "your price" on purpose — the client does not name a number,
+                they choose among the ones pros send back, and a headline that
+                overstates that is the first thing a disappointed user quotes. */}
+            <h1 className="ff-h1 ff-anim-lcp">
+              Pros come to you.<br /><em>You pick the price.</em>
+            </h1>
+
+            {/* The whole product in three words each. It sits between the
+                headline and the button, so a visitor who reads nothing else
+                still leaves knowing the shape of the thing. */}
+            <p className="ff-steps ff-anim ff-d1">
+              Describe it. Compare it. Book it.
+            </p>
+
+            <button className="ff-cta ff-anim ff-d2" onClick={() => setLocation("/client-onboarding")}>
+              Get Free Estimates
+            </button>
+
+            {/* Contractor sign-up sits ABOVE the tick row, not buried under it.
+                Supply is the harder side of a marketplace to fill, and a pro who
+                scrolls past this is a pro we pay to reach some other way. It is
+                still plainly secondary to the orange button — bigger than the
+                ticks, but a text link, not a second competing action. */}
+            {/* The three-tick row that used to close the hero is GONE, and that
+                is the simplification. It was a third trust block saying what the
+                subheading and the proof line had already said — "Vetted Calgary
+                pros" duplicated both, and "No fees to post a job" duplicated the
+                CTA note directly above it. Three overlapping reassurances read
+                as anxious rather than confident. One sentence that is specific
+                and checkable does more than three that are generic.
+
+                The trust bar immediately below the hero still carries the same
+                points for anyone who scrolls, so nothing was actually lost. */}
+            <div className="ff-hero-alt ff-anim ff-d4">
+              A tradesperson?{" "}
+              <button onClick={() => setLocation("/contractor-onboarding")}>Join Freddy's team →</button>
+            </div>
           </div>
 
-          {/* Tagline sits directly under the mark and above the headline — a
-              short trust line read before anything else on the page. Reuses
-              .ff-sub so the type size matches the rest of the hero body. */}
-          <p className="ff-sub ff-anim">
-            A Canadian and Family-Owned business.
-          </p>
-
-          {/* Says what the visitor GETS, not what we are like. "Fix it once,
-              fix it right" was a promise about workmanship we cannot make on a
-              contractor's behalf; this is a description of the mechanism, and
-              every word of it is enforced in code. "You pick the price" rather
-              than "your price" on purpose — the client does not name a number,
-              they choose among the ones pros send back, and a headline that
-              overstates that is the first thing a disappointed user quotes. */}
-          <h1 className="ff-h1 ff-anim-lcp">
-            Pros come to you.<br /><em>You pick the price.</em>
-          </h1>
-
-          {/* The whole product in three words each. It sits between the
-              headline and the button, so a visitor who reads nothing else
-              still leaves knowing the shape of the thing. */}
-          <p className="ff-steps ff-anim ff-d1">
-            Describe it. Compare it. Book it.
-          </p>
-
-          <button className="ff-cta ff-anim ff-d2" onClick={() => setLocation("/client-onboarding")}>
-            Get Free Estimates
-          </button>
-          <div className="ff-cta-note ff-anim ff-d2">No signup to start · Takes about 2 minutes</div>
-
-          {/* Contractor sign-up sits ABOVE the tick row, not buried under it.
-              Supply is the harder side of a marketplace to fill, and a pro who
-              scrolls past this is a pro we pay to reach some other way. It is
-              still plainly secondary to the orange button — bigger than the
-              ticks, but a text link, not a second competing action. */}
-          {/* The three-tick row that used to close the hero is GONE, and that
-              is the simplification. It was a third trust block saying what the
-              subheading and the proof line had already said — "Vetted Calgary
-              pros" duplicated both, and "No fees to post a job" duplicated the
-              CTA note directly above it. Three overlapping reassurances read
-              as anxious rather than confident. One sentence that is specific
-              and checkable does more than three that are generic.
-
-              The trust bar immediately below the hero still carries the same
-              points for anyone who scrolls, so nothing was actually lost. */}
-          <div className="ff-hero-alt ff-anim ff-d4">
-            A tradesperson?{" "}
-            <button onClick={() => setLocation("/contractor-onboarding")}>Join Freddy's team →</button>
+          {/* The right column shows rather than tells: the box types out real
+              requests, so a visitor learns what to write by watching somebody
+              write it. The typed text is aria-hidden and a static sentence
+              carries the meaning for a screen reader — an element whose text
+              content changes every 38ms is announced as a stream of
+              fragments otherwise. */}
+          <div className="ff-hero-panel ff-anim ff-d3">
+            <p className="ff-panel-label">Describe your problem</p>
+            <button
+              type="button"
+              className="ff-panel-box"
+              onClick={() => setLocation("/client-onboarding")}
+              aria-label="Describe your problem and get free estimates"
+            >
+              <span aria-hidden="true">{typed}</span>
+              <span className="ff-caret" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="ff-panel-next"
+              onClick={() => setLocation("/client-onboarding")}
+            >
+              Next
+            </button>
           </div>
         </div>
 
