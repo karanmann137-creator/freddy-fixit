@@ -387,6 +387,17 @@ export default function Home() {
     return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
   };
 
+  // ONE definition of the contractor line, rendered into two breakpoint-
+  // exclusive slots: inside the left column on desktop, and below the describe
+  // panel on a phone. Only one of the two is ever displayed, so the copy and
+  // the handler cannot drift the way two pasted copies would.
+  const joinLine = (
+    <>
+      A tradesperson?{" "}
+      <button onClick={() => setLocation("/contractor-onboarding")}>Join Freddy's team →</button>
+    </>
+  );
+
   return (
     <div style={{ fontFamily:"'DM Sans', sans-serif", background:"var(--ff-bg)", color:"var(--ff-text)", overflowX:"clip" as const }}>
       <style>{`
@@ -747,6 +758,23 @@ export default function Home() {
           transition: color 0.18s; }
         .ff-hero-alt button:hover { color: var(--ff-c10); }
 
+        /* The contractor line moves below the describe box on a phone: it is
+           an aside for a different audience, and above the box it sat between
+           the orange button and the one thing a client is meant to do next.
+           Both copies are always in the markup and CSS picks one — the media
+           query is declared AFTER the base rule so equal specificity resolves
+           by source order. display:none (not visibility or opacity) keeps the
+           hidden one out of the tab order and the a11y tree, so a screen
+           reader never meets the line twice. 900px mirrors the two-column
+           switch at min-width:901px exactly. The extra margin-top reproduces
+           the group break the left column gets from its own child rule, on
+           top of the grid's row-gap. */
+        .ff-alt-narrow { display: none; }
+        @media (max-width: 900px) {
+          .ff-hero-left > .ff-alt-wide { display: none; }
+          .ff-alt-narrow { display: block; margin-top: var(--ff-mod); }
+        }
+
         .ff-scroll-hint { position: absolute; bottom: 0.7rem; left: 50%; transform: translateX(-50%);
           display: flex; flex-direction: column; align-items: center; gap: 0.35rem; z-index: 1;
           color: var(--ff-ink-4); opacity: 0.6; font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase;
@@ -957,10 +985,7 @@ export default function Home() {
 
                 The trust bar immediately below the hero still carries the same
                 points for anyone who scrolls, so nothing was actually lost. */}
-            <div className="ff-hero-alt ff-anim ff-d4">
-              A tradesperson?{" "}
-              <button onClick={() => setLocation("/contractor-onboarding")}>Join Freddy's team →</button>
-            </div>
+            <div className="ff-hero-alt ff-anim ff-d4 ff-alt-wide">{joinLine}</div>
           </div>
 
           {/* The right column shows rather than tells AND takes the answer:
@@ -1001,6 +1026,12 @@ export default function Home() {
               Next
             </button>
           </div>
+
+          {/* Phone only — a third grid child sitting under the describe panel.
+              On desktop it is display:none, so it generates no box and never
+              becomes a grid item; that is what keeps the two-column "raise"
+              block (grid-auto-rows: minmax(min-content,1fr)) untouched. */}
+          <div className="ff-hero-alt ff-anim ff-d4 ff-alt-narrow">{joinLine}</div>
         </div>
 
         <div className="ff-scroll-hint" aria-hidden="true">
