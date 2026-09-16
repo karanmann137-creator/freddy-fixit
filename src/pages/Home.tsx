@@ -749,6 +749,45 @@ export default function Home() {
           .ff-hero-panel { max-width: 30rem; margin: calc(var(--ff-mod) * 2) auto 0; }
         }
 
+        /* Desktop only: drop the panel so its bottom edge sits level with the
+           orange button, not with the bottom of the column.
+
+           The left column ends with the tradesperson line, NOT with .ff-cta —
+           so a bare 'align-self: end' would line the panel up with that link
+           instead, one block too low. The margin subtracts exactly what sits
+           under the button: the link's own line, the flex gap above it
+           (1 module) and its group break (2 more), which is why it is written
+           in modules rather than as a tuned pixel value. Re-tune --ff-mod and
+           this follows on its own.
+
+           Declared after the base rules and after the max-width block on
+           purpose, so the equal-specificity ties resolve in source order. It
+           holds whether or not the 640px-height "raise" applies: with the
+           raise the row is the full hero height and the button is already at
+           its foot, and without it the row is the left column's own height,
+           whose foot is the same link. Same reference either way. */
+        @media (min-width: 901px) {
+          .ff-hero-panel {
+            align-self: end;
+            margin-bottom: calc(var(--ff-mod) * 3 + 1.25rem);
+          }
+          /* A bigger area to type in. Height only — font-size is deliberately
+             untouched at 1rem; see the note on .ff-panel-box above. */
+          .ff-panel-box { min-height: 7.6rem; }
+          /* And a smaller Next, so the shortcut reads as even more clearly
+             subordinate to the orange button beside it. */
+          .ff-panel-next {
+            min-height: 38px; padding: 0.45rem 1.15rem;
+            border-radius: 10px; font-size: 0.9rem;
+          }
+        }
+        /* A wide touch screen is still a thumb. The 44px floor main.tsx sets
+           under 'pointer: coarse' loses to the class selector above, so it is
+           restored here rather than left to be quietly overridden. */
+        @media (min-width: 901px) and (pointer: coarse) {
+          .ff-panel-next { min-height: 44px; }
+        }
+
         /* A notch larger than the contractor line's neighbours, so a tradesperson
            scanning the page actually registers it — but still well under the
            subheading, so it never competes with the orange button. */
