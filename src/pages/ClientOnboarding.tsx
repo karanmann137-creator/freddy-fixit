@@ -280,8 +280,30 @@ export default function ClientOnboarding() {
    *   address bar to be pasted into a screenshot or a support email.
    * - Capped and trimmed here as well as at the sending end, because a URL
    *   is user input wherever it came from.
+   *
+   * ⚠️ IT MUST WAIT FOR `mode`, AND THAT IS THE BUG THIS ONCE SHIPPED WITH.
+   * `mode` starts at "loading" and only becomes "signup" or "new" once the
+   * async getUser() resolves, so on the FIRST commit this component renders a
+   * spinner and <NewRequest/> does not exist yet. With `[]` deps this effect
+   * therefore ran a whole commit BEFORE NewRequest mounted: it wrote the
+   * description into a form a signed-in client never sees, and then stripped
+   * ?desc= from the URL, so NewRequest's identical effect found nothing a
+   * moment later. The hero handoff worked logged-out and silently did nothing
+   * for returning clients — the half we most wanted it for — with no error
+   * anywhere to say so.
+   *
+   * Gating on "signup" fixes both halves at once, because the guard stops the
+   * STRIP as well as the prefill, so the param survives untouched into the one
+   * component that is actually going to read it. Exactly one branch consumes
+   * it, and neither branch can consume the other's.
+   *
+   * The child-effects-run-before-parent-effects rule does NOT rescue this and
+   * must not be relied on here: it only holds for children that exist in the
+   * same commit, and this one does not.
    */
   useEffect(() => {
+    // Not ours to read — or to strip — until we know this is the signup path.
+    if (mode !== "signup") return;
     const raw = new URLSearchParams(window.location.search).get("desc");
     const d = (raw || "").trim().slice(0, 400);
     if (d) setForm(f => (f.jobDescription.trim() ? f : { ...f, jobDescription: d }));
@@ -292,7 +314,7 @@ export default function ClientOnboarding() {
         window.history.replaceState({}, "", u.pathname + u.search + u.hash);
       } catch { /* a URL we can't rewrite is cosmetic — the prefill already happened */ }
     }
-  }, []);
+  }, [mode]);
   /**
    * A half-finished request, remembered for the length of the browsing session.
    *
