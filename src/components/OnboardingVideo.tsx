@@ -2,13 +2,15 @@ import { useState } from "react";
 import { Ic } from "@/components/Ic";
 
 /**
- * OnboardingVideo — the walkthrough, off to the side and optional to view.
+ * OnboardingVideo — the walkthrough, out of the way and optional to view.
  *
- * Both signup flows are a single 580px column centred in a very wide page, so
- * "off to the side" is real estate that already exists: from 1180px up this
- * docks into the right-hand gutter and the form is not moved by one pixel.
- * Below that there is no side, so it falls back to a single collapsed strip
- * directly above the card — still one line tall, still silent until asked.
+ * It is a single collapsed strip directly above the form card, at every width.
+ * An earlier version docked it into the right-hand gutter on wide screens, and
+ * that read as detached: the gutter is empty background art, so a panel
+ * floating there looks like it belongs to the page rather than to the form,
+ * and its vertical position had to be guessed at a fixed offset that only
+ * lines up at one header height. One layout everywhere is calmer, and it is
+ * one fewer thing that can fall out of step with the pages above it.
  *
  * ⚠️ THE <video> ELEMENT IS NOT RENDERED UNTIL THE PERSON CLICKS.
  * These files are ~2MB each. `preload="none"` would be the usual answer, but it
@@ -32,17 +34,15 @@ import { Ic } from "@/components/Ic";
 
 const CSS =
   ".ff-onbvid{margin:0 0 1.5rem;border:1px solid rgba(var(--ff-fg), .1);background:rgba(var(--ff-fg), .04);border-radius:12px;padding:.85rem 1rem;}"
-  // The gutter dock. `left` clears half the 580px column plus a gap; the width
-  // is whatever is left of that half-viewport, capped, so the panel can never
-  // be the thing that introduces a horizontal scrollbar. At the 1180px breakpoint
-  // itself that arithmetic still leaves 280px, which is why the query starts there.
-  + "@media (min-width: 1180px){.ff-onbvid{position:absolute;top:13rem;left:calc(50% + 300px);width:min(320px, calc(50vw - 310px));margin:0;}}"
   + ".ff-onbvid-btn{display:flex;align-items:center;gap:.7rem;width:100%;background:none;border:none;padding:0;cursor:pointer;font-family:inherit;color:var(--ff-text);text-align:left;}"
   + ".ff-onbvid-play{flex-shrink:0;display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:#ea6b14;}"
   + ".ff-onbvid-ttl{font-size:.92rem;font-weight:500;line-height:1.3;}"
   + ".ff-onbvid-sub{font-size:.76rem;color:rgba(var(--ff-muted), .65);margin-top:.15rem;}"
   + ".ff-onbvid-vid{width:100%;display:block;border-radius:8px;margin-top:.85rem;background:#000;}"
-  + ".ff-onbvid-hide{display:flex;align-items:center;gap:.4rem;background:none;border:none;padding:0;margin-top:.6rem;cursor:pointer;font-family:inherit;font-size:.78rem;color:rgba(var(--ff-muted), .7);}";
+  // Slightly larger than the sub-label it sits under: it is a control, not a
+  // caption, and at .78rem it read as fine print on a panel whose only other
+  // affordance is the video's own chrome.
+  + ".ff-onbvid-hide{display:flex;align-items:center;gap:.45rem;background:none;border:none;padding:0;margin-top:.7rem;cursor:pointer;font-family:inherit;font-size:.92rem;color:rgba(var(--ff-muted), .8);}";
 
 export default function OnboardingVideo({
   src,
@@ -81,7 +81,7 @@ export default function OnboardingVideo({
           {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
           <video className="ff-onbvid-vid" src={src} controls autoPlay playsInline preload="auto" />
           <button type="button" className="ff-onbvid-hide" onClick={() => setOpen(false)}>
-            <Ic name="x-circle" size={14} />
+            <Ic name="x-circle" size={17} />
             Hide video
           </button>
         </>
