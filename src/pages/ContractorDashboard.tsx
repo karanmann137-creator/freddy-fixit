@@ -14,7 +14,8 @@ import ScheduleField from "@/components/ScheduleField";
 import JobChat from "@/components/JobChat";
 import ChatTimePrompt from "@/components/ChatTimePrompt";
 import MessagesInbox, { partyName } from "@/components/MessagesInbox";
-import { useConversations, chatReadOnly, chatClosedReason, type Conversation } from "@/lib/chatUnread";
+import { useConversations, conversationKey, chatReadOnly, chatClosedReason, type Conversation } from "@/lib/chatUnread";
+import { useBidThreads, bidToConversation } from "@/lib/bidThreads";
 import { formatWhen } from "@/lib/chatParse";
 import JobTimeline from "@/components/JobTimeline";
 import { AVAIL_DAYS, WEEKDAYS, TIME_OPTIONS, readAvailability } from "@/lib/availability";
@@ -313,6 +314,31 @@ export default function ContractorDashboard() {
     loading: convLoading, error: convError,
     refresh: refreshConvs, markRead: markConvRead,
   } = useConversations(profile?.id);
+  // The OTHER half of the same inbox. `my_conversations()` is job-scoped and
+  // `my_bid_threads()` is request-scoped, so two RPCs feed what the pro
+  // experiences as one Messages tab. Merged below into `inboxRows`.
+  //
+  // For a contractor the RPC returns only threads the CLIENT has already opened
+  // — the pro replies, never initiates — so an empty list genuinely means
+  // nobody has written. The hook keeps it live; before it existed a question
+  // arriving while the dashboard was open showed up nowhere until a reload.
+  const bid = useBidThreads(profile?.id);
+  // ONE list behind the Messages tab. Only STARTED bid threads join it — see
+  // `bidThreadStarted` — and the merge sorts by last message so the newest
+  // conversation is at the top regardless of which RPC it came from.
+  const inboxRows: Conversation[] = [
+    ...conversations,
+    ...bid.started.map(t => bidToConversation(t, profile?.id)),
+  ].sort((a, b) => (b.last_message_at ?? "").localeCompare(a.last_message_at ?? ""));
+  // The badge counts BOTH halves, or a client's pre-hire question produces no
+  // badge anywhere — which is most of what "no way of replying" was.
+  const msgUnread = totalUnread + bid.totalUnread;
+  // Rendering rules for a list fed by two calls that can fail independently:
+  // only claim "loading" while we have nothing to show, and only show the error
+  // state when BOTH halves failed — a working half must never be hidden behind
+  // the other's failure.
+  const inboxLoading = (convLoading || bid.loading) && inboxRows.length === 0;
+  const inboxError   = convError && bid.error;
   const [showCustomAvail, setShowCustomAvail] = useState(false);
   const [proposeForm, setProposeForm] = useState<{ when:string; amount:string; notes:string; labour:string; parts:string; callout:string; subject:boolean; price_low:string; price_high:string; used_base_price:boolean; items:{label:string;amount:string}[] }>({ when:"", amount:"", notes:"", labour:"", parts:"", callout:"", subject:false, price_low:"", price_high:"", used_base_price:false, items:[] });
   const [busyJobId, setBusyJobId]     = useState<string | null>(null); // per-job busy flag — only the job being acted on shows a spinner/disables
@@ -328,10 +354,6 @@ export default function ContractorDashboard() {
   const [hiding, setHiding]           = useState<string|null>(null);
   const [busyBid, setBusyBid]         = useState<string|null>(null);
   const [bidOpen, setBidOpen]         = useState<Record<string,boolean>>({});
-  // Bid-stage chat, keyed by request_id. A pro only ever has one thread per
-  // request (their own), and the row only exists once the CLIENT has written —
-  // the pro can reply but can never open the conversation.
-  const [bidThreads, setBidThreads]   = useState<Record<string, any>>({});
   const [bidChat, setBidChat]         = useState<{ requestId:string; name:string; title?:string|null } | null>(null);
   const [busyStripe, setBusyStripe]   = useState(false);
   // What Stripe is still waiting on, straight from refresh-connect-status (v11).
@@ -353,18 +375,6 @@ export default function ContractorDashboard() {
   const [loadError, setLoadError]     = useState(false);
   const [toast, setToast]             = useState<{ kind:"err"|"ok"; text:string }|null>(null);
   const toastTimer = useRef<number | null>(null);
-  // my_bid_threads() returns, for a contractor, only the threads the CLIENT has
-  // already opened — so an empty map genuinely means nobody has written yet.
-  // A failed read returns early rather than clearing: losing a thread the pro
-  // can see would look like the client's question vanished.
-  const refreshBidThreads = async () => {
-    const { data, error } = await supabase.rpc("my_bid_threads");
-    if (error) return;
-    const m: Record<string, any> = {};
-    ((data ?? []) as any[]).forEach((t: any) => { m[t.request_id] = t; });
-    setBidThreads(m);
-  };
-
   const notify = (text: string, kind: "err" | "ok" = "err") => {
     setToast({ kind, text });
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
@@ -552,7 +562,9 @@ export default function ContractorDashboard() {
       setContractor(con2);
       setBidsCount(bidsCnt ?? 0);
       setEarn(earnStats ?? null);
-      refreshBidThreads();
+      // Bid threads are NOT loaded here any more — `useBidThreads` owns that list,
+      // keeps it live and reloads it itself. A manual fetch here would race the
+      // hook and go stale again the moment a message arrived.
       // Speed-to-lead: own median first-response time (fire-and-forget; null = not enough bids yet)
       supabase.rpc("contractor_response_stats")
         .then(({ data }: any) => { const r = (data ?? [])[0]; setRespMins(r ? Number(r.median_minutes) : null); });
@@ -676,6 +688,18 @@ export default function ContractorDashboard() {
    * which reads its own messages regardless.
    */
   const openConversation = (c: Conversation) => {
+    // A bid row FIRST, before any job lookup. Its `job_id` is the synthetic
+    // `bid:<request>:<pro>` key, which matches no job and is not a uuid — falling
+    // through would open JobChat on an id every query would reject.
+    if (c.kind === "bid" && c.request_id && profile) {
+      setBidChat({
+        requestId: c.request_id,
+        name: c.other_name ?? c.other_company ?? "Client",
+        title: c.service_needed,
+      });
+      if (c.unread > 0) void bid.markRead(c.request_id, profile.id);
+      return;
+    }
     const real = myJobs.find(j => j.id === c.job_id);
     setChatJob(real ?? {
       id: c.job_id,
@@ -1230,7 +1254,7 @@ export default function ContractorDashboard() {
         <DashboardSidebar
           items={CONTRACTOR_NAV.map(it => {
             if (it.key === "available" && contractor?.status === "active" && availableJobs.length > 0) return { ...it, badge: availableJobs.length };
-            if (it.key === "messages" && totalUnread > 0) return { ...it, badge: totalUnread };
+            if (it.key === "messages" && msgUnread > 0) return { ...it, badge: msgUnread };
             return it;
           })}
           active={activeTab}
@@ -1432,7 +1456,13 @@ export default function ContractorDashboard() {
             const svc = job.request?.service_needed ?? "a job";
             if (d && d.status === "open" && !d.contractor_responded_at) {
               attn.push({ key: "claim-" + job.id, text: "A client filed a claim on “" + svc + "” — your payout is paused until you respond.", cta: "Respond now", onClick: () => focusJobAnchor(job, A_CLAIM), danger: true });
-            } else if (job.client_rescheduled_at && !job.reschedule_accepted_at) {
+            // Gated on the live stages, exactly like the panel this row scrolls
+            // to. Neither flag is ever cleared, so ungated the row — and its
+            // dead "Review new time" button, since A_RESCHED only renders on
+            // those stages — sat on completed and cancelled jobs forever,
+            // burning one of only four attention slots.
+            } else if (job.client_rescheduled_at && !job.reschedule_accepted_at
+                       && ["assigned","scheduled","in_progress"].includes(job.status)) {
               attn.push({ key: "resched-" + job.id, text: (job.client?.first_name || "Your client") + " changed the time on “" + svc + "”.", cta: "Review new time", onClick: () => focusJobAnchor(job, A_RESCHED) });
             } else if (job.status === "assigned" && job.walkthrough_approved_at && !job.walkthrough_done_at) {
               attn.push({ key: "wt-" + job.id, text: "Walkthrough confirmed for “" + svc + "”" + (job.walkthrough_at ? " — " + new Date(job.walkthrough_at).toLocaleString() : "") + ". After the visit, mark it done and send your estimate.", cta: "Mark walkthrough done", onClick: () => focusJobAnchor(job, A_WALK) });
@@ -1487,10 +1517,17 @@ export default function ContractorDashboard() {
           }
           // Unread messages. Capped at 3 so a chatty week can't bury the rows
           // that gate money (claims, agreements, photos).
-          for (const c of conversations.filter(c => c.unread > 0).slice(0, 3)) {
+          //
+          // `inboxRows`, not `conversations` — a pre-hire question from a client
+          // deciding who to hire is the MOST time-sensitive message a pro gets,
+          // and it used to raise no row at all.
+          for (const c of inboxRows.filter(c => c.unread > 0).slice(0, 3)) {
             attn.push({
-              key: "msg-" + c.job_id,
-              text: partyName(c) + " sent you " + (c.unread === 1 ? "a message" : c.unread + " messages") + " about “" + (c.service_needed ?? "a job") + "”.",
+              key: "msg-" + conversationKey(c),
+              text: partyName(c) + " sent you " + (c.unread === 1 ? "a message" : c.unread + " messages")
+                + (c.kind === "bid"
+                    ? " about “" + (c.service_needed ?? "a job") + "” — they haven't picked anyone yet."
+                    : " about “" + (c.service_needed ?? "a job") + "”."),
               cta: "Read it",
               onClick: () => { setActiveTab("messages"); openConversation(c); window.scrollTo({ top: 0, behavior: "smooth" }); },
             });
@@ -1972,12 +2009,12 @@ export default function ContractorDashboard() {
 
         {activeTab === "messages" && (
           <MessagesInbox
-            conversations={conversations}
-            loading={convLoading}
-            error={convError}
+            conversations={inboxRows}
+            loading={inboxLoading}
+            error={inboxError}
             meId={profile?.id}
             onOpen={openConversation}
-            onRetry={refreshConvs}
+            onRetry={() => { void refreshConvs(); void bid.refresh(); }}
           />
         )}
 
@@ -2195,17 +2232,20 @@ export default function ContractorDashboard() {
                     return null;
                   })()}
                   {/* A client can open a private thread with any pro who bid. The pro
-                      can only reply, so this button only appears once they've written. */}
-                  {bidThreads[r.id] && (
+                      can only reply, so this button only appears once they've written.
+                      This is now a SHORTCUT, not the only route — the same thread also
+                      sits in Messages, which is where anyone actually looks for a
+                      message and where it survives this card disappearing. */}
+                  {bid.byRequest[r.id] && (
                     <button
-                      onClick={() => setBidChat({ requestId: r.id, name: bidThreads[r.id].other_name ?? "Client", title: r.service_needed })}
+                      onClick={() => setBidChat({ requestId: r.id, name: bid.byRequest[r.id].other_name ?? "Client", title: r.service_needed })}
                       style={{ ...s.btn, width:"100%", justifyContent:"center", marginTop:".5rem", position:"relative" as const,
-                        background: Number(bidThreads[r.id].unread ?? 0) > 0 ? "rgba(234,107,20,.12)" : undefined,
-                        border: Number(bidThreads[r.id].unread ?? 0) > 0 ? "1px solid rgba(234,107,20,.45)" : undefined }}
+                        background: Number(bid.byRequest[r.id].unread ?? 0) > 0 ? "rgba(234,107,20,.12)" : undefined,
+                        border: Number(bid.byRequest[r.id].unread ?? 0) > 0 ? "1px solid rgba(234,107,20,.45)" : undefined }}
                     >
                       <Ic name="message-square" size={13} style={{ marginRight:5 }} />
-                      {Number(bidThreads[r.id].unread ?? 0) > 0
-                        ? "The client messaged you — reply (" + bidThreads[r.id].unread + " new)"
+                      {Number(bid.byRequest[r.id].unread ?? 0) > 0
+                        ? "The client messaged you — reply (" + bid.byRequest[r.id].unread + " new)"
                         : "Message the client"}
                     </button>
                   )}
@@ -2733,8 +2773,8 @@ export default function ContractorDashboard() {
           role="contractor"
           title={bidChat.title}
           otherName={bidChat.name}
-          onRead={() => setBidThreads(m => (m[bidChat.requestId] ? { ...m, [bidChat.requestId]: { ...m[bidChat.requestId], unread: 0 } } : m))}
-          onClose={() => { setBidChat(null); refreshBidThreads(); }}
+          onRead={() => void bid.markRead(bidChat.requestId, profile.id)}
+          onClose={() => { setBidChat(null); void bid.refresh(); }}
         />
       )}
       {timePromptJob && profile && !chatJob && (

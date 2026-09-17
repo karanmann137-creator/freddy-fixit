@@ -6,16 +6,27 @@
 // hook, so the sidebar badge and this list are literally the same array and
 // can't disagree.
 //
-// Rows are keyed on job_id because that's what the chat drawer opens and what
-// `mark_job_read` clears — one id the whole feature agrees on.
+// Rows are keyed through `conversationKey()` — job rows by job_id (what the chat
+// drawer opens and what `mark_job_read` clears), bid rows by (request, pro),
+// since a client holds one thread per bidder on the same request.
+//
+// It renders BOTH halves of the inbox now: job threads from `my_conversations()`
+// and pre-hire bid threads from `my_bid_threads()`, already adapted to this same
+// row shape by `src/lib/bidThreads.ts`. This component still doesn't know the
+// difference beyond one chip — the dashboard merges the lists and decides which
+// drawer a tap opens.
 
 import { Ic } from "@/components/Ic";
 import { SkRow } from "@/components/Skeleton";
-import { inboxTime, type Conversation } from "@/lib/chatUnread";
+import { conversationKey, inboxTime, type Conversation } from "@/lib/chatUnread";
 
 /** "Sam R." / a company name / a sensible fallback — never a blank row. */
 export function partyName(c: Conversation): string {
-  return c.other_company || c.other_name || (c.i_am === "client" ? "Your contractor" : "Your client");
+  if (c.other_company || c.other_name) return (c.other_company || c.other_name) as string;
+  // Nobody is hired at bid stage, so "Your contractor" would be a small lie on a
+  // row whose whole point is that the client is still choosing.
+  if (c.kind === "bid") return c.i_am === "client" ? "A contractor who bid" : "A client";
+  return c.i_am === "client" ? "Your contractor" : "Your client";
 }
 
 function initials(name: string): string {
@@ -79,8 +90,8 @@ export default function MessagesInbox({
           letterSpacing: ".01em", color: "var(--ff-text)", margin: "0 0 .35rem",
         }}>No conversations yet</h2>
         <p style={{ fontSize: ".88rem", color: "rgba(var(--ff-muted), .7)", margin: 0 }}>
-          Once a job is underway you can message the other person here — questions, photos,
-          running late, all of it stays on the job.
+          Questions before anyone is hired, and everything once a job is underway, all land
+          here — messages, photos, running late.
         </p>
       </div>
     );
@@ -101,7 +112,7 @@ export default function MessagesInbox({
 
         return (
           <button
-            key={c.job_id}
+            key={conversationKey(c)}
             onClick={() => onOpen(c)}
             style={{
               display: "flex", alignItems: "flex-start", gap: ".75rem", width: "100%",
@@ -141,6 +152,16 @@ export default function MessagesInbox({
                 marginTop: ".3rem", display: "flex", alignItems: "center", gap: ".4rem",
                 flexWrap: "wrap", fontSize: ".72rem", color: "rgba(var(--ff-muted), .5)",
               }}>
+                {/* A bid row is a conversation about a job that doesn't exist yet, so
+                    it carries no schedule, no payment and no agreement. Saying so on
+                    the row is what stops it reading as a job the reader has lost. */}
+                {c.kind === "bid" && (
+                  <span style={{
+                    padding: ".14rem .45rem", borderRadius: 999, flexShrink: 0,
+                    background: "rgba(234,107,20,.12)", border: "1px solid rgba(234,107,20,.28)",
+                    color: "#ea6b14", fontWeight: 600, whiteSpace: "nowrap",
+                  }}>Before hiring</span>
+                )}
                 {c.service_needed && (
                   <span style={{
                     padding: ".14rem .45rem", borderRadius: 999,

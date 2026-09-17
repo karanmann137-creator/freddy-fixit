@@ -46,7 +46,8 @@ import type { Grade } from "@/lib/servicePricing";
 import DashboardSidebar, { type SidebarItem } from "@/components/DashboardSidebar";
 import { SettingsPanel } from "@/components/SettingsModal";
 import MessagesInbox, { partyName } from "@/components/MessagesInbox";
-import { useConversations, chatReadOnly, chatClosedReason, type Conversation } from "@/lib/chatUnread";
+import { useConversations, conversationKey, chatReadOnly, chatClosedReason, type Conversation } from "@/lib/chatUnread";
+import { useBidThreads, bidToConversation } from "@/lib/bidThreads";
 import FadeImg from "@/components/FadeImg";
 
 type ClientTab = "requests" | "messages" | "pros" | "recurring" | "history" | "profile" | "settings";
@@ -242,7 +243,9 @@ export default function ClientDashboard() {
   const [bidPhoto, setBidPhoto] = useState<Record<string,string>>({}); // contractor_id -> profile photo URL
   const [bidVerif, setBidVerif] = useState<Record<string,VerifyFlags>>({}); // contractor_id -> ID/insurance/WCB markers
   // Bid-stage chat: a private thread per (request, pro), open before any job exists.
-  const [bidUnread, setBidUnread] = useState<Record<string,number>>({});     // contractor_id -> unread on the active request
+  // Unread lives in the `useBidThreads` hook below, NOT in local state — the old
+  // `bidUnread` map was keyed by contractor alone and scoped to whichever request
+  // happened to be open, so it could never feed the sidebar badge or the inbox.
   const [bidChat, setBidChat] = useState<{ requestId:string; contractorId:string; name:string; title?:string|null } | null>(null);
   const [busyPick, setBusyPick] = useState<string|null>(null);
   const [busyPay, setBusyPay] = useState(false);
@@ -354,10 +357,45 @@ export default function ClientDashboard() {
     refresh: refreshConvs, markRead: markConvRead,
   } = useConversations(profile?.id);
 
+  // The other half of the same inbox: pre-hire threads with pros who bid. Live,
+  // for the same reason the job half is — a question asked while this tab is open
+  // has to appear without a reload.
+  const bid = useBidThreads(profile?.id);
+
+  // ONE list behind the Messages tab. Only STARTED threads join it: the client
+  // branch of `my_bid_threads()` returns a row per BIDDER so a thread can be
+  // opened from a bid row, which would otherwise fill this inbox with seven
+  // empty conversations nobody has written in. See `bidThreadStarted`.
+  const inboxRows: Conversation[] = [
+    ...conversations,
+    ...bid.started.map(t => bidToConversation(t, profile?.id)),
+  ].sort((a, b) => (b.last_message_at ?? "").localeCompare(a.last_message_at ?? ""));
+  // The badge counts BOTH halves, or a pro's reply to a pre-hire question
+  // produces no badge anywhere.
+  const msgUnread = totalUnread + bid.totalUnread;
+  // Two calls that fail independently: only claim "loading" while there is
+  // nothing to show, and only show the error state when BOTH failed —
+  // `MessagesInbox` renders its error branch INSTEAD of the list, so a working
+  // half must never be hidden behind the other's failure.
+  const inboxLoading = (convLoading || bid.loading) && inboxRows.length === 0;
+  const inboxError   = convError && bid.error;
+
   // The inbox can name a job the Requests tab hasn't loaded (a finished job, or
   // one on an older request). Prefer the real row; otherwise a stub is enough —
   // the drawer reads its own messages, the stub only fills the context strip.
   const openConversation = (c: Conversation) => {
+    // A bid row FIRST, before any job lookup. Its `job_id` is the synthetic
+    // `bid:<request>:<pro>` key — not a uuid, matching no job — so falling
+    // through would open JobChat on an id every query rejects. A client holds one
+    // thread per bidder, so both halves of the key are required here.
+    if (c.kind === "bid" && c.request_id && c.contractor_id) {
+      setBidChat({
+        requestId: c.request_id, contractorId: c.contractor_id,
+        name: c.other_company || c.other_name || "Contractor", title: c.service_needed,
+      });
+      if (c.unread > 0) void bid.markRead(c.request_id, c.contractor_id);
+      return;
+    }
     setChatJob(activeJob?.id === c.job_id ? activeJob : {
       id: c.job_id, status: c.job_status, scheduled_at: c.scheduled_at, amount: c.amount,
       request: { service_needed: c.service_needed, location: c.location },
@@ -1358,21 +1396,9 @@ export default function ClientDashboard() {
             setBidMatch(mm);
           }
         });
-      refreshBidUnread(ar.id);
-    } else { setClientBids([]); setBidMatch({}); setBidPhoto({}); setBidUnread({}); }
+    } else { setClientBids([]); setBidMatch({}); setBidPhoto({}); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeReq?.id, activeReq?.status]);
-
-  // Unread per bid-stage thread, keyed by pro, for the badge on "Ask a question".
-  const refreshBidUnread = async (reqId: string) => {
-    const { data, error } = await supabase.rpc("my_bid_threads");
-    if (error) return;                       // a failed read is not "no unread"
-    const u: Record<string,number> = {};
-    ((data ?? []) as any[]).forEach((t: any) => {
-      if (t.request_id === reqId) u[t.contractor_id] = Number(t.unread ?? 0);
-    });
-    setBidUnread(u);
-  };
 
   const pickBid = async (bidId: string) => {
     if (!(await askConfirm({
@@ -1387,8 +1413,13 @@ export default function ClientDashboard() {
     if (error) { notify("Couldn't select: " + error.message); return; }
     const ar = activeReq;
     if (ar) {
-      const { data: job } = await supabase.from("jobs").select("*").eq("request_id", ar.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
-      setActiveJob(job);
+      const { data: job, error: jobErr } = await supabase.from("jobs").select("*").eq("request_id", ar.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      // A failed read is not an empty result. accept_bid has already succeeded,
+      // so the pick is real — but the bids are cleared two lines below, and
+      // without this NOTHING replaces them: no agreement panel, no pay button,
+      // no banner. Same rule as the main job read in the load effect.
+      setJobLoadFailed(!!jobErr);
+      if (!jobErr) setActiveJob(job ?? null);
       // Also patch assigned_contractor_id so the contractor card + chat appear
       // immediately (the load effect reads it off the request) — not after a reload.
       setRequests(prev => prev.map(r => r.id === ar.id ? { ...r, status: "matched", assigned_contractor_id: job?.contractor_id ?? r.assigned_contractor_id } : r));
@@ -1522,7 +1553,7 @@ export default function ClientDashboard() {
             pros: pros.length,
             plans: plans.length,
             past: requests.filter(r => r.status === "completed" || r.status === "cancelled").length,
-          }).map(it => (it.key === "messages" && totalUnread > 0 ? { ...it, badge: totalUnread } : it))}
+          }).map(it => (it.key === "messages" && msgUnread > 0 ? { ...it, badge: msgUnread } : it))}
           active={activeTab}
           onSelect={(k) => setActiveTab(k as ClientTab)}
           title="Dashboard"
@@ -1776,12 +1807,12 @@ export default function ClientDashboard() {
 
         {activeTab === "messages" && (
           <MessagesInbox
-            conversations={conversations}
-            loading={convLoading}
-            error={convError}
+            conversations={inboxRows}
+            loading={inboxLoading}
+            error={inboxError}
             meId={profile?.id}
             onOpen={openConversation}
-            onRetry={() => void refreshConvs()}
+            onRetry={() => { void refreshConvs(); void bid.refresh(); }}
           />
         )}
 
@@ -2034,9 +2065,9 @@ export default function ClientDashboard() {
                         onClick={() => setBidChat({ requestId: activeReq.id, contractorId: b.contractor_id, name: bidNames[b.contractor_id] ?? "Contractor", title: activeReq.service_needed })}
                       >
                         <Ic name="message-square" size={12} style={{ marginRight:4 }} />Ask a question
-                        {Number(bidUnread[b.contractor_id] ?? 0) > 0 && (
+                        {bid.unreadFor(activeReq.id, b.contractor_id) > 0 && (
                           <span style={{ position:"absolute", top:-6, right:-6, minWidth:16, height:16, padding:"0 4px", borderRadius:999, background:"#ea6b14", color:"#fff", fontSize:".62rem", fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                            {Number(bidUnread[b.contractor_id]) > 9 ? "9+" : bidUnread[b.contractor_id]}
+                            {bid.unreadFor(activeReq.id, b.contractor_id) > 9 ? "9+" : bid.unreadFor(activeReq.id, b.contractor_id)}
                           </span>
                         )}
                       </button>
@@ -2631,8 +2662,8 @@ export default function ClientDashboard() {
           role="client"
           title={bidChat.title}
           otherName={bidChat.name}
-          onRead={() => setBidUnread(u => ({ ...u, [bidChat.contractorId]: 0 }))}
-          onClose={() => { const rid = bidChat.requestId; setBidChat(null); refreshBidUnread(rid); }}
+          onRead={() => void bid.markRead(bidChat.requestId, bidChat.contractorId)}
+          onClose={() => { setBidChat(null); void bid.refresh(); }}
         />
       )}
 

@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/imageCompress";
 import { scanImage, shouldBlock, rejectMessage } from "@/lib/imageSafety";
 import { blockedReason, BLOCKED_HELP } from "@/lib/chatParse";
-import { messageTime, daySeparator, isNewDay } from "@/lib/chatUnread";
+import { messageTime, daySeparator, isNewDay, announceChatChange } from "@/lib/chatUnread";
 import { Ic } from "@/components/Ic";
 import FadeImg from "@/components/FadeImg";
 import { Sk } from "@/components/Skeleton";
@@ -223,6 +223,11 @@ export default function BidChat({
       setMsgs(prev => prev.some(x => x.id === saved.id) ? prev : [...prev, saved]);
       if (saved.attachment_path) signMissing([saved]);
     }
+    // Tell every other mounted view a message landed. The realtime channel on
+    // `messages` already covers the RECIPIENT's dashboard, but the sender's own
+    // inbox row behind this drawer would keep its stale snippet and timestamp
+    // until something else refreshed it.
+    announceChatChange();
   };
 
   const box: React.CSSProperties = {

@@ -14,8 +14,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-/** One row of `public.my_conversations()`. */
+/**
+ * One row of `public.my_conversations()` — OR, since bid-stage chat got a home
+ * in the same inbox, one adapted row of `public.my_bid_threads()`.
+ *
+ * The two optional fields below are the whole of that extension. `my_conversations()`
+ * sets neither, so an absent `kind` means "job" and every existing call site keeps
+ * its current meaning. See `src/lib/bidThreads.ts` for the adapter.
+ */
 export type Conversation = {
+  /** "job" = a real job thread. "bid" = a pre-hire question on a request. */
+  kind?: "job" | "bid";
+  /** Only on a bid row: whose thread this is. A job row never sets it. */
+  contractor_id?: string | null;
   job_id: string;
   request_id: string | null;
   service_needed: string | null;
@@ -33,6 +44,21 @@ export type Conversation = {
   last_has_attachment: boolean | null;
   unread: number;
 };
+
+/**
+ * The React key / identity of an inbox row, in ONE place.
+ *
+ * A job row is unique by job_id; a bid row is unique by (request, pro) — a client
+ * holds one thread per bidder on the same request, so keying a bid row on
+ * request_id alone collides and React reuses one pro's conversation state for
+ * another's. Both halves of the merged inbox go through here so the two row
+ * shapes are told apart exactly once.
+ */
+export function conversationKey(c: Conversation): string {
+  return c.kind === "bid"
+    ? "bid:" + c.request_id + ":" + c.contractor_id
+    : "job:" + c.job_id;
+}
 
 /** Fired after we send or read a message so any other mounted view refreshes. */
 export const CHAT_CHANGED_EVENT = "ff:chat-changed";
