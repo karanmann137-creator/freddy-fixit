@@ -258,6 +258,36 @@ def _grep(needle, skip_paths):
     return hits
 
 
+def _public_twin(p):
+    """A byte-identical copy of p living at public/<p>, or None.
+
+    Vite serves ONLY public/. A URL-style reference such as
+    src="/onboarding-videos/freddy-client-onboarding.mp4" therefore resolves to
+    public/onboarding-videos/freddy-client-onboarding.mp4 and can NEVER reach an
+    identically-named file outside public/. Without this, a byte-identical 5MB
+    duplicate at the repo root is pinned in the public repo forever by a
+    reference that belongs to the copy that actually serves.
+
+    The exemption is granted only on an md5 match, so "same name, different
+    file" -- which is a real thing to be afraid of -- is never waived.
+    """
+    if p.startswith("public/"):
+        return None
+    twin = os.path.join(REPO, "public", p)
+    if not os.path.isfile(twin):
+        return None
+    import hashlib
+
+    def md5(fp):
+        h = hashlib.md5()
+        with open(fp, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+        return h.hexdigest()
+
+    return os.path.join("public", p) if md5(os.path.join(REPO, p)) == md5(twin) else None
+
+
 def check_deletions(to_delete):
     if not to_delete:
         return
@@ -270,11 +300,29 @@ def check_deletions(to_delete):
             die("%s does not exist -- nothing to delete. Check the path." % p)
 
         stem = os.path.splitext(os.path.basename(p))[0]
+        twin = _public_twin(p)
         # The import specifier: "./Foo", "../lib/Foo", "@/components/Foo".
-        refs = _grep("/" + stem, skip) + _grep('"' + stem, skip) + _grep("'" + stem, skip)
-        # And the literal path, for anything referenced as a string (workflows,
-        # vercel rewrites, dynamic import()).
-        refs += _grep(p, skip)
+        refs = _grep('"' + stem, skip) + _grep("'" + stem, skip)
+        if twin:
+            ok("%s: byte-identical to %s, which is the copy the site serves" % (p, twin))
+        else:
+            # A path-prefixed reference: "./Foo", "../lib/Foo", "/assets/foo.svg".
+            #
+            # The needle differs by KIND of file, and getting this wrong fails in
+            # opposite directions. A TS/TSX import omits the extension
+            # (`from "../components/GuideBubble"`), so the stem is the only thing
+            # that can match. An asset is referenced by URL and ALWAYS carries the
+            # extension (`src="/onboarding-videos/x.mp4"`), so matching on the bare
+            # stem there is needlessly loose -- `public/icons.svg` was refused
+            # because the word "text/icons/borders" appears in a prose comment in
+            # Home.tsx. A gate that cries wolf is a gate someone learns to skip,
+            # which is how a real dangling import gets shipped.
+            ext = os.path.splitext(p)[1].lower()
+            module_ext = ext in (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
+            refs += _grep("/" + (stem if module_ext else os.path.basename(p)), skip)
+            # And the literal path, for anything referenced as a string (workflows,
+            # vercel rewrites, dynamic import()).
+            refs += _grep(p, skip)
         refs = sorted(set(refs))
         if refs:
             die("%s is still referenced by:\n    %s\n"

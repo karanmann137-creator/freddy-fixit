@@ -70,3 +70,9 @@ _skills-to-install/
 # Python bytecode from tools/
 __pycache__/
 *.pyc
+
+# Staging area for files being removed from the repo. Ignored so that
+# `git add -A` records the ORIGINAL paths as deletions and never re-adds the
+# copies sitting here. The installer moves this whole folder out of the repo
+# after a successful push; until then it is the undo button.
+_quarantine/

@@ -2628,8 +2628,27 @@ export default function ClientDashboard() {
                             <div style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .4)" }}>{new Date(r.created_at).toLocaleDateString()}</div>
                           </div>
                           <div style={{ display:"flex", alignItems:"center", gap:".5rem", flexShrink:0 }}>
-                            {r.status !== "completed" && r.status !== "cancelled" && (
-                              <button style={{ ...s.btn, padding:".3rem .7rem" }} onClick={() => { setSelectedReqId(r.id); setActiveTab("requests"); window.scrollTo({ top: 0 }); }}>View</button>
+                            {/* ⚠️ `completed` is deliberately INCLUDED here, and the
+                                exclusion it replaces is why zero reviews exist.
+                                The rating form renders only when the completed job
+                                is the ACTIVE job, but `openReqs` filters completed
+                                out, `activeReq` falls back to `requests[0]` only
+                                when there are no open requests at all, and the
+                                switcher lists `openReqs` alone — so this button was
+                                the one and only thing on the platform that could
+                                make a finished job active, and it was hidden on
+                                exactly the status that needs it. The review ask then
+                                survived solely as the one-shot completion modal:
+                                miss or dismiss it and the rating was unreachable
+                                forever. `cancelled` stays hidden — there is nothing
+                                to do on it. The job read at `activeReq.id` already
+                                excludes only cancelled jobs, so a completed request
+                                loads its job normally, and the form self-gates on
+                                `activeJob.status === "completed"` and `hasReviewed`.
+                                The label says so, because "View" gives a client no
+                                reason to press it. */}
+                            {r.status !== "cancelled" && (
+                              <button style={{ ...s.btn, padding:".3rem .7rem" }} onClick={() => { setSelectedReqId(r.id); setActiveTab("requests"); window.scrollTo({ top: 0 }); }}>{r.status === "completed" ? "View & rate" : "View"}</button>
                             )}
                             {/* A bordered chip rather than coloured body text. Down a
                                 list of past requests the state is the thing being
