@@ -707,7 +707,7 @@ export default function Home() {
            the rest of the codebase's habit; that computes to ~15px, which
            is exactly the bug that made bidding unusable on a phone. */
         .ff-panel-box {
-          display: block; width: 100%; min-height: 5.2rem; text-align: left;
+          display: block; width: 100%; min-height: 6.4rem; text-align: left;
           padding: 0.85rem 0.95rem; resize: vertical;
           background: rgba(var(--ff-bg-rgb), 0.35);
           border: 1px solid rgba(var(--ff-fg), 0.10);
@@ -733,10 +733,10 @@ export default function Home() {
            read as a competing second decision. */
         .ff-panel-next {
           align-self: flex-end; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
-          min-height: 44px; padding: 0.6rem 1.5rem;
+          min-height: 44px; padding: 0.5rem 1.05rem;
           border: none; border-radius: 11px; cursor: pointer;
           background: linear-gradient(180deg, var(--ff-accent-400) 0%, var(--ff-accent-500) 100%);
-          color: #fff; font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 0.98rem; letter-spacing: 0.02em;
+          color: #fff; font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 0.88rem; letter-spacing: 0.02em;
           box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 6px 18px rgba(234,107,20,0.24);
           transition: transform 0.18s cubic-bezier(0.2,0.7,0.3,1), filter 0.18s ease; }
         .ff-panel-next:hover { transform: translateY(-1px); filter: brightness(1.04); }
@@ -773,12 +773,12 @@ export default function Home() {
           }
           /* A bigger area to type in. Height only — font-size is deliberately
              untouched at 1rem; see the note on .ff-panel-box above. */
-          .ff-panel-box { min-height: 7.6rem; }
+          .ff-panel-box { min-height: 8.8rem; }
           /* And a smaller Next, so the shortcut reads as even more clearly
              subordinate to the orange button beside it. */
           .ff-panel-next {
-            min-height: 38px; padding: 0.45rem 1.15rem;
-            border-radius: 10px; font-size: 0.9rem;
+            min-height: 38px; padding: 0.4rem 0.9rem;
+            border-radius: 10px; font-size: 0.82rem;
           }
         }
         /* A wide touch screen is still a thumb. The 44px floor main.tsx sets
