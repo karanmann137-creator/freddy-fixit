@@ -2,19 +2,8 @@ import { useLocation } from "wouter";
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Ic } from "@/components/Ic";
-import { supabase } from "@/lib/supabase";
 import FadeImg from "@/components/FadeImg";
-
-type HomeReview = {
-  id: string;
-  price_score: number | null;
-  experience_score: number | null;
-  result_score: number | null;
-  comment: string | null;
-  created_at: string;
-  reviewer_first_name: string | null;
-  contractor_name: string | null;
-};
+import OnboardingVideo from "@/components/OnboardingVideo";
 
 const BEFORE_AFTER = [
   { label:"Bathroom Renovation", before:"/before-after/bathroom-before.webp", after:"/before-after/bathroom-after.webp" },
@@ -217,12 +206,6 @@ const FAQS = [
   { q:"I'm a contractor — how do I join, and what does it cost?", a:"Signing up is free, with no monthly charges and no upfront cost. We take a small service fee from completed jobs. Once you're approved, you'll be notified about nearby jobs that match your trade, bid or get assigned, agree on price and timing, and get paid when the work's done." },
 ];
 
-const SHOW_PRO_IDS = [
-  "61fbcfd2-d0cc-4c04-94f8-c4d0bc4b70fb", // FREDDYFIXIT
-  "58ac39b5-fa19-4629-9fb7-2d97262e6c99", // Iron peak group
-  "23d832ce-656a-4b0c-99cc-e7ce42aa4327", // Phase Canada Inc
-];
-
 // The hero panel types these out one after another, so the box demonstrates
 // what a request looks like instead of describing it. Every line is drawn from
 // the real service vocabulary (see service_specialty_map) and is written the
@@ -248,8 +231,6 @@ const HERO_DESC_MAX = 400;
 
 export default function Home() {
   const [, setLocation] = useLocation();
-  const [reviews, setReviews] = useState<HomeReview[]>([]);
-  const [topPros, setTopPros] = useState<any[]>([]);
 
   // ── Hero panel typewriter ────────────────────────────────────────────
   // Types each HERO_EXAMPLES line out, holds it, deletes it, moves on — into
@@ -341,51 +322,6 @@ export default function Home() {
     timer = window.setTimeout(tick, 600);
     return () => { if (timer !== undefined) window.clearTimeout(timer); };
   }, [heroSeen, heroBoxIdle]);
-
-  // Pull real, completed-job reviews (with a written comment) to display as
-  // social proof. Empty result = graceful fallback to the trust cards below.
-  // Also pull a few approved pros (company/name, rating, job count — no photos)
-  // for the "meet our pros" strip; section hides itself when empty.
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const [{ data }, { data: pros }] = await Promise.all([
-          supabase.rpc("get_homepage_reviews", { p_limit: 6 }),
-          supabase.rpc("get_top_pros", { p_limit: 6 }),
-        ]);
-        if (alive && Array.isArray(data)) setReviews(data as HomeReview[]);
-        if (alive && Array.isArray(pros)) {
-          // Hand-picked homepage pros (owner request 2026-07-20): FreddyFixIt + two
-          // established companies only. Referenced by id — never by client PII.
-          const order = SHOW_PRO_IDS;
-          setTopPros(
-            pros
-              .filter((p: any) => order.includes(p.contractor_id))
-              .sort((a: any, b: any) => order.indexOf(a.contractor_id) - order.indexOf(b.contractor_id))
-          );
-        }
-      } catch {
-        /* non-blocking: homepage renders fine without reviews */
-      }
-    })();
-    return () => { alive = false; };
-  }, []);
-
-  // Initials avatar seed — company name first, else first name.
-  const proInitials = (p: any) => {
-    const src = String(p.company_name || p.first_name || "Pro").trim();
-    const parts = src.split(/\s+/).filter(Boolean);
-    return (parts.length >= 2 ? parts[0][0] + parts[1][0] : src.slice(0, 2)).toUpperCase();
-  };
-
-  const reviewAvg = (r: HomeReview) => {
-    const vals = [r.price_score, r.experience_score, r.result_score].filter(
-      (v): v is number => v != null
-    );
-    if (!vals.length) return null;
-    return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
-  };
 
   // ONE definition of the contractor line, rendered into two breakpoint-
   // exclusive slots: inside the left column on desktop, and below the describe
@@ -904,10 +840,10 @@ export default function Home() {
         .ff-stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; letter-spacing: 0.06em; color: #ea6b14; line-height: 1; margin-bottom: 0.4rem; }
         .ff-stat-label { font-size: 0.82rem; color: rgba(var(--ff-muted), 0.5); font-weight: 300; line-height: 1.4; }
 
-        /* ── Reviews ── */
-        .ff-reviews-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; }
-        @media (max-width: 760px) { .ff-reviews-grid { grid-template-columns: minmax(0, 1fr); } }
-        .ff-reviews-grid > div { min-width: 0; }
+        /* ── Video showcase ── */
+        .ff-video-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.75rem; }
+        @media (max-width: 760px) { .ff-video-grid { grid-template-columns: minmax(0, 1fr); } }
+        .ff-video-grid > div { min-width: 0; }
 
         /* ── Before / After ── */
         .ff-ba-dots { display: flex; justify-content: center; gap: 0.4rem; margin-bottom: 1.25rem; }
@@ -1293,82 +1229,36 @@ export default function Home() {
 
       {/* ── Footer ── */}
 
-      {/* ── Testimonials ──
+      {/* ── Video showcase ──
            Ground, so the last band before the navy footer is not the same tone
-           as About directly above it. */}
+           as About directly above it. Replaces the old "Built On Trust" reviews
+           block — same slot in the band-rhythm stack, same background token. */}
       <div style={{ background:"var(--ff-bg)", padding:"6rem 2rem" }}>
         <div style={{ maxWidth:"900px", margin:"0 auto" }}>
-          <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" }}>Why Calgary Trusts Us</p>
-          <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:".06em", color:"var(--ff-text)", textAlign:"center", marginBottom:"3rem" }}>Built On <span style={{ color:"#ea6b14" }}>Trust.</span></h2>
+          <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" }}>See It In Action</p>
+          <h2 style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:".06em", color:"var(--ff-text)", textAlign:"center", marginBottom:".9rem" }}>How Freddy <span style={{ color:"#ea6b14" }}>Works.</span></h2>
+          <p style={{ textAlign:"center", color:"rgba(var(--ff-muted), .6)", fontSize:".95rem", marginBottom:"3rem", maxWidth:"560px", marginLeft:"auto", marginRight:"auto" }}>Two short walkthroughs — one for homeowners booking a job, one for pros signing up to take them.</p>
 
-          {reviews.length > 0 && (
-            <div style={{ marginBottom:"3rem" }}>
-              <p style={{ textAlign:"center", color:"rgba(var(--ff-muted), .6)", fontSize:".95rem", marginBottom:"1.75rem" }}>What Calgary homeowners are saying about completed jobs:</p>
-              <div className="ff-reviews-grid">
-                {reviews.map((r) => {
-                  const avg = reviewAvg(r);
-                  return (
-                    <div key={r.id} style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"14px", padding:"1.75rem", display:"flex", flexDirection:"column" as const }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:".5rem", marginBottom:".85rem" }}>
-                        <Ic name="message-square" size={18} color="#ea6b14" />
-                        {avg != null && (
-                          <span style={{ fontWeight:600, color:"#ea6b14", fontSize:".95rem" }}>{avg}/10</span>
-                        )}
-                      </div>
-                      {r.comment && (
-                        <p style={{ fontSize:".92rem", color:"rgba(var(--ff-muted), .82)", fontWeight:300, lineHeight:1.7, margin:"0 0 1rem" }}>&ldquo;{r.comment}&rdquo;</p>
-                      )}
-                      <div style={{ marginTop:"auto", fontSize:".8rem", color:"rgba(var(--ff-muted), .5)" }}>
-                        <span style={{ color:"var(--ff-text)", fontWeight:500 }}>{r.reviewer_first_name || "Calgary homeowner"}</span>
-                        {r.contractor_name ? " · " + r.contractor_name : ""}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {topPros.length > 0 && (
-            <div style={{ marginBottom:"3rem" }}>
-              <p style={{ textAlign:"center", color:"rgba(var(--ff-muted), .6)", fontSize:".95rem", marginBottom:"1.75rem" }}>A few of the vetted pros ready to take your job:</p>
-              <div className="ff-reviews-grid">
-                {topPros.map((p: any) => (
-                  <div key={p.contractor_id} style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"14px", padding:"1.5rem", display:"flex", gap:".9rem", alignItems:"center" }}>
-                    <div style={{ width:"52px", height:"52px", borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(234,107,20,.14)", border:"1px solid rgba(234,107,20,.4)", color:"#ea6b14", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.25rem", letterSpacing:".05em" }}>
-                      {proInitials(p)}
-                    </div>
-                    <div style={{ minWidth:0 }}>
-                      <div style={{ fontSize:".98rem", fontWeight:600, color:"var(--ff-text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{p.company_name || p.first_name || "Vetted pro"}</div>
-                      <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", marginTop:".15rem" }}>
-                        {p.rating ? "⭐ " + Number(p.rating).toFixed(1) + "/10" : "Vetted & approved"}
-                        {Number(p.total_jobs) > 0 ? " · " + p.total_jobs + " job" + (Number(p.total_jobs) === 1 ? "" : "s") + " done" : ""}
-                      </div>
-                      {Array.isArray(p.specialties) && p.specialties.length > 0 && (
-                        <div style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .45)", marginTop:".2rem", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{p.specialties.slice(0, 3).join(" · ")}</div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="ff-reviews-grid">
-            <div style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"2rem" }}>
+          <div className="ff-video-grid">
+            <div style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"14px", padding:"1.75rem" }}>
               <div style={{ marginBottom:"1rem" }}><Ic name="user-check" size={26} color="#ea6b14" /></div>
-              <div style={{ fontSize:"1.05rem", fontWeight:600, color:"var(--ff-text)", marginBottom:".6rem" }}>Vetted &amp; Accountable</div>
-              <p style={{ fontSize:".9rem", color:"rgba(var(--ff-muted), .75)", fontWeight:300, lineHeight:1.7, marginBottom:0 }}>Every pro is screened before they take a job — licensed, insured, WCB-covered, and reference-checked. We do the background work so you don't have to.</p>
+              <div style={{ fontSize:"1.05rem", fontWeight:600, color:"var(--ff-text)", marginBottom:".6rem" }}>For Homeowners</div>
+              <p style={{ fontSize:".9rem", color:"rgba(var(--ff-muted), .75)", fontWeight:300, lineHeight:1.7, marginBottom:"1.25rem" }}>Post a job, compare estimates, and pay securely — see the whole flow in under 30 seconds.</p>
+              <OnboardingVideo
+                src="/onboarding-videos/freddy-client-onboarding.mp4"
+                title="Booking a job on Freddy"
+                seconds={25}
+              />
             </div>
-            <div style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"14px", padding:"2rem" }}>
-              <div style={{ marginBottom:"1rem" }}><Ic name="dollar" size={26} color="#ea6b14" /></div>
-              <div style={{ fontSize:"1.05rem", fontWeight:600, color:"var(--ff-text)", marginBottom:".6rem" }}>Your Payment Is Protected</div>
-              <p style={{ fontSize:".9rem", color:"rgba(var(--ff-muted), .75)", fontWeight:300, lineHeight:1.7, marginBottom:0 }}>Pay through the platform and your money is held until you confirm the work is done right. If something goes sideways, there's a built-in dispute process.</p>
-            </div>
-            <div style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"2rem" }}>
-              <div style={{ marginBottom:"1rem" }}><Ic name="map-pin" size={26} color="#ea6b14" /></div>
-              <div style={{ fontSize:"1.05rem", fontWeight:600, color:"var(--ff-text)", marginBottom:".6rem" }}>Local &amp; Honest</div>
-              <p style={{ fontSize:".9rem", color:"rgba(var(--ff-muted), .75)", fontWeight:300, lineHeight:1.7, marginBottom:0 }}>We're a Calgary-based team building this the right way. Reviews come from real, completed jobs — verified through the platform, never invented.</p>
+            <div style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"1.75rem" }}>
+              <div style={{ marginBottom:"1rem" }}><Ic name="hammer" size={26} color="#ea6b14" /></div>
+              <div style={{ fontSize:"1.05rem", fontWeight:600, color:"var(--ff-text)", marginBottom:".6rem" }}>For Contractors</div>
+              <p style={{ fontSize:".9rem", color:"rgba(var(--ff-muted), .75)", fontWeight:300, lineHeight:1.7, marginBottom:"1.25rem" }}>Sign up, get vetted, and start bidding on local jobs — here's what to expect.</p>
+              <OnboardingVideo
+                src="/onboarding-videos/freddy-contractor-onboarding.mp4"
+                title="Joining Freddy as a pro"
+                seconds={31}
+              />
             </div>
           </div>
         </div>
