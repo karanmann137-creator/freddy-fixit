@@ -846,6 +846,16 @@ export default function Home() {
         .ff-services-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; margin-top: 3rem; }
         @media (max-width: 900px) { .ff-services-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
         @media (max-width: 500px) { .ff-services-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        /* Mobile-only reorder: trust strip moves below the "Why Freddy Fix It" (About)
+           section, ahead of Freddy Verified. Desktop is untouched — no order is set
+           outside this media query, so ties resolve by source order there. */
+        @media (max-width: 900px) {
+          .ff-mobile-reorder { display: flex; flex-direction: column; }
+          .ff-mobile-reorder > .ff-how { order: 0; }
+          .ff-mobile-reorder > .ff-about { order: 1; }
+          .ff-mobile-reorder > .ff-trust-strip { order: 2; }
+          .ff-mobile-reorder > .ff-on-dark { order: 3; }
+        }
         .ff-service-card { background: rgba(var(--ff-fg), 0.04); border: 1px solid rgba(var(--ff-fg), 0.08); border-radius: 12px; padding: 1.5rem 1rem; text-align: center; transition: all 0.25s; width: 100%; }
         .ff-service-card:hover { border-color: rgba(234,107,20,0.4); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
         .ff-service-icon { font-size: 2rem; margin-bottom: 0.75rem; }
@@ -1081,8 +1091,15 @@ export default function Home() {
         </div>
       </div>
 
+      {/* ── ff-mobile-reorder: on mobile only, the trust strip moves to sit
+           between About ("Why Freddy Fix It") and Freddy Verified. Desktop
+           order is unaffected — no rule sets `order` outside the max-width:900px
+           block, so these four siblings keep their default order:0 and fall
+           back to source order, which is unchanged. ── */}
+      <div className="ff-mobile-reorder">
+
       {/* ── Trust proof bar ── */}
-      <div style={{ background:"rgba(var(--ff-fg), .03)", borderTop:"1px solid rgba(var(--ff-fg), .07)", borderBottom:"1px solid rgba(var(--ff-fg), .07)", padding:"1.4rem 1rem" }}>
+      <div className="ff-trust-strip" style={{ background:"rgba(var(--ff-fg), .03)", borderTop:"1px solid rgba(var(--ff-fg), .07)", borderBottom:"1px solid rgba(var(--ff-fg), .07)", padding:"1.4rem 1rem" }}>
         <div style={{ maxWidth:"1000px", margin:"0 auto", display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(min(200px, 100%), 1fr))", gap:"1rem" }}>
           {[
             /* Same correction as the hero tick row: we cannot say every pro is
@@ -1206,6 +1223,9 @@ export default function Home() {
           </p>
         </div>
       </div>
+
+      </div>
+      {/* ── /ff-mobile-reorder ── */}
 
       {/* ── How It Works ── */}
       <div className="ff-how ff-how-surface">
