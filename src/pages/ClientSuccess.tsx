@@ -44,8 +44,16 @@ export default function ClientSuccess() {
         .ff-notice-text { font-size: 0.85rem; color: rgba(var(--ff-muted), 0.7); font-weight: 300; line-height: 1.5; }
         .ff-nav { display: flex; gap: 0.75rem; flex-wrap: wrap; }
         .ff-btn { flex: 1; min-width: 140px; padding: 0.85rem 1.5rem; border-radius: 8px; font-family: 'DM Sans', sans-serif;
-          font-size: 0.9rem; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s;
+          font-size: 0.9rem; font-weight: 500; cursor: pointer; border: none;
+          transition: background-color 0.2s var(--ff-ease-out), box-shadow 0.2s var(--ff-ease-out), transform 0.16s var(--ff-ease-out);
           display: flex; align-items: center; justify-content: center; gap: 0.5rem; text-decoration: none; }
+        /* The press. scale() on the button scales its children too, which is
+           what makes it read as one physical object being pushed rather than a
+           box that shrank. 0.97 is the floor worth having -- deeper than ~0.9
+           stops looking like a press and starts looking like a glitch. The
+           return is the 0.2s above; the press itself is faster, because a
+           control should feel instant going down and settle coming back up. */
+        .ff-btn:active { transform: scale(0.97); }
         .ff-btn-secondary { background: rgba(var(--ff-fg), 0.06); color: rgba(var(--ff-muted), 0.8); border: 1px solid rgba(var(--ff-fg), 0.1); }
         .ff-btn-secondary:hover { background: rgba(var(--ff-fg), 0.1); }
         .ff-btn-primary { background: #ea6b14; color: #fff; }
@@ -53,13 +61,21 @@ export default function ClientSuccess() {
         .ff-whatsapp { display: flex; align-items: center; justify-content: center; gap: 0.5rem;
           background: rgba(37,211,102,0.1); border: 1px solid rgba(37,211,102,0.25); border-radius: 8px;
           padding: 0.85rem 1.5rem; color: #25d366; font-size: 0.9rem; font-weight: 500;
-          cursor: pointer; text-decoration: none; transition: all 0.2s; margin-bottom: 1rem; width: 100%; box-sizing: border-box; }
+          cursor: pointer; text-decoration: none; margin-bottom: 1rem; width: 100%; box-sizing: border-box;
+          transition: background-color 0.2s var(--ff-ease-out), border-color 0.2s var(--ff-ease-out), transform 0.16s var(--ff-ease-out); }
         .ff-whatsapp:hover { background: rgba(37,211,102,0.18); }
+        .ff-whatsapp:active { transform: scale(0.97); }
         .ff-footer { text-align: center; font-size: 0.78rem; color: rgba(var(--ff-muted), 0.3); margin-top: 2rem; }
       `}</style>
 
       <div className="ff-container">
-        <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 180, damping: 14 }}>
+        {/* The confirmation tick. It used to start at scale 0.5 on a
+            stiffness/damping spring, which overshot hard and read as a cartoon
+            pop on the one screen where someone wants reassurance that their
+            request landed. 0.92 is a scale the eye reads as "it settled",
+            not "it bounced"; duration+bounce is the same spring expressed in
+            the two numbers a human can actually predict. */}
+        <motion.div initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", duration: 0.5, bounce: 0.2 }}>
           <div className="ff-check">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="20 6 9 17 4 12" />

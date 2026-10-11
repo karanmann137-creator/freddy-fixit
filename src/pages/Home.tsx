@@ -792,7 +792,10 @@ export default function Home() {
           .ff-mobile-reorder > .ff-trust-strip { order: 2; }
           .ff-mobile-reorder > .ff-on-dark { order: 3; }
         }
-        .ff-service-card { background: rgba(var(--ff-fg), 0.04); border: 1px solid rgba(var(--ff-fg), 0.08); border-radius: 12px; padding: 1.5rem 1rem; text-align: center; transition: all 0.25s; width: 100%; }
+        /* Named properties, not the all keyword: :hover below changes exactly
+           three things, and a blanket transition would also animate whatever a
+           future edit adds. See CLAUDE.md, Brand tokens. */
+        .ff-service-card { background: rgba(var(--ff-fg), 0.04); border: 1px solid rgba(var(--ff-fg), 0.08); border-radius: 12px; padding: 1.5rem 1rem; text-align: center; transition: border-color 0.25s var(--ff-ease-out), transform 0.25s var(--ff-ease-out), box-shadow 0.25s var(--ff-ease-out); width: 100%; }
         .ff-service-card:hover { border-color: rgba(234,107,20,0.4); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
         .ff-service-icon { font-size: 2rem; margin-bottom: 0.75rem; }
         .ff-service-label { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.06em; color: var(--ff-text); margin-bottom: 0.4rem; }
@@ -847,7 +850,13 @@ export default function Home() {
 
         /* ── Before / After ── */
         .ff-ba-dots { display: flex; justify-content: center; gap: 0.4rem; margin-bottom: 1.25rem; }
-        .ff-ba-dot { width: 7px; height: 7px; border-radius: 4px; background: rgba(var(--ff-fg), 0.18); transition: all 0.25s; }
+        /* The active dot widens 7px -> 20px, so this one genuinely animates a
+           LAYOUT property and is named rather than rewritten: a scaleX would
+           keep it on the compositor but also stretch the 4px border-radius into
+           an ellipse, so the pill would stop looking like a pill. Three dots on
+           a 250ms transition is not a performance problem; a distorted radius
+           is a visible one. */
+        .ff-ba-dot { width: 7px; height: 7px; border-radius: 4px; background: rgba(var(--ff-fg), 0.18); transition: width 0.25s var(--ff-ease-out), background-color 0.25s var(--ff-ease-out); }
         .ff-ba-dot-on { width: 20px; background: #ea6b14; }
         .ff-ba-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; border: 1px solid rgba(var(--ff-fg), 0.08); cursor: grab; user-select: none; touch-action: none; box-shadow: 0 14px 44px rgba(0,0,0,0.4); background: var(--ff-surface-0e); }
         .ff-ba-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; -webkit-user-drag: none; }

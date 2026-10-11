@@ -1537,7 +1537,7 @@ export default function ClientDashboard() {
 
   return (
     <div style={s.wrap} className="ffdash">
-      <style>{".ffdash button{transition:filter .12s ease, transform .08s ease, opacity .12s ease} .ffdash button:hover:not(:disabled){filter:brightness(1.09)} .ffdash button:active:not(:disabled){transform:translateY(1px)} .ffdash button:disabled{opacity:.55; cursor:not-allowed}"
+      <style>{".ffdash button{transition:filter .16s var(--ff-ease-out), transform .16s var(--ff-ease-out), opacity .16s var(--ff-ease-out)} .ffdash button:hover:not(:disabled){filter:brightness(1.09)} .ffdash button:active:not(:disabled){transform:scale(0.97); transition-duration:.1s} .ffdash button:disabled{opacity:.55; cursor:not-allowed}"
         + " @keyframes ff-pulse-ring{0%{box-shadow:0 0 0 0 rgba(234,107,20,.55); background:rgba(234,107,20,.14)}70%{box-shadow:0 0 0 12px rgba(234,107,20,0); background:rgba(234,107,20,.05)}100%{box-shadow:0 0 0 0 rgba(234,107,20,0); background:rgba(234,107,20,0)}}"
         + " .ffdash .ff-pulse{outline:2px solid rgba(234,107,20,.75); outline-offset:6px; border-radius:12px; animation:ff-pulse-ring 1.5s ease-out 3}"
         + " @media (prefers-reduced-motion: reduce){.ffdash .ff-pulse{animation:none; background:rgba(234,107,20,.12)}}"}</style>

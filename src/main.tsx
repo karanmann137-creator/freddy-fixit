@@ -69,6 +69,11 @@ style.textContent = `
     --ff-lift-1: 0 1px 2px rgba(0,0,0,0.18);
     --ff-lift-2: 0 8px 28px rgba(0,0,0,0.28);
     --ff-lift-3: 0 22px 60px rgba(0,0,0,0.42);
+    /* One easing scale. Theme-independent, so deliberately NOT duplicated
+       inside .ff-on-dark. See CLAUDE.md, Brand tokens. */
+    --ff-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ff-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+    --ff-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   }
   :root[data-theme="light"] {
     --ff-fg: 55,96,153;           /* slate ink replaces white */
@@ -190,7 +195,7 @@ style.textContent = `
   .ff-nav-wrap {
     background-color: var(--ff-bg);
     border-bottom: 1px solid transparent;
-    transition: background-color .25s ease, border-color .25s ease, box-shadow .25s ease, transform .25s ease;
+    transition: background-color .25s var(--ff-ease-out), border-color .25s var(--ff-ease-out), box-shadow .25s var(--ff-ease-out), transform .25s var(--ff-ease-out);
   }
   .ff-nav-wrap.ff-nav-lifted {
     border-bottom-color: var(--ff-hair);
@@ -352,7 +357,7 @@ style.textContent = `
     from { opacity: 0; transform: translate3d(0, 10px, 0); }
     to   { opacity: 1; transform: none; }
   }
-  .ff-enter { animation: ff-enter 0.22s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+  .ff-enter { animation: ff-enter 0.22s var(--ff-ease-out) both; }
   /* Fade with no movement, for anything already in its final position -- a
      skeleton handing over to real content in the same box, where 10px of
      travel would look like the layout moving rather than settling. */
@@ -368,10 +373,10 @@ style.textContent = `
     from { opacity: 0; transform: translate3d(0, 10px, 0); }
     to   { opacity: 1; transform: none; }
   }
-  .ff-enter-b { animation: ff-enter-b 0.22s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+  .ff-enter-b { animation: ff-enter-b 0.22s var(--ff-ease-out) both; }
 
   @keyframes ff-fade { from { opacity: 0; } to { opacity: 1; } }
-  .ff-fade { animation: ff-fade 0.22s ease both; }
+  .ff-fade { animation: ff-fade 0.22s var(--ff-ease-out) both; }
 
   /* Images. The pattern is opacity 0 until data-ff-in is set, and the three
      ways that attribute gets set (ref callback for an already-complete image,
@@ -382,7 +387,7 @@ style.textContent = `
   @keyframes ff-img-safety { from { opacity: 0; } to { opacity: 1; } }
   img[data-ff-fade] {
     opacity: 0;
-    transition: opacity 0.22s ease;
+    transition: opacity 0.22s var(--ff-ease-out);
     animation: ff-img-safety 0.01s linear 4s both;
   }
   img[data-ff-fade][data-ff-in="1"] {
@@ -398,7 +403,7 @@ style.textContent = `
     from { opacity: 0; transform: translate(-50%, 14px); }
     to   { opacity: 1; transform: translate(-50%, 0); }
   }
-  .ff-toast-in { animation: ff-toast-in 0.22s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+  .ff-toast-in { animation: ff-toast-in 0.22s var(--ff-ease-out) both; }
 
   /* Inline button spinner, sized in em so it tracks the button's own font
      size and needs no per-button tuning. */
@@ -419,7 +424,7 @@ style.textContent = `
      :hover sticks after a tap, so a phone would leave whichever card was last
      touched permanently raised. */
   @media (hover: hover) and (pointer: fine) {
-    .ff-lift { transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; }
+    .ff-lift { transition: transform 0.18s var(--ff-ease-out), box-shadow 0.18s var(--ff-ease-out), border-color 0.18s var(--ff-ease-out); }
     .ff-lift:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(9, 13, 22, 0.18); }
   }
 
