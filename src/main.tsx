@@ -212,6 +212,28 @@ style.textContent = `
   *, *::before, *::after { box-sizing: border-box; }
   html { font-size: calc(100% * var(--ff-font-scale, 1)); }
   html, body { margin: 0; padding: 0; background: var(--ff-bg); }
+
+  /* THE FONT FLOOR. Until this line existed there was no global font-family
+     anywhere on the platform: not on body in index.html, not in this
+     stylesheet. Every family was declared per component in an inline style
+     object, so any page or subtree that simply forgot one fell through to the
+     browser default, which is a SERIF (Times) — and because a fair number of
+     controls declare fontFamily: "inherit" (OnboardingVideo, JobPhotos,
+     DismissX, DeleteAccount), one forgotten ancestor took its descendants
+     down with it. That is why the site read as inconsistent "on some pages"
+     rather than being uniformly wrong: the mistake was invisible wherever a
+     parent happened to remember.
+
+     One declaration on body is enough because font-family inherits. Form
+     controls are named separately because they do NOT inherit it — a button
+     or input with no family falls back to the UA font, not to body's.
+
+     This is a floor, not an override: inline styles beat this stylesheet (see
+     the note above img/video), so every deliberate per-component family still
+     wins. It only catches the omissions. */
+  body { font-family: 'DM Sans', system-ui, -apple-system, sans-serif; }
+  button, input, select, textarea { font-family: inherit; }
+
   /* Responsive safety net. Inline styles beat this stylesheet, so a fixed inline
      width still applies — these only bite when the container is genuinely
      narrower than the element, i.e. the phone case. svg is left out on purpose —

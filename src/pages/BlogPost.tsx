@@ -774,7 +774,8 @@ export default function BlogPost() {
     <div style={{ fontFamily: "'DM Sans',sans-serif", background: "var(--ff-bg)", backgroundImage: "radial-gradient(ellipse 55% 30% at 22% -2%, rgba(234,107,20,0.26) 0%, transparent 66%), radial-gradient(ellipse 50% 34% at 82% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), repeating-linear-gradient(45deg, transparent 0 27px, rgba(var(--ff-fg), 0.02) 27px, rgba(var(--ff-fg), 0.02) 28px), repeating-linear-gradient(-45deg, transparent 0 27px, rgba(var(--ff-fg), 0.016) 27px, rgba(var(--ff-fg), 0.016) 28px)", backgroundAttachment: "fixed", color: "var(--ff-text)", minHeight: "100vh", padding: "6rem clamp(1rem, 4vw, 1.5rem) 5rem" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
       <style>{`
-        h1,h2,h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em}
+        h1,h2{font-family:'Fraunces',Georgia,serif;font-weight:500}
+        h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em}
         h2{color:#ea6b14;font-size:1.5rem;margin-top:2.5rem;margin-bottom:.6rem}
         h3{color:var(--ff-text);font-size:1.1rem;margin-top:1.4rem;margin-bottom:.3rem}
         article p{line-height:1.85;color:rgba(var(--ff-muted), .82);font-weight:300;margin-bottom:1rem}
