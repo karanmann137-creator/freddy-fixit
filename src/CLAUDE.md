@@ -5,6 +5,18 @@ React 19 + TS + Vite + Wouter + Framer Motion. Import alias `@/` → `src/`. Sty
 ## Routes (App.tsx)
 Public: `/` (Home), `/login`, `/update-password`, `/client-onboarding`, `/contractor-onboarding`, `/contractors` (Browse), `/client-success`, `/contractor-success`.
 Protected via `ProtectedRoute` (role-gated): `/client-dashboard`, `/contractor-dashboard`, `/admin-dashboard`.
+Internal: `/ui-lab` — every `components/ui/` primitive against the real tokens, with a live dark/light flip. **Unlinked and noindexed** (sets `robots` on mount and **removes it on unmount** — `upsertMeta` mutates in place, so a stale robots tag would silently noindex the next page). Delete `pages/UiLab.tsx` and its route together once all three dashboards are ported.
+
+## `components/ui/` — the shared dashboard primitives (added 2026-10-30)
+**Mount these rather than re-deriving a row/button/pill in a page.** Three dashboards previously shared nothing but a copy-pasted `.ffdash` style block, so "how a row looks" was three edits in three ~200KB files and the copies had drifted. `Pass`/`PassTop`/`IconButton`, `StateLine`, `Hero`/`HeroSub`/`PassMeta`, `JobSwitcher`, `Group`/`Sheet`/`Row`, `Stepper`, `Pill`, `Button`/`ButtonRow`/`Stack`, `AttentionCard`/`TrustLine`, `Mark`. Import from `@/components/ui`.
+- **A primitive carries no business logic.** One that knows what `fully_funded` means is not a primitive — that belongs in the page.
+- **No Framer Motion here**, ever. Only `Home`, `ClientSuccess`, `ContractorSuccess` import it and that must stay true; the motion is CSS transitions plus `@keyframes ffu-pls`.
+- **Classes are all prefixed `ffu-`** in one injected sheet (`uiStyles.ts`, idempotent, injected on import). The names this design wants — `row`, `btn`, `pill`, `sheet`, `step` — are far too generic for a document-wide stylesheet; unprefixed, `.row` alone would reach unrelated markup and break it silently.
+- **Nothing is hard-coded**; every value resolves through `--ff-*` in `main.tsx`. That is what lets `Pass` re-theme from one prop.
+- **`<Pass forceNavy>` (default true) applies `ff-on-dark ff-anchor`** — the dormant modifier `main.tsx` kept "in case a future band genuinely needs a forced-navy exception". This is that band. `forceNavy={false}` is the whole change if the pass should follow light mode instead, so **don't hard-code `#111827` inside and take that switch away**.
+- **`StateLine` is the palette gate: orange appears exactly once per screen, and only when the answer is "you".** A waiting screen has no orange on it anywhere — that is what makes orange legible as a call to action elsewhere. Wanting a second orange thing means you want `wait` or a neutral `Pill`.
+- **One `--ff-gut`** is shared by a `Row`'s icon column and its separator inset, so a hairline can never disagree with the column above it. `.ffu-ri-wrap` renders even with no icon for the same reason.
+- `Row` renders a `<button>` only when given `onClick` (a non-interactive row as a button is announced pressable and Tab-reachable for nothing), and `AttentionCard` caps at `max` rows (3 client / 4 contractor) and returns **null** when empty.
 
 ## Key pages / components
 - `pages/ClientOnboarding.tsx` — on mount checks the session and **branches**: logged-out → 3-step signup flow (calls `supabase.auth.signUp`, creates profile + first request); logged-in → renders `<NewRequest/>`. **Exports `SERVICES` and `SCHEDULES`** (consumed by NewRequest).

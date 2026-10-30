@@ -74,6 +74,45 @@ style.textContent = `
     --ff-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
     --ff-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
     --ff-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+    /* ── One spacing / radius / height scale ───────────────────────────
+       Added 2026-10-30 alongside src/components/ui/. These are geometry,
+       not colour: they are theme-independent, so like the easing and
+       shadow scales above they live in plain :root and are deliberately
+       NOT duplicated inside .ff-on-dark. Adding a colour alias at :root
+       without a matching literal in that class renders the wrong theme
+       silently (see the long note on the class below) — a px value
+       cannot, because there is nothing theme-dependent to get wrong.
+
+       The reason to have them at all: the dashboards were written with
+       ad-hoc rem values, so "the gap between two rows" was a slightly
+       different number in each of the three files and no two cards lined
+       up. The ui/ primitives use ONLY these, which is what makes a
+       Contractor/Admin port a reskin rather than a rewrite.
+
+       --ff-gut is the single left inset that a row's icon column, its
+       separator and its hanging text all share. A separator that starts
+       at a different x than the text above it is the specific defect
+       this token exists to make impossible. */
+    --ff-s1: 4px;
+    --ff-s2: 8px;
+    --ff-s3: 12px;
+    --ff-s4: 16px;
+    --ff-s5: 20px;
+    --ff-s6: 24px;
+    --ff-s8: 32px;
+    --ff-s10: 40px;
+    --ff-r1: 10px;
+    --ff-r2: 14px;
+    --ff-r3: 18px;
+    --ff-r4: 26px;
+    /* 48px row / 44px control: 44 is the thumb-target floor enforced in the
+       (pointer: coarse) block further down, so a control shorter than this
+       would be silently grown on a phone and agree with nothing beside it. */
+    --ff-h-row: 48px;
+    --ff-h-ctl: 44px;
+    --ff-h-nav: 42px;
+    --ff-gut: 40px;
   }
   :root[data-theme="light"] {
     --ff-fg: 55,96,153;           /* slate ink replaces white */
