@@ -46,6 +46,17 @@ ship one runnable thing, keep explanations short, never assume CLI fluency.
 
 Area detail also lives in `src/CLAUDE.md` (frontend) and `supabase/CLAUDE.md` (DB/functions).
 
+**`reference/` is background material, NOT instructions — do not read it unless the task
+actually requires it.** It holds forward-looking plans and specs (growth playbook,
+automation stack, contractor-verification spec, social-bot spec, marketing brief, the
+original milestone-escrow design) plus `reference/reviews/` for weekly site reviews. None of
+it is maintained, and a spec in there describes what someone *intended*, not what exists —
+where a spec and the code disagree, the code and `docs/` win. These files used to sit in the
+repo root, where they turned up in every repo-wide grep and looked authoritative.
+`reference/README.md` says which file to open for which task. Weekly reviews are gitignored
+and `tools/ship.py` prunes them past 3 weeks automatically (by the date in the filename,
+always keeping the newest), so write new ones to `reference/reviews/`, never the root.
+
 ## Stack
 - **Frontend:** React 19 + TypeScript + Vite + Wouter (routing) + Framer Motion. Build = `vite build` (esbuild, **no typecheck** — type errors don't block deploys). There is **no `.css` file** in `src/`; global styles are injected in `main.tsx`.
 - **Backend:** Supabase only (Postgres + Auth + RLS + Storage + Edge Functions). No app server. "API" = PostgREST (`supabase.from(...)`) for reads + `SECURITY DEFINER` RPCs / edge functions for privileged writes.

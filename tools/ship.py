@@ -39,6 +39,7 @@ Usage:
 """
 
 import argparse
+import datetime
 import base64
 import json
 import os
@@ -373,6 +374,62 @@ def sweep_installers(keep):
 
 
 # ---------------------------------------------------------------------------
+# 5c. Pruning spent weekly reviews. The freddy-weekly-review skill writes one
+#     report per run, so the pile rebuilds itself forever; nine had accumulated
+#     in the repo root. Owner's rule: anything older than three weeks goes.
+#
+#     The age test reads the DATE IN THE FILENAME, not mtime, because mtime is
+#     reset by any copy or move -- a `cp` into this folder would silently make a
+#     four-month-old review look new, and the rule would never fire.
+#
+#     It always keeps the single newest review regardless of age, so the folder
+#     is never empty and the owner never loses his most recent audit to a rule
+#     he wrote without computing dates. It only ever matches
+#     reference/reviews/weekly-review-YYYY-MM-DD.md, only untracked files, and
+#     it runs on every ship with no flag -- that is the point of "automatic".
+# ---------------------------------------------------------------------------
+REVIEW_DIR = "reference/reviews"
+REVIEW_RE = re.compile(r"^weekly-review-(\d{4})-(\d{2})-(\d{2})\.md$")
+REVIEW_MAX_AGE_DAYS = 21
+
+
+def prune_reviews():
+    d = os.path.join(REPO, REVIEW_DIR)
+    if not os.path.isdir(d):
+        return []
+    tracked = set(git("ls-files").splitlines())
+    cands = []
+    for name in os.listdir(d):
+        m = REVIEW_RE.match(name)
+        if not m:
+            continue
+        rel = REVIEW_DIR + "/" + name
+        if rel in tracked or not os.path.isfile(os.path.join(d, name)):
+            continue
+        try:
+            when = datetime.date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+        except ValueError:
+            continue
+        cands.append((when, rel))
+    if not cands:
+        return []
+    cands.sort(reverse=True)
+    today = datetime.date.today()
+    # cands[0] is the newest and is kept unconditionally.
+    stale = [rel for when, rel in cands[1:]
+             if (today - when).days > REVIEW_MAX_AGE_DAYS]
+    if not stale:
+        ok("weekly reviews: %d present, none past %d days (keeping newest: %s)"
+           % (len(cands), REVIEW_MAX_AGE_DAYS, os.path.basename(cands[0][1])))
+        return []
+    ok("pruning %d weekly review(s) older than %d days; keeping %s"
+       % (len(stale), REVIEW_MAX_AGE_DAYS, os.path.basename(cands[0][1])))
+    for rel in stale:
+        print("       - " + rel)
+    return stale
+
+
+# ---------------------------------------------------------------------------
 # 6. Typecheck. THIS IS THE GATE THE OLD BUILDER WAS MISSING and it is the only
 #    thing that has ever caught the 0-byte-file incident: esbuild does no
 #    typecheck, so `vite build` compiles an empty module happily and it blows up
@@ -513,6 +570,7 @@ def main():
     untracked_gone = list(a.delete_untracked)
     if a.sweep_installers is not None:
         untracked_gone += sweep_installers(a.sweep_installers)
+    untracked_gone += prune_reviews()
 
     gone = set(to_delete) | set(untracked_gone) | {os.path.relpath(out, REPO)}
     added = [p for p in added if p not in gone]
