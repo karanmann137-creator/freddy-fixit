@@ -1,4 +1,19 @@
-import { Ic } from "@/components/Ic";
+import { Ic, type IconName } from "@/components/Ic";
+// The redesign primitives. NOTHING in `src/components/ui/` hard-codes a colour,
+// a radius or a height — they all resolve against the one token scale in
+// main.tsx, which is what lets <Pass> re-theme from a single prop and what keeps
+// a hairline from ever disagreeing with the icon column above it.
+// (`ensureUiStyles` is deliberately NOT imported here — uiStyles.ts calls it at
+// module scope, so importing any primitive injects the stylesheet.)
+import {
+  Pass, PassTop, IconButton,
+  StateLine, type State,
+  Hero, HeroSub, PassMeta, PassMetaItem,
+  JobSwitcher,
+  Row, type RowTone,
+  Button,
+  AttentionCard,
+} from "@/components/ui";
 import { DashboardSkeleton, useEnterAnim } from "@/components/Skeleton";
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
@@ -1469,8 +1484,10 @@ export default function ClientDashboard() {
 
   const s = {
     wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
-    header: { background:"rgba(var(--ff-fg), .03)", borderBottom:"1px solid rgba(var(--ff-fg), .07)", padding:".75rem 1.5rem", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const, gap:".75rem" },
-    logo: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.4rem", letterSpacing:".1em" },
+    // `header` and `logo` were removed on 2026-10-30. `header` styled the
+    // "Welcome, <name>" bar the pass replaced; `logo` had already been dead for
+    // some time (the global TopNav carries the wordmark). Neither had a single
+    // reader left — grep before adding anything back here.
     // Fluid padding: a flat 1.5rem on each side ate ~24% of the usable width
     // once the sidebar rail is subtracted on a phone.
     content: { maxWidth:"800px", margin:"0 auto", padding:"clamp(1rem, 4vw, 1.5rem)" },
@@ -1535,6 +1552,286 @@ export default function ClientDashboard() {
     </div>
   );
 
+  // ── "Needs your attention", hoisted ────────────────────────────────────────
+  //
+  // This used to be built inside an IIFE in the middle of the JSX. It is hoisted
+  // because THE PASS AND THE CARD MUST READ THE SAME ARRAY: the pass says "your
+  // turn" exactly when this list is non-empty, and its hero is this list's top
+  // item. Two independent derivations of "is anything on me?" is the shape of
+  // bug CLAUDE.md's "one predicate, shared by every reader" rule exists to stop —
+  // a pass reading "all caught up" above a card listing three things to do.
+  //
+  // It sits below the loading / loadError / !profile early returns on purpose,
+  // so none of this runs while the data is still in flight.
+  //
+  // `onClick` is optional — rows without one just jump to Requests, which is
+  // where every other action lives.
+  // ownsScroll: the row's own handler scrolls somewhere specific, so the shared
+  // button must NOT also fire its scroll-to-top (two smooth scrolls on the same
+  // box fight, and the top one usually wins).
+  // ORDER MATTERS: only the first three rows render, so everything that gates
+  // money is pushed FIRST and the conversational rows (a time suggested in chat,
+  // unread messages) go last. Two unread messages plus a chat time suggestion
+  // used to fill all three slots and hide the agreement, the balance and the
+  // confirm prompt entirely.
+  //
+  // `hero` is the SHORT headline the pass shows; `text` is the longer sentence
+  // the card shows next to the button. They are deliberately different lengths
+  // for the same fact — the pass is read at a glance from across the room, the
+  // row is read with a thumb on the button.
+  const attnRowKey = (k: string) => "attn:client:" + k + ":" + (activeReq?.id ?? "-");
+  const attnRows = (() => {
+    const attn: {
+      key: string; text: string; hero: string; cta: string;
+      icon: IconName; tone: RowTone;
+      onClick?: () => void; ownsScroll?: boolean;
+    }[] = [];
+    // No signed agreement means the client physically can't pay, which means
+    // the pro is never dispatched — so this is pushed BEFORE the rest, since
+    // only the first three rows are shown.
+    if (activeJob && contractBlocked && !contractCheckError
+        && ["assigned", "scheduled", "in_progress", "pending_confirmation"].includes(activeJob.status)
+        && activeJob.payment_status !== "held" && activeJob.payment_status !== "released") {
+      attn.push(contractStatus === "sent"
+        ? { key: "contract", icon: "file", tone: "accent", hero: "Your service agreement is ready to sign.", text: "Your pro sent the service agreement — sign it so you can pay and lock in your visit.", cta: "Review & sign", onClick: focusContract, ownsScroll: true }
+        : { key: "contract", icon: "file", tone: "accent", hero: "Waiting on your pro's service agreement.", text: "Waiting on your pro to send the service agreement. You'll be able to pay and book once it's signed by both of you.", cta: "See job", onClick: focusContract, ownsScroll: true });
+    }
+    // The other hard pay-gate, and it sits beside the agreement for the
+    // same reason: until it's done the deposit button is disabled, so the
+    // pro is never dispatched. We only ever held a postal code while the
+    // client was comparing estimates, so this is the first moment a street
+    // address exists anywhere — and the client has no way to guess that
+    // from a greyed-out button.
+    //
+    // Scoped to the DEPOSIT branches only (unpaid + quoted), exactly like
+    // the button it mirrors. A job already 'held' or 'released' predates
+    // this feature or has been through the gate; chasing an address there
+    // would stall money that is already owed.
+    if (activeJob && !activeJob.is_milestone && activeJob.amount
+        && ["scheduled", "in_progress", "pending_confirmation"].includes(activeJob.status)
+        && !["held", "released"].includes(activeJob.payment_status ?? "unpaid")
+        && addressMissing(activeJob)) {
+      attn.push({ key: "address", icon: "map-pin", tone: "accent", hero: "We need your full service address.", text: "Confirm your full service address — it's the last step before your deposit, and your pro can't find you without it.", cta: "Confirm address", onClick: focusAddress, ownsScroll: true });
+    }
+    // A release that didn't complete outranks everything: it is the only
+    // state in which money has been taken and not yet reached anybody. It
+    // sits here rather than in the job card because confirming flips the
+    // job to 'completed', which unmounts the surface the toast came from.
+    if (releaseNote) {
+      attn.push(releaseNote.kind === "balance"
+        ? { key: "release", icon: "dollar", tone: "accent", hero: "A payment didn't go through.", text: releaseNote.text, cta: "Pay now", onClick: () => focusAnchor("ffc-confirm"), ownsScroll: true }
+        : { key: "release", icon: "dollar", tone: "accent", hero: "A payment didn't go through.", text: releaseNote.text, cta: "See job", onClick: () => focusAnchor("ffc-confirm"), ownsScroll: true });
+    }
+    // Work is finished and only the deposit is held: the balance is now the
+    // thing standing between the pro and their money, so it outranks
+    // everything except the agreement.
+    if (activeJob?.status === "pending_confirmation" && !activeJob?.is_milestone
+        && activeJob?.payment_status === "held" && !jobFullyFunded(activeJob)) {
+      attn.push({ key: "balance", icon: "dollar", tone: "accent", hero: "Your pro finished — the balance is due.", text: "Your pro finished the job — pay the remaining $" + jobBalance(activeJob).toFixed(2) + " so you can confirm and release their payment.", cta: "Pay balance", onClick: () => focusAnchor("ffc-confirm"), ownsScroll: true });
+    }
+    if (activeJob?.price_change_pending) attn.push({ key: "price", icon: "dollar", tone: "accent", hero: "Your pro proposed a new price.", text: "Your pro proposed a new price — review and approve or decline.", cta: "Review price", onClick: () => focusAnchor("ffc-price"), ownsScroll: true });
+    if (activeJob?.status === "assigned" && activeJob?.price_hike_from != null && Number(activeJob.amount ?? 0) > Number(activeJob.price_hike_from) + 0.005) attn.push({ key: "hike", icon: "alert-triangle", tone: "warn", hero: "Your pro raised the price after you picked them.", text: "Your pro raised the price after you picked them — approve it or re-open to other pros.", cta: "Review price", onClick: () => focusAnchor("ffc-hike"), ownsScroll: true });
+    // Only chase the confirmation once the job is paid in full — on a part-paid
+    // job the confirm button is disabled (confirm_job_completion raises), and
+    // the "balance" row above is already asking for the right thing.
+    else if (activeJob?.status === "pending_confirmation" && !activeJob?.is_milestone && jobFullyFunded(activeJob)) attn.push({ key: "confirm", icon: "check-circle", tone: "accent", hero: "Your pro says the job is done.", text: "Your pro marked the job complete — confirm the work to release payment.", cta: "Confirm now", onClick: () => focusAnchor("ffc-confirm"), ownsScroll: true });
+    if (activeJob?.status === "assigned" && activeJob?.schedule_proposed_at && !activeJob?.client_approved_at && !(activeJob?.client_rescheduled_at && !activeJob?.reschedule_accepted_at)) attn.push({ key: "sched", icon: "calendar", tone: "accent", hero: "Your pro proposed a time and price.", text: "Your pro proposed a time and price — approve it to book the visit.", cta: "Review proposal", onClick: () => focusAnchor("ffc-sched"), ownsScroll: true });
+    if (activeJob?.status === "assigned" && activeJob?.walkthrough_proposed_at && !activeJob?.walkthrough_approved_at) attn.push({ key: "walkthrough", icon: "calendar", tone: "accent", hero: "Your pro wants a free walkthrough first.", text: "Your pro wants to do a free walkthrough before pricing — confirm the visit time.", cta: "Review time", onClick: () => focusAnchor("ffc-walkthrough"), ownsScroll: true });
+    if (!activeJob && clientBids.length > 0) attn.push({ key: "bids", icon: "user-check", tone: "accent", hero: clientBids.length + " pro" + (clientBids.length === 1 ? " has" : "s have") + " sent you an estimate.", text: clientBids.length + " pro" + (clientBids.length === 1 ? " has" : "s have") + " bid on your request — pick the one you like.", cta: "See bids", onClick: () => focusAnchor("ffc-bids"), ownsScroll: true });
+    // A live request with no photo. This is the only row here that isn't
+    // about something already owed — it's about the quality of the
+    // estimates still to come, which is why it sits below every money row
+    // and above the conversational ones. It is scoped to `pending`
+    // deliberately: once a pro is picked the photo has done its job, and
+    // asking for it then is noise.
+    if (activeReq?.status === "pending" && !activeReq?.photo_path) {
+      attn.push({ key: "photo", icon: "camera", tone: "warn", hero: "Add a photo and you'll get firmer prices.", text: "Your request has no photo — adding one usually turns a rough ballpark into a firm price.", cta: "Add a photo", onClick: focusPhoto, ownsScroll: true });
+    }
+    // A referral code the DB refused during signup. Neither signup surface
+    // can show it — ClientOnboarding is mid-submit, AuthCallback is a
+    // redirect — so the reason is stashed, and the box that explains and
+    // retries it now lives in Settings. This row is the pointer: it carries
+    // the explanation to the page the client actually lands on, and its
+    // button opens the box that can fix it. `peekReferralError` deliberately
+    // does NOT consume the stash — ReferralCard read-and-clears it as it
+    // renders the message, so the explanation and the second chance still
+    // arrive together. It is left OUT of PERMANENT_ATTN because it clears
+    // itself the moment that card mounts; a permanent dismissal would be a
+    // promise about a row that cannot come back anyway.
+    if (refStashed) attn.push({
+      key: "refcode",
+      icon: "sparkles",
+      tone: "neutral",
+      hero: "Your referral code didn't apply.",
+      text: refStashed + " You can enter another code in Settings.",
+      cta: "Open Settings",
+      onClick: () => setActiveTab("settings"),
+    });
+    // ── Conversational rows last (see the ordering note above) ──────────
+    if (chatTimeJob) attn.push({
+      key: "chattime",
+      icon: "clock",
+      tone: "neutral",
+      hero: (contractor?.first_name || "Your pro") + " suggested a time in the chat.",
+      text: (contractor?.first_name || "Your pro") + " suggested " + formatWhen(chatTimeJob.chat_time_at) + " in the chat.",
+      cta: "Accept or change",
+      // Un-dismiss so "Decide later" can never lose a suggested time.
+      onClick: () => setTimeDismissed(prev => { const n = new Set(prev); n.delete(chatTimeJob.id); return n; }),
+    });
+    // Unread messages, capped at 2 so they can't bury the rows that gate money.
+    // The row's button jumps to Requests first, so onClick corrects the tab.
+    for (const c of conversations.filter(c => c.unread > 0).slice(0, 2)) {
+      attn.push({
+        key: "msg-" + c.job_id,
+        icon: "message-square",
+        tone: "neutral",
+        hero: partyName(c) + " sent you a message.",
+        text: partyName(c) + " sent you " + (c.unread === 1 ? "a message" : c.unread + " messages") + " about “" + (c.service_needed ?? "your job") + "”.",
+        cta: "Read it",
+        onClick: () => { setActiveTab("messages"); openConversation(c); },
+      });
+    }
+    // ── Dismissal ──────────────────────────────────────────────────────
+    //
+    // THE FILTER MUST RUN BEFORE THE SLICE. Only the first three rows ever
+    // render, so filtering after the slice would make an × remove a row and
+    // reveal nothing — the fourth row would stay invisible and the client
+    // would be left with a shorter list for no reason. The slice now happens
+    // inside <AttentionCard max={3}>, which is downstream of this return.
+    //
+    // The key is scoped to the request it is about, so waving away "no
+    // photo" on one request says nothing about the next one. `msg-<job>`
+    // rows already carry their own job id; scoping them again is harmless
+    // and keeps one rule instead of two.
+    return attn.filter(a => {
+      const k = attnRowKey(a.key);
+      return !dismissed.has(k) && !hiddenNow.has(k);
+    });
+  })();
+
+  // ── The pass ───────────────────────────────────────────────────────────────
+  //
+  // One answer to "is this on me or on them", derived ONCE and read by the
+  // navy block at the top of the page. It reads `attnRows` rather than
+  // re-deriving anything, so the pass cannot say "all caught up" above a card
+  // listing three things to do — that is the whole reason attnRows is hoisted.
+  //
+  // ⚠️ THE ORANGE RULE. `state:"turn"` is the only branch that paints orange,
+  // and there is exactly one of those. Every waiting branch below is "wait",
+  // which is deliberately NEUTRAL, not a softer orange. A screen where the
+  // client is waiting on a pro has NO orange on it anywhere, and that absence
+  // is what makes the orange legible as a call to action on the screens that
+  // do have it. If you want a second orange thing here, the answer is "wait".
+  //
+  // `hero` is a SENTENCE, `label` is a four-word all-caps state. Don't swap
+  // them: the label is Bebas (a label is exactly Bebas's job) and the hero is
+  // DM Sans (Bebas is unreadable as a sentence — see Hero.tsx).
+  //
+  // Nothing below reads a money column to decide whether the client owes
+  // anything. That question is answered by the attention rows, which use the
+  // shared predicates; a pass that re-derived it from `payment_status` alone
+  // would be a second, looser money predicate on a money surface.
+  const pass: {
+    state: State; label: string; hero: string; sub?: string;
+    meta: { label: string; value: string; accent?: boolean }[];
+  } = (() => {
+    const proName = contractor?.first_name || "Your pro";
+    const money = (v: any) => "$" + Number(v ?? 0).toLocaleString("en-CA", { maximumFractionDigits: 0 });
+
+    // 1. Something is on the client. The hero is the top attention row's own
+    //    short headline, so the pass and the first row of the card are the
+    //    same fact worded for two reading distances.
+    if (attnRows.length > 0) {
+      const meta: { label: string; value: string; accent?: boolean }[] = [];
+      if (contractor) meta.push({ label: "YOUR PRO", value: proName });
+      if (activeJob?.amount) meta.push({ label: "JOB TOTAL", value: money(activeJob.amount), accent: true });
+      return {
+        state: "turn" as State,
+        label: "YOUR TURN",
+        hero: attnRows[0].hero,
+        sub: attnRows.length > 1
+          ? (attnRows.length - 1) + " other thing" + (attnRows.length === 2 ? "" : "s") + " below needs you too."
+          : undefined,
+        meta,
+      };
+    }
+
+    // 2. No request at all. This is a brand-new client, so the pass carries the
+    //    only instruction on the screen and no meta strip — three empty
+    //    label/value pairs reads as broken, not as calm.
+    if (!activeReq) {
+      return {
+        state: "ok" as State,
+        label: "NOTHING OPEN",
+        hero: "Nothing on the go right now.",
+        sub: "Post a request and pros in your area will send you estimates.",
+        meta: [],
+      };
+    }
+
+    // 3. Settled. `released` is checked as well as `completed` because the
+    //    money moving is the last thing that happens, and a job sitting at
+    //    released is done from the client's point of view whatever the status
+    //    column says.
+    if (activeJob && (activeJob.status === "completed" || activeJob.payment_status === "released")) {
+      const meta: { label: string; value: string; accent?: boolean }[] = [];
+      if (contractor) meta.push({ label: "YOUR PRO", value: proName });
+      if (activeJob.amount) meta.push({ label: "PAID", value: money(activeJob.amount) });
+      return {
+        state: "ok" as State,
+        label: "ALL DONE",
+        hero: "This one's wrapped up.",
+        sub: "Nothing outstanding. Post another request whenever you need one.",
+        meta,
+      };
+    }
+
+    // 4. Booked. `scheduled_at` is the field name (NOT `visit_at`), and
+    //    `formatWhen` degrades to "the agreed time" rather than throwing or
+    //    printing "Invalid Date" at a client.
+    if (activeJob && activeJob.scheduled_at) {
+      const meta: { label: string; value: string; accent?: boolean }[] = [];
+      if (contractor) meta.push({ label: "YOUR PRO", value: proName });
+      meta.push({ label: "ARRIVING", value: formatWhen(activeJob.scheduled_at) });
+      if (activeJob.amount) meta.push({ label: "AGREED", value: money(activeJob.amount) });
+      return {
+        state: "wait" as State,
+        label: "BOOKED IN",
+        hero: proName + " is coming " + formatWhen(activeJob.scheduled_at) + ".",
+        sub: "Nothing needed from you until the work is done.",
+        meta,
+      };
+    }
+
+    // 5. A pro is picked but nothing is scheduled — the ball is in their court.
+    if (activeJob) {
+      const meta: { label: string; value: string; accent?: boolean }[] = [];
+      if (contractor) meta.push({ label: "YOUR PRO", value: proName });
+      if (activeJob.amount) meta.push({ label: "QUOTED", value: money(activeJob.amount) });
+      return {
+        state: "wait" as State,
+        label: "WITH YOUR PRO",
+        hero: proName + " is sorting out the details.",
+        sub: "We'll let you know the moment there's something for you to do.",
+        meta,
+      };
+    }
+
+    // 6. Out to pros, no estimates in yet. (With estimates in, the `bids`
+    //    attention row fires and branch 1 has already returned.)
+    const meta: { label: string; value: string; accent?: boolean }[] = [
+      { label: "POSTED", value: activeReq.service_needed ?? "Request" },
+    ];
+    if (clientBids.length > 0) meta.push({ label: "ESTIMATES", value: String(clientBids.length) });
+    return {
+      state: "wait" as State,
+      label: "OUT TO PROS",
+      hero: "Your request is out to local pros.",
+      sub: "Estimates usually land within a day. We'll email you when the first one arrives.",
+      meta,
+    };
+  })();
+
   return (
     <div style={s.wrap} className="ffdash">
       <style>{".ffdash button{transition:filter .16s var(--ff-ease-out), transform .16s var(--ff-ease-out), opacity .16s var(--ff-ease-out)} .ffdash button:hover:not(:disabled){filter:brightness(1.09)} .ffdash button:active:not(:disabled){transform:scale(0.97); transition-duration:.1s} .ffdash button:disabled{opacity:.55; cursor:not-allowed}"
@@ -1560,23 +1857,79 @@ export default function ClientDashboard() {
         />
         <div style={{ flex:1, minWidth:0 }}>
 
-      <div style={s.header}>
-        <div>
-          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.7rem", letterSpacing:".02em", margin:0, lineHeight:1.1 }}>
-            Welcome{profile?.first_name ? ", " + profile.first_name : " back"}
-          </h1>
-          <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .6)", marginTop:".2rem" }}>Here's what's happening with your requests.</div>
-        </div>
-        <div style={{ display:"flex", gap:".75rem", flexWrap:"wrap" as const }}>
-          {/* Rewind is a year-in-review of jobs you've had done. For a client on
-              day one it opens on an empty retrospective, which is a worse first
-              impression than not offering it — so it appears once there is
-              something to look back on. */}
-          {requests.some(r => r.status === "completed") && (
-            <button style={{ ...s.tab, display:"inline-flex", alignItems:"center", gap:".35rem" }} onClick={() => setRewindOpen(true)}><Ic name="star" size={13} color="#ea6b14" />My Rewind</button>
+      {/* THE PASS. This replaced a "Welcome, <name> / Here's what's happening
+          with your requests" header that answered nothing — a client with a
+          balance due and a client with nothing to do read the identical
+          sentence. The pass answers "is this on me or on them" before anything
+          scrolls, and everything inside it is STATE, not navigation; the sheets
+          below carry the actions.
+
+          It is navy in BOTH themes (Pass's `forceNavy` default, via
+          .ff-on-dark .ff-anchor). If the owner decides it should follow light
+          mode, that is `forceNavy={false}` and nothing else — every colour
+          inside resolves through tokens. Don't hard-code a hex in here and take
+          that switch away.
+
+          The wrapper exists only to carry the outer radius + lift and to clip
+          the pass's own corners; it holds no colour of its own. */}
+      <div id={REQ_SWITCH_ANCHOR} style={{ margin:"0 var(--ff-s4) var(--ff-s5)", borderRadius:"var(--ff-r4)", overflow:"hidden", boxShadow:"var(--ff-lift-3)", scrollMarginTop:"5.5rem" }}>
+        <Pass>
+          {/* `lead` replaces the mark + wordmark. The dashboards render under
+              the global TopNav, which already carries the logo — a pass with its
+              own mark puts two logos ~60px apart, which reads as a layout bug.
+              See Pass.tsx. */}
+          <PassTop lead={<span className="ffu-wordmark">{profile?.first_name ? "HI, " + String(profile.first_name).toUpperCase() : "WELCOME BACK"}</span>}>
+            {/* Rewind is a year-in-review of jobs you've had done. For a client
+                on day one it opens on an empty retrospective, which is a worse
+                first impression than not offering it — so it appears once there
+                is something to look back on. Demoted from a worded button to an
+                icon because it is a nicety, and it was sitting at the same
+                visual weight as "+ New Request". */}
+            {requests.some(r => r.status === "completed") && (
+              <IconButton label="My Rewind — your year in jobs" onClick={() => setRewindOpen(true)}>
+                <Ic name="star" size={16} />
+              </IconButton>
+            )}
+          </PassTop>
+
+          {/* The owner reported this hole directly: "there is no way to access
+              other jobs if a client has posted more than one job." The page
+              rendered one request and offered no route to the rest.
+
+              `alwaysShow` is MANDATORY here, not a preference — JobSwitcher
+              returns null below two jobs, and the "+ NEW" chip is now the only
+              "+ New Request" affordance on the screen. Drop it and a client
+              with one request cannot post a second.
+
+              Only the ACTIVE chip can honestly read "turn": attnRows is derived
+              for the active request alone, and client_requests carries no
+              bid-count column, so there is nothing to read for the others. A
+              false "turn" dot would teach the client to ignore the dot, which
+              costs more than the missing one. */}
+          <JobSwitcher
+            alwaysShow
+            jobs={openReqs.map(r => ({
+              id: r.id,
+              label: r.service_needed ?? "Request",
+              state: (r.id === activeReq?.id && attnRows.length > 0) ? "turn" as const : "wait" as const,
+            }))}
+            activeId={activeReq?.id}
+            onSelect={selectRequest}
+            onNew={() => setLocation("/client-onboarding")}
+          />
+
+          {/* `pulse` is reserved for "turn". A pulsing dot on a state the client
+              cannot act on is an alarm with no off switch. main.tsx flattens it
+              under prefers-reduced-motion, so there's no per-component rule. */}
+          <StateLine state={pass.state} pulse={pass.state === "turn"}>{pass.label}</StateLine>
+          <Hero>{pass.hero}</Hero>
+          {pass.sub && <HeroSub>{pass.sub}</HeroSub>}
+          {pass.meta.length > 0 && (
+            <PassMeta>
+              {pass.meta.map(m => <PassMetaItem key={m.label} label={m.label} value={m.value} accent={m.accent} />)}
+            </PassMeta>
           )}
-          <button style={s.primaryBtn} onClick={() => setLocation("/client-onboarding")}>+ New Request</button>
-        </div>
+        </Pass>
       </div>
 
       <div style={s.content} className={tabAnim}>
@@ -1654,156 +2007,46 @@ export default function ClientDashboard() {
           </div>
         )}
 
-        {(() => {
-          // "Needs your attention" — surfaces the next action on the selected request.
-          // `onClick` is optional — rows without one just jump to Requests, which
-          // is where every other action lives.
-          // ownsScroll: the row's own handler scrolls somewhere specific, so the
-          // shared button must NOT also fire its scroll-to-top (two smooth
-          // scrolls on the same box fight, and the top one usually wins).
-          // ORDER MATTERS: only the first three rows render, so everything that
-          // gates money is pushed FIRST and the conversational rows (a time
-          // suggested in chat, unread messages) go last. Two unread messages plus
-          // a chat time suggestion used to fill all three slots and hide the
-          // agreement, the balance and the confirm prompt entirely.
-          const attn: { key: string; text: string; cta: string; onClick?: () => void; ownsScroll?: boolean }[] = [];
-          // No signed agreement means the client physically can't pay, which means
-          // the pro is never dispatched — so this is pushed BEFORE the rest, since
-          // only the first three rows are shown.
-          if (activeJob && contractBlocked && !contractCheckError
-              && ["assigned", "scheduled", "in_progress", "pending_confirmation"].includes(activeJob.status)
-              && activeJob.payment_status !== "held" && activeJob.payment_status !== "released") {
-            attn.push(contractStatus === "sent"
-              ? { key: "contract", text: "Your pro sent the service agreement — sign it so you can pay and lock in your visit.", cta: "Review & sign", onClick: focusContract, ownsScroll: true }
-              : { key: "contract", text: "Waiting on your pro to send the service agreement. You'll be able to pay and book once it's signed by both of you.", cta: "See job", onClick: focusContract, ownsScroll: true });
-          }
-          // The other hard pay-gate, and it sits beside the agreement for the
-          // same reason: until it's done the deposit button is disabled, so the
-          // pro is never dispatched. We only ever held a postal code while the
-          // client was comparing estimates, so this is the first moment a street
-          // address exists anywhere — and the client has no way to guess that
-          // from a greyed-out button.
-          //
-          // Scoped to the DEPOSIT branches only (unpaid + quoted), exactly like
-          // the button it mirrors. A job already 'held' or 'released' predates
-          // this feature or has been through the gate; chasing an address there
-          // would stall money that is already owed.
-          if (activeJob && !activeJob.is_milestone && activeJob.amount
-              && ["scheduled", "in_progress", "pending_confirmation"].includes(activeJob.status)
-              && !["held", "released"].includes(activeJob.payment_status ?? "unpaid")
-              && addressMissing(activeJob)) {
-            attn.push({ key: "address", text: "Confirm your full service address — it's the last step before your deposit, and your pro can't find you without it.", cta: "Confirm address", onClick: focusAddress, ownsScroll: true });
-          }
-          // A release that didn't complete outranks everything: it is the only
-          // state in which money has been taken and not yet reached anybody. It
-          // sits here rather than in the job card because confirming flips the
-          // job to 'completed', which unmounts the surface the toast came from.
-          if (releaseNote) {
-            attn.push(releaseNote.kind === "balance"
-              ? { key: "release", text: releaseNote.text, cta: "Pay now", onClick: () => focusAnchor("ffc-confirm"), ownsScroll: true }
-              : { key: "release", text: releaseNote.text, cta: "See job", onClick: () => focusAnchor("ffc-confirm"), ownsScroll: true });
-          }
-          // Work is finished and only the deposit is held: the balance is now the
-          // thing standing between the pro and their money, so it outranks
-          // everything except the agreement.
-          if (activeJob?.status === "pending_confirmation" && !activeJob?.is_milestone
-              && activeJob?.payment_status === "held" && !jobFullyFunded(activeJob)) {
-            attn.push({ key: "balance", text: "Your pro finished the job — pay the remaining $" + jobBalance(activeJob).toFixed(2) + " so you can confirm and release their payment.", cta: "Pay balance", onClick: () => focusAnchor("ffc-confirm"), ownsScroll: true });
-          }
-          if (activeJob?.price_change_pending) attn.push({ key: "price", text: "Your pro proposed a new price — review and approve or decline.", cta: "Review price", onClick: () => focusAnchor("ffc-price"), ownsScroll: true });
-          if (activeJob?.status === "assigned" && activeJob?.price_hike_from != null && Number(activeJob.amount ?? 0) > Number(activeJob.price_hike_from) + 0.005) attn.push({ key: "hike", text: "Your pro raised the price after you picked them — approve it or re-open to other pros.", cta: "Review price", onClick: () => focusAnchor("ffc-hike"), ownsScroll: true });
-          // Only chase the confirmation once the job is paid in full — on a part-paid
-          // job the confirm button is disabled (confirm_job_completion raises), and
-          // the "balance" row above is already asking for the right thing.
-          else if (activeJob?.status === "pending_confirmation" && !activeJob?.is_milestone && jobFullyFunded(activeJob)) attn.push({ key: "confirm", text: "Your pro marked the job complete — confirm the work to release payment.", cta: "Confirm now", onClick: () => focusAnchor("ffc-confirm"), ownsScroll: true });
-          if (activeJob?.status === "assigned" && activeJob?.schedule_proposed_at && !activeJob?.client_approved_at && !(activeJob?.client_rescheduled_at && !activeJob?.reschedule_accepted_at)) attn.push({ key: "sched", text: "Your pro proposed a time and price — approve it to book the visit.", cta: "Review proposal", onClick: () => focusAnchor("ffc-sched"), ownsScroll: true });
-          if (activeJob?.status === "assigned" && activeJob?.walkthrough_proposed_at && !activeJob?.walkthrough_approved_at) attn.push({ key: "walkthrough", text: "Your pro wants to do a free walkthrough before pricing — confirm the visit time.", cta: "Review time", onClick: () => focusAnchor("ffc-walkthrough"), ownsScroll: true });
-          if (!activeJob && clientBids.length > 0) attn.push({ key: "bids", text: clientBids.length + " pro" + (clientBids.length === 1 ? " has" : "s have") + " bid on your request — pick the one you like.", cta: "See bids", onClick: () => focusAnchor("ffc-bids"), ownsScroll: true });
-          // A live request with no photo. This is the only row here that isn't
-          // about something already owed — it's about the quality of the
-          // estimates still to come, which is why it sits below every money row
-          // and above the conversational ones. It is scoped to `pending`
-          // deliberately: once a pro is picked the photo has done its job, and
-          // asking for it then is noise.
-          if (activeReq?.status === "pending" && !activeReq?.photo_path) {
-            attn.push({ key: "photo", text: "Your request has no photo — adding one usually turns a rough ballpark into a firm price.", cta: "Add a photo", onClick: focusPhoto, ownsScroll: true });
-          }
-          // A referral code the DB refused during signup. Neither signup surface
-          // can show it — ClientOnboarding is mid-submit, AuthCallback is a
-          // redirect — so the reason is stashed, and the box that explains and
-          // retries it now lives in Settings. This row is the pointer: it carries
-          // the explanation to the page the client actually lands on, and its
-          // button opens the box that can fix it. `peekReferralError` deliberately
-          // does NOT consume the stash — ReferralCard read-and-clears it as it
-          // renders the message, so the explanation and the second chance still
-          // arrive together. It is left OUT of PERMANENT_ATTN because it clears
-          // itself the moment that card mounts; a permanent dismissal would be a
-          // promise about a row that cannot come back anyway.
-          if (refStashed) attn.push({
-            key: "refcode",
-            text: refStashed + " You can enter another code in Settings.",
-            cta: "Open Settings",
-            onClick: () => setActiveTab("settings"),
-          });
-          // ── Conversational rows last (see the ordering note above) ──────────
-          if (chatTimeJob) attn.push({
-            key: "chattime",
-            text: (contractor?.first_name || "Your pro") + " suggested " + formatWhen(chatTimeJob.chat_time_at) + " in the chat.",
-            cta: "Accept or change",
-            // Un-dismiss so "Decide later" can never lose a suggested time.
-            onClick: () => setTimeDismissed(prev => { const n = new Set(prev); n.delete(chatTimeJob.id); return n; }),
-          });
-          // Unread messages, capped at 2 so they can't bury the rows that gate money.
-          // The row's button jumps to Requests first, so onClick corrects the tab.
-          for (const c of conversations.filter(c => c.unread > 0).slice(0, 2)) {
-            attn.push({
-              key: "msg-" + c.job_id,
-              text: partyName(c) + " sent you " + (c.unread === 1 ? "a message" : c.unread + " messages") + " about “" + (c.service_needed ?? "your job") + "”.",
-              cta: "Read it",
-              onClick: () => { setActiveTab("messages"); openConversation(c); },
-            });
-          }
-          // ── Dismissal ──────────────────────────────────────────────────────
-          //
-          // THE FILTER MUST RUN BEFORE `.slice(0, 3)`. Only the first three rows
-          // ever render, so filtering after the slice would make an × remove a
-          // row and reveal nothing — the fourth row would stay invisible and the
-          // client would be left with a shorter list for no reason.
-          //
-          // The key is scoped to the request it is about, so waving away "no
-          // photo" on one request says nothing about the next one. `msg-<job>`
-          // rows already carry their own job id; scoping them again is harmless
-          // and keeps one rule instead of two.
-          const rowKey = (k: string) => "attn:client:" + k + ":" + (activeReq?.id ?? "-");
-          const shown = attn.filter(a => {
-            const k = rowKey(a.key);
-            return !dismissed.has(k) && !hiddenNow.has(k);
-          });
-          if (shown.length === 0) return null;
-          return (
-            <div style={{ ...s.card, padding:"1.1rem 1.25rem", marginBottom:"1.25rem", border:"1px solid rgba(234,107,20,.3)" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:".45rem", fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"#ea6b14", fontWeight:700 }}>
-                <Ic name="alert-triangle" size={13} />Needs your attention
-              </div>
-              {shown.slice(0, 3).map((a, i) => {
-                const forever = PERMANENT_ATTN.has(a.key);
-                return (
-                <div key={a.key} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".75rem", padding:".6rem 0", borderTop: i === 0 ? "none" : "1px solid rgba(var(--ff-fg), .06)", marginTop: i === 0 ? ".5rem" : 0 }}>
-                  <div style={{ fontSize:".85rem", color:"var(--ff-text)", lineHeight:1.45 }}>{a.text}</div>
-                  <div style={{ display:"flex", alignItems:"center", gap:".4rem", flexShrink:0 }}>
-                    <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", whiteSpace:"nowrap" as const, flexShrink:0 }} onClick={() => { setActiveTab("requests"); if (!a.ownsScroll) window.scrollTo({ top: 0, behavior: "smooth" }); a.onClick?.(); }}>{a.cta}</button>
+        {/* Needs your attention. The LIST is built above the return (`attnRows`)
+            so this card and the pass can never disagree about whether anything
+            is on the client. <AttentionCard> caps the render at `max` and
+            returns null when the list is empty, so there is no length check
+            here.
+
+            Each row is DELIBERATELY not interactive as a whole. A <button>
+            cannot contain a <button>, and two things in the trailing slot have
+            to stay: the worded CTA and the dismiss ×. The wording is
+            load-bearing on a money surface — "Pay balance" and "Review & sign"
+            say what is about to happen, which a bare chevron does not. */}
+        <AttentionCard max={3}>
+          {attnRows.map(a => {
+            const forever = PERMANENT_ATTN.has(a.key);
+            return (
+              <Row
+                key={a.key}
+                icon={a.icon}
+                tone={a.tone}
+                title={a.hero}
+                sub={a.text}
+                right={
+                  <>
+                    <Button
+                      variant="primary"
+                      onClick={() => { setActiveTab("requests"); if (!a.ownsScroll) window.scrollTo({ top: 0, behavior: "smooth" }); a.onClick?.(); }}
+                    >
+                      {a.cta}
+                    </Button>
                     <DismissX
-                      onClick={() => hide(rowKey(a.key), forever)}
+                      onClick={() => hide(attnRowKey(a.key), forever)}
                       label={forever ? "Don't show this again" : "Hide for now"}
                       title={forever ? "Don't show this again" : "Hide until next time you open the dashboard"}
                     />
-                  </div>
-                </div>
-                );
-              })}
-            </div>
-          );
-        })()}
+                  </>
+                }
+              />
+            );
+          })}
+        </AttentionCard>
 
         {activeTab === "messages" && (
           <MessagesInbox
@@ -1941,14 +2184,24 @@ export default function ClientDashboard() {
                 another — and the Current Request card underneath would then be
                 describing a request they hadn't chosen.
 
-                The search box only appears alongside it, for the same reason:
-                with one open request there is nothing to narrow, and an empty
-                filter above a single row is just furniture. */}
-            {openReqs.length > 1 && (() => {
+                ⚠️ GATED AT >3, NOT >1, SINCE THE PASS LANDED. The pass carries a
+                <JobSwitcher> rail over every open request, so between two and
+                three requests this card is a SECOND chip rail saying the same
+                thing 400px further down — which is the "page reads as a pile"
+                problem the redesign exists to fix. What this card still has that
+                the rail does not is SEARCH, and search only earns its space past
+                three requests (it already gated itself at >3 internally). So the
+                card now appears exactly when its one unique affordance does.
+
+                Don't relax this back to >1 without deleting the rail, and don't
+                move REQ_SWITCH_ANCHOR back onto it: `selectRequest` scrolls to
+                that id, the id now lives on the pass, and the pass renders on
+                every branch this card does not. */}
+            {openReqs.length > 3 && (() => {
               const tokens = searchTokens(search);
               const hits = openReqs.filter(r => matchesSearch(tokens, reqSearchFields(r)));
               return (
-                <div id={REQ_SWITCH_ANCHOR} style={{ ...s.card, ...anchorPad, padding:"1rem 1.25rem" }}>
+                <div style={{ ...s.card, ...anchorPad, padding:"1rem 1.25rem" }}>
                   <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)", marginBottom:".6rem" }}>Your open requests ({openReqs.length})</div>
                   {openReqs.length > 3 && (
                     <DashSearch

@@ -49,23 +49,36 @@ export function Pass({
  *
  * The wordmark is Bebas — it is a logotype, which is exactly what Bebas is for.
  * The hero sentence below it is not, and uses DM Sans. See Hero.tsx.
+ *
+ * `lead` REPLACES the mark and wordmark. The dashboards render underneath the
+ * global TopNav, which already carries the logo — so a pass with its own mark
+ * puts two logos on screen about 60px apart, which reads as a layout bug rather
+ * than as branding. Those surfaces pass a greeting as `lead` instead. On a
+ * surface with no nav above it (a future standalone/mobile pass), leave `lead`
+ * off and the mark comes back.
  */
 export function PassTop({
   children,
+  lead,
   showWordmark = true,
   markSize = 34,
 }: {
   children?: React.ReactNode;
+  lead?: React.ReactNode;
   showWordmark?: boolean;
   markSize?: number;
 }) {
   return (
     <div className="ffu-passtop">
-      <Mark size={markSize} />
-      {showWordmark && (
-        <span className="ffu-wordmark">
-          FREDDY <em>FIX IT</em>
-        </span>
+      {lead ?? (
+        <>
+          <Mark size={markSize} />
+          {showWordmark && (
+            <span className="ffu-wordmark">
+              FREDDY <em>FIX IT</em>
+            </span>
+          )}
+        </>
       )}
       <span className="ffu-sp" />
       {children}
