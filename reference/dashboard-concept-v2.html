@@ -1,0 +1,2049 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Freddy Fix It — Dashboard concept v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,400&family=Fraunces:ital,opsz,wght@0,9..144,300..700&display=swap" rel="stylesheet">
+<style>
+/* ============ scales — nothing in this file uses a value outside these ============ */
+:root{
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:20px;--s6:24px;--s8:32px;--s10:40px;
+  --r1:10px;--r2:14px;--r3:18px;--r4:26px;
+  --h-row:48px;--h-ctl:44px;--h-nav:42px;--gut:40px;
+  --ease-out:cubic-bezier(0.23,1,0.32,1);
+  --ease-in-out:cubic-bezier(0.77,0,0.175,1);
+  --ease-drawer:cubic-bezier(0.32,0.72,0,1);
+}
+
+/* ============ theme tokens (mirrors src/main.tsx) ============ */
+body[data-theme="dark"]{
+  --text:#f0f4ff;--bg:#1a2236;--surface:#151d2e;--surface2:#111827;--surface0e:#0e1422;
+  --ok:#86efac;--warn:#fbbf24;--danger:#f87171;--info:#93c5fd;
+  --a500:#ea6b14;--a600:#c9560c;--a400:#f78b3d;
+  --a-soft:rgba(234,107,20,0.12);--a-line:rgba(234,107,20,0.32);
+  --fg:255,255,255;--muted:190,205,235;
+  --hair:rgba(255,255,255,0.09);
+  --card-bg:rgba(255,255,255,.055);--card-border:rgba(255,255,255,.05);
+  --lift1:0 1px 2px rgba(0,0,0,0.18);
+  --lift2:0 8px 28px rgba(0,0,0,0.28);
+  --lift3:0 22px 60px rgba(0,0,0,0.42);
+  --page:#0b1019;
+}
+body[data-theme="light"]{
+  --text:#284e88;--bg:#e9eef8;--surface:#dbe2f2;--surface2:#cfd8ec;--surface0e:#c6d1e8;
+  --ok:#15803d;--warn:#b45309;--danger:#b91c1c;--info:#1d4ed8;
+  --a500:#d65f10;--a600:#b44c08;--a400:#c25512;
+  --a-soft:rgba(214,95,16,0.10);--a-line:rgba(214,95,16,0.30);
+  --fg:55,96,153;--muted:71,85,105;
+  --hair:rgba(40,78,136,.16);
+  --card-bg:#dfe6f3;--card-border:rgba(40,78,136,.16);
+  --lift1:0 1px 2px rgba(40,78,136,.08);
+  --lift2:0 8px 28px rgba(40,78,136,.10);
+  --lift3:0 22px 60px rgba(40,78,136,.14);
+  --page:#e4eaf6;
+}
+
+/* ============ on-dark scope — the .ff-on-dark pattern.
+   Literals, not var() aliases: a var() inside a custom-property DECLARATION
+   substitutes where it is declared, so aliasing here renders the wrong theme. ============ */
+.on-dark{
+  --text:#f0f4ff;--bg:#1a2236;--surface:#151d2e;--surface2:#111827;--surface0e:#0e1422;
+  --ok:#86efac;--warn:#fbbf24;--danger:#f87171;--info:#93c5fd;
+  --a500:#ea6b14;--a600:#c9560c;--a400:#f78b3d;
+  --a-soft:rgba(234,107,20,0.12);--a-line:rgba(234,107,20,0.32);
+  --fg:255,255,255;--muted:190,205,235;
+  --hair:rgba(255,255,255,0.09);
+  --card-bg:rgba(255,255,255,.055);--card-border:rgba(255,255,255,.05);
+  color:var(--text);
+}
+
+/* ============ page chrome (preview only) ============ */
+*{box-sizing:border-box}
+html{font-size:17.6px} /* --ff-font-scale 1.1 */
+body{
+  margin:0;background:var(--page);color:var(--text);
+  font-family:"DM Sans",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  transition:background .3s var(--ease-out);
+}
+.wrap{max-width:1360px;margin:0 auto;padding:var(--s8) clamp(1rem,4vw,1.5rem) var(--s10)}
+.bar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:var(--s4);
+  padding:var(--s3) clamp(1rem,4vw,1.5rem);background:var(--surface2);
+  border-bottom:1px solid var(--hair);box-shadow:var(--lift1);flex-wrap:wrap;
+}
+.bar .ttl{font-family:"Bebas Neue",sans-serif;font-size:1.1rem;letter-spacing:.06em;line-height:1.1}
+.bar .sp{flex:1}
+.toggle{display:flex;background:var(--card-bg);border:1px solid var(--card-border);border-radius:99px;padding:3px}
+.toggle button{
+  font-family:"Bebas Neue",sans-serif;font-size:.82rem;letter-spacing:.08em;
+  background:none;border:0;color:rgba(var(--fg),.6);padding:var(--s2) var(--s4);
+  border-radius:99px;cursor:pointer;transition:background .16s var(--ease-out),color .16s var(--ease-out);
+  min-height:34px;
+}
+.toggle button[aria-pressed="true"]{background:var(--a500);color:#fff}
+h2.sec{
+  font-family:"Bebas Neue",sans-serif;font-size:1.5rem;letter-spacing:.07em;line-height:1.15;
+  margin:var(--s10) 0 var(--s2);
+}
+h2.sec:first-of-type{margin-top:var(--s6)}
+p.lead{margin:0 0 var(--s6);color:rgba(var(--muted),.95);font-size:.95rem;max-width:62ch;line-height:1.55}
+.cap{
+  font-family:"Bebas Neue",sans-serif;font-size:.8rem;letter-spacing:.1em;
+  color:rgba(var(--muted),.8);margin:0 0 var(--s3);text-align:center;
+}
+
+/* ============ phone frame ============ */
+.phones{display:flex;flex-wrap:wrap;gap:var(--s8);align-items:flex-start}
+.frame{width:372px;flex:0 0 auto}
+.screen{
+  height:740px;border-radius:var(--r4);overflow:hidden;background:var(--bg);
+  border:1px solid var(--card-border);box-shadow:var(--lift3);
+  display:flex;flex-direction:column;position:relative;
+}
+.scroll{flex:1;overflow:hidden;padding:0 var(--s4) var(--s6)}
+
+/* ============ the pass — navy in BOTH themes ============ */
+.pass{
+  background:#111827;padding:var(--s5) var(--s4) var(--s4);
+  position:relative;overflow:hidden;flex:0 0 auto;
+}
+.pass::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(120% 80% at 88% -18%,rgba(234,107,20,.20),transparent 62%);
+}
+.pass > *{position:relative;z-index:1}
+.passtop{display:flex;align-items:center;gap:var(--s3);margin-bottom:var(--s5)}
+.mark{display:block;border-radius:22%;flex:0 0 auto}
+.wordmark{
+  font-family:"Bebas Neue",sans-serif;font-size:1rem;letter-spacing:.12em;line-height:1;
+  color:#f0f4ff;
+}
+.wordmark em{color:#ea6b14;font-style:normal}
+.passtop .sp{flex:1}
+.iconbtn{
+  width:36px;height:36px;border-radius:99px;display:grid;place-items:center;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.09);
+  color:#f0f4ff;cursor:pointer;position:relative;
+  transition:transform .16s var(--ease-out);
+}
+.iconbtn:active{transform:scale(0.97);transition-duration:.1s}
+.iconbtn .bdg{
+  position:absolute;top:-2px;right:-2px;min-width:16px;height:16px;border-radius:99px;
+  background:#ea6b14;color:#fff;font-family:"Bebas Neue",sans-serif;font-size:.62rem;
+  letter-spacing:.04em;display:grid;place-items:center;padding:0 4px;border:2px solid #111827;
+}
+
+/* state line: answers "is this on me or on them" before anything scrolls */
+.stateline{
+  display:inline-flex;align-items:center;gap:var(--s2);height:26px;padding:0 var(--s3);
+  border-radius:99px;font-family:"Bebas Neue",sans-serif;font-size:.78rem;letter-spacing:.1em;
+  margin-bottom:var(--s3);
+}
+.stateline.turn{background:rgba(234,107,20,.18);color:#f78b3d;border:1px solid rgba(234,107,20,.32)}
+.stateline.wait{background:rgba(255,255,255,.07);color:rgba(190,205,235,.95);border:1px solid rgba(255,255,255,.09)}
+.stateline.ok{background:rgba(134,239,172,.14);color:#86efac;border:1px solid rgba(134,239,172,.26)}
+.sdot{width:7px;height:7px;border-radius:99px;background:currentColor;flex:0 0 auto}
+.sdot.pulse{animation:pls 2.2s var(--ease-in-out) infinite}
+@keyframes pls{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.82)}}
+
+/* hero status line — DM Sans, not Bebas. See note in the page. */
+.hero{
+  font-family:"DM Sans",sans-serif;font-weight:500;font-size:1.42rem;line-height:1.26;
+  letter-spacing:-.03em;color:#f0f4ff;margin:0 0 var(--s2);
+}
+.herosub{margin:0;font-size:.9rem;line-height:1.5;color:rgba(190,205,235,.92)}
+.passmeta{
+  display:flex;gap:var(--s5);margin-top:var(--s5);padding-top:var(--s4);
+  border-top:1px solid rgba(255,255,255,.09);
+}
+.passmeta div{min-width:0}
+.mk{
+  font-family:"Bebas Neue",sans-serif;font-size:.72rem;letter-spacing:.11em;
+  color:rgba(190,205,235,.7);display:block;margin-bottom:2px;
+}
+.mv{
+  font-family:"Bebas Neue",sans-serif;font-size:1.02rem;letter-spacing:.05em;
+  color:#f0f4ff;display:block;line-height:1.15;
+}
+.mv.accent{color:#f78b3d}
+
+/* ============ job switcher — the missing IA ============ */
+.jobsw{
+  display:flex;gap:var(--s2);overflow-x:auto;scrollbar-width:none;
+  margin:0 calc(var(--s4) * -1) var(--s4);padding:0 var(--s4) var(--s1);
+}
+.jobsw::-webkit-scrollbar{display:none}
+.jobchip{
+  flex:0 0 auto;height:36px;display:inline-flex;align-items:center;gap:var(--s2);
+  padding:0 var(--s3);border-radius:99px;cursor:pointer;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);
+  font-family:"Bebas Neue",sans-serif;font-size:.8rem;letter-spacing:.07em;
+  color:rgba(190,205,235,.88);white-space:nowrap;
+  transition:background .16s var(--ease-out),color .16s var(--ease-out),transform .16s var(--ease-out);
+}
+.jobchip:active{transform:scale(0.97);transition-duration:.1s}
+.jobchip.on{background:rgba(255,255,255,.13);color:#fff;border-color:rgba(255,255,255,.18)}
+.jobchip b{width:7px;height:7px;border-radius:99px;flex:0 0 auto;border:1.5px solid rgba(255,255,255,.3)}
+.jobchip b.turn{background:#f78b3d;border-color:#f78b3d}
+.jobchip b.ok{background:#86efac;border-color:#86efac}
+.jobchip.add{color:rgba(190,205,235,.7);border-style:dashed}
+
+/* ============ grouped rows — C · The Sheet ============ */
+.grp{margin-top:var(--s6)}
+.grplbl{
+  font-family:"Bebas Neue",sans-serif;font-size:.78rem;letter-spacing:.11em;
+  color:rgba(var(--muted),.78);padding:0 var(--s3) var(--s2);display:flex;align-items:center;gap:var(--s2);
+}
+.grplbl .sp{flex:1}
+.grplbl a{color:var(--a500);text-decoration:none;font-size:.74rem;letter-spacing:.08em}
+.sheet{
+  background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--r3);
+  overflow:hidden;box-shadow:var(--lift1);
+}
+.row{
+  display:grid;grid-template-columns:var(--gut) minmax(0,1fr) auto;align-items:center;
+  min-height:var(--h-row);padding:var(--s3) var(--s4) var(--s3) 0;
+  padding-left:var(--s4);cursor:pointer;position:relative;
+  transition:background .16s var(--ease-out);
+}
+.row + .row::before{
+  content:"";position:absolute;top:0;left:calc(var(--s4) + var(--gut));right:0;
+  height:1px;background:var(--hair);
+}
+.row:hover{background:rgba(var(--fg),.035)}
+.row:active{background:rgba(var(--fg),.05)}
+.row .ri{width:26px;height:26px;border-radius:var(--r1);display:grid;place-items:center;color:var(--a500);background:var(--a-soft)}
+.row .ri.g{color:var(--ok);background:rgba(134,239,172,.12)}
+.row .ri.n{color:rgba(var(--muted),.9);background:rgba(var(--fg),.06)}
+.row .rt{min-width:0}
+.row .rt b{display:block;font-weight:500;font-size:.95rem;line-height:1.35;letter-spacing:-.01em}
+.row .rt span{display:block;font-size:.82rem;line-height:1.42;color:rgba(var(--muted),.92);margin-top:1px}
+.row .rr{
+  display:flex;align-items:center;gap:var(--s2);margin-left:var(--s3);
+  font-family:"Bebas Neue",sans-serif;font-size:.9rem;letter-spacing:.05em;
+  color:rgba(var(--muted),.8);white-space:nowrap;
+}
+.row .rr .amt{color:var(--text);font-size:1rem}
+.chev{opacity:.4}
+.row.active{background:var(--a-soft)}
+.row.active .rt b{color:var(--text)}
+
+/* ============ stepper — B, folded into a group. Absolute geometry, no negative margins. ============ */
+.steps{padding:var(--s2) 0}
+.step{
+  display:grid;grid-template-columns:18px minmax(0,1fr);column-gap:var(--s3);
+  padding:var(--s3) var(--s4);position:relative;align-items:start;
+}
+.step::before{
+  content:"";position:absolute;left:calc(var(--s4) + 9px);margin-left:-.75px;width:1.5px;
+  top:34px;bottom:-10px;background:var(--hair);
+}
+.step:last-child::before{display:none}
+.dot{width:18px;height:18px;border-radius:99px;display:grid;place-items:center;margin-top:2px;flex:0 0 auto}
+.dot.ok{background:var(--ok);color:var(--surface0e)}
+.dot.now{background:var(--a500);box-shadow:0 0 0 4px var(--a-soft)}
+.dot.todo{background:transparent;border:1.5px solid var(--hair)}
+.step .st{min-width:0}
+.step .st b{display:block;font-weight:500;font-size:.92rem;line-height:1.4;letter-spacing:-.01em}
+.step .st span{display:block;font-size:.8rem;line-height:1.45;color:rgba(var(--muted),.9);margin-top:1px}
+.step.todo .st b{color:rgba(var(--muted),.78);font-weight:400}
+
+/* ============ controls ============ */
+.btn{
+  width:100%;min-height:var(--h-ctl);border:0;border-radius:var(--r2);cursor:pointer;
+  font-family:"Bebas Neue",sans-serif;font-size:.95rem;letter-spacing:.09em;
+  display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);
+  transition:transform .16s var(--ease-out),background .16s var(--ease-out);
+}
+.btn:active{transform:scale(0.97);transition-duration:.1s}
+.btn.pri{background:var(--a500);color:#fff;box-shadow:var(--lift2)}
+.btn.pri:hover{background:var(--a600)}
+.btn.sec{background:var(--card-bg);color:var(--text);border:1px solid var(--card-border)}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--hair)}
+.btnrow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3);margin-top:var(--s4)}
+.stack{display:grid;gap:var(--s3);margin-top:var(--s5)}
+.pill{
+  display:inline-flex;align-items:center;gap:var(--s1);height:24px;padding:0 var(--s2);
+  border-radius:99px;font-family:"Bebas Neue",sans-serif;font-size:.72rem;letter-spacing:.09em;
+}
+.pill.w{background:rgba(251,191,36,.14);color:var(--warn)}
+.pill.g{background:rgba(134,239,172,.14);color:var(--ok)}
+.pill.a{background:var(--a-soft);color:var(--a500)}
+.pill.n{background:rgba(var(--fg),.07);color:rgba(var(--muted),.9)}
+
+/* ============ attention card (top of sheet, money rows first) ============ */
+.attn{
+  background:linear-gradient(180deg,var(--a-soft),transparent);
+  border:1px solid var(--a-line);border-radius:var(--r3);overflow:hidden;margin-top:var(--s5);
+}
+.attnhd{
+  display:flex;align-items:center;gap:var(--s2);padding:var(--s3) var(--s4);
+  font-family:"Bebas Neue",sans-serif;font-size:.78rem;letter-spacing:.11em;color:var(--a500);
+  border-bottom:1px solid var(--a-line);
+}
+.attn .row{padding-left:var(--s4)}
+.attn .row + .row::before{left:calc(var(--s4) + var(--gut))}
+
+/* ============ trust line ============ */
+.trust{
+  display:grid;grid-template-columns:20px minmax(0,1fr);gap:var(--s3);align-items:start;
+  margin-top:var(--s5);padding:var(--s3) var(--s4);border-radius:var(--r2);
+  background:rgba(134,239,172,.08);border:1px solid rgba(134,239,172,.2);
+}
+.trust p{margin:0;font-size:.82rem;line-height:1.5;color:rgba(var(--muted),.95)}
+.trust svg{color:var(--ok);margin-top:1px}
+
+/* ============ bottom tab bar ============ */
+.tabs{
+  flex:0 0 auto;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));
+  background:var(--surface2);border-top:1px solid var(--hair);padding:var(--s2) 0 var(--s3);
+}
+.tab{
+  display:grid;place-items:center;gap:3px;cursor:pointer;color:rgba(var(--muted),.7);
+  font-family:"Bebas Neue",sans-serif;font-size:.66rem;letter-spacing:.08em;min-height:var(--h-ctl);
+  position:relative;
+}
+.tab.on{color:var(--a500)}
+.tab .tb{
+  position:absolute;top:calc(var(--s2) * -1);
+  width:18px;height:2px;border-radius:99px;background:var(--a500);
+}
+
+/* ============ auth ============ */
+.authhero{
+  background:#111827;padding:var(--s8) var(--s5) var(--s6);position:relative;overflow:hidden;flex:0 0 auto;
+}
+.authhero::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(90% 70% at 50% -10%,rgba(234,107,20,.26),transparent 64%);
+}
+.authhero > *{position:relative;z-index:1}
+.authhero h3{
+  font-family:"DM Sans",sans-serif;font-weight:500;font-size:1.5rem;line-height:1.24;
+  letter-spacing:-.03em;color:#f0f4ff;margin:var(--s5) 0 var(--s2);
+}
+.authhero p{margin:0;font-size:.9rem;line-height:1.5;color:rgba(190,205,235,.9)}
+.fields{
+  margin-top:var(--s6);background:var(--card-bg);border:1px solid var(--card-border);
+  border-radius:var(--r3);overflow:hidden;
+}
+.field{
+  min-height:56px;padding:var(--s2) var(--s4);display:flex;flex-direction:column;justify-content:center;
+  position:relative;
+}
+.field + .field::before{
+  content:"";position:absolute;top:0;left:var(--s4);right:0;height:1px;background:var(--hair);
+}
+.field label{
+  font-family:"Bebas Neue",sans-serif;font-size:.68rem;letter-spacing:.11em;
+  color:rgba(var(--muted),.8);margin-bottom:1px;
+}
+.field .val{font-size:1rem;line-height:1.4;color:var(--text)}
+.field .val.ph{color:rgba(var(--muted),.55)}
+.field.focus{background:var(--a-soft)}
+.field.focus label{color:var(--a500)}
+.orline{
+  display:flex;align-items:center;gap:var(--s3);margin:var(--s5) 0;
+  font-family:"Bebas Neue",sans-serif;font-size:.72rem;letter-spacing:.12em;color:rgba(var(--muted),.65);
+}
+.orline::before,.orline::after{content:"";flex:1;height:1px;background:var(--hair)}
+.seg{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;padding:3px;
+  background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--r2);margin-bottom:var(--s5);
+}
+.seg button{
+  min-height:38px;border:0;border-radius:var(--r1);cursor:pointer;background:transparent;
+  font-family:"Bebas Neue",sans-serif;font-size:.84rem;letter-spacing:.09em;color:rgba(var(--muted),.85);
+  transition:background .16s var(--ease-out),color .16s var(--ease-out);
+}
+.seg button.on{background:var(--a500);color:#fff}
+.fine{margin:var(--s5) 0 0;font-size:.76rem;line-height:1.55;color:rgba(var(--muted),.78);text-align:center}
+.fine a{color:var(--a500);text-decoration:none}
+
+/* ============ onboarding complete ============ */
+.stateline.rev{background:rgba(251,191,36,.14);color:#fbbf24;border:1px solid rgba(251,191,36,.26)}
+.dot.rev{background:var(--warn);box-shadow:0 0 0 4px rgba(251,191,36,.16)}
+.okmark{
+  width:50px;height:50px;border-radius:99px;display:grid;place-items:center;margin-bottom:var(--s4);
+  background:rgba(134,239,172,.16);border:1px solid rgba(134,239,172,.32);color:#86efac;
+}
+.okmark.rev{background:rgba(251,191,36,.14);border-color:rgba(251,191,36,.3);color:#fbbf24}
+.center{max-width:600px;margin:0 auto}
+.chan{
+  display:grid;grid-template-columns:var(--gut) minmax(0,1fr) auto;align-items:start;
+  padding:var(--s3) var(--s4);position:relative;
+}
+.chan + .chan::before{
+  content:"";position:absolute;top:0;left:calc(var(--s4) + var(--gut));right:0;height:1px;background:var(--hair);
+}
+.chan .ri{margin-top:2px}
+.chan .rt{min-width:0}
+.chan .rt b{display:block;font-weight:500;font-size:.94rem;line-height:1.35;letter-spacing:-.01em}
+.chan .rt span{display:block;font-size:.82rem;line-height:1.45;color:rgba(var(--muted),.9);margin-top:2px}
+.chan .rt code{
+  font-family:"DM Sans",sans-serif;font-weight:500;color:var(--text);
+  background:rgba(var(--fg),.07);border-radius:5px;padding:1px 5px;
+}
+.chan .rr{
+  margin-left:var(--s3);font-family:"Bebas Neue",sans-serif;font-size:.74rem;letter-spacing:.08em;
+  color:var(--a500);white-space:nowrap;cursor:pointer;margin-top:4px;
+}
+.never{
+  margin-top:var(--s3);padding:var(--s3) var(--s4);border-radius:var(--r2);
+  background:rgba(var(--fg),.04);border:1px solid var(--card-border);
+  display:grid;grid-template-columns:18px minmax(0,1fr);gap:var(--s3);align-items:start;
+}
+.never p{margin:0;font-size:.8rem;line-height:1.5;color:rgba(var(--muted),.85)}
+.never svg{color:rgba(var(--muted),.7);margin-top:1px}
+
+/* ============ messages · inbox ============ */
+.conv{
+  display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;
+  column-gap:var(--s3);min-height:var(--h-row);padding:var(--s3) var(--s4);
+  position:relative;cursor:pointer;transition:background .16s var(--ease-out);
+}
+.conv + .conv::before{
+  content:"";position:absolute;top:0;left:calc(var(--s4) + 38px + var(--s3));right:0;
+  height:1px;background:var(--hair);
+}
+.conv:hover{background:rgba(var(--fg),.035)}
+.conv.on{background:var(--a-soft)}
+.av{
+  width:38px;height:38px;border-radius:99px;display:grid;place-items:center;
+  font-family:"Bebas Neue",sans-serif;font-size:.86rem;letter-spacing:.06em;
+  background:rgba(var(--fg),.08);color:rgba(var(--muted),.95);border:1px solid var(--card-border);
+}
+.av.a{background:var(--a-soft);color:var(--a500);border-color:var(--a-line)}
+.av.g{background:rgba(134,239,172,.12);color:var(--ok);border-color:rgba(134,239,172,.26)}
+.ctop{display:flex;align-items:baseline;gap:var(--s2);min-width:0}
+.ctop b{font-weight:500;font-size:.94rem;letter-spacing:-.01em;line-height:1.3;white-space:nowrap}
+.ctop .job{
+  font-family:"Bebas Neue",sans-serif;font-size:.7rem;letter-spacing:.08em;
+  color:rgba(var(--muted),.7);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;
+}
+.conv > span:nth-child(2){min-width:0;display:block}
+.prev{
+  display:block;font-size:.84rem;line-height:1.4;color:rgba(var(--muted),.88);margin-top:1px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.conv.unread .prev{color:var(--text);font-weight:500}
+.cmeta{
+  display:grid;justify-items:end;row-gap:var(--s1);margin-left:var(--s3);
+  font-family:"Bebas Neue",sans-serif;font-size:.72rem;letter-spacing:.07em;color:rgba(var(--muted),.68);
+}
+.ub{
+  min-width:19px;height:19px;border-radius:99px;background:var(--a500);color:#fff;
+  display:grid;place-items:center;font-size:.7rem;letter-spacing:.04em;padding:0 5px;
+}
+.empty{
+  text-align:center;padding:var(--s10) var(--s5);
+}
+.empty .ei{
+  width:52px;height:52px;border-radius:var(--r3);margin:0 auto var(--s4);
+  display:grid;place-items:center;background:rgba(var(--fg),.06);color:rgba(var(--muted),.7);
+  border:1px solid var(--card-border);
+}
+.empty b{display:block;font-family:"Bebas Neue",sans-serif;font-size:1.05rem;letter-spacing:.07em;margin-bottom:var(--s2)}
+.empty p{margin:0;font-size:.86rem;line-height:1.55;color:rgba(var(--muted),.85)}
+
+/* ============ messages · thread ============ */
+.thhd{
+  flex:0 0 auto;display:flex;align-items:center;gap:var(--s3);
+  padding:var(--s3) var(--s4);background:var(--surface2);border-bottom:1px solid var(--hair);
+}
+.thhd .nm{min-width:0;flex:1}
+.thhd .nm b{display:block;font-weight:500;font-size:.94rem;letter-spacing:-.01em;line-height:1.3}
+.thhd .nm span{
+  display:block;font-family:"Bebas Neue",sans-serif;font-size:.7rem;letter-spacing:.08em;
+  color:rgba(var(--muted),.82);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;
+}
+.thbtn{
+  width:34px;height:34px;border-radius:99px;display:grid;place-items:center;flex:0 0 auto;
+  background:transparent;border:0;color:rgba(var(--muted),.95);cursor:pointer;
+  transition:transform .16s var(--ease-out),background .16s var(--ease-out);
+}
+.thbtn:hover{background:rgba(var(--fg),.06)}
+.thbtn:active{transform:scale(0.97);transition-duration:.1s}
+.msgs{flex:1;overflow:hidden;padding:var(--s4);display:flex;flex-direction:column;gap:var(--s3)}
+.daysep{
+  align-self:center;font-family:"Bebas Neue",sans-serif;font-size:.7rem;letter-spacing:.11em;
+  color:rgba(var(--muted),.6);margin:var(--s1) 0;
+}
+.bub{max-width:78%;padding:var(--s2) var(--s3);border-radius:var(--r2);font-size:.9rem;line-height:1.45}
+.bub.them{
+  align-self:flex-start;background:var(--card-bg);border:1px solid var(--card-border);
+  border-bottom-left-radius:var(--s1);
+}
+.bub.me{align-self:flex-end;background:var(--a500);color:#fff;border-bottom-right-radius:var(--s1)}
+.bub .t{
+  display:block;font-family:"Bebas Neue",sans-serif;font-size:.64rem;letter-spacing:.09em;
+  opacity:.6;margin-top:3px;
+}
+.bub.img{padding:3px;align-self:flex-start;border:1px solid var(--card-border);background:var(--card-bg)}
+.bub.img i{
+  display:block;width:176px;height:122px;border-radius:var(--r1);
+  background:linear-gradient(135deg,rgba(var(--fg),.16),rgba(var(--fg),.05));
+}
+.bub.img .t{padding:0 var(--s2) 3px;margin-top:2px}
+.sys{
+  align-self:center;max-width:90%;text-align:center;font-size:.8rem;line-height:1.5;
+  color:rgba(var(--muted),.9);background:rgba(var(--fg),.05);border:1px solid var(--card-border);
+  border-radius:var(--r2);padding:var(--s2) var(--s3);
+}
+.sys b{font-family:"Bebas Neue",sans-serif;letter-spacing:.09em;font-size:.76rem;color:var(--a500);display:block;margin-bottom:2px}
+.quick{flex:0 0 auto;display:flex;gap:var(--s2);padding:var(--s2) var(--s4) 0;overflow-x:auto;scrollbar-width:none}
+.quick::-webkit-scrollbar{display:none}
+.qc{
+  flex:0 0 auto;height:34px;display:inline-flex;align-items:center;gap:var(--s2);
+  padding:0 var(--s3);border-radius:99px;background:var(--card-bg);border:1px solid var(--card-border);
+  font-family:"Bebas Neue",sans-serif;font-size:.78rem;letter-spacing:.08em;color:var(--text);
+  cursor:pointer;white-space:nowrap;transition:transform .16s var(--ease-out);
+}
+.qc:active{transform:scale(0.97);transition-duration:.1s}
+.comp{
+  flex:0 0 auto;display:grid;grid-template-columns:38px minmax(0,1fr) 38px;gap:var(--s2);
+  align-items:end;padding:var(--s3) var(--s4) var(--s4);border-top:1px solid var(--hair);
+  background:var(--surface2);
+}
+.inp{
+  min-height:var(--h-ctl);border-radius:var(--r2);background:var(--card-bg);
+  border:1px solid var(--card-border);padding:0 var(--s3);font-size:1rem;
+  color:rgba(var(--muted),.6);display:flex;align-items:center;
+}
+.cbtn{
+  width:38px;height:38px;border-radius:99px;display:grid;place-items:center;cursor:pointer;
+  margin-bottom:3px;transition:transform .16s var(--ease-out);
+}
+.cbtn:active{transform:scale(0.97);transition-duration:.1s}
+.cbtn.att{background:var(--card-bg);border:1px solid var(--card-border);color:rgba(var(--muted),.95)}
+.cbtn.send{background:var(--a500);border:0;color:#fff}
+.closed{
+  flex:0 0 auto;display:grid;grid-template-columns:18px minmax(0,1fr);gap:var(--s3);
+  align-items:start;padding:var(--s4);border-top:1px solid var(--hair);background:var(--surface2);
+}
+.closed p{margin:0;font-size:.84rem;line-height:1.5;color:rgba(var(--muted),.88)}
+.closed svg{color:rgba(var(--muted),.7);margin-top:1px}
+
+/* ============ desktop shell ============ */
+.deskwrap{
+  border-radius:var(--r4);overflow:hidden;background:var(--bg);
+  border:1px solid var(--card-border);box-shadow:var(--lift3);
+}
+.desk{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:660px}
+.side{
+  background:#111827;padding:var(--s5) var(--s3);display:flex;flex-direction:column;
+  border-right:1px solid rgba(255,255,255,.09);
+}
+.sidetop{display:flex;align-items:center;gap:var(--s3);padding:0 var(--s3) var(--s6)}
+.sgrp{
+  font-family:"Bebas Neue",sans-serif;font-size:.68rem;letter-spacing:.13em;
+  color:rgba(190,205,235,.5);padding:var(--s5) var(--s3) var(--s2);
+}
+.sgrp:first-of-type{padding-top:0}
+.snav{
+  height:var(--h-nav);display:flex;align-items:center;gap:var(--s3);padding:0 var(--s3);
+  border-radius:var(--r1);cursor:pointer;color:rgba(190,205,235,.88);
+  font-family:"Bebas Neue",sans-serif;font-size:.88rem;letter-spacing:.07em;
+  transition:background .16s var(--ease-out),color .16s var(--ease-out);
+}
+.snav + .snav{margin-top:2px}
+.snav:hover{background:rgba(255,255,255,.05);color:#f0f4ff}
+.snav.on{background:rgba(234,107,20,.16);color:#fff}
+.snav.on svg{color:#f78b3d}
+.snav .sp{flex:1}
+.snav .ct{
+  min-width:20px;height:19px;border-radius:99px;background:rgba(255,255,255,.1);
+  display:grid;place-items:center;font-size:.7rem;letter-spacing:.04em;padding:0 5px;
+}
+.snav .ct.a{background:#ea6b14;color:#fff}
+.sidefoot{margin-top:auto;padding-top:var(--s5);border-top:1px solid rgba(255,255,255,.09)}
+.main{padding:var(--s6) var(--s8) var(--s8);min-width:0;overflow:hidden}
+.mainhd{display:flex;align-items:flex-end;gap:var(--s4);margin-bottom:var(--s5);flex-wrap:wrap}
+.mainhd h3{
+  font-family:"Bebas Neue",sans-serif;font-size:1.7rem;letter-spacing:.06em;line-height:1.1;margin:0;
+}
+.mainhd .sp{flex:1}
+.cols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:var(--s6);align-items:start}
+.deskpass{border-radius:var(--r3);box-shadow:var(--lift2)}
+.tbl{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--r3);overflow:hidden}
+.tr{
+  display:grid;grid-template-columns:minmax(0,1fr) 92px 104px 26px;align-items:center;gap:var(--s3);
+  height:var(--h-nav);padding:0 var(--s4);position:relative;cursor:pointer;
+  transition:background .16s var(--ease-out);
+}
+.tr + .tr::before{content:"";position:absolute;top:0;left:var(--s4);right:var(--s4);height:1px;background:var(--hair)}
+.tr:hover{background:rgba(var(--fg),.035)}
+.tr.hd{
+  height:34px;font-family:"Bebas Neue",sans-serif;font-size:.7rem;letter-spacing:.11em;
+  color:rgba(var(--muted),.7);cursor:default;background:rgba(var(--fg),.03);
+}
+.tr.hd:hover{background:rgba(var(--fg),.03)}
+.tr .nm{font-size:.9rem;font-weight:500;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.tr .am{font-family:"Bebas Neue",sans-serif;font-size:.95rem;letter-spacing:.05em;text-align:right}
+
+/* ============ primitives panel ============ */
+.prims{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:var(--s5)}
+.prim{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--r3);padding:var(--s5);box-shadow:var(--lift1)}
+.prim h4{
+  font-family:"Bebas Neue",sans-serif;font-size:.86rem;letter-spacing:.11em;margin:0 0 var(--s4);
+  color:rgba(var(--muted),.9);
+}
+.swatches{display:flex;flex-wrap:wrap;gap:var(--s3)}
+.sw{text-align:center;font-family:"Bebas Neue",sans-serif;font-size:.62rem;letter-spacing:.07em;color:rgba(var(--muted),.8)}
+.sw i{display:block;width:46px;height:46px;border-radius:var(--r1);margin-bottom:var(--s1);border:1px solid var(--card-border)}
+.scale{display:grid;gap:var(--s2)}
+.scale div{display:flex;align-items:center;gap:var(--s3);font-family:"Bebas Neue",sans-serif;font-size:.72rem;letter-spacing:.08em;color:rgba(var(--muted),.85)}
+.scale i{display:block;height:10px;border-radius:3px;background:var(--a500);opacity:.8}
+.note{
+  margin-top:var(--s6);padding:var(--s4) var(--s5);border-radius:var(--r2);
+  background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.24);
+}
+.note b{font-family:"Bebas Neue",sans-serif;letter-spacing:.09em;font-size:.86rem;color:var(--warn);display:block;margin-bottom:var(--s2)}
+.note p{margin:0 0 var(--s2);font-size:.86rem;line-height:1.55;color:rgba(var(--muted),.95)}
+.note p:last-child{margin:0}
+svg{flex:0 0 auto}
+@media (pointer:coarse){
+  .btn,.tab,.jobchip,.seg button{font-size:16px !important;min-height:44px}
+}
+</style>
+</head>
+<body data-theme="dark">
+
+<!-- the real mark, from public/favicon.svg — defined once, used everywhere -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <g id="ffmark">
+    <rect width="80" height="80" rx="18" fill="#1a2236"/>
+    <polygon points="65.9,50.7 50.7,65.9 29.3,65.9 14.1,50.7 14.1,29.3 29.3,14.1 50.7,14.1 65.9,29.3" fill="rgba(234,107,20,0.14)" stroke="#ea6b14" stroke-width="3"/>
+    <path d="M28 54 L28 38 L40 28 L52 38 L52 54 Z" fill="none" stroke="#f0f4ff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M36 54 L36 43 L44 43 L44 54" fill="none" stroke="#ea6b14" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g id="i-chev"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-check"><path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-bell"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-user"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-file"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M9 13h6M9 17h6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-pin"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1116 0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="10" r="3" fill="none" stroke="currentColor" stroke-width="1.9"/></g>
+  <g id="i-card"><rect x="2" y="5" width="20" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M2 10h20" stroke="currentColor" stroke-width="1.9"/></g>
+  <g id="i-chat"><path d="M21 11.5a8.4 8.4 0 01-9 8.4 9 9 0 01-3.8-.8L3 21l1.9-5.1A8.4 8.4 0 0112 3a8.4 8.4 0 019 8.5z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-cal"><rect x="3" y="4.5" width="18" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M3 10h18M8 2.5v4M16 2.5v4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></g>
+  <g id="i-alert"><path d="M12 3L2 20h20L12 3zM12 9v5M12 17.5v.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-shield"><path d="M12 2l8 3.5v6c0 5-3.4 9.3-8 10.5-4.6-1.2-8-5.5-8-10.5v-6z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><path d="M8.5 12l2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-cam"><path d="M3 8.5A2.5 2.5 0 015.5 6h1.8l1.2-2h7l1.2 2h1.8A2.5 2.5 0 0121 8.5v9A2.5 2.5 0 0118.5 20h-13A2.5 2.5 0 013 17.5z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" fill="none" stroke="currentColor" stroke-width="1.9"/></g>
+  <g id="i-tools"><path d="M14.7 6.3a4.5 4.5 0 106.1 6.1L14 5.6zM3 21l6.5-6.5M9.5 9.5L4 4l2-2 5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-repeat"><path d="M17 2l4 4-4 4M3 11V9a4 4 0 014-4h14M7 22l-4-4 4-4M21 13v2a4 4 0 01-4 4H3" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-clock"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M12 7v5l3.5 2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></g>
+  <g id="i-gear"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1A1.7 1.7 0 004.6 9a1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-heart"><path d="M12 20.5l-1.3-1.2C6 15 3 12.3 3 8.9A4.9 4.9 0 017.9 4c1.6 0 3.1.8 4.1 2A5 5 0 0116.1 4 4.9 4.9 0 0121 8.9c0 3.4-3 6.1-7.7 10.4z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></g>
+  <g id="i-plus"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></g>
+  <g id="i-mail"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M3 7l9 6 9-6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-wa"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" fill="currentColor"/></g>
+  <g id="i-phoneoff"><path d="M3 3l18 18" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M8.6 3.6A1.8 1.8 0 006.8 2H4.6A1.8 1.8 0 002.8 4c.3 2.2 1 4.2 2 6.1M21.2 16.9v2.2a1.8 1.8 0 01-2 1.8 18 18 0 01-7.8-2.8 17.7 17.7 0 01-3.1-2.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-bank"><path d="M3 10l9-6 9 6M5 10v9M19 10v9M3 20h18M9 20v-5h6v5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-star"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2-5.5-2.9-5.5 2.9 1-6.2L3 9.6l6.2-.9z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></g>
+  <g id="i-back"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-send"><path d="M21 3L3 10.5l7 3 3 7z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 3l-11 11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></g>
+  <g id="i-clip"><path d="M20.5 11.5l-8.2 8.2a5 5 0 01-7.1-7.1l8.3-8.3a3.4 3.4 0 014.8 4.8l-8.3 8.3a1.7 1.7 0 01-2.4-2.4l7.6-7.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-info"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M12 11v5M12 7.8v.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></g>
+  <g id="i-lock"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M8 10.5V7.5a4 4 0 118 0v3" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></g>
+  <g id="i-google"><path d="M21.6 12.2c0-.7-.1-1.3-.2-1.9H12v3.7h5.4a4.6 4.6 0 01-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3" fill="#4285F4"/><path d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1a6 6 0 01-5.6-4.1H3.1v2.6A10 10 0 0012 22" fill="#34A853"/><path d="M6.4 14a6 6 0 010-3.9V7.5H3.1a10 10 0 000 9z" fill="#FBBC05"/><path d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 003.1 7.5l3.3 2.6A6 6 0 0112 5.9" fill="#EA4335"/></g>
+</defs></svg>
+
+<div class="bar">
+  <svg class="mark" width="28" height="28" viewBox="0 0 80 80"><use href="#ffmark"/></svg>
+  <span class="ttl">Dashboard concept — v2</span>
+  <span class="sp"></span>
+  <div class="toggle">
+    <button id="tb-d" aria-pressed="true" onclick="setTheme('dark')">Dark</button>
+    <button id="tb-l" aria-pressed="false" onclick="setTheme('light')">Light</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+<h2 class="sec">The direction — "The Pass, grounded"</h2>
+<p class="lead">
+  A's navy pass becomes the shell on every screen. It stays navy in light mode, the same
+  way TopNav and the footer do. C's inset grouped rows carry everything under it. B's
+  stepper survives as one component inside a "What's left" group, not as the page
+  structure. Organising rule: the pass answers <em>is this on me or on them</em> before
+  anything scrolls, and orange appears exactly once per screen — only when the answer
+  is "you". The Waiting screen has no orange anywhere.
+</p>
+
+<h2 class="sec">Phone</h2>
+<p class="lead">Six screens. Flip the toggle above to check light mode on all of them.</p>
+
+<div class="phones">
+
+  <!-- ============ 1 · SIGN IN ============ -->
+  <div class="frame">
+    <p class="cap">1 · Sign in</p>
+    <div class="screen">
+      <div class="authhero">
+        <svg class="mark" width="46" height="46" viewBox="0 0 80 80"><use href="#ffmark"/></svg>
+        <h3>Welcome back.</h3>
+        <p>Pick up where you left off.</p>
+      </div>
+      <div class="scroll" style="padding-top:var(--s6)">
+        <div class="seg">
+          <button class="on">Sign in</button>
+          <button>Create account</button>
+        </div>
+        <div class="fields">
+          <div class="field">
+            <label>Email</label>
+            <div class="val">you@example.com</div>
+          </div>
+          <div class="field focus">
+            <label>Password</label>
+            <div class="val">••••••••••</div>
+          </div>
+        </div>
+        <div class="stack">
+          <button class="btn pri">Sign in</button>
+        </div>
+        <div class="orline">or</div>
+        <button class="btn ghost">
+          <svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-google"/></svg>
+          Continue with Google
+        </button>
+        <p class="fine"><a href="#">Forgot your password?</a></p>
+        <div class="trust">
+          <svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-shield"/></svg>
+          <p>Your payment is held securely until you confirm the work is done.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 2 · CREATE ACCOUNT ============ -->
+  <div class="frame">
+    <p class="cap">2 · Create account</p>
+    <div class="screen">
+      <div class="authhero">
+        <svg class="mark" width="46" height="46" viewBox="0 0 80 80"><use href="#ffmark"/></svg>
+        <h3>Let's get it fixed.</h3>
+        <p>Post a job, get real quotes from vetted Calgary pros.</p>
+      </div>
+      <div class="scroll" style="padding-top:var(--s6)">
+        <div class="seg">
+          <button>Sign in</button>
+          <button class="on">Create account</button>
+        </div>
+        <div class="fields">
+          <div class="field">
+            <label>Full name</label>
+            <div class="val ph">Jordan Mitchell</div>
+          </div>
+          <div class="field">
+            <label>Email</label>
+            <div class="val ph">you@example.com</div>
+          </div>
+          <div class="field focus">
+            <label>Password</label>
+            <div class="val">••••••••••</div>
+          </div>
+          <div class="field">
+            <label>Postal code</label>
+            <div class="val ph">T3A 1B2</div>
+          </div>
+        </div>
+        <div class="stack">
+          <button class="btn pri">Create account</button>
+        </div>
+        <div class="orline">or</div>
+        <button class="btn ghost">
+          <svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-google"/></svg>
+          Continue with Google
+        </button>
+        <p class="fine">By continuing you agree to the <a href="#">User&nbsp;Agreement</a> and <a href="#">Privacy&nbsp;Policy</a>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 3 · TWO OR MORE JOBS ============ -->
+  <div class="frame">
+    <p class="cap">3 · Three jobs open — the switcher</p>
+    <div class="screen">
+      <div class="pass">
+        <div class="passtop">
+          <svg class="mark" width="30" height="30" viewBox="0 0 80 80"><use href="#ffmark"/></svg>
+          <span class="wordmark">FREDDY <em>FIX IT</em></span>
+          <span class="sp"></span>
+          <div class="iconbtn"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-bell"/></svg><span class="bdg">3</span></div>
+        </div>
+        <div class="jobsw">
+          <div class="jobchip on"><b class="turn"></b>Furnace</div>
+          <div class="jobchip"><b></b>Bathroom tile</div>
+          <div class="jobchip"><b class="ok"></b>Gutters</div>
+          <div class="jobchip add"><svg width="12" height="12" viewBox="0 0 24 24"><use href="#i-plus"/></svg>New</div>
+        </div>
+        <span class="stateline turn"><span class="sdot pulse"></span>Your turn</span>
+        <p class="hero">Approve the time and price</p>
+        <p class="herosub">Marcus at Bowview Mechanical proposed Tuesday 9–11 AM for $340.</p>
+        <div class="passmeta">
+          <div><span class="mk">Job</span><span class="mv">Furnace repair</span></div>
+          <div><span class="mk">Deposit</span><span class="mv accent">$136</span></div>
+        </div>
+      </div>
+      <div class="scroll">
+        <div class="attn">
+          <div class="attnhd"><svg width="13" height="13" viewBox="0 0 24 24"><use href="#i-alert"/></svg>Needs your attention</div>
+          <div class="row">
+            <span class="ri"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-cal"/></svg></span>
+            <span class="rt"><b>Approve the time and price</b><span>Furnace repair · $340</span></span>
+            <span class="rr"><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span></span>
+          </div>
+          <div class="row">
+            <span class="ri"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-file"/></svg></span>
+            <span class="rt"><b>Sign the service agreement</b><span>Bathroom tile · 4 bids waiting</span></span>
+            <span class="rr"><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span></span>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="grplbl">All your jobs<span class="sp"></span><a href="#">History</a></div>
+          <div class="sheet">
+            <div class="row active">
+              <span class="ri"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-tools"/></svg></span>
+              <span class="rt"><b>Furnace repair</b><span>Approve the time and price</span></span>
+              <span class="rr"><span class="amt">$340</span><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span></span>
+            </div>
+            <div class="row">
+              <span class="ri n"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-clock"/></svg></span>
+              <span class="rt"><b>Bathroom tile</b><span>4 bids in — review when you're ready</span></span>
+              <span class="rr"><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span></span>
+            </div>
+            <div class="row">
+              <span class="ri g"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+              <span class="rt"><b>Gutter cleaning</b><span>Done Oct 24 · paid</span></span>
+              <span class="rr"><span class="amt">$180</span><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="grplbl">Shortcuts</div>
+          <div class="sheet">
+            <div class="row">
+              <span class="ri n"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-plus"/></svg></span>
+              <span class="rt"><b>Post a new job</b></span>
+              <span class="rr"><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span></span>
+            </div>
+            <div class="row">
+              <span class="ri n"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-heart"/></svg></span>
+              <span class="rt"><b>My Pros</b></span>
+              <span class="rr"><span class="pill n">3</span><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tabs">
+        <div class="tab on"><span class="tb"></span><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-tools"/></svg>Jobs</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-chat"/></svg>Chat</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-repeat"/></svg>Repeat</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-heart"/></svg>Pros</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-user"/></svg>You</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 4 · YOUR TURN ============ -->
+  <div class="frame">
+    <p class="cap">4 · Your turn — one job, stepper</p>
+    <div class="screen">
+      <div class="pass">
+        <div class="passtop">
+          <svg class="mark" width="30" height="30" viewBox="0 0 80 80"><use href="#ffmark"/></svg>
+          <span class="wordmark">FREDDY <em>FIX IT</em></span>
+          <span class="sp"></span>
+          <div class="iconbtn"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-bell"/></svg><span class="bdg">1</span></div>
+        </div>
+        <span class="stateline turn"><span class="sdot pulse"></span>Your turn</span>
+        <p class="hero">Sign the service agreement</p>
+        <p class="herosub">Marcus sent it over. Sign it so you can pay and lock in Tuesday.</p>
+        <div class="passmeta">
+          <div><span class="mk">Pro</span><span class="mv">Bowview Mech.</span></div>
+          <div><span class="mk">Visit</span><span class="mv">Tue 9–11 AM</span></div>
+          <div><span class="mk">Deposit</span><span class="mv accent">$136</span></div>
+        </div>
+      </div>
+      <div class="scroll">
+        <div class="stack">
+          <button class="btn pri">
+            <svg width="16" height="16" viewBox="0 0 24 24"><use href="#i-file"/></svg>
+            Review &amp; sign
+          </button>
+        </div>
+        <div class="btnrow">
+          <button class="btn sec"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chat"/></svg>Message</button>
+          <button class="btn sec"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-cal"/></svg>Reschedule</button>
+        </div>
+
+        <div class="grp">
+          <div class="grplbl">What's left</div>
+          <div class="sheet steps">
+            <div class="step">
+              <span class="dot ok"><svg width="10" height="10" viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+              <span class="st"><b>You picked Marcus</b><span>Oct 28 · $340 agreed</span></span>
+            </div>
+            <div class="step">
+              <span class="dot ok"><svg width="10" height="10" viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+              <span class="st"><b>Time confirmed</b><span>Tuesday 9–11 AM</span></span>
+            </div>
+            <div class="step">
+              <span class="dot now"></span>
+              <span class="st"><b>Sign the agreement</b><span>Required before any payment</span></span>
+            </div>
+            <div class="step todo">
+              <span class="dot todo"></span>
+              <span class="st"><b>Pay the $136 deposit</b><span>Held securely until the work is done</span></span>
+            </div>
+            <div class="step todo">
+              <span class="dot todo"></span>
+              <span class="st"><b>Marcus does the work</b></span>
+            </div>
+            <div class="step todo">
+              <span class="dot todo"></span>
+              <span class="st"><b>You confirm, Marcus gets paid</b></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="grplbl">This job</div>
+          <div class="sheet">
+            <div class="row">
+              <span class="ri n"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-pin"/></svg></span>
+              <span class="rt"><b>Service address</b><span>Confirmed · 14 Ave NW</span></span>
+              <span class="rr"><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span></span>
+            </div>
+            <div class="row">
+              <span class="ri n"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-cam"/></svg></span>
+              <span class="rt"><b>Photos</b><span>3 before shots</span></span>
+              <span class="rr"><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span></span>
+            </div>
+            <div class="row">
+              <span class="ri n"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-card"/></svg></span>
+              <span class="rt"><b>Payment</b><span>Nothing charged yet</span></span>
+              <span class="rr"><span class="pill n">Pending</span><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tabs">
+        <div class="tab on"><span class="tb"></span><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-tools"/></svg>Jobs</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-chat"/></svg>Chat</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-repeat"/></svg>Repeat</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-heart"/></svg>Pros</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-user"/></svg>You</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 5 · WAITING — zero orange ============ -->
+  <div class="frame">
+    <p class="cap">5 · Waiting — no orange anywhere</p>
+    <div class="screen">
+      <div class="pass">
+        <div class="passtop">
+          <svg class="mark" width="30" height="30" viewBox="0 0 80 80"><use href="#ffmark"/></svg>
+          <span class="wordmark">FREDDY <em>FIX IT</em></span>
+          <span class="sp"></span>
+          <div class="iconbtn"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-bell"/></svg></div>
+        </div>
+        <span class="stateline wait"><span class="sdot"></span>Waiting on your pro</span>
+        <p class="hero">Marcus is on the way</p>
+        <p class="herosub">Arriving between 9 and 11 AM. Nothing needed from you.</p>
+        <div class="passmeta">
+          <div><span class="mk">Pro</span><span class="mv">Bowview Mech.</span></div>
+          <div><span class="mk">Today</span><span class="mv">9–11 AM</span></div>
+          <div><span class="mk">Held</span><span class="mv">$136</span></div>
+        </div>
+      </div>
+      <div class="scroll">
+        <div class="btnrow" style="margin-top:var(--s5)">
+          <button class="btn sec"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chat"/></svg>Message</button>
+          <button class="btn sec"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-cal"/></svg>Reschedule</button>
+        </div>
+
+        <div class="grp">
+          <div class="grplbl">What's left</div>
+          <div class="sheet steps">
+            <div class="step">
+              <span class="dot ok"><svg width="10" height="10" viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+              <span class="st"><b>Agreement signed</b><span>Oct 29</span></span>
+            </div>
+            <div class="step">
+              <span class="dot ok"><svg width="10" height="10" viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+              <span class="st"><b>Deposit held</b><span>$136 · released when you confirm</span></span>
+            </div>
+            <div class="step">
+              <span class="dot now" style="background:var(--info);box-shadow:0 0 0 4px rgba(147,197,253,.16)"></span>
+              <span class="st"><b>Marcus is doing the work</b><span>He'll upload after photos</span></span>
+            </div>
+            <div class="step todo">
+              <span class="dot todo"></span>
+              <span class="st"><b>Pay the $204 balance</b></span>
+            </div>
+            <div class="step todo">
+              <span class="dot todo"></span>
+              <span class="st"><b>Confirm and leave a review</b></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="grplbl">This job</div>
+          <div class="sheet">
+            <div class="row">
+              <span class="ri g"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-file"/></svg></span>
+              <span class="rt"><b>Service agreement</b><span>Signed Oct 29</span></span>
+              <span class="rr"><span class="pill g">Signed</span><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span></span>
+            </div>
+            <div class="row">
+              <span class="ri n"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-card"/></svg></span>
+              <span class="rt"><b>Payment</b><span>$136 of $340 · held securely</span></span>
+              <span class="rr"><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span></span>
+            </div>
+            <div class="row">
+              <span class="ri n"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-cam"/></svg></span>
+              <span class="rt"><b>Photos</b><span>3 before · after pending</span></span>
+              <span class="rr"><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="trust">
+          <svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-shield"/></svg>
+          <p>Your $136 is held securely. Marcus isn't paid until you confirm the work is done.</p>
+        </div>
+      </div>
+      <div class="tabs">
+        <div class="tab on"><span class="tb"></span><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-tools"/></svg>Jobs</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-chat"/></svg>Chat</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-repeat"/></svg>Repeat</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-heart"/></svg>Pros</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-user"/></svg>You</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 6 · MONEY DUE ============ -->
+  <div class="frame">
+    <p class="cap">6 · Money due</p>
+    <div class="screen">
+      <div class="pass">
+        <div class="passtop">
+          <svg class="mark" width="30" height="30" viewBox="0 0 80 80"><use href="#ffmark"/></svg>
+          <span class="wordmark">FREDDY <em>FIX IT</em></span>
+          <span class="sp"></span>
+          <div class="iconbtn"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-bell"/></svg><span class="bdg">2</span></div>
+        </div>
+        <span class="stateline turn"><span class="sdot pulse"></span>Your turn</span>
+        <p class="hero">Pay the $204 balance</p>
+        <p class="herosub">Marcus finished and uploaded his photos. Pay the balance, then confirm to release his payment.</p>
+        <div class="passmeta">
+          <div><span class="mk">Total</span><span class="mv">$340</span></div>
+          <div><span class="mk">Held</span><span class="mv">$136</span></div>
+          <div><span class="mk">Due now</span><span class="mv accent">$204</span></div>
+        </div>
+      </div>
+      <div class="scroll">
+        <div class="stack">
+          <button class="btn pri">
+            <svg width="16" height="16" viewBox="0 0 24 24"><use href="#i-card"/></svg>
+            Pay $204
+          </button>
+        </div>
+        <div class="btnrow">
+          <button class="btn sec"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-cam"/></svg>See photos</button>
+          <button class="btn sec"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chat"/></svg>Message</button>
+        </div>
+
+        <div class="grp">
+          <div class="grplbl">Breakdown</div>
+          <div class="sheet">
+            <div class="row">
+              <span class="ri n"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-tools"/></svg></span>
+              <span class="rt"><b>Furnace repair</b><span>Agreed price</span></span>
+              <span class="rr"><span class="amt">$330.10</span></span>
+            </div>
+            <div class="row">
+              <span class="ri n"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-shield"/></svg></span>
+              <span class="rt"><b>Service fee</b><span>3% · charged once with the deposit</span></span>
+              <span class="rr"><span class="amt">$9.90</span></span>
+            </div>
+            <div class="row">
+              <span class="ri g"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+              <span class="rt"><b>Deposit already held</b><span>Paid Oct 29</span></span>
+              <span class="rr"><span class="amt" style="color:var(--ok)">−$136</span></span>
+            </div>
+            <div class="row" style="background:var(--a-soft)">
+              <span class="ri"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-card"/></svg></span>
+              <span class="rt"><b>Balance due</b></span>
+              <span class="rr"><span class="amt" style="color:var(--a500);font-size:1.12rem">$204</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="grplbl">What's left</div>
+          <div class="sheet steps">
+            <div class="step">
+              <span class="dot ok"><svg width="10" height="10" viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+              <span class="st"><b>Work finished</b><span>Today, 10:42 AM</span></span>
+            </div>
+            <div class="step">
+              <span class="dot now"></span>
+              <span class="st"><b>Pay the balance</b><span>$204</span></span>
+            </div>
+            <div class="step todo">
+              <span class="dot todo"></span>
+              <span class="st"><b>Confirm the work</b><span>Auto-confirms in 3 days if you don't</span></span>
+            </div>
+            <div class="step todo">
+              <span class="dot todo"></span>
+              <span class="st"><b>Marcus gets paid</b></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="trust">
+          <svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-shield"/></svg>
+          <p>Nothing reaches Marcus until you confirm. Not happy? Open a claim instead and we'll step in.</p>
+        </div>
+      </div>
+      <div class="tabs">
+        <div class="tab on"><span class="tb"></span><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-tools"/></svg>Jobs</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-chat"/></svg>Chat</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-repeat"/></svg>Repeat</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-heart"/></svg>Pros</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-user"/></svg>You</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<h2 class="sec">Onboarding complete</h2>
+<p class="lead">
+  Both screens do three jobs in order: confirm the thing happened, say exactly what the
+  person does next, and name every channel we'll use to reach them. The current
+  <code>ClientSuccess</code> / <code>ContractorSuccess</code> pages do the first two but
+  never answer "how will you contact me", which is the question that drives the support
+  email. Channels are email from <code>noreply@freddyfixit.ca</code>, the in-app bell, and
+  the WhatsApp button — there is no SMS anywhere in the platform, so the screen says so.
+</p>
+
+<div class="phones">
+
+  <!-- ============ 11 · CLIENT · REQUEST POSTED ============ -->
+  <div class="frame">
+    <p class="cap">11 · Client — job posted</p>
+    <div class="screen">
+      <div class="pass">
+        <div class="passtop">
+          <svg class="mark" width="30" height="30" viewBox="0 0 80 80"><use href="#ffmark"/></svg>
+          <span class="wordmark">FREDDY <em>FIX IT</em></span>
+        </div>
+        <div class="okmark"><svg width="26" height="26" viewBox="0 0 24 24"><use href="#i-check"/></svg></div>
+        <span class="stateline ok"><span class="sdot"></span>Request received</span>
+        <p class="hero">Your furnace job is live</p>
+        <p class="herosub">Vetted Calgary pros in your area have been notified. Estimates usually land within 2–6 hours.</p>
+        <div class="passmeta">
+          <div><span class="mk">Job</span><span class="mv">Furnace repair</span></div>
+          <div><span class="mk">Area</span><span class="mv">NW Calgary</span></div>
+          <div><span class="mk">Ref</span><span class="mv">#FFX-4193</span></div>
+        </div>
+      </div>
+      <div class="scroll">
+        <div class="attn">
+          <div class="attnhd"><svg width="13" height="13" viewBox="0 0 24 24"><use href="#i-mail"/></svg>Do this now</div>
+          <div class="row">
+            <span class="ri"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-mail"/></svg></span>
+            <span class="rt"><b>Check your inbox</b><span>We sent a confirmation to jordan.m@gmail.com. Tap the link so we know the address works.</span></span>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="grplbl">What happens next</div>
+          <div class="sheet steps">
+            <div class="step">
+              <span class="dot ok"><svg width="10" height="10" viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+              <span class="st"><b>Request posted</b><span>Today, 4:12 PM · sent to matching pros</span></span>
+            </div>
+            <div class="step">
+              <span class="dot now"></span>
+              <span class="st"><b>Estimates come in</b><span>Free, no obligation. You'll get an email and a bell for each one.</span></span>
+            </div>
+            <div class="step todo">
+              <span class="dot todo"></span>
+              <span class="st"><b>You pick your pro</b><span>Compare on your dashboard, message them, approve a time and price.</span></span>
+            </div>
+            <div class="step todo">
+              <span class="dot todo"></span>
+              <span class="st"><b>Sign and pay the deposit</b><span>40% up front, held securely. Nothing is charged before you sign.</span></span>
+            </div>
+            <div class="step todo">
+              <span class="dot todo"></span>
+              <span class="st"><b>Job done, you confirm</b><span>Your pro only gets paid once you say the work is right.</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="grplbl">How we'll reach you</div>
+          <div class="sheet">
+            <div class="chan">
+              <span class="ri"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-mail"/></svg></span>
+              <span class="rt"><b>Email</b><span><code>jordan.m@gmail.com</code> — every estimate and update. We send from <code>noreply@freddyfixit.ca</code>, so add it to your contacts.</span></span>
+              <span class="rr">Change</span>
+            </div>
+            <div class="chan">
+              <span class="ri n"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-bell"/></svg></span>
+              <span class="rt"><b>The bell on your dashboard</b><span>Fastest place to see a new estimate — it shows up here before the email lands.</span></span>
+            </div>
+            <div class="chan">
+              <span class="ri g"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-wa"/></svg></span>
+              <span class="rt"><b>WhatsApp — only if you start it</b><span>Urgent job? Message us and we'll push it to the front of the queue.</span></span>
+            </div>
+          </div>
+          <div class="never">
+            <svg width="18" height="18" viewBox="0 0 24 24"><use href="#i-phoneoff"/></svg>
+            <p>We never cold-call or text you, and your phone number is never shown to a pro until you pick them.</p>
+          </div>
+        </div>
+
+        <div class="stack">
+          <button class="btn pri"><svg width="16" height="16" viewBox="0 0 24 24"><use href="#i-tools"/></svg>Go to my dashboard</button>
+          <button class="btn sec"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-wa"/></svg>Message us on WhatsApp</button>
+        </div>
+
+        <div class="trust">
+          <svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-shield"/></svg>
+          <p>No money changes hands until you've picked a pro and signed. Questions? hello@freddyfixit.ca</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 12 · CONTRACTOR · PROFILE SUBMITTED ============ -->
+  <div class="frame">
+    <p class="cap">12 · Contractor — profile submitted</p>
+    <div class="screen">
+      <div class="pass">
+        <div class="passtop">
+          <svg class="mark" width="30" height="30" viewBox="0 0 80 80"><use href="#ffmark"/></svg>
+          <span class="wordmark">FREDDY <em>FIX IT</em></span>
+        </div>
+        <div class="okmark rev"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#i-clock"/></svg></div>
+        <span class="stateline rev"><span class="sdot"></span>Under review</span>
+        <p class="hero">You're in the queue</p>
+        <p class="herosub">A human reads every application. We'll email you either way, usually inside 24 hours.</p>
+        <div class="passmeta">
+          <div><span class="mk">Company</span><span class="mv">Bowview Mech.</span></div>
+          <div><span class="mk">Trades</span><span class="mv">HVAC · Plumbing</span></div>
+          <div><span class="mk">Zone</span><span class="mv">NW + Central</span></div>
+        </div>
+      </div>
+      <div class="scroll">
+        <div class="attn">
+          <div class="attnhd"><svg width="13" height="13" viewBox="0 0 24 24"><use href="#i-alert"/></svg>Do this while you wait</div>
+          <div class="row">
+            <span class="ri"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-bank"/></svg></span>
+            <span class="rt"><b>Set up your payouts</b><span>Takes 5 minutes. A client literally cannot be charged for your job until this is done.</span></span>
+            <span class="rr"><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span></span>
+          </div>
+          <div class="row">
+            <span class="ri"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-cam"/></svg></span>
+            <span class="rt"><b>Add work photos</b><span>Profiles with photos win roughly twice as many jobs. Add 3 and you're set.</span></span>
+            <span class="rr"><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span></span>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="grplbl">What happens next</div>
+          <div class="sheet steps">
+            <div class="step">
+              <span class="dot ok"><svg width="10" height="10" viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+              <span class="st"><b>Application submitted</b><span>Today, 4:12 PM · licence and insurance received</span></span>
+            </div>
+            <div class="step">
+              <span class="dot rev"></span>
+              <span class="st"><b>We verify your details</b><span>Licence, insurance and the trades you listed. Usually under 24 hours.</span></span>
+            </div>
+            <div class="step todo">
+              <span class="dot todo"></span>
+              <span class="st"><b>Profile goes live</b><span>You'll get an email the moment clients can see you.</span></span>
+            </div>
+            <div class="step todo">
+              <span class="dot todo"></span>
+              <span class="st"><b>Jobs start arriving</b><span>Matched to your trades and your zone. Bid from the dashboard, no fee to bid.</span></span>
+            </div>
+            <div class="step todo">
+              <span class="dot todo"></span>
+              <span class="st"><b>Finish a job, get paid</b><span>Client confirms, we release 93% of the job price to your account.</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="grplbl">How we'll reach you</div>
+          <div class="sheet">
+            <div class="chan">
+              <span class="ri"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-mail"/></svg></span>
+              <span class="rt"><b>Email</b><span><code>marcus@bowviewmech.ca</code> — your review result, every new job in your zone, and every payout receipt. We send from <code>noreply@freddyfixit.ca</code>.</span></span>
+              <span class="rr">Change</span>
+            </div>
+            <div class="chan">
+              <span class="ri n"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-bell"/></svg></span>
+              <span class="rt"><b>The bell on your dashboard</b><span>New jobs show here first. On a busy day that's the difference between winning a bid and missing it.</span></span>
+            </div>
+            <div class="chan">
+              <span class="ri g"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-chat"/></svg></span>
+              <span class="rt"><b>In-app chat</b><span>Once you win a job you message the client here. Keep it on the platform — that's what lets us back you up in a dispute.</span></span>
+            </div>
+          </div>
+          <div class="never">
+            <svg width="18" height="18" viewBox="0 0 24 24"><use href="#i-phoneoff"/></svg>
+            <p>No SMS and no cold calls. If someone phones claiming to be Freddy Fix It, it isn't us — email hello@freddyfixit.ca.</p>
+          </div>
+        </div>
+
+        <div class="stack">
+          <button class="btn pri"><svg width="16" height="16" viewBox="0 0 24 24"><use href="#i-bank"/></svg>Set up payouts</button>
+          <button class="btn sec"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-tools"/></svg>Go to my dashboard</button>
+        </div>
+
+        <div class="trust">
+          <svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-star"/></svg>
+          <p>Complete jobs, collect reviews, move up the list. Questions? hello@freddyfixit.ca</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<h2 class="sec">Onboarding complete — desktop</h2>
+<p class="lead">Same column, centred at 600px. No sidebar, because there's nothing to navigate to yet.</p>
+
+<div class="center">
+  <div class="deskwrap">
+    <div class="pass">
+      <div class="passtop">
+        <svg class="mark" width="30" height="30" viewBox="0 0 80 80"><use href="#ffmark"/></svg>
+        <span class="wordmark">FREDDY <em>FIX IT</em></span>
+      </div>
+      <div class="okmark"><svg width="26" height="26" viewBox="0 0 24 24"><use href="#i-check"/></svg></div>
+      <span class="stateline ok"><span class="sdot"></span>Request received</span>
+      <p class="hero">Your furnace job is live</p>
+      <p class="herosub">Vetted Calgary pros in your area have been notified. Estimates usually land within 2–6 hours.</p>
+      <div class="passmeta">
+        <div><span class="mk">Job</span><span class="mv">Furnace repair</span></div>
+        <div><span class="mk">Area</span><span class="mv">NW Calgary</span></div>
+        <div><span class="mk">Ref</span><span class="mv">#FFX-4193</span></div>
+      </div>
+    </div>
+    <div style="padding:0 var(--s6) var(--s6)">
+      <div class="attn">
+        <div class="attnhd"><svg width="13" height="13" viewBox="0 0 24 24"><use href="#i-mail"/></svg>Do this now</div>
+        <div class="row">
+          <span class="ri"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-mail"/></svg></span>
+          <span class="rt"><b>Check your inbox</b><span>We sent a confirmation to jordan.m@gmail.com. Tap the link so we know the address works.</span></span>
+        </div>
+      </div>
+
+      <div class="grp">
+        <div class="grplbl">What happens next</div>
+        <div class="sheet steps">
+          <div class="step">
+            <span class="dot ok"><svg width="10" height="10" viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+            <span class="st"><b>Request posted</b><span>Today, 4:12 PM · sent to matching pros</span></span>
+          </div>
+          <div class="step">
+            <span class="dot now"></span>
+            <span class="st"><b>Estimates come in</b><span>Free, no obligation. You'll get an email and a bell for each one.</span></span>
+          </div>
+          <div class="step todo">
+            <span class="dot todo"></span>
+            <span class="st"><b>You pick your pro</b><span>Compare on your dashboard, message them, approve a time and price.</span></span>
+          </div>
+          <div class="step todo">
+            <span class="dot todo"></span>
+            <span class="st"><b>Sign and pay the deposit</b><span>40% up front, held securely. Nothing is charged before you sign.</span></span>
+          </div>
+          <div class="step todo">
+            <span class="dot todo"></span>
+            <span class="st"><b>Job done, you confirm</b><span>Your pro only gets paid once you say the work is right.</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grp">
+        <div class="grplbl">How we'll reach you</div>
+        <div class="sheet">
+          <div class="chan">
+            <span class="ri"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-mail"/></svg></span>
+            <span class="rt"><b>Email</b><span><code>jordan.m@gmail.com</code> — every estimate and update, sent from <code>noreply@freddyfixit.ca</code>.</span></span>
+            <span class="rr">Change</span>
+          </div>
+          <div class="chan">
+            <span class="ri n"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-bell"/></svg></span>
+            <span class="rt"><b>The bell on your dashboard</b><span>Fastest place to see a new estimate.</span></span>
+          </div>
+          <div class="chan">
+            <span class="ri g"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-wa"/></svg></span>
+            <span class="rt"><b>WhatsApp — only if you start it</b><span>Urgent job? Message us and we'll push it to the front.</span></span>
+          </div>
+        </div>
+        <div class="never">
+          <svg width="18" height="18" viewBox="0 0 24 24"><use href="#i-phoneoff"/></svg>
+          <p>We never cold-call or text you, and your phone number is never shown to a pro until you pick them.</p>
+        </div>
+      </div>
+
+      <div class="btnrow">
+        <button class="btn pri">Go to my dashboard</button>
+        <button class="btn sec">Message us on WhatsApp</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 class="sec">Messages</h2>
+<p class="lead">
+  The inbox is the same grouped sheet as everywhere else — one conversation per job, not
+  per person, because that's what <code>conversationKey</code> already keys on. The thread
+  keeps the pass's rule: orange is the send button and nothing else, so an unanswered
+  message never competes with a payment for your eye. Bid-stage threads sit in their own
+  group above live jobs, since those are the ones you're still choosing between.
+</p>
+
+<div class="phones">
+
+  <!-- ============ 7 · INBOX ============ -->
+  <div class="frame">
+    <p class="cap">7 · Inbox</p>
+    <div class="screen">
+      <div class="pass">
+        <div class="passtop">
+          <svg class="mark" width="30" height="30" viewBox="0 0 80 80"><use href="#ffmark"/></svg>
+          <span class="wordmark">FREDDY <em>FIX IT</em></span>
+          <span class="sp"></span>
+          <div class="iconbtn"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-bell"/></svg><span class="bdg">3</span></div>
+        </div>
+        <span class="stateline turn"><span class="sdot pulse"></span>3 unread</span>
+        <p class="hero">Messages</p>
+        <p class="herosub">One thread per job. Marcus is waiting on an answer about the furnace.</p>
+      </div>
+      <div class="scroll">
+        <div class="grp">
+          <div class="grplbl">Live jobs</div>
+          <div class="sheet">
+            <div class="conv unread">
+              <span class="av a">MR</span>
+              <span>
+                <span class="ctop"><b>Marcus R.</b><span class="job">Furnace repair</span></span>
+                <span class="prev">All done — photos are up. Balance is $204 whenever you're ready.</span>
+              </span>
+              <span class="cmeta"><span>10:42 AM</span><span class="ub">2</span></span>
+            </div>
+            <div class="conv">
+              <span class="av g">DK</span>
+              <span>
+                <span class="ctop"><b>Dana K.</b><span class="job">Gutter cleaning</span></span>
+                <span class="prev">You: Thanks Dana, looks great.</span>
+              </span>
+              <span class="cmeta"><span>Oct 24</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="grplbl">Still choosing a pro<span class="sp"></span><a href="#">4 bids</a></div>
+          <div class="sheet">
+            <div class="conv unread">
+              <span class="av a">TV</span>
+              <span>
+                <span class="ctop"><b>Tomas V.</b><span class="job">Bathroom tile</span></span>
+                <span class="prev">Can you send a photo of the subfloor near the drain?</span>
+              </span>
+              <span class="cmeta"><span>Yesterday</span><span class="ub">1</span></span>
+            </div>
+            <div class="conv">
+              <span class="av">PN</span>
+              <span>
+                <span class="ctop"><b>Priya N.</b><span class="job">Bathroom tile</span></span>
+                <span class="prev">Quoted $1,840 — happy to walk it through on a call.</span>
+              </span>
+              <span class="cmeta"><span>Oct 27</span></span>
+            </div>
+            <div class="conv">
+              <span class="av">ET</span>
+              <span>
+                <span class="ctop"><b>Eli T.</b><span class="job">Bathroom tile</span></span>
+                <span class="prev">You: What's your lead time looking like?</span>
+              </span>
+              <span class="cmeta"><span>Oct 26</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="grplbl">Closed</div>
+          <div class="sheet">
+            <div class="conv">
+              <span class="av">AH</span>
+              <span>
+                <span class="ctop"><b>Amrit H.</b><span class="job">Dishwasher install</span></span>
+                <span class="prev">Finished and paid out · messaging closed</span>
+              </span>
+              <span class="cmeta"><span>Sep 12</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tabs">
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-tools"/></svg>Jobs</div>
+        <div class="tab on"><span class="tb"></span><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-chat"/></svg>Chat</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-repeat"/></svg>Repeat</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-heart"/></svg>Pros</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-user"/></svg>You</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 8 · THREAD ============ -->
+  <div class="frame">
+    <p class="cap">8 · Thread — open</p>
+    <div class="screen">
+      <div class="thhd">
+        <button class="thbtn"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-back"/></svg></button>
+        <span class="av a">MR</span>
+        <span class="nm">
+          <b>Marcus R.</b>
+          <span>Bowview Mechanical · Furnace repair</span>
+        </span>
+        <button class="thbtn"><svg width="18" height="18" viewBox="0 0 24 24"><use href="#i-info"/></svg></button>
+      </div>
+      <div class="msgs">
+        <span class="daysep">Tuesday</span>
+        <div class="bub them">
+          On my way — should be there about 9:15.
+          <span class="t">8:52 AM</span>
+        </div>
+        <div class="bub me">
+          Perfect, side door is unlocked.
+          <span class="t">8:54 AM</span>
+        </div>
+        <div class="bub them">
+          Found it — the inducer motor's seized. Swapping it now, no change to the price.
+          <span class="t">9:38 AM</span>
+        </div>
+        <div class="bub img">
+          <i></i>
+          <span class="t">9:41 AM</span>
+        </div>
+        <div class="sys">
+          <b>Work marked finished</b>
+          Marcus uploaded 4 after photos. Pay the $204 balance to continue.
+        </div>
+        <div class="bub them">
+          All done — photos are up. Balance is $204 whenever you're ready.
+          <span class="t">10:42 AM</span>
+        </div>
+      </div>
+      <div class="quick">
+        <div class="qc"><svg width="13" height="13" viewBox="0 0 24 24"><use href="#i-cal"/></svg>Suggest a time</div>
+        <div class="qc"><svg width="13" height="13" viewBox="0 0 24 24"><use href="#i-cam"/></svg>Photo</div>
+        <div class="qc"><svg width="13" height="13" viewBox="0 0 24 24"><use href="#i-card"/></svg>Pay $204</div>
+      </div>
+      <div class="comp">
+        <div class="cbtn att"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-clip"/></svg></div>
+        <div class="inp">Type a message…</div>
+        <div class="cbtn send"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-send"/></svg></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 9 · THREAD CLOSED ============ -->
+  <div class="frame">
+    <p class="cap">9 · Thread — read-only</p>
+    <div class="screen">
+      <div class="thhd">
+        <button class="thbtn"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-back"/></svg></button>
+        <span class="av">AH</span>
+        <span class="nm">
+          <b>Amrit H.</b>
+          <span>Hillhurst Appliance · Dishwasher install</span>
+        </span>
+        <button class="thbtn"><svg width="18" height="18" viewBox="0 0 24 24"><use href="#i-info"/></svg></button>
+      </div>
+      <div class="msgs">
+        <span class="daysep">Sep 12</span>
+        <div class="bub them">
+          Hooked up and tested, ran a full cycle. Left the old unit at the curb like you asked.
+          <span class="t">2:18 PM</span>
+        </div>
+        <div class="bub me">
+          Amazing, thank you. Confirming now.
+          <span class="t">2:31 PM</span>
+        </div>
+        <div class="sys">
+          <b>Job confirmed</b>
+          $420 released to Amrit. Thanks for leaving a review.
+        </div>
+      </div>
+      <div class="closed">
+        <svg width="18" height="18" viewBox="0 0 24 24"><use href="#i-lock"/></svg>
+        <p>This job is finished and paid out, so messaging is closed. Need Amrit again? Book him from My&nbsp;Pros.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 10 · EMPTY ============ -->
+  <div class="frame">
+    <p class="cap">10 · Nothing yet</p>
+    <div class="screen">
+      <div class="pass">
+        <div class="passtop">
+          <svg class="mark" width="30" height="30" viewBox="0 0 80 80"><use href="#ffmark"/></svg>
+          <span class="wordmark">FREDDY <em>FIX IT</em></span>
+          <span class="sp"></span>
+          <div class="iconbtn"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-bell"/></svg></div>
+        </div>
+        <span class="stateline wait"><span class="sdot"></span>No threads yet</span>
+        <p class="hero">Messages</p>
+        <p class="herosub">Chat opens as soon as a pro bids on one of your jobs.</p>
+      </div>
+      <div class="scroll">
+        <div class="sheet" style="margin-top:var(--s6)">
+          <div class="empty">
+            <span class="ei"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#i-chat"/></svg></span>
+            <b>No messages yet</b>
+            <p>Post a job and Calgary pros will reach out here. Every thread stays attached to its job, so nothing gets lost.</p>
+          </div>
+        </div>
+        <div class="stack">
+          <button class="btn pri"><svg width="16" height="16" viewBox="0 0 24 24"><use href="#i-plus"/></svg>Post a job</button>
+        </div>
+        <div class="trust">
+          <svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-shield"/></svg>
+          <p>Keep it in here. Chatting on the platform is what lets us step in if something goes wrong.</p>
+        </div>
+      </div>
+      <div class="tabs">
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-tools"/></svg>Jobs</div>
+        <div class="tab on"><span class="tb"></span><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-chat"/></svg>Chat</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-repeat"/></svg>Repeat</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-heart"/></svg>Pros</div>
+        <div class="tab"><svg width="19" height="19" viewBox="0 0 24 24"><use href="#i-user"/></svg>You</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<h2 class="sec">Messages — desktop</h2>
+<p class="lead">Two panes. The list keeps its groups; the thread fills the rest.</p>
+
+<div class="deskwrap">
+  <div class="desk">
+    <aside class="side">
+      <div class="sidetop">
+        <svg class="mark" width="30" height="30" viewBox="0 0 80 80"><use href="#ffmark"/></svg>
+        <span class="wordmark">FREDDY <em>FIX IT</em></span>
+      </div>
+      <div class="sgrp">Jobs</div>
+      <div class="snav"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-tools"/></svg>Active<span class="sp"></span><span class="ct a">2</span></div>
+      <div class="snav on"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-chat"/></svg>Messages<span class="sp"></span><span class="ct a">3</span></div>
+      <div class="snav"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-repeat"/></svg>Recurring</div>
+      <div class="snav"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-clock"/></svg>History</div>
+      <div class="sgrp">Saved</div>
+      <div class="snav"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-heart"/></svg>My Pros<span class="sp"></span><span class="ct">3</span></div>
+      <div class="snav"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-card"/></svg>Payments</div>
+      <div class="sidefoot">
+        <div class="snav"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-gear"/></svg>Settings</div>
+        <div class="snav"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-user"/></svg>Jordan M.</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="mainhd">
+        <h3>Messages</h3>
+        <span class="sp"></span>
+        <span class="pill a">3 unread</span>
+      </div>
+
+      <div class="cols" style="grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:var(--s5)">
+        <div>
+          <div class="grplbl" style="padding-top:0">Live jobs</div>
+          <div class="sheet">
+            <div class="conv on unread">
+              <span class="av a">MR</span>
+              <span>
+                <span class="ctop"><b>Marcus R.</b><span class="job">Furnace</span></span>
+                <span class="prev">All done — photos are up. Balance is $204.</span>
+              </span>
+              <span class="cmeta"><span>10:42</span><span class="ub">2</span></span>
+            </div>
+            <div class="conv">
+              <span class="av g">DK</span>
+              <span>
+                <span class="ctop"><b>Dana K.</b><span class="job">Gutters</span></span>
+                <span class="prev">You: Thanks Dana, looks great.</span>
+              </span>
+              <span class="cmeta"><span>Oct 24</span></span>
+            </div>
+          </div>
+          <div class="grplbl">Still choosing a pro</div>
+          <div class="sheet">
+            <div class="conv unread">
+              <span class="av a">TV</span>
+              <span>
+                <span class="ctop"><b>Tomas V.</b><span class="job">Bath tile</span></span>
+                <span class="prev">Can you send a photo of the subfloor?</span>
+              </span>
+              <span class="cmeta"><span>Yest.</span><span class="ub">1</span></span>
+            </div>
+            <div class="conv">
+              <span class="av">PN</span>
+              <span>
+                <span class="ctop"><b>Priya N.</b><span class="job">Bath tile</span></span>
+                <span class="prev">Quoted $1,840 — happy to walk it through.</span>
+              </span>
+              <span class="cmeta"><span>Oct 27</span></span>
+            </div>
+            <div class="conv">
+              <span class="av">ET</span>
+              <span>
+                <span class="ctop"><b>Eli T.</b><span class="job">Bath tile</span></span>
+                <span class="prev">You: What's your lead time looking like?</span>
+              </span>
+              <span class="cmeta"><span>Oct 26</span></span>
+            </div>
+          </div>
+          <div class="grplbl">Closed</div>
+          <div class="sheet">
+            <div class="conv">
+              <span class="av">AH</span>
+              <span>
+                <span class="ctop"><b>Amrit H.</b><span class="job">Dishwasher</span></span>
+                <span class="prev">Finished and paid out</span>
+              </span>
+              <span class="cmeta"><span>Sep 12</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sheet" style="display:flex;flex-direction:column;height:540px;overflow:hidden">
+          <div class="thhd">
+            <span class="av a">MR</span>
+            <span class="nm">
+              <b>Marcus R.</b>
+              <span>Bowview Mechanical · Furnace repair · $340</span>
+            </span>
+            <button class="btn pri" style="width:auto;padding:0 var(--s4);min-height:36px;font-size:.84rem">Pay $204</button>
+            <button class="thbtn"><svg width="18" height="18" viewBox="0 0 24 24"><use href="#i-info"/></svg></button>
+          </div>
+          <div class="msgs">
+            <span class="daysep">Tuesday</span>
+            <div class="bub them">On my way — should be there about 9:15.<span class="t">8:52 AM</span></div>
+            <div class="bub me">Perfect, side door is unlocked.<span class="t">8:54 AM</span></div>
+            <div class="bub them">Found it — the inducer motor's seized. Swapping it now, no change to the price.<span class="t">9:38 AM</span></div>
+            <div class="bub img"><i></i><span class="t">9:41 AM</span></div>
+            <div class="sys"><b>Work marked finished</b>Marcus uploaded 4 after photos. Pay the $204 balance to continue.</div>
+            <div class="bub them">All done — photos are up. Balance is $204 whenever you're ready.<span class="t">10:42 AM</span></div>
+          </div>
+          <div class="quick">
+            <div class="qc"><svg width="13" height="13" viewBox="0 0 24 24"><use href="#i-cal"/></svg>Suggest a time</div>
+            <div class="qc"><svg width="13" height="13" viewBox="0 0 24 24"><use href="#i-cam"/></svg>Photo</div>
+          </div>
+          <div class="comp">
+            <div class="cbtn att"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-clip"/></svg></div>
+            <div class="inp">Type a message…  (Shift+Enter for a new line)</div>
+            <div class="cbtn send"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-send"/></svg></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<h2 class="sec">Desktop — jobs</h2>
+<p class="lead">
+  Sidebar is a flat 232px rail at <code>#111827</code> with 12px side padding and 42px
+  nav rows — the clipped inset accent bar from v1 is gone, the active state is now a
+  filled tint. Section captions group the rail so it stops reading as one long list.
+</p>
+
+<div class="deskwrap">
+  <div class="desk">
+    <aside class="side">
+      <div class="sidetop">
+        <svg class="mark" width="30" height="30" viewBox="0 0 80 80"><use href="#ffmark"/></svg>
+        <span class="wordmark">FREDDY <em>FIX IT</em></span>
+      </div>
+      <div class="sgrp">Jobs</div>
+      <div class="snav on"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-tools"/></svg>Active<span class="sp"></span><span class="ct a">2</span></div>
+      <div class="snav"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-chat"/></svg>Messages<span class="sp"></span><span class="ct">4</span></div>
+      <div class="snav"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-repeat"/></svg>Recurring</div>
+      <div class="snav"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-clock"/></svg>History</div>
+      <div class="sgrp">Saved</div>
+      <div class="snav"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-heart"/></svg>My Pros<span class="sp"></span><span class="ct">3</span></div>
+      <div class="snav"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-card"/></svg>Payments</div>
+      <div class="sidefoot">
+        <div class="snav"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-gear"/></svg>Settings</div>
+        <div class="snav"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-user"/></svg>Jordan M.</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="mainhd">
+        <h3>Active jobs</h3>
+        <span class="sp"></span>
+        <button class="btn pri" style="width:auto;padding:0 var(--s5)">
+          <svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-plus"/></svg>Post a job
+        </button>
+      </div>
+
+      <div class="cols">
+        <div>
+          <div class="pass deskpass on-dark">
+            <span class="stateline turn"><span class="sdot pulse"></span>Your turn</span>
+            <p class="hero">Pay the $204 balance</p>
+            <p class="herosub">Marcus finished the furnace repair and uploaded his photos.</p>
+            <div class="passmeta">
+              <div><span class="mk">Job</span><span class="mv">Furnace repair</span></div>
+              <div><span class="mk">Pro</span><span class="mv">Bowview Mech.</span></div>
+              <div><span class="mk">Held</span><span class="mv">$136</span></div>
+              <div><span class="mk">Due now</span><span class="mv accent">$204</span></div>
+            </div>
+            <div class="btnrow" style="grid-template-columns:auto auto 1fr">
+              <button class="btn pri" style="width:auto;padding:0 var(--s5)">Pay $204</button>
+              <button class="btn ghost" style="width:auto;padding:0 var(--s5);border-color:rgba(255,255,255,.18);color:#f0f4ff">See photos</button>
+            </div>
+          </div>
+
+          <div class="grp">
+            <div class="grplbl">All your jobs<span class="sp"></span><a href="#">History</a></div>
+            <div class="tbl">
+              <div class="tr hd"><span>Job</span><span>Status</span><span style="text-align:right">Amount</span><span></span></div>
+              <div class="tr">
+                <span class="nm">Furnace repair</span>
+                <span><span class="pill a">Pay now</span></span>
+                <span class="am">$204</span>
+                <span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span>
+              </div>
+              <div class="tr">
+                <span class="nm">Bathroom tile — second floor</span>
+                <span><span class="pill w">4 bids</span></span>
+                <span class="am">—</span>
+                <span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span>
+              </div>
+              <div class="tr">
+                <span class="nm">Gutter cleaning</span>
+                <span><span class="pill g">Done</span></span>
+                <span class="am">$180</span>
+                <span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span>
+              </div>
+              <div class="tr">
+                <span class="nm">Dryer vent — annual</span>
+                <span><span class="pill n">Scheduled</span></span>
+                <span class="am">$95</span>
+                <span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="attn" style="margin-top:0">
+            <div class="attnhd"><svg width="13" height="13" viewBox="0 0 24 24"><use href="#i-alert"/></svg>Needs your attention</div>
+            <div class="row">
+              <span class="ri"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-card"/></svg></span>
+              <span class="rt"><b>Pay the $204 balance</b><span>Furnace repair</span></span>
+              <span class="rr"><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span></span>
+            </div>
+            <div class="row">
+              <span class="ri"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-file"/></svg></span>
+              <span class="rt"><b>Review 4 bids</b><span>Bathroom tile · oldest 2 days</span></span>
+              <span class="rr"><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span></span>
+            </div>
+            <div class="row">
+              <span class="ri"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-pin"/></svg></span>
+              <span class="rt"><b>Confirm your address</b><span>Dryer vent · before the deposit</span></span>
+              <span class="rr"><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span></span>
+            </div>
+          </div>
+
+          <div class="grp">
+            <div class="grplbl">What's left — furnace</div>
+            <div class="sheet steps">
+              <div class="step">
+                <span class="dot ok"><svg width="10" height="10" viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+                <span class="st"><b>Work finished</b><span>Today, 10:42 AM</span></span>
+              </div>
+              <div class="step">
+                <span class="dot now"></span>
+                <span class="st"><b>Pay the balance</b><span>$204</span></span>
+              </div>
+              <div class="step todo">
+                <span class="dot todo"></span>
+                <span class="st"><b>Confirm the work</b><span>Auto-confirms in 3 days</span></span>
+              </div>
+              <div class="step todo">
+                <span class="dot todo"></span>
+                <span class="st"><b>Marcus gets paid</b></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="trust">
+            <svg width="20" height="20" viewBox="0 0 24 24"><use href="#i-shield"/></svg>
+            <p>Your money is held securely until you confirm the work is done.</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<h2 class="sec">Primitives — what gets built in src/components/ui/</h2>
+<p class="lead">
+  Nine components. Every screen above is made only of these, which is why contractor
+  and admin become ports rather than rewrites.
+</p>
+
+<div class="prims">
+  <div class="prim">
+    <h4>Spacing scale</h4>
+    <div class="scale">
+      <div><i style="width:4px"></i>s1 · 4</div>
+      <div><i style="width:8px"></i>s2 · 8</div>
+      <div><i style="width:12px"></i>s3 · 12</div>
+      <div><i style="width:16px"></i>s4 · 16</div>
+      <div><i style="width:20px"></i>s5 · 20</div>
+      <div><i style="width:24px"></i>s6 · 24</div>
+      <div><i style="width:32px"></i>s8 · 32</div>
+      <div><i style="width:40px"></i>s10 · 40</div>
+    </div>
+  </div>
+
+  <div class="prim">
+    <h4>Height scale</h4>
+    <div class="scale">
+      <div><i style="width:60px;height:48px;border-radius:var(--r1)"></i>Row · 48</div>
+      <div><i style="width:60px;height:44px;border-radius:var(--r1)"></i>Control · 44 (iOS min)</div>
+      <div><i style="width:60px;height:42px;border-radius:var(--r1)"></i>Nav / table · 42</div>
+      <div><i style="width:60px;height:36px;border-radius:var(--r1)"></i>Chip · 36</div>
+      <div><i style="width:60px;height:26px;border-radius:99px"></i>State line · 26</div>
+      <div><i style="width:60px;height:24px;border-radius:99px"></i>Pill · 24</div>
+    </div>
+  </div>
+
+  <div class="prim">
+    <h4>The mark</h4>
+    <div style="display:flex;align-items:flex-end;gap:var(--s4)">
+      <svg class="mark" width="46" height="46" viewBox="0 0 80 80"><use href="#ffmark"/></svg>
+      <svg class="mark" width="30" height="30" viewBox="0 0 80 80"><use href="#ffmark"/></svg>
+      <svg class="mark" width="22" height="22" viewBox="0 0 80 80"><use href="#ffmark"/></svg>
+    </div>
+    <p style="margin:var(--s4) 0 0;font-size:.82rem;line-height:1.5;color:rgba(var(--muted),.9)">
+      Straight out of <code>public/favicon.svg</code>. Octagon, house, orange door. No wrench.
+    </p>
+  </div>
+
+  <div class="prim">
+    <h4>Pills &amp; counts</h4>
+    <div style="display:flex;flex-wrap:wrap;gap:var(--s2)">
+      <span class="pill a">Pay now</span>
+      <span class="pill w">4 bids</span>
+      <span class="pill g">Signed</span>
+      <span class="pill n">Scheduled</span>
+    </div>
+    <div style="display:flex;gap:var(--s3);margin-top:var(--s4)">
+      <span class="stateline turn" style="margin:0"><span class="sdot"></span>Your turn</span>
+      <span class="stateline wait" style="margin:0"><span class="sdot"></span>Waiting</span>
+    </div>
+  </div>
+
+  <div class="prim">
+    <h4>Row</h4>
+    <div class="sheet">
+      <div class="row">
+        <span class="ri"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-card"/></svg></span>
+        <span class="rt"><b>Primary label</b><span>Supporting line</span></span>
+        <span class="rr"><span class="amt">$204</span><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span></span>
+      </div>
+      <div class="row">
+        <span class="ri n"><svg width="14" height="14" viewBox="0 0 24 24"><use href="#i-clock"/></svg></span>
+        <span class="rt"><b>Neutral row</b><span>Separator insets to the 40px gutter</span></span>
+        <span class="rr"><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24"><use href="#i-chev"/></svg></span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="prim">
+    <h4>Colour</h4>
+    <div class="swatches">
+      <span class="sw"><i style="background:#1a2236"></i>bg</span>
+      <span class="sw"><i style="background:#151d2e"></i>surf</span>
+      <span class="sw"><i style="background:#111827"></i>pass</span>
+      <span class="sw"><i style="background:var(--a500)"></i>accent</span>
+      <span class="sw"><i style="background:var(--ok)"></i>ok</span>
+      <span class="sw"><i style="background:var(--warn)"></i>warn</span>
+      <span class="sw"><i style="background:var(--danger)"></i>danger</span>
+      <span class="sw"><i style="background:var(--info)"></i>info</span>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <b>Two calls I need from you</b>
+  <p><strong>1 · The hero line font.</strong> CLAUDE.md says Bebas Neue on every dashboard
+  heading. Bebas is all-caps condensed, so the hero renders "APPROVE THE TIME AND PRICE" —
+  shouting, which is the opposite of premium. Above, Bebas keeps every label, chip, numeral,
+  nav item and button; only the single hero status line is DM Sans at −0.03em. That's one
+  documented exception and one reversible CSS rule. Say the word and I'll put Bebas back so
+  you can compare.</p>
+  <p><strong>2 · The pass in light mode.</strong> It stays navy in both themes — the same
+  <code>.ff-on-dark</code> trick TopNav and the footer use. Flip to Light and tell me if the
+  navy block still reads right against the pale page, or if you'd rather it lighten with
+  everything else.</p>
+</div>
+
+<div class="note" style="background:rgba(134,239,172,.07);border-color:rgba(134,239,172,.22)">
+  <b style="color:var(--ok)">Fixed since v1</b>
+  <p>Spacing is now a token scale — nothing in this file uses an off-scale value. The stepper
+  connector is absolute geometry instead of a −0.6rem margin hack. The sidebar's clipped inset
+  accent bar is replaced by a filled tint, side padding is 12px, rows are a fixed 42px, and
+  the rail is grouped with captions. Table rows are a fixed 42px so they stop looking uneven.
+  The real mark from <code>public/favicon.svg</code> replaces the placeholder wrench. A job
+  switcher rail plus an "All your jobs" list give a multi-job client a way between them. Sign
+  in and Create account are both drawn. Every token resolves in both themes.</p>
+  <p>Added in this pass: the Messages page — inbox grouped by live job / still-choosing /
+  closed, an open thread with system events inline, the read-only thread using the real
+  <code>chatClosedReason()</code> wording, an empty state, and the desktop two-pane.</p>
+  <p>And the two onboarding-complete screens, which replace <code>ClientSuccess</code> and
+  <code>ContractorSuccess</code>: confirmation, next steps as the same stepper, and a
+  "How we'll reach you" group naming every channel plus the no-SMS promise.</p>
+</div>
+
+</div>
+
+<script>
+function setTheme(t){
+  document.body.dataset.theme = t;
+  document.getElementById('tb-d').setAttribute('aria-pressed', t === 'dark');
+  document.getElementById('tb-l').setAttribute('aria-pressed', t === 'light');
+}
+</script>
+</body>
+</html>
