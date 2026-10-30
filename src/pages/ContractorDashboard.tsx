@@ -1182,16 +1182,27 @@ export default function ContractorDashboard() {
     logo: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.4rem", letterSpacing:".1em" },
     tabsBar: { background:"rgba(var(--ff-fg), .02)", borderBottom:"1px solid rgba(var(--ff-fg), .06)", padding:"0 1.5rem", overflowX:"auto" as const },
     tabsInner: { maxWidth:"900px", margin:"0 auto", display:"flex", gap:".25rem" },
-    tab: { padding:".85rem 1.25rem", background:"none", border:"none", borderBottom:"2px solid transparent", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", whiteSpace:"nowrap" as const },
-    activeTab: { color:"#ea6b14", borderBottomColor:"#ea6b14" },
+    // ── Retargeted onto the token scale on 2026-10-30 ──────────────────────
+    // Same move, and the same reasoning, as ClientDashboard's `s` object: these
+    // objects have 50 call sites between `btn`, `card` and `cardTitle`, and
+    // editing the objects lands the theme on all of them without touching one
+    // `disabled` expression. The structural port onto <Button>/<Sheet> is still
+    // owed on this page — only <JobTimeline> has reached it so far — but it is
+    // its own change, not a line item inside a reskin.
+    //
+    // ⚠️ Inline styles cannot express :hover/:active/:disabled and must not try;
+    // `.ffdash button` carries all three. Setting `opacity` here would beat the
+    // injected sheet and freeze every button's disabled state.
+    tab: { padding:".85rem 1.25rem", background:"none", border:"none", borderBottom:"2px solid transparent", color:"rgba(var(--ff-muted), .5)", fontFamily:"'Bebas Neue',sans-serif", fontSize:".88rem", letterSpacing:".09em", cursor:"pointer", whiteSpace:"nowrap" as const },
+    activeTab: { color:"var(--ff-accent-500)", borderBottomColor:"var(--ff-accent-500)" },
     // Fluid padding: on a ~276px-wide phone column a flat 1.5rem/1.75rem ate
     // ~20% of the usable width before any content was drawn.
     content: { maxWidth:"900px", margin:"0 auto", padding:"clamp(1rem, 4vw, 2rem) clamp(.75rem, 3vw, 1.5rem)" },
-    card: { background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"14px", padding:"clamp(1rem, 4vw, 1.75rem)", marginBottom:"1.5rem" },
-    cardTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", lineHeight:1.1, color:"#ea6b14", marginBottom:"1.25rem" },
-    jobCard: { background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"12px", padding:"clamp(.9rem, 3.5vw, 1.5rem)", marginBottom:"1rem", cursor:"pointer" },
-    btn: { padding:".5rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"6px", color:"rgba(var(--ff-muted), .7)", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer" },
-    earnCard: { background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"12px", padding:"1.25rem", textAlign:"center" as const },
+    card: { background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"var(--ff-r3)", padding:"clamp(1rem, 4vw, 1.75rem)", marginBottom:"var(--ff-s6)" },
+    cardTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", lineHeight:1.1, color:"var(--ff-accent-500)", marginBottom:"var(--ff-s5)" },
+    jobCard: { background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", padding:"clamp(.9rem, 3.5vw, 1.5rem)", marginBottom:"var(--ff-s4)", cursor:"pointer" },
+    btn: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s4)", background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", color:"var(--ff-text)", fontFamily:"'Bebas Neue',sans-serif", fontSize:".88rem", letterSpacing:".09em", cursor:"pointer" },
+    earnCard: { background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", padding:"var(--ff-s5)", textAlign:"center" as const },
     chip: { padding:".3rem .75rem", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.18)", borderRadius:"99px", fontSize:".78rem", color:"rgba(var(--ff-muted), .8)", display:"inline-block", margin:".2rem" },
     slot: { padding:".38rem .85rem", borderRadius:"99px", fontSize:".78rem", cursor:"pointer", border:"1px solid rgba(var(--ff-fg), .1)", background:"rgba(var(--ff-fg), .04)", color:"rgba(var(--ff-muted), .7)", fontFamily:"inherit", margin:".2rem" },
     slotSel: { background:"rgba(234,107,20,.15)", borderColor:"rgba(234,107,20,.5)", color:"var(--ff-text)" },

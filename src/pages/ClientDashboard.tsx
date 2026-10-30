@@ -1535,13 +1535,31 @@ export default function ClientDashboard() {
     // Fluid padding: a flat 1.5rem on each side ate ~24% of the usable width
     // once the sidebar rail is subtracted on a phone.
     content: { maxWidth:"800px", margin:"0 auto", padding:"clamp(1rem, 4vw, 1.5rem)" },
-    card: { background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"14px", padding:"clamp(1rem, 4vw, 1.5rem)", marginBottom:"1.5rem" },
-    cardTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", lineHeight:1.1, color:"#ea6b14", marginBottom:"1.25rem" },
-    btn: { padding:".5rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"6px", color:"rgba(var(--ff-muted), .7)", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer" },
-    primaryBtn: { padding:".75rem 1.5rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer" },
-    tabs: { display:"flex", gap:".5rem", marginBottom:"1.5rem", flexWrap:"wrap" as const },
-    tab: { padding:".6rem 1.2rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px", color:"rgba(var(--ff-muted), .6)", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem" },
-    activeTab: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.4)", color:"var(--ff-text)" },
+    // ── Retargeted onto the token scale on 2026-10-30, as STYLE OBJECTS ─────
+    // There are 34 call sites between `btn` and `primaryBtn`, six of them on the
+    // contract-gated payment surface where the `disabled` expression carries
+    // `contractBlocked`. Rewriting 34 JSX elements onto <Button> would touch
+    // every one of those expressions; editing the four objects they already
+    // share touches NONE of them and lands the same appearance. The structural
+    // port is still worth doing — but as its own change, read against the gate,
+    // not folded into a reskin. See `docs/overview-and-shipping.md`: the gate
+    // fails closed, so a dropped `disabled` makes a job unpayable with no error.
+    //
+    // ⚠️ These are inline styles, so they cannot express :hover/:active/:disabled
+    // and MUST NOT try. Those three live in the `.ffdash button` block below
+    // (brightness on hover, scale(0.97) on press, .55 opacity disabled) and
+    // apply to every <button> on the page. An inline style beats the injected
+    // sheet, so adding `opacity` here would override the disabled state.
+    card: { background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"var(--ff-r3)", padding:"clamp(1rem, 4vw, 1.5rem)", marginBottom:"var(--ff-s6)" },
+    cardTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", lineHeight:1.1, color:"var(--ff-accent-500)", marginBottom:"var(--ff-s5)" },
+    // Bebas on buttons is the brand rule, not a preference — CLAUDE.md puts all
+    // buttons, chips, labels and numerals on it. Tracking matters at this size:
+    // Bebas without the .09em reads as a solid block.
+    btn: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s4)", background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", color:"var(--ff-text)", fontFamily:"'Bebas Neue',sans-serif", fontSize:".88rem", letterSpacing:".09em", cursor:"pointer" },
+    primaryBtn: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s5)", background:"var(--ff-accent-500)", color:"#fff", border:"none", borderRadius:"var(--ff-r2)", boxShadow:"var(--ff-lift-2)", fontFamily:"'Bebas Neue',sans-serif", fontSize:".95rem", letterSpacing:".09em", cursor:"pointer" },
+    tabs: { display:"flex", gap:"var(--ff-s2)", marginBottom:"var(--ff-s6)", flexWrap:"wrap" as const },
+    tab: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s4)", background:"transparent", border:"1px solid var(--ff-hair)", borderRadius:"var(--ff-r2)", color:"rgba(var(--ff-muted), .7)", cursor:"pointer", fontFamily:"'Bebas Neue',sans-serif", fontSize:".85rem", letterSpacing:".09em" },
+    activeTab: { background:"var(--ff-accent-soft)", borderColor:"var(--ff-accent-line)", color:"var(--ff-text)" },
   };
 
   // A time the CONTRACTOR named in the chat, waiting on this client to accept or

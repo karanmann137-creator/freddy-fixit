@@ -648,7 +648,35 @@ export default function AdminDashboard() {
     } finally { setBusyRelease(false); }
   };
 
-  const s = { wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" }, header: { background:"var(--ff-card-bg)", borderBottom:"1px solid rgba(var(--ff-fg), .07)", padding:"1rem 1.5rem", display:"flex", justifyContent:"space-between", alignItems:"center" }, logo: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.4rem", letterSpacing:".1em" }, content: { maxWidth:"1000px", margin:"0 auto", padding:"clamp(1rem, 4vw, 2rem) clamp(.75rem, 3vw, 1.5rem)" }, tabs: { display:"flex", gap:".5rem", marginBottom:"1.5rem", flexWrap:"wrap" as const }, tab: { padding:".6rem 1.2rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px", color:"rgba(var(--ff-muted), .6)", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem" }, activeTab: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.4)", color:"var(--ff-text)" }, card: { background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"12px", padding:"1.25rem", marginBottom:"1rem" }, title: { fontSize:".95rem", fontWeight:500, color:"var(--ff-text)", marginBottom:".35rem" }, meta: { fontSize:".78rem", color:"rgba(var(--ff-muted), .5)", marginBottom:".2rem" }, badge: { fontSize:".75rem", fontWeight:500, color:"#ea6b14" }, btn: { padding:".5rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"6px", color:"rgba(var(--ff-muted), .7)", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer" } };
+  // ── Retargeted onto the token scale on 2026-10-30, and broken onto separate
+  // lines in the same pass ────────────────────────────────────────────────────
+  // This was ONE 1,400-character line, which meant any future edit to a single
+  // style here produced a diff of the entire object and could not be reviewed.
+  // The values moved onto the --ff-* scale; nothing was added or removed, and
+  // `tabs`/`title`/`meta`/`badge` keep their geometry exactly.
+  //
+  // The theme lands on all 51 call sites (33 × btn, 17 × card, 1 × tab) without
+  // touching a line of JSX. The structural port onto the shared primitives in
+  // src/components/ui is still owed on this page — nothing here has reached it
+  // yet — and is deliberately a separate change.
+  //
+  // ⚠️ Inline styles cannot express :hover/:active/:disabled, and must not try.
+  // `.ffdash button` below carries all three for every button on the page; an
+  // inline `opacity` here would beat it and freeze the disabled state.
+  const s = {
+    wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
+    header: { background:"var(--ff-card-bg)", borderBottom:"1px solid var(--ff-hair)", padding:"var(--ff-s4) var(--ff-s6)", display:"flex", justifyContent:"space-between", alignItems:"center" },
+    logo: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.4rem", letterSpacing:".1em" },
+    content: { maxWidth:"1000px", margin:"0 auto", padding:"clamp(1rem, 4vw, 2rem) clamp(.75rem, 3vw, 1.5rem)" },
+    tabs: { display:"flex", gap:"var(--ff-s2)", marginBottom:"var(--ff-s6)", flexWrap:"wrap" as const },
+    tab: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s4)", background:"transparent", border:"1px solid var(--ff-hair)", borderRadius:"var(--ff-r2)", color:"rgba(var(--ff-muted), .7)", cursor:"pointer", fontFamily:"'Bebas Neue',sans-serif", fontSize:".85rem", letterSpacing:".09em" },
+    activeTab: { background:"var(--ff-accent-soft)", borderColor:"var(--ff-accent-line)", color:"var(--ff-text)" },
+    card: { background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", padding:"var(--ff-s5)", marginBottom:"var(--ff-s4)" },
+    title: { fontSize:".95rem", fontWeight:500, color:"var(--ff-text)", marginBottom:".35rem" },
+    meta: { fontSize:".78rem", color:"rgba(var(--ff-muted), .5)", marginBottom:".2rem" },
+    badge: { fontSize:".75rem", fontWeight:500, color:"var(--ff-accent-500)" },
+    btn: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s4)", background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", color:"var(--ff-text)", fontFamily:"'Bebas Neue',sans-serif", fontSize:".88rem", letterSpacing:".09em", cursor:"pointer" },
+  };
 
   // Shaped like the admin chrome: header bar, tab strip, then the 1000px
   // content column of cards. Same reason as the other two dashboards -- the
