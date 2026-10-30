@@ -27,6 +27,7 @@ import ProfileCompleteCelebration from "@/components/ProfileCompleteCelebration"
 import DashboardSidebar, { type SidebarItem } from "@/components/DashboardSidebar";
 import RequestHelpModal from "@/components/RequestHelpModal";
 import { jobCode } from "@/lib/jobCode";
+import { jobBalanceDue, jobAwaitingBalance } from "@/lib/jobFunding";
 import JobsCalendar from "@/components/JobsCalendar";
 import JobTimer from "@/components/JobTimer";
 import JobChecklist from "@/components/JobChecklist";
@@ -1147,12 +1148,16 @@ export default function ContractorDashboard() {
   // balance once the work is done — so a job sitting at payment_status='held'
   // is not necessarily paid in full. This is what stands between the pro and
   // their payout, so it has to be visible to them, not just to the client.
-  const jobBalanceDue = (j: any) => {
-    if (typeof j?.fully_funded === "boolean" && j.fully_funded) return 0;
-    const owing = (Number(j?.total_charged) || 0) - (Number(j?.funded_amount) || 0);
-    return Math.max(Math.round(owing * 100) / 100, 0);
-  };
-  const awaitingBalance = (j: any) => j?.payment_status === "held" && !j?.is_milestone && jobBalanceDue(j) > 0.005;
+  //
+  // Both of these now come from src/lib/jobFunding, which mirrors the generated
+  // `jobs.fully_funded` column exactly. The local copies they replaced read a
+  // NULL `total_charged` as zero, so an uncharged job computed a balance of 0
+  // and `awaitingBalance` never fired on it. `awaitingBalance` also used to test
+  // `jobBalanceDue(j) > 0.005` — a SECOND epsilon, a hair tighter than the
+  // server's 0.01 — which could claim a sub-cent balance the server considers
+  // settled. The shared version gates on the predicate and leaves the number to
+  // the display, which is the rule in CLAUDE.md.
+  const awaitingBalance = jobAwaitingBalance;
   const awaitingJobs = myJobs.filter(j => j.status === "pending_confirmation" || j.status === "scheduled" || j.status === "in_progress");
   // If the rate could not be read, no estimate is trustworthy, so the whole
   // "coming your way" card is withheld rather than shown short. Keeping this a

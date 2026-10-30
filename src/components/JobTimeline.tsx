@@ -1,5 +1,6 @@
 import { Ic } from "@/components/Ic";
 import { Group, Sheet, Stepper, type Step as UiStep, type StepState } from "@/components/ui";
+import { jobFullyFunded } from "@/lib/jobFunding";
 
 // Shared live progress tracker for a job. Derives each step's done/active state
 // from the job's timestamp fields so it stays in sync no matter who's looking.
@@ -53,20 +54,15 @@ export default function JobTimeline({ job }: { job: any }) {
   // below 100% gets its own balance step; anything charged in full (older jobs, or
   // a future 100% rate) keeps the single "Payment secured" line it always had.
   //
-  // ⚠️ `fullyFunded` here is a SECOND, LOOSER copy of the predicate
-  // ClientDashboard calls `jobFullyFunded` — different column (`total_charged`
-  // vs the computed job total) and a different epsilon (0.01 vs 0.005). It is
-  // display-only and it is left byte-identical on purpose: changing money maths
-  // inside a visual refactor is exactly the move that has caused outages here.
-  // The fix is to hoist ONE predicate into src/lib and have both dashboards
-  // plus this file read it, which is a money change and belongs behind the
-  // `freddy-payment-change` gate. Reported, not quietly patched.
+  // `fullyFunded` USED to be a second, looser copy of the predicate — the file
+  // carried its own inline expression, ClientDashboard carried a third with a
+  // different epsilon, and all three read a NULL `total_charged` as zero, so an
+  // uncharged job rendered "Balance paid". That hoist is done: src/lib/jobFunding
+  // is now the one implementation, mirroring the generated column exactly. Do not
+  // re-inline it here "to avoid an import" — the drift is how it started.
   const depRate = Number(job.deposit_rate);
   const split = depRate > 0 && depRate < 1;
-  const fullyFunded = typeof job.fully_funded === "boolean"
-    ? job.fully_funded
-    : Number(job.funded_amount ?? 0) >= Number(job.total_charged ?? 0) - 0.01;
-  const balancePaid = paid && fullyFunded;
+  const balancePaid = paid && jobFullyFunded(job);
 
   const steps: Step[] = [
     { key: "matched",   label: "Contractor matched", at: job.created_at ?? null,             done: true },

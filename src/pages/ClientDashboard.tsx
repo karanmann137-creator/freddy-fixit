@@ -43,6 +43,7 @@ import ReportProblem from "@/components/ReportProblem";
 import FileClaimModal, { type ClaimJob } from "@/components/FileClaimModal";
 import RequestHelpModal from "@/components/RequestHelpModal";
 import { jobCode } from "@/lib/jobCode";
+import { jobFullyFunded } from "@/lib/jobFunding";
 import { getDismissals, dismiss as dismissKey } from "@/lib/dismissals";
 import { searchTokens, matchesSearch } from "@/lib/dashSearch";
 import DashSearch from "@/components/DashSearch";
@@ -1085,11 +1086,17 @@ export default function ClientDashboard() {
     return Math.min(r2(r2(amt * jobDepositRate(j)) + fee), total);
   }
   function jobBalance(j: any) { return Math.max(r2(jobTotal(j) - jobFunded(j)), 0); }
-  // Prefer the DB's generated column; fall back to the maths on a stale row.
-  function jobFullyFunded(j: any) {
-    if (typeof j?.fully_funded === "boolean") return j.fully_funded;
-    return jobBalance(j) <= 0.005;
-  }
+  // `jobFullyFunded` is imported from src/lib/jobFunding — it used to be defined
+  // here, falling back to `jobBalance(j) <= 0.005` whenever `fully_funded` was
+  // absent. That fallback leaned on `jobTotal()`, which SYNTHESISES a total from
+  // `amount * (1 + feeRate)` when the job has not been charged, so an uncharged
+  // job with no payments read as fully funded. The shared predicate mirrors the
+  // generated column instead and answers FALSE when it cannot tell.
+  //
+  // The four functions ABOVE stay local on purpose. They are the pre-checkout
+  // ESTIMATE — "due now / due when the work is done" — which needs the live fee
+  // and deposit rates and is a genuinely different question from "what is
+  // outstanding on a charged job". Do not fold them into the shared module.
   // True when this job is actually split in two — a 100% deposit rate (or a job
   // stamped before the split existed) should read exactly as it always did.
   function depositSplit(j: any) { return jobTotal(j) - jobDueNow(j) > 0.005; }
