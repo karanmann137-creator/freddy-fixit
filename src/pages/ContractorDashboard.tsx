@@ -38,6 +38,10 @@ import BidChat from "@/components/BidChat";
 import DismissX from "@/components/DismissX";
 import DashSearch from "@/components/DashSearch";
 import { searchTokens, matchesSearch } from "@/lib/dashSearch";
+import {
+  Pass, PassTop, IconButton, StateLine, Hero, HeroSub, PassMeta, PassMetaItem,
+  JobSwitcher, type State,
+} from "@/components/ui";
 
 const CONTRACTOR_NAV: SidebarItem[] = [
   { key: "jobs",      label: "My Jobs",        icon: "briefcase" },
@@ -1178,8 +1182,11 @@ export default function ContractorDashboard() {
 
   const s = {
     wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
-    header: { background:"rgba(var(--ff-fg), .03)", borderBottom:"1px solid rgba(var(--ff-fg), .07)", padding:".75rem 1.5rem", display:"flex", justifyContent:"space-between", alignItems:"center" },
-    logo: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.4rem", letterSpacing:".1em" },
+    // `header` and `logo` were removed on 2026-10-30. `header` was the v1
+    // greeting strip, which the <Pass> replaced; `logo` had already been dead
+    // for some time (the global TopNav carries the wordmark). Both are deleted
+    // rather than left in place because a style key that nothing reads still
+    // looks like the live answer to "how is the top of this page styled".
     tabsBar: { background:"rgba(var(--ff-fg), .02)", borderBottom:"1px solid rgba(var(--ff-fg), .06)", padding:"0 1.5rem", overflowX:"auto" as const },
     tabsInner: { maxWidth:"900px", margin:"0 auto", display:"flex", gap:".25rem" },
     // ── Retargeted onto the token scale on 2026-10-30 ──────────────────────
@@ -1255,6 +1262,180 @@ export default function ContractorDashboard() {
     </div>
   );
 
+  // ── "Needs your attention", HOISTED out of the JSX on 2026-10-30 ──────────
+  // This derivation used to live inside a `{(() => { … })()}` in the middle of
+  // the return, which meant nothing ABOVE the return could read it — and the
+  // Pass at the top of the page is exactly a thing above the return that has to
+  // read it. The rows themselves are unchanged (same order, same text, same
+  // onClick, same four-row cap); only the place they are computed moved. The
+  // panel further down now renders `shownAttn` instead of rebuilding it.
+  //
+  // ORDER MATTERS: only the first four rows render, so money-gating rows
+  // (claims, unsent agreements, missing photos, an unpaid balance) are pushed
+  // FIRST and the conversational rows go last. A chat time suggestion plus
+  // three unread threads used to fill every slot and hide the fact that a claim
+  // was open or an agreement had never been sent.
+  //
+  // `hero` is new and is the ONLY added field: the Pass needs a headline short
+  // enough to set in Bebas at display size, and `text` is a full sentence. The
+  // two are deliberately not derived from each other — `hero` names the move,
+  // `text` explains it, and a truncated sentence would do neither.
+  const attn: { key: string; hero: string; text: string; cta: string; onClick: () => void; danger?: boolean }[] = [];
+  for (const job of myJobs) {
+    const d = disputes[job.id];
+    const svc = job.request?.service_needed ?? "a job";
+    if (d && d.status === "open" && !d.contractor_responded_at) {
+      attn.push({ key: "claim-" + job.id, hero: "A CLAIM NEEDS YOUR REPLY", text: "A client filed a claim on “" + svc + "” — your payout is paused until you respond.", cta: "Respond now", onClick: () => focusJobAnchor(job, A_CLAIM), danger: true });
+    // Gated on the live stages, exactly like the panel this row scrolls
+    // to. Neither flag is ever cleared, so ungated the row — and its
+    // dead "Review new time" button, since A_RESCHED only renders on
+    // those stages — sat on completed and cancelled jobs forever,
+    // burning one of only four attention slots.
+    } else if (job.client_rescheduled_at && !job.reschedule_accepted_at
+               && ["assigned","scheduled","in_progress"].includes(job.status)) {
+      attn.push({ key: "resched-" + job.id, hero: "YOUR CLIENT MOVED THE TIME", text: (job.client?.first_name || "Your client") + " changed the time on “" + svc + "”.", cta: "Review new time", onClick: () => focusJobAnchor(job, A_RESCHED) });
+    } else if (job.status === "assigned" && job.walkthrough_approved_at && !job.walkthrough_done_at) {
+      attn.push({ key: "wt-" + job.id, hero: "MARK THE WALKTHROUGH DONE", text: "Walkthrough confirmed for “" + svc + "”" + (job.walkthrough_at ? " — " + new Date(job.walkthrough_at).toLocaleString() : "") + ". After the visit, mark it done and send your estimate.", cta: "Mark walkthrough done", onClick: () => focusJobAnchor(job, A_WALK) });
+    } else if (job.status === "assigned" && job.walkthrough_done_at && !job.schedule_proposed_at) {
+      // The walkthrough block only says "done"; the thing they came to do
+      // is the propose form, so send them there rather than to the notice.
+      attn.push({ key: "wtdone-" + job.id, hero: "SEND YOUR ESTIMATE", text: "You finished the walkthrough on “" + svc + "” — the client is waiting for your estimate.", cta: "Send estimate", onClick: () => focusJobAnchor(job, A_PROPOSE) });
+    } else if (job.status === "assigned" && job.slot_released_at && !job.schedule_proposed_at) {
+      attn.push({ key: "slot-" + job.id, hero: "PROPOSE A NEW TIME", text: "The booked time on “" + svc + "” was released — it wasn't signed and paid in time. You still have the job; propose a new time.", cta: "Propose new time", onClick: () => focusJobAnchor(job, A_PROPOSE) });
+    } else if (job.status === "assigned" && !job.schedule_proposed_at && !job.walkthrough_proposed_at) {
+      attn.push({ key: "propose-" + job.id, hero: "SEND YOUR TIME AND PRICE", text: "“" + svc + "” is waiting for your time and price.", cta: "Propose now", onClick: () => focusJobAnchor(job, A_PROPOSE) });
+    } else if (job.status === "scheduled" && job.scheduled_at) {
+      const dt = new Date(job.scheduled_at).getTime() - Date.now();
+      // Booked within the day: the move is directions + "I'm on my way",
+      // so land on that pair rather than the top of the card.
+      if (dt > 0 && dt < 24 * 3600 * 1000) attn.push({ key: "soon-" + job.id, hero: "YOU'RE ON SITE SOON", text: "“" + svc + "” is booked for " + new Date(job.scheduled_at).toLocaleString() + ".", cta: "Get ready", onClick: () => focusJobAnchor(job, A_ONWAY) });
+    }
+    // Work is done and only the deposit is in: the outstanding balance is
+    // the single thing blocking this pro's payout, and nothing else on
+    // their dashboard would tell them so.
+    if (job.status === "pending_confirmation" && awaitingBalance(job)) {
+      attn.push({ key: "bal-" + job.id, hero: "THE BALANCE ISN'T IN YET", text: "“" + svc + "” is finished but the client still owes $" + jobBalanceDue(job).toFixed(2) + " — your payout is released once they pay and confirm.", cta: "See what's owed", onClick: () => focusJobAnchor(job, A_BALANCE) });
+    }
+    // No signed agreement = the client physically cannot pay, so this
+    // outranks everything else on a live job. Only prompt when it's the
+    // contractor's move (nothing sent yet); once it's with the client the
+    // panel on the job already says who we're waiting on.
+    if (!contractsFailed
+        && ["assigned", "scheduled", "in_progress", "pending_confirmation"].includes(job.status)
+        && !["signed", "sent"].includes(contracts[job.id] ?? "")) {
+      attn.push({ key: "contract-" + job.id, hero: "SEND THE AGREEMENT", text: "“" + svc + "” needs a signed service agreement — your client can't pay until you send it.", cta: "Send agreement", onClick: () => focusContractJob(job) });
+    }
+    // Photos are what unlock payment, so chase them once work is under way.
+    if (job.status === "in_progress" || (job.status === "scheduled" && job.on_my_way_at)) {
+      const miss = photosMissing(job);
+      if (miss.length) attn.push({ key: "photo-" + job.id, hero: "ADD THE REQUIRED PHOTOS", text: "“" + svc + "” still needs " + miss.join(" and ") + " — you can't mark it complete without them.", cta: "Add photos", onClick: () => focusJobAnchor(job, A_PHOTOS) });
+    }
+  }
+  const reserved = availableJobs.filter((r: any) => r.is_preferred);
+  if (reserved.length > 0) {
+    attn.push({ key: "reserved", hero: "A CLIENT ASKED FOR YOU", text: reserved.length === 1 ? "A client requested you — “" + reserved[0].service_needed + "” is reserved for you for 48h." : reserved.length + " clients requested you — jobs are reserved for you for 48h.", cta: "See jobs", onClick: () => { setActiveTab("available"); window.scrollTo({ top: 0, behavior: "smooth" }); } });
+  }
+  // ── Conversational rows last (see the ordering note above) ──────────
+  for (const job of chatTimeJobs) {
+    // Stays put after "Decide later" so a suggested time can't be lost.
+    attn.push({
+      key: "chattime-" + job.id,
+      hero: "A TIME WAS SUGGESTED",
+      text: (job.client?.first_name || "Your client") + " suggested " + formatWhen(job.chat_time_at) + " for “" + (job.request?.service_needed ?? "a job") + "”.",
+      cta: "Accept or change",
+      onClick: () => setTimeDismissed(prev => { const n = new Set(prev); n.delete(job.id); return n; }),
+    });
+  }
+  // Unread messages. Capped at 3 so a chatty week can't bury the rows
+  // that gate money (claims, agreements, photos).
+  //
+  // `inboxRows`, not `conversations` — a pre-hire question from a client
+  // deciding who to hire is the MOST time-sensitive message a pro gets,
+  // and it used to raise no row at all.
+  for (const c of inboxRows.filter(c => c.unread > 0).slice(0, 3)) {
+    attn.push({
+      key: "msg-" + conversationKey(c),
+      hero: c.unread === 1 ? "YOU HAVE AN UNREAD MESSAGE" : "YOU HAVE UNREAD MESSAGES",
+      text: partyName(c) + " sent you " + (c.unread === 1 ? "a message" : c.unread + " messages")
+        + (c.kind === "bid"
+            ? " about “" + (c.service_needed ?? "a job") + "” — they haven't picked anyone yet."
+            : " about “" + (c.service_needed ?? "a job") + "”."),
+      cta: "Read it",
+      onClick: () => { setActiveTab("messages"); openConversation(c); window.scrollTo({ top: 0, behavior: "smooth" }); },
+    });
+  }
+  // Filter BEFORE the slice, or an × would remove a row and reveal
+  // nothing — only the first four ever render.
+  const attnRowKey = (k: string) => "attn:contractor:" + k;
+  const shownAttn = attn.filter(a => !hiddenNow.has(attnRowKey(a.key)));
+
+  // ── The Pass ──────────────────────────────────────────────────────────────
+  // One sentence, at the top, answering "is this on me or on them?" before
+  // anything scrolls. Mirrors ClientDashboard's `pass` exactly in shape so the
+  // two dashboards can never drift into saying the same state two ways.
+  //
+  // Branch order is severity, not chronology, and it is deliberate:
+  //   1. an attention row — something is on this pro RIGHT NOW
+  //   2. account not active — nothing else is actionable until it is
+  //   3. payouts not connected — work can be done but cannot be PAID, and this
+  //      is also the fifth reason `contract_ready()` refuses, so without it the
+  //      client cannot be charged either. It outranks "next job" for that
+  //      reason, not because it is urgent in itself.
+  //   4. the next booked job
+  //   5. live jobs but nothing booked / nothing on the go
+  const nextBooked = myJobs
+    .filter((j: any) => j.scheduled_at && new Date(j.scheduled_at).getTime() > Date.now()
+                        && !["cancelled","completed"].includes(j.status))
+    .sort((a: any, b: any) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())[0] ?? null;
+  const liveJobs = myJobs.filter((j: any) => !["cancelled","completed"].includes(j.status));
+  const pass: {
+    state: State; label: string; hero: string; sub?: string;
+    meta: { label: string; value: string; accent?: boolean }[];
+  } = (() => {
+    // Meta is shared by every branch that has numbers worth showing. An empty
+    // meta row is better than three blank label/value pairs, which read as a
+    // broken component rather than as "nothing yet" — same call as the client
+    // side's "NOTHING OPEN" branch.
+    const meta = [
+      { label: "Active jobs", value: String(liveJobs.length) },
+      { label: "Open near you", value: String(availableJobs.length), accent: availableJobs.length > 0 },
+      { label: "This week", value: "$" + Number(earn?.this_week ?? 0).toFixed(0) },
+    ];
+    if (shownAttn.length > 0) {
+      const extra = shownAttn.length - 1;
+      return {
+        state: "turn" as const,
+        label: "YOUR TURN",
+        hero: shownAttn[0].hero,
+        sub: extra > 0 ? extra + " more thing" + (extra === 1 ? "" : "s") + " needs you below." : shownAttn[0].text,
+        meta,
+      };
+    }
+    if (contractor.status === "pending") {
+      return { state: "wait" as const, label: "UNDER REVIEW", hero: "WE'RE CHECKING YOUR PROFILE",
+               sub: "We'll email you the moment you're approved — nothing else is needed from you.", meta: [] };
+    }
+    if (contractor.status !== "active") {
+      return { state: "wait" as const, label: "ACCOUNT INACTIVE", hero: "YOUR ACCOUNT ISN'T ACTIVE",
+               sub: "Get in touch and we'll sort it out.", meta: [] };
+    }
+    if (!contractor.stripe_payouts_enabled) {
+      return { state: "turn" as const, label: "ONE STEP LEFT", hero: "CONNECT YOUR PAYOUTS",
+               sub: "Until a bank account is connected we can't pay you — and clients can't be charged for your jobs.", meta };
+    }
+    if (nextBooked) {
+      return { state: "wait" as const, label: "NEXT UP", hero: formatWhen(nextBooked.scheduled_at).toUpperCase(),
+               sub: (nextBooked.request?.service_needed ?? "A job") + (nextBooked.client?.first_name ? " for " + nextBooked.client.first_name : ""), meta };
+    }
+    if (liveJobs.length > 0) {
+      return { state: "ok" as const, label: "ALL CAUGHT UP", hero: "NOTHING NEEDS YOU",
+               sub: liveJobs.length + " job" + (liveJobs.length === 1 ? "" : "s") + " on the go — we'll tell you the moment one needs a move.", meta };
+    }
+    return { state: "ok" as const, label: "NOTHING ON THE GO", hero: "READY FOR WORK",
+             sub: availableJobs.length > 0 ? availableJobs.length + " job" + (availableJobs.length === 1 ? "" : "s") + " posted near you right now." : "We'll notify you the moment a job lands in your trades.",
+             meta };
+  })();
+
   return (
     <div style={s.wrap} className="ffdash">
       <style>{".ffdash button{transition:filter .16s var(--ff-ease-out), transform .16s var(--ff-ease-out), opacity .16s var(--ff-ease-out)} .ffdash button:hover:not(:disabled){filter:brightness(1.09)} .ffdash button:active:not(:disabled){transform:scale(0.97); transition-duration:.1s} .ffdash button:disabled{opacity:.55; cursor:not-allowed}"
@@ -1279,15 +1460,65 @@ export default function ContractorDashboard() {
         />
         <div style={{ flex:1, minWidth:0 }}>
 
-      <div style={s.header}>
-        <div>
-          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.7rem", letterSpacing:".02em", margin:0, lineHeight:1.1 }}>
-            Welcome{profile?.first_name ? ", " + profile.first_name : ""}
-          </h1>
-          <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .6)", marginTop:".2rem" }}>
-            {contractor?.status === "pending" ? "Profile under review" : contractor?.status === "active" ? "Active" : "Account inactive"}
-          </div>
-        </div>
+      {/* ── The Pass ───────────────────────────────────────────────────────────
+          Replaces the v1 `<div style={s.header}>` greeting, which was a Bebas
+          "Welcome, <name>" over a one-word status and answered nothing: a pro
+          with a claim open and a pro with an empty week read identically.
+          Same component, same props and the same forceNavy default as the
+          client side, so the two cannot drift.
+
+          `lead` REPLACES the mark and wordmark on purpose — this renders under
+          the global TopNav, which already carries the logo, and two logos ~60px
+          apart reads as a layout bug. See PassTop's docblock. */}
+      <div style={{ margin:"0 var(--ff-s4) var(--ff-s5)", borderRadius:"var(--ff-r4)", overflow:"hidden", boxShadow:"var(--ff-lift-3)" }}>
+        <Pass>
+          <PassTop lead={<span className="ffu-wordmark">{profile?.first_name ? "HI, " + String(profile.first_name).toUpperCase() : "WELCOME BACK"}</span>}>
+            {msgUnread > 0 && (
+              <IconButton label={msgUnread + " unread message" + (msgUnread === 1 ? "" : "s")} badge={msgUnread} onClick={() => { setActiveTab("messages"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+                <Ic name="message-square" size={16} />
+              </IconButton>
+            )}
+          </PassTop>
+          {/* Live jobs only. No `alwaysShow` and no length guard here — the
+              component itself returns null under two jobs, and re-deriving that
+              condition at the call site is how two readers of the same rule end
+              up disagreeing about it.
+
+              No `onNew` either: a contractor doesn't create jobs, so a "+ NEW"
+              chip would be a control that can never succeed.
+
+              The dot is `turn` when one of the hoisted attention rows belongs to
+              this job. Rows are keyed `"<kind>-" + job.id`, which is why the
+              test is a suffix match — the conversational rows ("reserved",
+              "msg-…") carry no job id and correctly match nothing. */}
+          <JobSwitcher
+            jobs={liveJobs.map((j: any) => ({
+              id: j.id,
+              label: j.request?.service_needed ?? "Job",
+              state: shownAttn.some(a => a.key.endsWith("-" + j.id)) ? "turn" as const : "wait" as const,
+            }))}
+            activeId={activeJobId}
+            onSelect={(id) => {
+              const j = liveJobs.find((x: any) => x.id === id);
+              if (!j) return;
+              // Same four steps as every other jump into a job on this page
+              // (see the DashboardSidebar onOpen handler): the stage filter has
+              // to be cleared first or it can hide the job being opened.
+              setActiveTab("jobs");
+              setJobFilter(null);
+              if (activeJobId !== j.id) openJob(j);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          />
+          <StateLine state={pass.state} pulse={pass.state === "turn"}>{pass.label}</StateLine>
+          <Hero>{pass.hero}</Hero>
+          {pass.sub && <HeroSub>{pass.sub}</HeroSub>}
+          {pass.meta.length > 0 && (
+            <PassMeta>
+              {pass.meta.map(m => <PassMetaItem key={m.label} label={m.label} value={m.value} accent={m.accent} />)}
+            </PassMeta>
+          )}
+        </Pass>
       </div>
 
       {showProfileCongrats && (
@@ -1459,123 +1690,31 @@ export default function ContractorDashboard() {
           );
         })()}
 
-        {(() => {
-          // "Needs your attention" — the one place that answers "what should I do next?"
-          const attn: { key: string; text: string; cta: string; onClick: () => void; danger?: boolean }[] = [];
-          // ORDER MATTERS: only the first four rows render, so money-gating rows
-          // (claims, unsent agreements, missing photos, an unpaid balance) are
-          // pushed FIRST and the conversational rows go last. A chat time
-          // suggestion plus three unread threads used to fill every slot and hide
-          // the fact that a claim was open or an agreement had never been sent.
-          for (const job of myJobs) {
-            const d = disputes[job.id];
-            const svc = job.request?.service_needed ?? "a job";
-            if (d && d.status === "open" && !d.contractor_responded_at) {
-              attn.push({ key: "claim-" + job.id, text: "A client filed a claim on “" + svc + "” — your payout is paused until you respond.", cta: "Respond now", onClick: () => focusJobAnchor(job, A_CLAIM), danger: true });
-            // Gated on the live stages, exactly like the panel this row scrolls
-            // to. Neither flag is ever cleared, so ungated the row — and its
-            // dead "Review new time" button, since A_RESCHED only renders on
-            // those stages — sat on completed and cancelled jobs forever,
-            // burning one of only four attention slots.
-            } else if (job.client_rescheduled_at && !job.reschedule_accepted_at
-                       && ["assigned","scheduled","in_progress"].includes(job.status)) {
-              attn.push({ key: "resched-" + job.id, text: (job.client?.first_name || "Your client") + " changed the time on “" + svc + "”.", cta: "Review new time", onClick: () => focusJobAnchor(job, A_RESCHED) });
-            } else if (job.status === "assigned" && job.walkthrough_approved_at && !job.walkthrough_done_at) {
-              attn.push({ key: "wt-" + job.id, text: "Walkthrough confirmed for “" + svc + "”" + (job.walkthrough_at ? " — " + new Date(job.walkthrough_at).toLocaleString() : "") + ". After the visit, mark it done and send your estimate.", cta: "Mark walkthrough done", onClick: () => focusJobAnchor(job, A_WALK) });
-            } else if (job.status === "assigned" && job.walkthrough_done_at && !job.schedule_proposed_at) {
-              // The walkthrough block only says "done"; the thing they came to do
-              // is the propose form, so send them there rather than to the notice.
-              attn.push({ key: "wtdone-" + job.id, text: "You finished the walkthrough on “" + svc + "” — the client is waiting for your estimate.", cta: "Send estimate", onClick: () => focusJobAnchor(job, A_PROPOSE) });
-            } else if (job.status === "assigned" && job.slot_released_at && !job.schedule_proposed_at) {
-              attn.push({ key: "slot-" + job.id, text: "The booked time on “" + svc + "” was released — it wasn't signed and paid in time. You still have the job; propose a new time.", cta: "Propose new time", onClick: () => focusJobAnchor(job, A_PROPOSE) });
-            } else if (job.status === "assigned" && !job.schedule_proposed_at && !job.walkthrough_proposed_at) {
-              attn.push({ key: "propose-" + job.id, text: "“" + svc + "” is waiting for your time and price.", cta: "Propose now", onClick: () => focusJobAnchor(job, A_PROPOSE) });
-            } else if (job.status === "scheduled" && job.scheduled_at) {
-              const dt = new Date(job.scheduled_at).getTime() - Date.now();
-              // Booked within the day: the move is directions + "I'm on my way",
-              // so land on that pair rather than the top of the card.
-              if (dt > 0 && dt < 24 * 3600 * 1000) attn.push({ key: "soon-" + job.id, text: "“" + svc + "” is booked for " + new Date(job.scheduled_at).toLocaleString() + ".", cta: "Get ready", onClick: () => focusJobAnchor(job, A_ONWAY) });
-            }
-            // Work is done and only the deposit is in: the outstanding balance is
-            // the single thing blocking this pro's payout, and nothing else on
-            // their dashboard would tell them so.
-            if (job.status === "pending_confirmation" && awaitingBalance(job)) {
-              attn.push({ key: "bal-" + job.id, text: "“" + svc + "” is finished but the client still owes $" + jobBalanceDue(job).toFixed(2) + " — your payout is released once they pay and confirm.", cta: "See what's owed", onClick: () => focusJobAnchor(job, A_BALANCE) });
-            }
-            // No signed agreement = the client physically cannot pay, so this
-            // outranks everything else on a live job. Only prompt when it's the
-            // contractor's move (nothing sent yet); once it's with the client the
-            // panel on the job already says who we're waiting on.
-            if (!contractsFailed
-                && ["assigned", "scheduled", "in_progress", "pending_confirmation"].includes(job.status)
-                && !["signed", "sent"].includes(contracts[job.id] ?? "")) {
-              attn.push({ key: "contract-" + job.id, text: "“" + svc + "” needs a signed service agreement — your client can't pay until you send it.", cta: "Send agreement", onClick: () => focusContractJob(job) });
-            }
-            // Photos are what unlock payment, so chase them once work is under way.
-            if (job.status === "in_progress" || (job.status === "scheduled" && job.on_my_way_at)) {
-              const miss = photosMissing(job);
-              if (miss.length) attn.push({ key: "photo-" + job.id, text: "“" + svc + "” still needs " + miss.join(" and ") + " — you can't mark it complete without them.", cta: "Add photos", onClick: () => focusJobAnchor(job, A_PHOTOS) });
-            }
-          }
-          const reserved = availableJobs.filter((r: any) => r.is_preferred);
-          if (reserved.length > 0) {
-            attn.push({ key: "reserved", text: reserved.length === 1 ? "A client requested you — “" + reserved[0].service_needed + "” is reserved for you for 48h." : reserved.length + " clients requested you — jobs are reserved for you for 48h.", cta: "See jobs", onClick: () => { setActiveTab("available"); window.scrollTo({ top: 0, behavior: "smooth" }); } });
-          }
-          // ── Conversational rows last (see the ordering note above) ──────────
-          for (const job of chatTimeJobs) {
-            // Stays put after "Decide later" so a suggested time can't be lost.
-            attn.push({
-              key: "chattime-" + job.id,
-              text: (job.client?.first_name || "Your client") + " suggested " + formatWhen(job.chat_time_at) + " for “" + (job.request?.service_needed ?? "a job") + "”.",
-              cta: "Accept or change",
-              onClick: () => setTimeDismissed(prev => { const n = new Set(prev); n.delete(job.id); return n; }),
-            });
-          }
-          // Unread messages. Capped at 3 so a chatty week can't bury the rows
-          // that gate money (claims, agreements, photos).
-          //
-          // `inboxRows`, not `conversations` — a pre-hire question from a client
-          // deciding who to hire is the MOST time-sensitive message a pro gets,
-          // and it used to raise no row at all.
-          for (const c of inboxRows.filter(c => c.unread > 0).slice(0, 3)) {
-            attn.push({
-              key: "msg-" + conversationKey(c),
-              text: partyName(c) + " sent you " + (c.unread === 1 ? "a message" : c.unread + " messages")
-                + (c.kind === "bid"
-                    ? " about “" + (c.service_needed ?? "a job") + "” — they haven't picked anyone yet."
-                    : " about “" + (c.service_needed ?? "a job") + "”."),
-              cta: "Read it",
-              onClick: () => { setActiveTab("messages"); openConversation(c); window.scrollTo({ top: 0, behavior: "smooth" }); },
-            });
-          }
-          // Filter BEFORE the slice, or an × would remove a row and reveal
-          // nothing — only the first four ever render.
-          const rowKey = (k: string) => "attn:contractor:" + k;
-          const shownAttn = attn.filter(a => !hiddenNow.has(rowKey(a.key)));
-          if (shownAttn.length === 0) return null;
-          return (
-            <div style={{ ...s.card, padding:"1.1rem 1.25rem", marginBottom:"1.25rem", border:"1px solid rgba(234,107,20,.3)" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:".45rem", fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"#ea6b14", fontWeight:700 }}>
-                <Ic name="alert-triangle" size={13} />Needs your attention
-              </div>
-              {shownAttn.slice(0, 4).map((a, i) => (
-                <div key={a.key} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".75rem", padding:".6rem 0", borderTop: i === 0 ? "none" : "1px solid rgba(var(--ff-fg), .06)", marginTop: i === 0 ? ".5rem" : 0 }}>
-                  <div style={{ fontSize:".85rem", color:"var(--ff-text)", lineHeight:1.45 }}>{a.text}</div>
-                  <div style={{ display:"flex", alignItems:"center", gap:".4rem", flexShrink:0 }}>
-                    <button style={{ ...s.btn, background: a.danger ? "rgba(239,68,68,.12)" : "#ea6b14", color: a.danger ? "#ef4444" : "#fff", border: a.danger ? "1px solid rgba(239,68,68,.35)" : "none", whiteSpace:"nowrap" as const, flexShrink:0 }} onClick={a.onClick}>{a.cta}</button>
-                    {/* Hide for now only — see the hiddenNow docblock. Every row
-                        here is either a money gate or state that changes. */}
-                    <DismissX
-                      onClick={() => setHiddenNow(prev => new Set(prev).add(rowKey(a.key)))}
-                      label="Hide for now"
-                      title="Hide until next time you open the dashboard"
-                    />
-                  </div>
-                </div>
-              ))}
+        {/* The rows are derived ABOVE the return now (see the hoist note
+            there) because the Pass at the top of the page has to read them.
+            This block renders them; it no longer computes them. */}
+        {shownAttn.length > 0 && (
+          <div style={{ ...s.card, padding:"1.1rem 1.25rem", marginBottom:"1.25rem", border:"1px solid rgba(234,107,20,.3)" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:".45rem", fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"#ea6b14", fontWeight:700 }}>
+              <Ic name="alert-triangle" size={13} />Needs your attention
             </div>
-          );
-        })()}
+            {shownAttn.slice(0, 4).map((a, i) => (
+              <div key={a.key} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".75rem", padding:".6rem 0", borderTop: i === 0 ? "none" : "1px solid rgba(var(--ff-fg), .06)", marginTop: i === 0 ? ".5rem" : 0 }}>
+                <div style={{ fontSize:".85rem", color:"var(--ff-text)", lineHeight:1.45 }}>{a.text}</div>
+                <div style={{ display:"flex", alignItems:"center", gap:".4rem", flexShrink:0 }}>
+                  <button style={{ ...s.btn, background: a.danger ? "rgba(239,68,68,.12)" : "#ea6b14", color: a.danger ? "#ef4444" : "#fff", border: a.danger ? "1px solid rgba(239,68,68,.35)" : "none", whiteSpace:"nowrap" as const, flexShrink:0 }} onClick={a.onClick}>{a.cta}</button>
+                  {/* Hide for now only - see the hiddenNow docblock. Every row
+                      here is either a money gate or state that changes. */}
+                  <DismissX
+                    onClick={() => setHiddenNow(prev => new Set(prev).add(attnRowKey(a.key)))}
+                    label="Hide for now"
+                    title="Hide until next time you open the dashboard"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {activeTab === "jobs" && (() => {
           // Search COMPOSES with the pipeline-stage filter rather than replacing
