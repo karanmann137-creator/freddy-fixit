@@ -10,7 +10,8 @@ import {
   StateLine, type State,
   Hero, HeroSub, PassMeta, PassMetaItem,
   JobSwitcher,
-  Row, type RowTone,
+  Group, Sheet, Row, type RowTone,
+  Pill, type PillTone,
   Button,
   AttentionCard,
 } from "@/components/ui";
@@ -147,12 +148,48 @@ function QuoteBreakdownView({ row, assumptionsKey = "assumptions" }: { row: any;
  * back it belongs on the REQUEST FORM, where the fields still exist.
  */
 
-const STATUS_META: Record<string, { icon: string; label: string; color: string }> = {
-  pending:     { icon: "clock", label: "Pending Review",     color: "#f59e0b" },
-  matched:     { icon: "link", label: "Contractor Matched", color: "#3b82f6" },
-  in_progress: { icon: "wrench", label: "Work In Progress",   color: "#ea6b14" },
-  completed:   { icon: "check-circle", label: "Completed",          color: "#22c55e" },
-  cancelled:   { icon: "x-circle", label: "Cancelled",          color: "#ef4444" },
+/**
+ * `tone` was added 2026-10-30 so the status chips can render as the shared
+ * <Pill>. `color` is kept because the switcher chips and a couple of inline
+ * icons still read it directly; the pill reads `tone` only.
+ *
+ * ── Why in_progress is NOT accent, and matched is not blue ───────────────
+ * The old chips were five different literal hexes, so every status on the page
+ * shouted equally and none of them meant anything. The pill tones map to
+ * MEANING, not to decoration, and the only two states that carry meaning here
+ * are "settled" and "went wrong":
+ *
+ *   pending     → warn     we're still reviewing it; it is pending US
+ *   matched     → neutral  a pro is attached. Nothing is on the client.
+ *   in_progress → neutral  work is happening. Nothing is on the client either.
+ *   completed   → good
+ *   cancelled   → danger
+ *
+ * `in_progress` losing its orange is the deliberate, visible part. Orange is on
+ * the same budget as the pass's state line — if the pass is already orange
+ * because the client owes a balance, a second orange chip saying "Work In
+ * Progress" spends a signal that was already spoken for, and if the pass is
+ * NOT orange then the chip is claiming urgency the screen doesn't have. The
+ * icon (link vs wrench) carries matched-vs-in_progress; it does not need colour
+ * to do it. Don't promote either back to accent without a reason the client
+ * would recognise as "this is on me".
+ *
+ * `matched`'s blue is dropped rather than re-homed because there is no blue in
+ * the brand. There never was — the hex was ad-hoc.
+ *
+ * ── Why rowTone is a SECOND field and not derived from tone ──────────────
+ * `RowTone` has no "danger" — a row is the frame around content, and a red
+ * frame on a cancelled request states an error where there is only an ending.
+ * So `cancelled` is `danger` as a pill (the word itself is the news) and
+ * `neutral` as a row. Collapsing the two into one field would force that
+ * disagreement to be resolved by whichever surface was written last.
+ */
+const STATUS_META: Record<string, { icon: string; label: string; color: string; tone: PillTone; rowTone: RowTone }> = {
+  pending:     { icon: "clock", label: "Pending Review",     color: "#f59e0b", tone: "warn",    rowTone: "warn" },
+  matched:     { icon: "link", label: "Contractor Matched", color: "#3b82f6", tone: "neutral", rowTone: "neutral" },
+  in_progress: { icon: "wrench", label: "Work In Progress",   color: "#ea6b14", tone: "neutral", rowTone: "neutral" },
+  completed:   { icon: "check-circle", label: "Completed",          color: "#22c55e", tone: "good",    rowTone: "good" },
+  cancelled:   { icon: "x-circle", label: "Cancelled",          color: "#ef4444", tone: "danger",  rowTone: "neutral" },
 };
 
 // Can the client actually delete this request? `remove_client_request` is guarded
@@ -2071,34 +2108,63 @@ export default function ClientDashboard() {
         )}
 
         {activeTab === "pros" && (pros.length > 0 ? (
-          <div style={{ ...s.card }}>
-            <div style={s.cardTitle}>Your pros</div>
-            <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .55)", marginTop:"-.4rem", marginBottom:".9rem" }}>Rebook someone you trust — they'll be requested directly.</div>
-            <div style={{ display:"flex", gap:".8rem", overflowX:"auto" as const, paddingBottom:".3rem" }}>
+          /* ── My Pros, ported off the horizontal card rail ──────────────────
+             This was a `overflowX:"auto"` strip of fixed 210px cards. Two
+             things were wrong with that and neither was cosmetic:
+
+             1. A horizontal scroller inside a vertically-scrolling page hides
+                its own contents. With four pros, pro #3 onward was off-screen
+                with no affordance saying so — the same "no way to reach the
+                rest" defect the owner reported about multi-job access, just
+                on a different axis.
+             2. 210px could not hold a company name, so the card needed its own
+                minWidth:0 + ellipsis dance (the comment that used to live here
+                existed only to explain that workaround). A full-width row has
+                room, so the clipping question stops existing.
+
+             The favourite heart is the ONE orange thing on this tab, and it
+             earns it: there is no "turn" state on My Pros at all, so the
+             accent budget is unspent, and a filled heart means "mine" — which
+             is the only thing on the tab the client themselves set. It reads
+             `--ff-accent-500`, not the literal, so it re-themes in light mode.
+
+             `♥`/`♡` stay as text glyphs rather than becoming an <Ic>: there is
+             no heart in Ic's hand-copied Lucide set, and a missing glyph
+             renders BLANK with no error rather than failing loudly. */
+          <Group
+            label="Your pros"
+            action={<span style={{ opacity:.7 }}>{pros.length}</span>}
+          >
+            <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"var(--ff-s3)" }}>Rebook someone you trust — they&rsquo;ll be requested directly.</div>
+            <Sheet>
               {pros.map(pro => (
-                <div key={pro.contractor_id} style={{ minWidth:"210px", flex:"0 0 auto", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"12px", padding:"1rem", background:"rgba(var(--ff-fg), .03)" }}>
-                  {/* The card is a fixed 210px in a horizontal scroller, so the
-                      name column has nowhere to grow — without minWidth:0 a long
-                      company name could not shrink and pushed the favourite heart
-                      off the right of the card. The sibling strip on the Requests
-                      tab already clipped its name; this one didn't. */}
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:".5rem" }}>
-                    <div style={{ minWidth:0, flex:"1 1 auto" }}>
-                      <div style={{ fontSize:".95rem", fontWeight:600, color:"var(--ff-text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{pro.company_name || pro.name || "Your pro"}</div>
-                      <div style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .5)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
-                        {pro.rating ? `⭐ ${Number(pro.rating).toFixed(1)}` : "New"}{pro.jobs_together ? ` · ${pro.jobs_together} job${pro.jobs_together===1?"":"s"} together` : ""}
-                      </div>
-                    </div>
-                    <button onClick={() => toggleFav(pro.contractor_id)} aria-label={pro.is_favorite ? "Remove favourite" : "Add favourite"} title={pro.is_favorite ? "Remove favourite" : "Add favourite"} style={{ background:"none", border:"none", cursor:"pointer", fontSize:"1.1rem", lineHeight:1, color: pro.is_favorite ? "#ea6b14" : "rgba(var(--ff-muted), .4)" }}>
-                      {pro.is_favorite ? "♥" : "♡"}
-                    </button>
-                  </div>
-                  {pro.last_service && <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .45)", marginTop:".5rem" }}>Last: {pro.last_service}</div>}
-                  <button style={{ ...s.primaryBtn, width:"100%", marginTop:".7rem", padding:".5rem", fontSize:".82rem" }} onClick={() => rehire(pro)}>Book again</button>
-                </div>
+                <Row
+                  key={pro.contractor_id}
+                  icon="user-check"
+                  tone="neutral"
+                  title={pro.company_name || pro.name || "Your pro"}
+                  sub={
+                    (pro.rating ? `⭐ ${Number(pro.rating).toFixed(1)}` : "New")
+                    + (pro.jobs_together ? ` · ${pro.jobs_together} job${pro.jobs_together===1?"":"s"} together` : "")
+                    + (pro.last_service ? ` · last: ${pro.last_service}` : "")
+                  }
+                  right={
+                    <>
+                      <Button
+                        variant="ghost"
+                        aria-label={pro.is_favorite ? "Remove favourite" : "Add favourite"}
+                        onClick={() => toggleFav(pro.contractor_id)}
+                        style={{ fontSize:"1.05rem", lineHeight:1, padding:".25rem .4rem", color: pro.is_favorite ? "var(--ff-accent-500)" : "rgba(var(--ff-muted), .4)" }}
+                      >
+                        {pro.is_favorite ? "♥" : "♡"}
+                      </Button>
+                      <Button variant="primary" onClick={() => rehire(pro)}>Book again</Button>
+                    </>
+                  }
+                />
               ))}
-            </div>
-          </div>
+            </Sheet>
+          </Group>
         ) : (
           <div style={{ textAlign:"center", padding:"3.5rem 2rem" }}>
             <div style={{ marginBottom:"1rem" }}><Ic name="user-check" size={44} color="#ea6b14" /></div>
@@ -2121,10 +2187,40 @@ export default function ClientDashboard() {
             all, and a retired code must never be offered for sharing. */}
 
         {activeTab === "recurring" && (plans.length > 0 ? (
-          <div style={{ ...s.card }}>
-            <div style={s.cardTitle}>Recurring plans</div>
-            <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .55)", marginTop:"-.4rem", marginBottom:".9rem" }}>We'll line up each visit automatically. Prepay ahead to lock it in — held securely, released one visit at a time.</div>
-            <div style={{ display:"flex", flexDirection:"column" as const, gap:".8rem" }}>
+          /* ── Recurring plans ──────────────────────────────────────────────
+             ⚠️ MONEY SURFACE, PRESENTATION-ONLY PORT. `prepayPlan(pl, n)` and
+             `togglePlan(pl)` are called with identical arguments, and all four
+             derivations below (`paused`, `cadence`, `hasPool`, `remaining`)
+             are byte-identical to what they replaced. **Touches none of the
+             four payout guards** — pool money lives on
+             `recurring_prepayments`, never on `funded_amount`, so nothing here
+             can move `fully_funded`. Verified by diffing the block against
+             HEAD rather than by eye.
+
+             ── Why ONE SHEET PER PLAN and not one sheet of plan rows ────────
+             A plan carries up to three actions (Prepay 2, Prepay 3, Pause) and
+             an optional prepaid-balance line. `.ffu-rr` is `white-space:nowrap`
+             with no wrap, and the row grid is `gut / minmax(0,1fr) / auto` — so
+             cramming three buttons into `right` crushes the service name to
+             nothing on a 372px phone. A plan genuinely IS a card, so each gets
+             its own Sheet: the win over v1 is not fewer boxes, it is that the
+             box's inset, radius and hairline now come from the token scale
+             instead of a hand-rolled `12px` + `1rem` + `.03` alpha per card.
+
+             `ButtonRow` is deliberately NOT used — it is exactly two columns
+             and there can be three buttons here.
+
+             The subtitle keeps the consumer-facing wording "held securely" —
+             CLAUDE.md names the banned alternative; don't reintroduce it, and
+             don't write it into this file even as a comment, because a
+             repo-wide grep for it is a real audit and a comment is a false
+             positive in it. */
+          <Group
+            label="Recurring plans"
+            action={<span style={{ opacity:.7 }}>{plans.length}</span>}
+          >
+            <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"var(--ff-s3)" }}>We&rsquo;ll line up each visit automatically. Prepay ahead to lock it in — held securely, released one visit at a time.</div>
+            <div style={{ display:"flex", flexDirection:"column" as const, gap:"var(--ff-s3)" }}>
               {plans.map(pl => {
                 const paused = pl.recurring_plan_status !== "active";
                 const cadence = pl.recurring_frequency === "per_km"
@@ -2133,39 +2229,47 @@ export default function ClientDashboard() {
                 const hasPool = pl.prepay_id && (pl.prepay_status === "held" || pl.prepay_status === "partially_released");
                 const remaining = hasPool ? Math.max(0, Number(pl.prepay_total || 0) - Number(pl.prepay_released || 0)) : 0;
                 return (
-                  <div key={pl.request_id} style={{ border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"12px", padding:"1rem", background:"rgba(var(--ff-fg), .03)" }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:".75rem", flexWrap:"wrap" as const }}>
-                      <div>
-                        <div style={{ fontSize:".95rem", fontWeight:600, color:"var(--ff-text)" }}>{pl.service_needed}</div>
-                        <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .55)", marginTop:".15rem" }}>
+                  <Sheet key={pl.request_id}>
+                    {/* tone follows the pill: warn when paused, good when
+                        running. Neither is accent — a recurring plan ticking
+                        along is the opposite of "this is on you". */}
+                    <Row
+                      icon="calendar"
+                      tone={paused ? "warn" : "good"}
+                      title={pl.service_needed}
+                      sub={
+                        <>
                           {cadence}{pl.contractor_company ? ` · ${pl.contractor_company}` : ""}{pl.next_due ? ` · next ${new Date(pl.next_due).toLocaleDateString()}` : ""}
-                        </div>
-                      </div>
-                      <span style={{ fontSize:".7rem", fontWeight:600, padding:".2rem .6rem", borderRadius:"999px", color: paused ? "var(--ff-warn)" : "var(--ff-success)", background: paused ? "rgba(251,191,36,.12)" : "rgba(34,197,94,.12)" }}>
-                        {paused ? "Paused" : "Active"}
-                      </span>
-                    </div>
-                    {hasPool && (
-                      <div style={{ fontSize:".76rem", color:"var(--ff-success)", marginTop:".55rem" }}>
-                        <Ic name="check-circle" size={12} style={{ marginRight:4 }} />
-                        {remaining} of {pl.prepay_total} prepaid visit{Number(pl.prepay_total)===1?"":"s"} remaining.
-                      </div>
-                    )}
-                    <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginTop:".7rem" }}>
+                          {hasPool && (
+                            <span style={{ display:"block", color:"var(--ff-success)", marginTop:".3rem" }}>
+                              <Ic name="check-circle" size={12} style={{ marginRight:4 }} />
+                              {remaining} of {pl.prepay_total} prepaid visit{Number(pl.prepay_total)===1?"":"s"} remaining.
+                            </span>
+                          )}
+                        </>
+                      }
+                      right={<Pill tone={paused ? "warn" : "good"}>{paused ? "Paused" : "Active"}</Pill>}
+                    />
+                    {/* The strip sits outside the Row, inside the Sheet. It
+                        gets the sheet's own inset (--ff-s4) so the buttons
+                        line up with the row's text column above them, and a
+                        hairline above it so it reads as the row's footer
+                        rather than as a second, unexplained row. */}
+                    <div style={{ display:"flex", gap:"var(--ff-s2)", flexWrap:"wrap" as const, padding:"var(--ff-s3) var(--ff-s4)", borderTop:"1px solid var(--ff-hair)" }}>
                       {!hasPool && !paused && [2,3].map(n => (
-                        <button key={n} style={{ ...s.primaryBtn, padding:".45rem .8rem", fontSize:".8rem" }} disabled={busyPlan===pl.request_id} onClick={() => prepayPlan(pl, n)}>
-                          {busyPlan===pl.request_id ? "…" : `Prepay ${n} visits`}
-                        </button>
+                        <Button key={n} variant="primary" loading={busyPlan===pl.request_id} onClick={() => prepayPlan(pl, n)}>
+                          Prepay {n} visits
+                        </Button>
                       ))}
-                      <button style={{ ...s.btn, padding:".45rem .8rem", fontSize:".8rem" }} disabled={busyPlan===pl.request_id} onClick={() => togglePlan(pl)}>
+                      <Button disabled={busyPlan===pl.request_id} onClick={() => togglePlan(pl)}>
                         {paused ? "Resume plan" : "Pause plan"}
-                      </button>
+                      </Button>
                     </div>
-                  </div>
+                  </Sheet>
                 );
               })}
             </div>
-          </div>
+          </Group>
         ) : (
           <div style={{ textAlign:"center", padding:"3.5rem 2rem" }}>
             <div style={{ marginBottom:"1rem" }}><Ic name="repeat" size={44} color="#ea6b14" /></div>
@@ -2201,8 +2305,24 @@ export default function ClientDashboard() {
               const tokens = searchTokens(search);
               const hits = openReqs.filter(r => matchesSearch(tokens, reqSearchFields(r)));
               return (
-                <div style={{ ...s.card, ...anchorPad, padding:"1rem 1.25rem" }}>
-                  <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)", marginBottom:".6rem" }}>Your open requests ({openReqs.length})</div>
+                /* The chips are the SAME <JobSwitcher> the pass renders, just
+                   fed the search hits instead of every open request. That is
+                   deliberate: two rails that look different imply they do
+                   different things, and these do exactly one thing — switch
+                   the active request. Reusing the component also retires the
+                   last `STATUS_META[...].color` read on the page; the chip
+                   used to paint a 12px status glyph in a literal hex, which
+                   was both a brand-token violation and, at 12px, a smudge.
+
+                   `onNew` is omitted on purpose. The pass's rail carries the
+                   only "+ NEW" on the page, and a second one 400px down is
+                   how you end up with two routes into onboarding that drift.
+
+                   Only the ACTIVE chip can honestly read "turn": `attnRows`
+                   is derived for the active request alone, so a dot on any
+                   other chip would be a guess, and a dot that lies teaches
+                   the client to stop reading dots. */
+                <Group label={"Your open requests"} action={<span style={{ opacity:.7 }}>{openReqs.length}</span>} style={{ ...anchorPad }}>
                   {openReqs.length > 3 && (
                     <DashSearch
                       value={search}
@@ -2211,20 +2331,23 @@ export default function ClientDashboard() {
                       resultText={hits.length + " of " + openReqs.length + " shown"}
                     />
                   )}
-                  <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
-                    {hits.length === 0 ? (
-                      <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .5)" }}>No open request matches that.</div>
-                    ) : hits.map(r => {
-                      const on = r.id === activeReq?.id;
-                      return (
-                        <button key={r.id} onClick={() => selectRequest(r.id)} style={{ ...s.tab, ...(on ? s.activeTab : {}), display:"flex", alignItems:"center", gap:".4rem" }}>
-                          <Ic name={STATUS_META[r.status]?.icon as any} size={12} color={STATUS_META[r.status]?.color} />
-                          <span style={{ maxWidth:160, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{r.service_needed}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                  {hits.length === 0 ? (
+                    <Sheet style={{ padding:"var(--ff-s4)" }}>
+                      <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .55)", margin:0 }}>No open request matches that.</p>
+                    </Sheet>
+                  ) : (
+                    <JobSwitcher
+                      alwaysShow
+                      jobs={hits.map(r => ({
+                        id: r.id,
+                        label: r.service_needed ?? "Request",
+                        state: (r.id === activeReq?.id && attnRows.length > 0) ? "turn" as const : "wait" as const,
+                      }))}
+                      activeId={activeReq?.id}
+                      onSelect={selectRequest}
+                    />
+                  )}
+                </Group>
               );
             })()}
 
@@ -2359,9 +2482,15 @@ export default function ClientDashboard() {
                     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".75rem", flexWrap:"wrap" as const, marginBottom: showReqDetail ? undefined : ".25rem" }}>
                       <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const, minWidth:0 }}>
                         <div style={{ ...s.cardTitle, marginBottom:0 }}>Current Request</div>
-                        <div style={{ display:"inline-block", padding:".28rem .7rem", borderRadius:"99px", fontSize:".74rem", fontWeight:500, color: STATUS_META[activeReq.status]?.color, border:`1px solid ${STATUS_META[activeReq.status]?.color}` }}>
-                          <Ic name={STATUS_META[activeReq.status]?.icon as any} size={12} color={STATUS_META[activeReq.status]?.color} style={{ marginRight:4 }} />{STATUS_META[activeReq.status]?.label}
-                        </div>
+                        {/* No icon inside the chip. It sits directly beside the
+                            words "Current Request", so the label already has all
+                            the context it needs, and a 12px glyph at that size
+                            was reading as a smudge. In the history list the same
+                            glyph moved into the Row's icon column, where it has
+                            room. */}
+                        <Pill tone={STATUS_META[activeReq.status]?.tone ?? "neutral"}>
+                          {STATUS_META[activeReq.status]?.label ?? activeReq.status}
+                        </Pill>
                       </div>
                       <div style={{ display:"flex", alignItems:"center", gap:".75rem", flexShrink:0 }}>
                         {activeJob?.id && <div style={{ fontSize:".72rem", fontFamily:"monospace", color:"#ea6b14" }} title="Quote this Job ID when filing a claim">{jobCode(activeJob.id)}</div>}
@@ -2826,10 +2955,11 @@ export default function ClientDashboard() {
                   // Include every request (the active one too) so History is the complete record.
                   const histAll = requests;
                   if (histAll.length === 0) return (
-                    <div style={s.card}>
-                      <div style={s.cardTitle}>Request History</div>
-                      <p style={{ fontSize:".88rem", color:"rgba(var(--ff-muted), .55)", margin:0 }}>Nothing here yet — your past requests will show up once you&rsquo;ve posted one.</p>
-                    </div>
+                    <Group label="Request history">
+                      <Sheet style={{ padding:"var(--ff-s5)" }}>
+                        <p style={{ fontSize:".88rem", color:"rgba(var(--ff-muted), .55)", margin:0 }}>Nothing here yet — your past requests will show up once you&rsquo;ve posted one.</p>
+                      </Sheet>
+                    </Group>
                   );
                   const matches = (r: any) =>
                     histFilter === "all" ? true :
@@ -2849,9 +2979,21 @@ export default function ClientDashboard() {
                     { key: "cancelled", label: "Cancelled" },
                   ];
                   return (
-                    <div style={s.card}>
-                      <div style={s.cardTitle}>Request History</div>
-                      <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginBottom:"1rem" }}>
+                    /* <Group> rather than a card: the caption is the Bebas label
+                       above an inset sheet, so History stops being "a box with a
+                       title inside it" and starts matching every other grouped
+                       list on the redesigned dashboards. The count moves into the
+                       caption's `action` slot, which is what that slot is for —
+                       it used to be absent, so you had to count the rows.
+
+                       The filter chips and the search box sit BETWEEN the caption
+                       and the sheet, outside both, because they act on the sheet
+                       rather than belonging to it. */
+                    <Group
+                      label="Request history"
+                      action={<span style={{ opacity:.7 }}>{filtered.length} of {histAll.length}</span>}
+                    >
+                      <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginBottom:"var(--ff-s3)" }}>
                         {FILTERS.map(f => (
                           <button key={f.key} onClick={() => { setHistFilter(f.key); setHistLimit(5); }} style={{ ...s.tab, padding:".4rem .85rem", fontSize:".8rem", ...(histFilter === f.key ? s.activeTab : {}) }}>{f.label}</button>
                         ))}
@@ -2870,56 +3012,76 @@ export default function ClientDashboard() {
                             ? "Nothing matches that."
                             : "No " + (histFilter === "all" ? "" : histFilter + " ") + "requests to show."}
                         </div>
-                      ) : shown.map(r => (
-                        <div key={r.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:".85rem 0", borderBottom:"1px solid rgba(var(--ff-fg), .06)", gap:".75rem", flexWrap:"wrap" as const }}>
-                          {/* minWidth:0 so a long service label shrinks instead of
-                              forcing the whole row wider than a phone screen, and
-                              flexBasis keeps the controls beside it until there is
-                              genuinely no room, rather than wrapping on every row. */}
-                          <div style={{ minWidth:0, flex:"1 1 140px" }}>
-                            <div style={{ fontSize:".9rem" }}>{r.service_needed}</div>
-                            <div style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .4)" }}>{new Date(r.created_at).toLocaleDateString()}</div>
-                          </div>
-                          <div style={{ display:"flex", alignItems:"center", gap:".5rem", flexShrink:0 }}>
-                            {/* ⚠️ `completed` is deliberately INCLUDED here, and the
-                                exclusion it replaces is why zero reviews exist.
-                                The rating form renders only when the completed job
-                                is the ACTIVE job, but `openReqs` filters completed
-                                out, `activeReq` falls back to `requests[0]` only
-                                when there are no open requests at all, and the
-                                switcher lists `openReqs` alone — so this button was
-                                the one and only thing on the platform that could
-                                make a finished job active, and it was hidden on
-                                exactly the status that needs it. The review ask then
-                                survived solely as the one-shot completion modal:
-                                miss or dismiss it and the rating was unreachable
-                                forever. `cancelled` stays hidden — there is nothing
-                                to do on it. The job read at `activeReq.id` already
-                                excludes only cancelled jobs, so a completed request
-                                loads its job normally, and the form self-gates on
-                                `activeJob.status === "completed"` and `hasReviewed`.
-                                The label says so, because "View" gives a client no
-                                reason to press it. */}
-                            {r.status !== "cancelled" && (
-                              <button style={{ ...s.btn, padding:".3rem .7rem" }} onClick={() => { setSelectedReqId(r.id); setActiveTab("requests"); window.scrollTo({ top: 0 }); }}>{r.status === "completed" ? "View & rate" : "View"}</button>
-                            )}
-                            {/* A bordered chip rather than coloured body text. Down a
-                                list of past requests the state is the thing being
-                                scanned for, and it now reads the same as the badge
-                                on the Current Request card above. */}
-                            <div style={{ display:"inline-block", padding:".22rem .6rem", borderRadius:"99px", fontSize:".72rem", fontWeight:600, color: STATUS_META[r.status]?.color, border:`1px solid ${STATUS_META[r.status]?.color}`, whiteSpace:"nowrap" as const }}>
-                              <Ic name={STATUS_META[r.status]?.icon as any} size={12} color={STATUS_META[r.status]?.color} style={{ marginRight:4 }} />{STATUS_META[r.status]?.label}
-                            </div>
-                            {canRemoveRequest(r, null) && (
-                              <button style={{ ...s.btn, padding:".3rem .55rem", color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyReq} onClick={() => removeRequest(r)}><Ic name="trash" size={13} /></button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                      {filtered.length > histLimit && (
-                        <button style={{ ...s.btn, marginTop:"1rem" }} onClick={() => setHistLimit(l => l + 5)}>Show more ({filtered.length - histLimit})</button>
+                      ) : (
+                        /* One <Sheet> with hairline-separated <Row>s, replacing the
+                           hand-rolled flex row with its own padding and its own
+                           borderBottom. The win is not that it looks nicer in
+                           isolation — it is that the row's icon column and the
+                           hairline under it both read --ff-gut, so the separator
+                           starts exactly where the text does and can never drift
+                           from the column above it. The old markup had no icon
+                           column at all, so the status was carried entirely by a
+                           chip at the far right of the row, which on a phone wrapped
+                           onto its own line about half the time. */
+                        <Sheet>
+                          {shown.map(r => (
+                            <Row
+                              key={r.id}
+                              icon={(STATUS_META[r.status]?.icon as IconName) ?? "clipboard-list"}
+                              tone={STATUS_META[r.status]?.rowTone ?? "neutral"}
+                              title={r.service_needed}
+                              sub={new Date(r.created_at).toLocaleDateString()}
+                              right={
+                                <>
+                                  {/* No icon inside the pill any more — the Row's own
+                                      icon column already carries it, and the same
+                                      glyph twice on one row is noise. */}
+                                  <Pill tone={STATUS_META[r.status]?.tone ?? "neutral"}>
+                                    {STATUS_META[r.status]?.label ?? r.status}
+                                  </Pill>
+                                  {/* ⚠️ `completed` is deliberately INCLUDED here, and
+                                      the exclusion it replaces is why zero reviews
+                                      exist. The rating form renders only when the
+                                      completed job is the ACTIVE job, but `openReqs`
+                                      filters completed out, `activeReq` falls back to
+                                      `requests[0]` only when there are no open
+                                      requests at all, and the switcher lists
+                                      `openReqs` alone — so this button was the one
+                                      and only thing on the platform that could make a
+                                      finished job active, and it was hidden on
+                                      exactly the status that needs it. The review ask
+                                      then survived solely as the one-shot completion
+                                      modal: miss or dismiss it and the rating was
+                                      unreachable forever. `cancelled` stays hidden —
+                                      there is nothing to do on it. The job read at
+                                      `activeReq.id` already excludes only cancelled
+                                      jobs, so a completed request loads its job
+                                      normally, and the form self-gates on
+                                      `activeJob.status === "completed"` and
+                                      `hasReviewed`. The label says so, because "View"
+                                      gives a client no reason to press it. */}
+                                  {r.status !== "cancelled" && (
+                                    <Button onClick={() => { setSelectedReqId(r.id); setActiveTab("requests"); window.scrollTo({ top: 0 }); }}>
+                                      {r.status === "completed" ? "View & rate" : "View"}
+                                    </Button>
+                                  )}
+                                  {canRemoveRequest(r, null) && (
+                                    <Button variant="danger" aria-label="Delete this request" disabled={busyReq} onClick={() => removeRequest(r)}>
+                                      <Ic name="trash" size={13} />
+                                    </Button>
+                                  )}
+                                </>
+                              }
+                            />
+                          ))}
+                        </Sheet>
                       )}
-                    </div>
+                      {filtered.length > histLimit && (
+                        <Button full style={{ marginTop:"var(--ff-s3)" }} onClick={() => setHistLimit(l => l + 5)}>
+                          Show more ({filtered.length - histLimit})
+                        </Button>
+                      )}
+                    </Group>
                   );
                 })()}
       </div>
