@@ -1,0 +1,13 @@
+# Admin
+
+`AdminDashboard.tsx`, left sidebar: Health / Requests / Jobs / Picks / Accounts / Disputes / Prepaid / Flagged chat / Leads. `loadAll` checks each `Promise.all` result's `.error` and shows a banner naming the failed areas — a swallowed error used to render a silent false-empty tab. Newer tabs load in their **own** try/catch so an older DB still renders everything else.
+
+- **Requests** — bids render read-only at **every** status (they used to vanish the moment a client picked). The accepted bid gets a green `✓ PICKED` chip; declined bids dim. **The client picks bids** — the admin assign dropdown and accept-bid buttons were removed. Pending requests carry a **"Re-send to contractors"** button (`admin_refire_request`) plus a "Re-sent N times" line; it's hidden on non-pending requests because dispatch-job refuses those and it would be a dead control.
+- **Jobs** — service title, `{client} → {contractor}`, location, job code, **Read chat**, **Delete job** (`admin_delete_job`).
+- **Picks** — `admin_list_picks(p_limit)`. Built on **`jobs`, not `bids`**, because a job row exists for every match (bid, rehire, or admin assign) and `jobs.created_at` IS the pick moment (`bids` has no `updated_at`). Derives `how` = `client_pick` / `rehire` / `admin_assign`, plus the winning amount and `bid_count`.
+- **Accounts** — `admin_list_accounts()` lists **every `auth.users` row** (so orphans show), joined to profiles + contractors: contact, role, join/last-sign-in, request/job counts, orphaned flag, and full vetting (company, specialties, area, licence/insurance/WCB, references, experience, availability, rating/jobs/earned, pricing, `stripe_payouts_enabled`, Google reviews, AI verdict). Plus **Documents** (signed-URL buttons for the private `contractor-docs` bucket via the `contractor_docs_admin_select` policy) and **Photos** thumbnails. Approve/Deactivate (`admin_set_contractor_status`), payout diagnosis, **Delete account** (`admin-delete-account` — full wipe incl. storage under `${uid}/` across 6 buckets, then `auth.admin.deleteUser`; blocks self-delete). Orphan bar offers **finish-signup-nudge**.
+- **Email contractors** — `AdminMessageModal.tsx` + **admin-message** edge fn. Recipient emails are looked up **server-side**, never trusted from the client. Every send logged to `admin_messages` (shared `batch_id`); history via `admin_list_messages`.
+- `admin_rank_contractors`, `admin_list_chat_flags`, `admin_list_picks`, `admin_list_accounts`, `admin_get_contractor_detail`, `admin_delete_job`, `admin_set_contractor_status`, `admin_resignup_matches` are all `is_admin()`-gated.
+
+---
+
