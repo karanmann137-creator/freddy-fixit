@@ -1705,10 +1705,14 @@ export default function ContractorDashboard() {
                     <MilestonePanel role="contractor" job={job} />
 
                     {(job.client_approved_at || job.status === "scheduled" || job.status === "pending_confirmation" || job.status === "completed") && (
-                      <div style={{ margin:"1rem 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .07)" }}>
-                        <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)", marginBottom:".75rem" }}>Job progress</div>
-                        <JobTimeline job={job} />
-                      </div>
+                      /* The caption and the panel moved INTO JobTimeline on
+                         2026-10-30 — they were duplicated here and in
+                         ClientDashboard byte-for-byte. This is the first piece
+                         of the redesign to reach the contractor dashboard; the
+                         rest of this page is still v1 until it is ported, so
+                         expect this one block to look newer than its
+                         neighbours for now. Don't re-wrap it to match them. */
+                      <JobTimeline job={job} />
                     )}
 
                     {disputes[job.id] && (() => {

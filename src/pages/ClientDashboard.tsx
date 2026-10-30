@@ -2532,10 +2532,12 @@ export default function ClientDashboard() {
                     </>)}
 
                     {activeJob && (activeJob.client_approved_at || activeJob.status === "scheduled" || activeJob.status === "in_progress" || activeJob.status === "pending_confirmation" || activeJob.status === "completed") && (
-                      <div style={{ marginTop:"1rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .07)" }}>
-                        <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)", marginBottom:".75rem" }}>Job progress</div>
-                        <JobTimeline job={activeJob} />
-                      </div>
+                      /* The caption and the panel moved INTO JobTimeline on
+                         2026-10-30. They were duplicated here and in
+                         ContractorDashboard byte-for-byte, which is two copies
+                         of a thing that has to look the same on both sides of
+                         the same job. Don't re-wrap this. */
+                      <JobTimeline job={activeJob} />
                     )}
 
                     {/* Every job needs a service agreement signed by both sides before
