@@ -40,7 +40,8 @@ import DashSearch from "@/components/DashSearch";
 import { searchTokens, matchesSearch } from "@/lib/dashSearch";
 import {
   Pass, PassTop, IconButton, StateLine, Hero, HeroSub, PassMeta, PassMetaItem,
-  JobSwitcher, AttentionCard, Row, Button, Pill, type State, type RowTone, type PillTone,
+  JobSwitcher, AttentionCard, Group, Sheet, Row, Button, Pill,
+  type State, type RowTone, type PillTone,
 } from "@/components/ui";
 
 /**
@@ -54,6 +55,57 @@ import {
  */
 function scoreTone(v: number): PillTone {
   return v >= 8 ? "good" : v >= 5 ? "neutral" : "warn";
+}
+
+/**
+ * Job History's status chip. v1 painted it from `STATUS_COLORS`, an eight-entry
+ * map of raw hexes — which is both a light-mode hazard (none of them answer to
+ * the theme) and eight colours competing in a single scrolling list.
+ *
+ * `STATUS_COLORS` is deliberately left in place — the open job cards and the
+ * calendar (`statusColors=`) both still read it, and the calendar in particular
+ * WANTS a distinct colour per status because its whole job is to tell the
+ * stages apart at a glance. A history list wants the opposite: the only
+ * question it answers is "did this go fine or not", so the eight statuses
+ * collapse onto four tones.
+ *
+ * `matched` / `assigned` / `scheduled` are neutral on purpose. They are
+ * mid-flight states on a FINISHED list; nothing about them is owed to the pro,
+ * and a warn tone on a scheduled job would read as a problem.
+ */
+function historyTone(status: string): PillTone {
+  if (status === "completed") return "good";
+  if (status === "cancelled") return "danger";
+  if (status === "in_progress") return "accent";
+  if (status === "pending" || status === "pending_confirmation") return "warn";
+  return "neutral";
+}
+
+/**
+ * Every history row gets an icon, and the reason is geometric rather than
+ * decorative: `<Row>` always renders the icon gutter (`.ffu-ri-wrap`) and a
+ * row's hairline starts where its TEXT starts, so a row with no icon leaves an
+ * empty column that still reads as a column. Give it a glyph or the list looks
+ * like it failed to load one.
+ *
+ * All three names are in `Ic`'s hand-copied set. A name that isn't renders
+ * BLANK rather than erroring, so this must not grow a glyph without checking.
+ */
+/**
+ * `<Row>`'s tones are a SUBSET of `<Pill>`'s — there is no `danger` row tone,
+ * because a row tone colours the icon and a red icon on an otherwise ordinary
+ * list row reads as an error the pro has to act on. A cancelled job isn't an
+ * error; it's just over. So the icon warns and only the pill goes red.
+ */
+function historyRowTone(status: string): RowTone {
+  const t = historyTone(status);
+  return t === "danger" ? "warn" : t;
+}
+
+function historyIcon(status: string): IconName {
+  if (status === "completed") return "check-circle";
+  if (status === "cancelled") return "x-circle";
+  return "briefcase";
 }
 
 const CONTRACTOR_NAV: SidebarItem[] = [
@@ -2546,8 +2598,12 @@ export default function ContractorDashboard() {
                 </div>
               );
             })()}
-            <div style={s.card}>
-              <div style={s.cardTitle}>Your Profile</div>
+            <Group label="YOUR PROFILE">
+              {/* marginBottom:0 — `<Group>` already carries a --ff-s6 top margin,
+                  so leaving the card's own bottom margin in place stacked two
+                  gaps between every pair of cards. The gap has exactly one
+                  owner now, which is the whole point of the spacing scale. */}
+              <div style={{ ...s.card, marginBottom:0 }}>
               {/* auto-fit + min(): collapses to one column on a phone instead of
                   forcing two columns that an email address then overflows. */}
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(min(180px, 100%), 1fr))", gap:".75rem", marginBottom:"1.25rem" }}>
@@ -2576,8 +2632,9 @@ export default function ContractorDashboard() {
                 </div>
               )}
             </div>
-            <div style={s.card}>
-              <div style={s.cardTitle}>Your default pricing</div>
+            </Group>
+            <Group label="YOUR DEFAULT PRICING">
+              <div style={{ ...s.card, marginBottom:0 }}>
               <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"1rem", lineHeight:1.5 }}>
                 Set these once and they'll pre-fill your call-out fee when you send an estimate, so you bid faster and more consistently. Clients don't see these numbers.
               </p>
@@ -2593,8 +2650,9 @@ export default function ContractorDashboard() {
               </div>
               <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", marginTop:"1rem" }} disabled={busyPricing} onClick={savePricing}>{busyPricing ? "Saving…" : "Save pricing"}</button>
             </div>
-            <div style={s.card}>
-              <div style={s.cardTitle}>Portfolio &amp; Reviews</div>
+            </Group>
+            <Group label="PORTFOLIO & REVIEWS">
+              <div style={{ ...s.card, marginBottom:0 }}>
               <div style={{ marginBottom:"1.25rem" }}>
                 <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".35rem" }}>Google reviews link</div>
                 <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
@@ -2625,8 +2683,9 @@ export default function ContractorDashboard() {
                 <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", alignSelf:"flex-start" as const }} disabled={busyPf} onClick={addPortfolioItem}>{busyPf ? "Adding…" : "+ Add portfolio item"}</button>
               </div>
             </div>
-            <div style={s.card}>
-              <div style={s.cardTitle}>Availability</div>
+            </Group>
+            <Group label="AVAILABILITY">
+              <div style={{ ...s.card, marginBottom:0 }}>
               <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .5)", marginBottom:"1.1rem", lineHeight:1.5 }}>
                 Pick a typical week. You can fine-tune any day. Changes save automatically.
               </p>
@@ -2711,6 +2770,7 @@ export default function ContractorDashboard() {
                 );
               })()}
             </div>
+            </Group>
             <DeleteAccount />
           </div>
         )}
@@ -2841,8 +2901,8 @@ export default function ContractorDashboard() {
                 </div>
               </div>
             )}
-            <div style={{ ...s.card, marginBottom:"1.5rem" }}>
-              <div style={s.cardTitle}>Payouts</div>
+            <Group label="PAYOUTS">
+              <div style={{ ...s.card, marginBottom:0 }}>
               {contractor?.stripe_payouts_enabled ? (
                 <div style={{ display:"flex", alignItems:"center", gap:".6rem", color:"#22c55e", fontSize:".9rem" }}>
                   <Ic name="check" size={16} color="#22c55e" />
@@ -2880,39 +2940,47 @@ export default function ContractorDashboard() {
                 </div>
               )}
             </div>
-            <div style={s.card}>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".75rem", flexWrap:"wrap" as const, marginBottom:"1.25rem" }}>
-                <div style={{ ...s.cardTitle, marginBottom:0 }}>Job History</div>
-                {myJobs.length > 0 && (
-                  <button style={{ ...s.btn, display:"inline-flex", alignItems:"center", gap:".4rem" }} onClick={exportPayoutsCsv}>
-                    <Ic name="download" size={13} />Download CSV
-                  </button>
-                )}
-              </div>
-              {myJobs.length === 0 ? <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No jobs yet.</p> : myJobs.map(job => (
-                <div key={job.id} style={{ display:"flex", justifyContent:"space-between", padding:".85rem 0", borderBottom:"1px solid rgba(var(--ff-fg), .06)" }}>
-                  <div>
-                    <div style={{ fontSize:".9rem" }}>{job.request?.service_needed ?? "Job"}</div>
-                    <div style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .4)" }}>{new Date(job.created_at).toLocaleDateString()}</div>
-                  </div>
-                  <div style={{ textAlign:"right" }}>
-                    {job.amount ? (
-                      <>
-                        {netPayout(job) != null ? (
-                          <>
-                            <div style={{ fontSize:".95rem", fontWeight:600, color:"#22c55e" }}>${netPayout(job)!.toFixed(2)}</div>
-                            <div style={{ fontSize:".66rem", color:"rgba(var(--ff-muted), .4)" }}>your payout · ${job.amount} estimate</div>
-                          </>
-                        ) : (
-                          <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)" }}>${job.amount} estimate</div>
-                        )}
-                      </>
-                    ) : <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)" }}>TBD</div>}
-                    <div style={{ fontSize:".72rem", textTransform:"capitalize", color: STATUS_COLORS[job.status] ?? "#94a3b8", marginTop:".15rem" }}>{job.status.replace("_"," ")}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            </Group>
+            {/* JOB HISTORY — the caption moves OUT of the card.
+                v1 put a 1.2rem orange Bebas title inside the card; a <Group>
+                label sits above it at .78rem in muted ink, which is the same
+                geometry every list on the client side now uses. The CSV button
+                goes in Group's `action` slot rather than a bespoke flex header,
+                so the caption row can't drift out of alignment with the others.
+
+                ── Why the payout keeps its own ink ────────────────────────
+                `netPayout` is the one number on this screen that is money the
+                pro ALREADY HAS. It is passed as `amount`, which `<Row>` renders
+                in the brighter `.ffu-amt` ink, and the estimate it was derived
+                from drops into `sub` beside the date — v1 stacked three
+                differently-sized lines in a right-aligned column, which read as
+                three separate facts rather than one number with its provenance. */}
+            <Group label="JOB HISTORY" action={myJobs.length > 0 ? (
+              <Button variant="ghost" onClick={exportPayoutsCsv}>
+                <Ic name="download" size={13} style={{ marginRight:".3rem" }} />CSV
+              </Button>
+            ) : undefined}>
+              <Sheet>
+                {myJobs.length === 0 ? (
+                  <Row icon="clipboard-list" tone="neutral" title="NO JOBS YET" sub="Jobs you win show up here once they're underway." />
+                ) : myJobs.map(job => {
+                  const net = netPayout(job);
+                  const detail = new Date(job.created_at).toLocaleDateString()
+                    + (job.amount ? (net != null ? " · $" + job.amount + " estimate" : "") : " · price TBD");
+                  return (
+                    <Row
+                      key={job.id}
+                      icon={historyIcon(job.status)}
+                      tone={historyRowTone(job.status)}
+                      title={job.request?.service_needed ?? "Job"}
+                      sub={detail}
+                      amount={net != null ? "$" + net.toFixed(2) : (job.amount ? "$" + job.amount : undefined)}
+                      right={<Pill tone={historyTone(job.status)}>{job.status.replace("_"," ")}</Pill>}
+                    />
+                  );
+                })}
+              </Sheet>
+            </Group>
           </div>
         )}
 
