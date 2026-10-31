@@ -67,6 +67,14 @@ SECURITY-AUDIT-PRIVATE.md
 AUTH_SETUP.md
 _skills-to-install/
 
+# Design scratch. Standalone HTML mockups written to let the owner SEE a choice
+# before it is built — not source, never imported, and `git add -A` would have
+# published them to a PUBLIC repo on the very next ship. Named with the -shapes
+# / -preview suffixes rather than a bare *.html glob, because index.html is
+# tracked and load-bearing.
+*-shapes.html
+*-preview.html
+
 # Python bytecode from tools/
 __pycache__/
 *.pyc
