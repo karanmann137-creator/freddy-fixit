@@ -416,45 +416,86 @@ export default function Home() {
           -webkit-mask-image: radial-gradient(circle at 50% 40%, #000 26%, transparent 80%);
                   mask-image: radial-gradient(circle at 50% 40%, #000 26%, transparent 80%);
         }
-        /* Trade icons as texture only — ink, never orange, so they read as
-           watermark rather than accent and don't spend the 10% budget.
+        /* ── The mark, tiled, as the ground the hero sits on ──────────
+           This REPLACES two things: twelve hand-placed trade icons (wrench,
+           pipe, hammer…) that used to scatter across this same layer, and
+           the big .ff-herolock mark that sat at the top of the left column.
+           One identity, stated once, as texture.
 
-           The mask is what lets there be twelve of them without the hero
-           getting busy: it erases the icon field through the whole middle of
-           the section and only fades them up toward the edges. So the icons
-           are dense where the eye isn't and absent where the words are, which
-           is the opposite of scattering them evenly and hoping the opacity is
-           low enough. Nothing ever sits behind the headline. */
-        .ff-hero-icons { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+           A tiled pattern and a scattered icon field are two different
+           textures competing for the same 5%-of-ink layer, and the result
+           reads as noise rather than as either — so the twelve went, rather
+           than being dimmed to make room.
+
+           HALF-DROP, not a square grid. The tile carries two marks offset
+           diagonally by half the tile, so each row sits half a step off the
+           one above it. That kills the vertical channels a square grid
+           creates, and an octagon wants it anyway — offset rows are how
+           octagons pack. A straight grid behind a 54/46 split also reads as
+           a misalignment that isn't there.
+
+           The mask is inherited unchanged from the layer this replaces: it
+           erases the field through the whole middle of the section and fades
+           it up toward the edges, so the pattern is dense where the eye isn't
+           and absent where the words are. Nothing ever sits behind the
+           headline.
+
+           NO sketch filter, and it stays off BY CONSTRUCTION rather than by
+           an override. The twelve icons it replaces were wobbled by the
+           global 'svg[viewBox="0 0 24 24"] { filter: url(#ff-sketch-a) }'
+           rule in main.tsx — a selector keyed on the viewBox, not on a class.
+           This <svg> carries no viewBox at all (see the note on the markup
+           for why: userSpaceOnUse needs real pixels), so the rule simply
+           never matches it and no 'filter: none' is needed.
+
+           That is also the right outcome on its own terms. An feTurbulence
+           displacement over a rect filling the whole viewport is a different
+           proposition from one over a 70px glyph, and it would repaint on
+           every resize. The .ff-herolock mark never carried a filter either,
+           so clean is the consistent choice as well as the cheap one. */
+        .ff-hero-ptn { position: absolute; inset: 0; width: 100%; height: 100%;
+          z-index: 0; pointer-events: none;
           -webkit-mask-image: radial-gradient(ellipse 60% 54% at 50% 48%, transparent 30%, #000 82%);
                   mask-image: radial-gradient(ellipse 60% 54% at 50% 48%, transparent 30%, #000 82%); }
-        .ff-hero-icons span { position: absolute; color: rgb(var(--ff-fg)); opacity: 0.055; }
-        /* Heavier hand for the backdrop. main.tsx gives every 24x24 icon on the
-           site a sketch filter tuned for 16-20px UI glyphs; these run 38-70px,
-           where that same displacement is too small to read as drawn at all.
-           ff-sketch-lg is the same pipeline with a longer wavelength and about
-           double the throw. Specificity: one class plus two elements outranks
-           the global attribute rule in main.tsx, so this replaces it cleanly
-           rather than fighting it. Three variants across the twelve siblings,
-           because a dozen shapes sharing one noise field is precisely what
-           makes a filter look like a filter instead of a hand. */
-        .ff-hero-icons span svg { display: block; filter: url(#ff-sketch-lg); }
-        .ff-hero-icons span:nth-child(3n) svg { filter: url(#ff-sketch-c); }
-        .ff-hero-icons span:nth-child(4n) svg { filter: url(#ff-sketch-b); }
-        @media (max-width: 600px) { .ff-hero-icons span.ff-hi-hide { display: none; } }
+        /* ⚠ Strokes are declared HERE, not as presentation attributes on the
+           <pattern> children, for two reasons: var() in an SVG presentation
+           attribute is not dependable across browsers, and these have to
+           resolve per THEME. .ff-hero is .ff-on-dark but deliberately NOT
+           .ff-anchor, so this band genuinely flips in light mode — --ff-c10
+           becomes #d65f10 and --ff-fg becomes a dark triple, and both halves
+           of the mark follow on their own. A literal #ea6b14 here would have
+           painted orange marks on an off-white ground.
 
-        /* The mark alone, at size. The FREDDYFIXIT word is deliberately gone:
-           <TopNav/> is fixed and already spells the name out top-left over
-           this very section, and a logotype set twice on one screen reads as
-           a template rather than a brand. The mark carries the identity here;
-           the name is two inches away if anyone needs it.
+           The orange is a KNOWING exception to "orange appears once per
+           screen". It is spent at 13% on a masked backdrop, an order of
+           magnitude under the headline accent and the button — but it is
+           still a third orange thing on this hero, and if the <em> in "You
+           pick the price" ever starts feeling weak, this stroke-opacity is
+           the first number to pull down. */
+        .ff-hero-ptn .ff-ptn-a { stroke: var(--ff-c10); stroke-opacity: 0.13; }
+        .ff-hero-ptn .ff-ptn-b { stroke: rgb(var(--ff-fg)); stroke-opacity: 0.05; }
+        /* ⚠ The mask geometry CANNOT be the same stacked, and this is not a
+           taste adjustment. The desktop hole is an ellipse 60% of the width,
+           because two columns inside a 60rem measure leave real margin on
+           both sides for the pattern to live in. Stacked, the headline and
+           the panel run to ~90% of the viewport width — so that same 60% hole
+           leaves tiles sitting directly behind text on both edges, and the
+           ones it does clear are narrow vertical slivers of a 120px tile,
+           which read as a rendering fault rather than as texture.
 
-           It also does NOT animate. Everything below it rises in, but the
-           logo is the first thing on the page and a mark that arrives late
-           undercuts the exact steadiness it is there to project. */
-        .ff-herolock { display: block; line-height: 0; }
-        .ff-herolock svg { display: block;
-          width: clamp(88px, 22vw, 152px); height: clamp(88px, 22vw, 152px); }
+           So on phones the hole opens to 94% wide and the pattern survives
+           only as bands at the top and bottom of the section, where it is
+           whole rows of marks and nothing has to be read over it. The tile
+           size is deliberately NOT changed to suit: 'patternTransform' is an
+           SVG attribute, not a CSS property, so it can't be media-queried
+           from here, and the CSS 'transform' route on a <pattern> element is
+           not dependable. Masking is the lever that actually works. */
+        @media (max-width: 900px) {
+          .ff-hero-ptn {
+            -webkit-mask-image: radial-gradient(ellipse 94% 46% at 50% 50%, transparent 46%, #000 96%);
+                    mask-image: radial-gradient(ellipse 94% 46% at 50% 50%, transparent 46%, #000 96%);
+          }
+        }
 
         /* ── Hero layout: axial + modular ─────────────────────────────
            AXIAL — one vertical centre line, and every block is centred on
@@ -503,50 +544,55 @@ export default function Home() {
           display: flex; flex-direction: column; align-items: center;
           gap: var(--ff-mod); width: 100%; min-width: 0;
         }
-        /* Group breaks, expressed in modules rather than eyeballed pixels. */
-        .ff-hero-left > .ff-h1       { margin-top: var(--ff-mod); }
+        /* Group breaks, expressed in modules rather than eyeballed pixels.
+           The headline deliberately has NO break above it: the tagline and
+           the promise are one thought, and with the mark gone from the top of
+           this column there is nothing left for a break to separate the
+           headline FROM. It used to earn 2 modules (its own + the gap)
+           because it opened a new group under the logo. */
         .ff-hero-left > .ff-cta      { margin-top: calc(var(--ff-mod) * 2); }
         .ff-hero-left > .ff-hero-alt { margin-top: calc(var(--ff-mod) * 2); }
 
         @media (min-width: 901px) {
+          /* 60rem, not 72rem, and 54/46, not 58/42. Both halves pull in
+             toward the page's centre line instead of being flung at the two
+             outer margins — which is what made a 1400px-wide window read as
+             two unrelated things rather than one composition. The split is
+             still uneven, so the question "which do I do first?" still has
+             an answer; it is just no longer a chasm.
+
+             The column gap comes down with it (4.5rem → 2.6rem). A gap wider
+             than the panel's own padding by an order of magnitude is what a
+             gutter looks like, not a relationship. */
           .ff-hero-body {
-            max-width: 72rem;
-            grid-template-columns: minmax(0, 58fr) minmax(0, 42fr);
-            column-gap: clamp(2rem, 5vw, 4.5rem);
+            max-width: 60rem;
+            grid-template-columns: minmax(0, 54fr) minmax(0, 46fr);
+            column-gap: clamp(1.6rem, 3.2vw, 2.6rem);
             align-items: center; justify-items: stretch;
             text-align: left;
           }
           .ff-hero-left { align-items: flex-start; }
           .ff-hero-left > .ff-sub { margin-left: 0; margin-right: 0; }
         }
-        /* The raise: logo, tagline, headline and the three steps move UP,
-           and the bottom pair — the orange button and the tradesperson
-           link — stay anchored low. The left column stretches to the full
-           height of its grid row and '.ff-cta' takes every pixel of the
-           slack with 'margin-top: auto', so the top group is pushed to the
-           top and the bottom pair falls to the foot of the column. The gap
-           between the two groups is whatever height is left over, which is
-           why this is one declaration rather than a pile of tuned margins.
+        /* ⚠ THE RAISE IS GONE, AND IT SHOULD STAY GONE. What stood here was
+           a 'min-width: 901px and min-height: 640px' block that stretched
+           the left column to the full height of the hero and gave
+           '.ff-cta' a 'margin-top: auto', so the orange button was shoved
+           to the floor of a 100vh section and the panel got a matching
+           'margin-bottom' to chase it down there.
 
-           'align-self: stretch' is required and easy to miss: the 901px
-           block above sets 'align-items: center' on the body, so without
-           it the column would be centred inside its now-taller row and the
-           auto margin would have nothing to push against.
+           The intent was "anchor the action low". The effect was that every
+           leftover pixel of viewport height — which on a tall desktop
+           window is a lot — collected into ONE void between the three steps
+           and the button, while every other gap in the hero stayed at its
+           module. That is what made the spacing read as mismanaged: nothing
+           was mis-sized, the blocks were being pushed apart on purpose.
 
-           Guarded on BOTH width and height, deliberately. Below 901px
-           there is no "left" — the two halves are stacked, and dragging
-           the button to the bottom of a stacked block would tear it away
-           from the headline it belongs to. And '.ff-hero' is
-           'overflow: hidden', so on a short or landscape viewport an
-           unbounded spread pushes the bottom pair past the clip instead of
-           down the column; 640px of height is the floor at which there is
-           genuinely slack to spend. Under either threshold this block
-           simply doesn't apply and the hero is exactly what it was. */
-        @media (min-width: 901px) and (min-height: 640px) {
-          .ff-hero-body { align-content: stretch; grid-auto-rows: minmax(min-content, 1fr); }
-          .ff-hero-left { align-self: stretch; }
-          .ff-hero-left > .ff-cta { margin-top: auto; }
-        }
+           The modular stack now simply centres in its row, so the gaps the
+           --ff-mod rhythm describes are the gaps you actually see, at every
+           window height. If "anchor the action low" is ever wanted again,
+           it needs to be a bounded spread (a max'd spacer), never an
+           unbounded 'auto' on a viewport-height column. */
         /* One column, so the flex-era justify-content that used to push the
            body into the thumb arc becomes align-content. On a short phone a
            plain "end" would overflow the TOP of the section, so the stacked
@@ -612,21 +658,47 @@ export default function Home() {
 
            That also sidesteps the iOS zoom trap entirely: the 16px computed
            font-size floor applies to inputs, and there is no input here. */
+        /* ⚠ The bezel is DELIBERATELY thin (0.68rem of padding, where this
+           used to carry up to 1.6rem). The frame is not the point — the
+           words inside it are — and a wide inset made the panel read as a
+           picture mount around the textarea rather than as one control.
+           Radius comes down with it: a 20px corner on a 0.68rem inset
+           bulges, because the curve eats more than half the padding it has
+           to live inside. 18px outer against the box's 13px keeps the two
+           curves concentric, which is the only reason those two numbers are
+           related at all. */
         .ff-hero-panel {
-          width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 0.85rem;
-          padding: clamp(1.15rem, 2.4vw, 1.6rem);
+          width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 0.6rem;
+          padding: clamp(0.55rem, 1.1vw, 0.68rem);
           background: rgba(var(--ff-fg), 0.045);
           border: 1px solid rgba(var(--ff-fg), 0.12);
-          border-radius: 20px;
+          border-radius: 18px;
           -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
           box-shadow: 0 24px 60px rgba(0,0,0,0.30);
           text-align: left;
         }
         /* Slightly bigger than the hero's body copy on purpose — it is the
            instruction, and it has to out-rank the example text underneath
-           it or the panel reads as a quote rather than a prompt. */
-        .ff-panel-label { font-family: 'DM Sans', sans-serif; font-weight: 500;
-          font-size: 1.15rem; line-height: 1.3; color: var(--ff-ink-1); margin: 0; }
+           it or the panel reads as a quote rather than a prompt.
+
+           ⚠ FRAUNCES, not DM Sans, and that is the whole answer to "the font
+           in the textbox doesn't match the main text". The headline beside it
+           is Fraunces; this label is the panel's own headline, so in DM Sans
+           it read as a form field borrowed from a dashboard and dropped onto
+           a page you read. The brand rule puts Fraunces on pages you READ and
+           Bebas on pages you OPERATE — the hero is the former, and a label is
+           only "small UI" when it sits in an operating surface.
+
+           line-height had to rise off 1.3 → 1.32 for the face change: Fraunces
+           has real descenders where DM Sans at this size effectively didn't.
+           letter-spacing goes slightly negative because Fraunces sets wider
+           than DM Sans at the same size, and 1.22rem was picked to hold the
+           same optical weight against the box beneath it. The textarea itself
+           stays DM Sans — it is body copy the client will type into, not a
+           heading. */
+        .ff-panel-label { font-family: 'Fraunces', Georgia, serif; font-weight: 500;
+          font-size: 1.22rem; line-height: 1.32; letter-spacing: -0.01em;
+          color: var(--ff-ink-1); margin: 0; }
         /* A REAL textarea, not a button dressed as one. The examples type
            themselves into the PLACEHOLDER, so the same animation that used
            to be a demonstration is now an invitation — the client can put
@@ -647,8 +719,8 @@ export default function Home() {
           padding: 0.85rem 0.95rem; resize: vertical;
           background: rgba(var(--ff-bg-rgb), 0.35);
           border: 1px solid rgba(var(--ff-fg), 0.10);
-          border-radius: 12px;
-          font-family: 'DM Sans', sans-serif; font-weight: 300; font-size: 1rem; line-height: 1.5;
+          border-radius: 13px;
+          font-family: 'DM Sans', sans-serif; font-weight: 400; font-size: 1rem; line-height: 1.5;
           color: var(--ff-ink-1);
           transition: border-color 0.18s ease, background 0.18s ease;
         }
@@ -685,27 +757,29 @@ export default function Home() {
           .ff-hero-panel { max-width: 30rem; margin: calc(var(--ff-mod) * 2) auto 0; }
         }
 
-        /* Desktop only: drop the panel so its bottom edge sits level with the
-           orange button, not with the bottom of the column.
+        /* Desktop only. ⚠ THIS USED TO DROP THE PANEL and it no longer does.
+           What stood here was 'align-self: end' plus a
+           'margin-bottom: calc(var(--ff-mod) * 3 + 1.25rem)' whose only job
+           was to subtract the blocks sitting under the orange button, so the
+           panel's bottom edge would line up with the button rather than with
+           the foot of the column.
 
-           The left column ends with the tradesperson line, NOT with .ff-cta —
-           so a bare 'align-self: end' would line the panel up with that link
-           instead, one block too low. The margin subtracts exactly what sits
-           under the button: the link's own line, the flex gap above it
-           (1 module) and its group break (2 more), which is why it is written
-           in modules rather than as a tuned pixel value. Re-tune --ff-mod and
-           this follows on its own.
+           It was the panel's half of the raise that was deleted above: the
+           left column was stretched to the hero's full height and the button
+           pushed to its floor, and this margin chased the panel down to meet
+           it. With the raise gone there is nothing down there to line up
+           with — keeping it would have hung the panel below its own row for
+           no reason, which is the same void complaint from the other side.
 
-           Declared after the base rules and after the max-width block on
-           purpose, so the equal-specificity ties resolve in source order. It
-           holds whether or not the 640px-height "raise" applies: with the
-           raise the row is the full hero height and the button is already at
-           its foot, and without it the row is the left column's own height,
-           whose foot is the same link. Same reference either way. */
+           'center' now, matching the grid's 'align-items: center'. It is
+           stated explicitly rather than left to inherit because this rule is
+           declared after the max-width block on purpose, so the
+           equal-specificity ties resolve in source order and the override is
+           visible where someone looking for it would read. */
         @media (min-width: 901px) {
           .ff-hero-panel {
-            align-self: end;
-            margin-bottom: calc(var(--ff-mod) * 3 + 1.25rem);
+            align-self: center;
+            margin-bottom: 0;
           }
           /* A bigger area to type in. Height only — font-size is deliberately
              untouched at 1rem; see the note on .ff-panel-box above. */
@@ -879,8 +953,9 @@ export default function Home() {
           One job: in about three seconds, tell a stranger what this is, why
           they should trust it, and give them exactly one thing to press.
           Everything here is subordinate to that — which is why there is one
-          button and not three, and why the brand is a lockup rather than the
-          headline. The whole entrance is CSS, not framer-motion, so the text
+          button and not three, and why the brand is now the tiled ground
+          behind the section rather than a mark competing with the headline
+          for the top of the column. The whole entrance is CSS, not framer-motion, so the text
           paints on the HTML/CSS pass instead of waiting for the JS bundle. */}
       {/* Navy in dark mode, off-white in light mode (2026-08-24 — owner
           direction: light mode should read off-white almost everywhere, navy
@@ -896,46 +971,61 @@ export default function Home() {
           data-theme rules just above .ff-hero-glow. */}
       <div className="ff-hero ff-on-dark">
         <div className="ff-hero-glow" aria-hidden="true" />
-        {/* Watermark texture. Ink, not orange — the accent budget is spent on
-            the button, and these used to be eight competing orange shapes. */}
-        {/* Twelve trade marks instead of four. They can be this many and still
-            read as clean because of the mask on .ff-hero-icons, which erases
-            the middle of the field entirely — density lives out at the edges
-            where nothing has to be read, and the centre column stays empty.
-            Positions are deliberately off the axis and the sizes vary, since a
-            tidy ring of same-size icons looks like a border, not texture. The
-            six marked ff-hi-hide drop on phones, where there is no margin to
-            spare beside the text. */}
-        <div className="ff-hero-icons" aria-hidden="true">
-          <span style={{ top:"11%", left:"6%", transform:"rotate(-18deg)" }}><Ic name="wrench" size={64} color="currentColor" /></span>
-          <span className="ff-hi-hide" style={{ top:"9%", left:"27%", transform:"rotate(9deg)" }}><Ic name="trowel" size={40} color="currentColor" /></span>
-          <span className="ff-hi-hide" style={{ top:"18%", right:"25%", transform:"rotate(-7deg)" }}><Ic name="droplet" size={38} color="currentColor" /></span>
-          <span className="ff-hi-hide" style={{ top:"20%", right:"8%", transform:"rotate(14deg)" }}><Ic name="pipe" size={70} color="currentColor" /></span>
-          <span style={{ top:"38%", left:"3%", transform:"rotate(6deg)" }}><Ic name="zap" size={44} color="currentColor" /></span>
-          <span style={{ top:"42%", right:"4%", transform:"rotate(-16deg)" }}><Ic name="thermometer" size={46} color="currentColor" /></span>
-          <span className="ff-hi-hide" style={{ top:"62%", left:"22%", transform:"rotate(-11deg)" }}><Ic name="key" size={36} color="currentColor" /></span>
-          <span className="ff-hi-hide" style={{ top:"66%", right:"9%", transform:"rotate(-12deg)" }}><Ic name="hammer" size={62} color="currentColor" /></span>
-          <span style={{ top:"74%", left:"5%", transform:"rotate(10deg)" }}><Ic name="paint-roller" size={56} color="currentColor" /></span>
-          <span className="ff-hi-hide" style={{ top:"80%", right:"27%", transform:"rotate(8deg)" }}><Ic name="snowflake" size={40} color="currentColor" /></span>
-          <span style={{ top:"88%", left:"33%", transform:"rotate(-6deg)" }}><Ic name="toolbox" size={48} color="currentColor" /></span>
-          <span style={{ top:"86%", right:"14%", transform:"rotate(13deg)" }}><Ic name="tree" size={42} color="currentColor" /></span>
-        </div>
+        {/* Watermark texture — the mark itself, tiled, half-drop. This is the
+            whole identity layer now: it replaced twelve hand-placed trade
+            glyphs (wrench, pipe, hammer…) that used to scatter across this
+            same masked field, AND the big .ff-herolock mark that sat at the
+            top of the left column. One mark, stated once, as ground.
+
+            ⚠ aria-hidden and NOTHING ELSE. The old lockup carried
+            role="img" + aria-label="Freddy Fix It" because it was the only
+            thing naming the company in this section — but TopNav renders
+            "FREDDYFIXIT" as real text above it, so the name is still in the
+            accessibility tree and a decorative tile must not repeat it.
+            Labelling this would make a screen reader announce the brand twice,
+            the second time for a texture.
+
+            No viewBox, deliberately: with userSpaceOnUse the tile's 120 is
+            120 real CSS pixels, so density is fixed and does not rescale with
+            the viewport. A viewBox here would make the tile size a fraction of
+            the hero and the pattern would visibly stretch on every resize.
+
+            Strokes carry CLASSES, not stroke attributes — see .ff-ptn-a /
+            .ff-ptn-b in the style block, which is where the theme tokens and
+            the opacity budget live. The two marks in the tile are identical;
+            the second is the half-drop offset that kills the vertical
+            channels a square grid would leave. */}
+        <svg className="ff-hero-ptn" aria-hidden="true" focusable="false">
+          <defs>
+            <pattern id="ff-mark-tile" width="120" height="120" patternUnits="userSpaceOnUse">
+              <g fill="none" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                <g transform="translate(2,2) scale(0.7)">
+                  <polygon className="ff-ptn-a" points="65.9,50.7 50.7,65.9 29.3,65.9 14.1,50.7 14.1,29.3 29.3,14.1 50.7,14.1 65.9,29.3"/>
+                  <path className="ff-ptn-b" d="M28 54 L28 38 L40 28 L52 38 L52 54 Z"/>
+                  <path className="ff-ptn-a" d="M36 54 L36 43 L44 43 L44 54"/>
+                </g>
+                <g transform="translate(62,62) scale(0.7)">
+                  <polygon className="ff-ptn-a" points="65.9,50.7 50.7,65.9 29.3,65.9 14.1,50.7 14.1,29.3 29.3,14.1 50.7,14.1 65.9,29.3"/>
+                  <path className="ff-ptn-b" d="M28 54 L28 38 L40 28 L52 38 L52 54 Z"/>
+                  <path className="ff-ptn-a" d="M36 54 L36 43 L44 43 L44 54"/>
+                </g>
+              </g>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#ff-mark-tile)"/>
+        </svg>
 
         <div className="ff-hero-body" ref={heroRef}>
           <div className="ff-hero-left">
-            {/* The mark, with no entrance animation — see .ff-herolock.
-                role="img" + a label because the wordmark that used to name the
-                company is gone, so this SVG is now the only thing carrying the
-                brand in this section. */}
-            <div className="ff-herolock" role="img" aria-label="Freddy Fix It">
-              <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <polygon points="65.9,50.7 50.7,65.9 29.3,65.9 14.1,50.7 14.1,29.3 29.3,14.1 50.7,14.1 65.9,29.3" fill="rgba(234,107,20,0.10)" stroke="#ea6b14" strokeWidth="3"/>
-                <path d="M28 54 L28 38 L40 28 L52 38 L52 54 Z" stroke="var(--ff-text)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                <path d="M36 54 L36 43 L44 43 L44 54" stroke="#ea6b14" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-              </svg>
-            </div>
-
-            {/* Tagline sits directly under the mark and above the headline — a
+            {/* ⚠ THE LOCKUP IS GONE FROM HERE ON PURPOSE. A 70px mark used to
+                open this column, and the brand is now the tiled ground behind
+                the whole section (see .ff-hero-ptn above) — so repeating it at
+                the top of the left column would state the same thing twice,
+                once loudly. The headline's group break went with it: there is
+                nothing left above the tagline for a break to separate it from.
+                Don't put a mark back in this column without taking the tile
+                out, or the hero carries two copies of its own identity. */}
+            {/* Tagline opens the column now, above the headline — a
                 short trust line read before anything else on the page. Reuses
                 .ff-sub so the type size matches the rest of the hero body. */}
             <p className="ff-sub ff-anim">
