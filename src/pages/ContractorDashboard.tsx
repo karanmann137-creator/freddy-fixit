@@ -1,4 +1,4 @@
-import { Ic } from "@/components/Ic";
+import { Ic, type IconName } from "@/components/Ic";
 import { DashboardSkeleton, useEnterAnim } from "@/components/Skeleton";
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
@@ -40,8 +40,21 @@ import DashSearch from "@/components/DashSearch";
 import { searchTokens, matchesSearch } from "@/lib/dashSearch";
 import {
   Pass, PassTop, IconButton, StateLine, Hero, HeroSub, PassMeta, PassMetaItem,
-  JobSwitcher, type State,
+  JobSwitcher, AttentionCard, Row, Button, Pill, type State, type RowTone, type PillTone,
 } from "@/components/ui";
+
+/**
+ * A review score's colour has to come FROM the score. v1 painted every one of
+ * them `#ea6b14`, so a 4/10 arrived in the same celebratory orange as a 10/10 —
+ * the one number on the page a pro most needs to notice read as a highlight.
+ *
+ * Thresholds are deliberately generous at the bottom: 5–7 is "fine, nothing to
+ * see", not a warning. Only a genuinely poor score earns the warn tone, because
+ * a tone that fires on an average result stops meaning anything.
+ */
+function scoreTone(v: number): PillTone {
+  return v >= 8 ? "good" : v >= 5 ? "neutral" : "warn";
+}
 
 const CONTRACTOR_NAV: SidebarItem[] = [
   { key: "jobs",      label: "My Jobs",        icon: "briefcase" },
@@ -1280,12 +1293,12 @@ export default function ContractorDashboard() {
   // enough to set in Bebas at display size, and `text` is a full sentence. The
   // two are deliberately not derived from each other — `hero` names the move,
   // `text` explains it, and a truncated sentence would do neither.
-  const attn: { key: string; hero: string; text: string; cta: string; onClick: () => void; danger?: boolean }[] = [];
+  const attn: { key: string; icon: IconName; tone: RowTone; hero: string; text: string; cta: string; onClick: () => void; danger?: boolean }[] = [];
   for (const job of myJobs) {
     const d = disputes[job.id];
     const svc = job.request?.service_needed ?? "a job";
     if (d && d.status === "open" && !d.contractor_responded_at) {
-      attn.push({ key: "claim-" + job.id, hero: "A CLAIM NEEDS YOUR REPLY", text: "A client filed a claim on “" + svc + "” — your payout is paused until you respond.", cta: "Respond now", onClick: () => focusJobAnchor(job, A_CLAIM), danger: true });
+      attn.push({ key: "claim-" + job.id, icon: "alert-triangle" as const, tone: "warn" as const, hero: "A CLAIM NEEDS YOUR REPLY", text: "A client filed a claim on “" + svc + "” — your payout is paused until you respond.", cta: "Respond now", onClick: () => focusJobAnchor(job, A_CLAIM), danger: true });
     // Gated on the live stages, exactly like the panel this row scrolls
     // to. Neither flag is ever cleared, so ungated the row — and its
     // dead "Review new time" button, since A_RESCHED only renders on
@@ -1293,28 +1306,28 @@ export default function ContractorDashboard() {
     // burning one of only four attention slots.
     } else if (job.client_rescheduled_at && !job.reschedule_accepted_at
                && ["assigned","scheduled","in_progress"].includes(job.status)) {
-      attn.push({ key: "resched-" + job.id, hero: "YOUR CLIENT MOVED THE TIME", text: (job.client?.first_name || "Your client") + " changed the time on “" + svc + "”.", cta: "Review new time", onClick: () => focusJobAnchor(job, A_RESCHED) });
+      attn.push({ key: "resched-" + job.id, icon: "calendar" as const, tone: "accent" as const, hero: "YOUR CLIENT MOVED THE TIME", text: (job.client?.first_name || "Your client") + " changed the time on “" + svc + "”.", cta: "Review new time", onClick: () => focusJobAnchor(job, A_RESCHED) });
     } else if (job.status === "assigned" && job.walkthrough_approved_at && !job.walkthrough_done_at) {
-      attn.push({ key: "wt-" + job.id, hero: "MARK THE WALKTHROUGH DONE", text: "Walkthrough confirmed for “" + svc + "”" + (job.walkthrough_at ? " — " + new Date(job.walkthrough_at).toLocaleString() : "") + ". After the visit, mark it done and send your estimate.", cta: "Mark walkthrough done", onClick: () => focusJobAnchor(job, A_WALK) });
+      attn.push({ key: "wt-" + job.id, icon: "check-circle" as const, tone: "accent" as const, hero: "MARK THE WALKTHROUGH DONE", text: "Walkthrough confirmed for “" + svc + "”" + (job.walkthrough_at ? " — " + new Date(job.walkthrough_at).toLocaleString() : "") + ". After the visit, mark it done and send your estimate.", cta: "Mark walkthrough done", onClick: () => focusJobAnchor(job, A_WALK) });
     } else if (job.status === "assigned" && job.walkthrough_done_at && !job.schedule_proposed_at) {
       // The walkthrough block only says "done"; the thing they came to do
       // is the propose form, so send them there rather than to the notice.
-      attn.push({ key: "wtdone-" + job.id, hero: "SEND YOUR ESTIMATE", text: "You finished the walkthrough on “" + svc + "” — the client is waiting for your estimate.", cta: "Send estimate", onClick: () => focusJobAnchor(job, A_PROPOSE) });
+      attn.push({ key: "wtdone-" + job.id, icon: "dollar" as const, tone: "accent" as const, hero: "SEND YOUR ESTIMATE", text: "You finished the walkthrough on “" + svc + "” — the client is waiting for your estimate.", cta: "Send estimate", onClick: () => focusJobAnchor(job, A_PROPOSE) });
     } else if (job.status === "assigned" && job.slot_released_at && !job.schedule_proposed_at) {
-      attn.push({ key: "slot-" + job.id, hero: "PROPOSE A NEW TIME", text: "The booked time on “" + svc + "” was released — it wasn't signed and paid in time. You still have the job; propose a new time.", cta: "Propose new time", onClick: () => focusJobAnchor(job, A_PROPOSE) });
+      attn.push({ key: "slot-" + job.id, icon: "calendar" as const, tone: "warn" as const, hero: "PROPOSE A NEW TIME", text: "The booked time on “" + svc + "” was released — it wasn't signed and paid in time. You still have the job; propose a new time.", cta: "Propose new time", onClick: () => focusJobAnchor(job, A_PROPOSE) });
     } else if (job.status === "assigned" && !job.schedule_proposed_at && !job.walkthrough_proposed_at) {
-      attn.push({ key: "propose-" + job.id, hero: "SEND YOUR TIME AND PRICE", text: "“" + svc + "” is waiting for your time and price.", cta: "Propose now", onClick: () => focusJobAnchor(job, A_PROPOSE) });
+      attn.push({ key: "propose-" + job.id, icon: "dollar" as const, tone: "accent" as const, hero: "SEND YOUR TIME AND PRICE", text: "“" + svc + "” is waiting for your time and price.", cta: "Propose now", onClick: () => focusJobAnchor(job, A_PROPOSE) });
     } else if (job.status === "scheduled" && job.scheduled_at) {
       const dt = new Date(job.scheduled_at).getTime() - Date.now();
       // Booked within the day: the move is directions + "I'm on my way",
       // so land on that pair rather than the top of the card.
-      if (dt > 0 && dt < 24 * 3600 * 1000) attn.push({ key: "soon-" + job.id, hero: "YOU'RE ON SITE SOON", text: "“" + svc + "” is booked for " + new Date(job.scheduled_at).toLocaleString() + ".", cta: "Get ready", onClick: () => focusJobAnchor(job, A_ONWAY) });
+      if (dt > 0 && dt < 24 * 3600 * 1000) attn.push({ key: "soon-" + job.id, icon: "calendar" as const, tone: "accent" as const, hero: "YOU'RE ON SITE SOON", text: "“" + svc + "” is booked for " + new Date(job.scheduled_at).toLocaleString() + ".", cta: "Get ready", onClick: () => focusJobAnchor(job, A_ONWAY) });
     }
     // Work is done and only the deposit is in: the outstanding balance is
     // the single thing blocking this pro's payout, and nothing else on
     // their dashboard would tell them so.
     if (job.status === "pending_confirmation" && awaitingBalance(job)) {
-      attn.push({ key: "bal-" + job.id, hero: "THE BALANCE ISN'T IN YET", text: "“" + svc + "” is finished but the client still owes $" + jobBalanceDue(job).toFixed(2) + " — your payout is released once they pay and confirm.", cta: "See what's owed", onClick: () => focusJobAnchor(job, A_BALANCE) });
+      attn.push({ key: "bal-" + job.id, icon: "dollar" as const, tone: "accent" as const, hero: "THE BALANCE ISN'T IN YET", text: "“" + svc + "” is finished but the client still owes $" + jobBalanceDue(job).toFixed(2) + " — your payout is released once they pay and confirm.", cta: "See what's owed", onClick: () => focusJobAnchor(job, A_BALANCE) });
     }
     // No signed agreement = the client physically cannot pay, so this
     // outranks everything else on a live job. Only prompt when it's the
@@ -1323,23 +1336,23 @@ export default function ContractorDashboard() {
     if (!contractsFailed
         && ["assigned", "scheduled", "in_progress", "pending_confirmation"].includes(job.status)
         && !["signed", "sent"].includes(contracts[job.id] ?? "")) {
-      attn.push({ key: "contract-" + job.id, hero: "SEND THE AGREEMENT", text: "“" + svc + "” needs a signed service agreement — your client can't pay until you send it.", cta: "Send agreement", onClick: () => focusContractJob(job) });
+      attn.push({ key: "contract-" + job.id, icon: "file" as const, tone: "accent" as const, hero: "SEND THE AGREEMENT", text: "“" + svc + "” needs a signed service agreement — your client can't pay until you send it.", cta: "Send agreement", onClick: () => focusContractJob(job) });
     }
     // Photos are what unlock payment, so chase them once work is under way.
     if (job.status === "in_progress" || (job.status === "scheduled" && job.on_my_way_at)) {
       const miss = photosMissing(job);
-      if (miss.length) attn.push({ key: "photo-" + job.id, hero: "ADD THE REQUIRED PHOTOS", text: "“" + svc + "” still needs " + miss.join(" and ") + " — you can't mark it complete without them.", cta: "Add photos", onClick: () => focusJobAnchor(job, A_PHOTOS) });
+      if (miss.length) attn.push({ key: "photo-" + job.id, icon: "camera" as const, tone: "warn" as const, hero: "ADD THE REQUIRED PHOTOS", text: "“" + svc + "” still needs " + miss.join(" and ") + " — you can't mark it complete without them.", cta: "Add photos", onClick: () => focusJobAnchor(job, A_PHOTOS) });
     }
   }
   const reserved = availableJobs.filter((r: any) => r.is_preferred);
   if (reserved.length > 0) {
-    attn.push({ key: "reserved", hero: "A CLIENT ASKED FOR YOU", text: reserved.length === 1 ? "A client requested you — “" + reserved[0].service_needed + "” is reserved for you for 48h." : reserved.length + " clients requested you — jobs are reserved for you for 48h.", cta: "See jobs", onClick: () => { setActiveTab("available"); window.scrollTo({ top: 0, behavior: "smooth" }); } });
+    attn.push({ key: "reserved", icon: "user-check" as const, tone: "accent" as const, hero: "A CLIENT ASKED FOR YOU", text: reserved.length === 1 ? "A client requested you — “" + reserved[0].service_needed + "” is reserved for you for 48h." : reserved.length + " clients requested you — jobs are reserved for you for 48h.", cta: "See jobs", onClick: () => { setActiveTab("available"); window.scrollTo({ top: 0, behavior: "smooth" }); } });
   }
   // ── Conversational rows last (see the ordering note above) ──────────
   for (const job of chatTimeJobs) {
     // Stays put after "Decide later" so a suggested time can't be lost.
     attn.push({
-      key: "chattime-" + job.id,
+      key: "chattime-" + job.id, icon: "clock" as const, tone: "neutral" as const,
       hero: "A TIME WAS SUGGESTED",
       text: (job.client?.first_name || "Your client") + " suggested " + formatWhen(job.chat_time_at) + " for “" + (job.request?.service_needed ?? "a job") + "”.",
       cta: "Accept or change",
@@ -1354,7 +1367,7 @@ export default function ContractorDashboard() {
   // and it used to raise no row at all.
   for (const c of inboxRows.filter(c => c.unread > 0).slice(0, 3)) {
     attn.push({
-      key: "msg-" + conversationKey(c),
+      key: "msg-" + conversationKey(c), icon: "message-square" as const, tone: "neutral" as const,
       hero: c.unread === 1 ? "YOU HAVE AN UNREAD MESSAGE" : "YOU HAVE UNREAD MESSAGES",
       text: partyName(c) + " sent you " + (c.unread === 1 ? "a message" : c.unread + " messages")
         + (c.kind === "bid"
@@ -1690,31 +1703,50 @@ export default function ContractorDashboard() {
           );
         })()}
 
-        {/* The rows are derived ABOVE the return now (see the hoist note
-            there) because the Pass at the top of the page has to read them.
-            This block renders them; it no longer computes them. */}
-        {shownAttn.length > 0 && (
-          <div style={{ ...s.card, padding:"1.1rem 1.25rem", marginBottom:"1.25rem", border:"1px solid rgba(234,107,20,.3)" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:".45rem", fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"#ea6b14", fontWeight:700 }}>
-              <Ic name="alert-triangle" size={13} />Needs your attention
-            </div>
-            {shownAttn.slice(0, 4).map((a, i) => (
-              <div key={a.key} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".75rem", padding:".6rem 0", borderTop: i === 0 ? "none" : "1px solid rgba(var(--ff-fg), .06)", marginTop: i === 0 ? ".5rem" : 0 }}>
-                <div style={{ fontSize:".85rem", color:"var(--ff-text)", lineHeight:1.45 }}>{a.text}</div>
-                <div style={{ display:"flex", alignItems:"center", gap:".4rem", flexShrink:0 }}>
-                  <button style={{ ...s.btn, background: a.danger ? "rgba(239,68,68,.12)" : "#ea6b14", color: a.danger ? "#ef4444" : "#fff", border: a.danger ? "1px solid rgba(239,68,68,.35)" : "none", whiteSpace:"nowrap" as const, flexShrink:0 }} onClick={a.onClick}>{a.cta}</button>
-                  {/* Hide for now only - see the hiddenNow docblock. Every row
-                      here is either a money gate or state that changes. */}
+        {/* Needs your attention. The LIST is derived ABOVE the return
+            (`shownAttn`) so this card and the Pass can never disagree about
+            whether anything is on this pro — that is the whole reason for the
+            hoist. <AttentionCard> caps the render and returns null on an empty
+            list, so there is no length check here.
+
+            ⚠️ `max={4}`, not the component's default 3. The contractor side has
+            always shown four and the extra slot is load-bearing: a pro can
+            legitimately have a claim, an unsent agreement, missing photos and
+            an unpaid balance at the same moment, and all four gate money.
+
+            Each row is DELIBERATELY not interactive as a whole, exactly as on
+            the client side: a <button> cannot contain a <button>, and two
+            things have to stay in the trailing slot — the worded CTA and the
+            dismiss ×. The wording is load-bearing ("Send agreement" and "See
+            what's owed" say what is about to happen; a chevron does not).
+
+            `danger` keeps its own treatment rather than becoming a tone: the
+            claim row's button is the only destructive-adjacent control in the
+            card, and <Row>'s tones colour the ICON, not the button. */}
+        <AttentionCard max={4}>
+          {shownAttn.map(a => (
+            <Row
+              key={a.key}
+              icon={a.icon}
+              tone={a.tone}
+              title={a.hero}
+              sub={a.text}
+              right={
+                <>
+                  <Button variant={a.danger ? "danger" : "primary"} onClick={a.onClick}>{a.cta}</Button>
+                  {/* Hide for now only — see the hiddenNow docblock. Every row
+                      here is either a money gate or state that changes, so
+                      nothing in this card is ever dismissed forever. */}
                   <DismissX
                     onClick={() => setHiddenNow(prev => new Set(prev).add(attnRowKey(a.key)))}
                     label="Hide for now"
                     title="Hide until next time you open the dashboard"
                   />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+                </>
+              }
+            />
+          ))}
+        </AttentionCard>
 
         {activeTab === "jobs" && (() => {
           // Search COMPOSES with the pipeline-stage filter rather than replacing
@@ -2529,13 +2561,18 @@ export default function ContractorDashboard() {
               {(contractor?.specialties?.length ?? 0) > 0 && (
                 <div style={{ marginBottom:"1rem" }}>
                   <div style={{ fontSize:".7rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".5rem" }}>Specialties</div>
-                  {contractor.specialties.map((sp: string) => <span key={sp} style={s.chip}>{sp}</span>)}
+                  {/* `neutral`, not accent. `s.chip` tinted every one of these
+                      orange, so a pro with eight specialties got eight calls to
+                      action and the real one — whatever the state line is
+                      saying — had to compete with them. A specialty is plain
+                      metadata; see Pill's docblock on the accent budget. */}
+                  {contractor.specialties.map((sp: string) => <Pill key={sp} tone="neutral">{sp}</Pill>)}
                 </div>
               )}
               {(contractor?.service_area?.length ?? 0) > 0 && (
                 <div>
                   <div style={{ fontSize:".7rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".5rem" }}>Service Area</div>
-                  {contractor.service_area.map((z: string) => <span key={z} style={s.chip}><Ic name="map-pin" size={11} style={{ marginRight:3 }} />{z}</span>)}
+                  {contractor.service_area.map((z: string) => <Pill key={z} tone="neutral"><Ic name="map-pin" size={11} style={{ marginRight:3 }} />{z}</Pill>)}
                 </div>
               )}
             </div>
@@ -2896,7 +2933,12 @@ export default function ContractorDashboard() {
                     ["Results", myReviews.reduce((a,r)=>a+(r.result_score??0),0)/myReviews.length || 0],
                   ].map(([label, avg]) => (
                     <div key={String(label)} style={s.earnCard}>
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.7rem", lineHeight:1.1, color:"#ea6b14", marginBottom:".25rem" }}>{(avg as number).toFixed(1)}<span style={{ fontSize:"1rem", color:"rgba(var(--ff-muted), .4)" }}>/10</span></div>
+                      {/* Same rule as the per-review chips, and the same reason:
+                          the raw `#ea6b14` here is both a hardcoded hex (so it
+                          never answered to light mode) and a value-blind one. The
+                          tokens below each carry a light override and an
+                          `.ff-on-dark` literal, so this now survives both themes. */}
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.7rem", lineHeight:1.1, color: (avg as number) >= 8 ? "var(--ff-success)" : (avg as number) >= 5 ? "var(--ff-text)" : "var(--ff-warn)", marginBottom:".25rem" }}>{(avg as number).toFixed(1)}<span style={{ fontSize:"1rem", color:"rgba(var(--ff-muted), .4)" }}>/10</span></div>
                       <div style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)" }}>{label}</div>
                     </div>
                   ))}
@@ -2909,7 +2951,7 @@ export default function ContractorDashboard() {
                     </div>
                     <div style={{ display:"flex", gap:".5rem", marginBottom:".75rem", flexWrap:"wrap" as const }}>
                       {[["Price", r.price_score], ["Experience", r.experience_score], ["Results", r.result_score]].map(([l, v]) => v != null && (
-                        <span key={String(l)} style={{ ...s.chip, background:"rgba(234,107,20,.08)", fontSize:".76rem" }}>{l}: <strong style={{ color:"#ea6b14" }}>{v}/10</strong></span>
+                        <Pill key={String(l)} tone={scoreTone(Number(v))}>{l}: {v}/10</Pill>
                       ))}
                     </div>
                     {r.comment && <p style={{ fontSize:".88rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.6, margin:0 }}>{r.comment}</p>}
