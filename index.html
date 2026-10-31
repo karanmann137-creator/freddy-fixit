@@ -19,13 +19,25 @@
          links are each a subset, and three of them disagree about which DM Sans
          weights to ask for (one asks for no Bebas at all). They are harmless
          only because this superset already arrived. So a face used site-wide
-         belongs HERE, not in a page's own <style> block — which is why Fraunces
-         is listed below now that it is the headline face rather than a Home-only
-         flourish. Adding it to Home alone would leave every other page's h1
-         falling back to Georgia. -->
+         belongs HERE, not in a page's own <style> block — which is why the
+         display face is listed below rather than being a Home-only flourish.
+         Adding it to Home alone would leave every other page's h1 falling
+         back to a system sans.
+
+         The display face is ARCHIVO, and Fraunces is deliberately GONE from
+         this request. Nothing under src/ references Fraunces any more — the
+         face resolves through --ff-font-display in main.tsx, so leaving it
+         listed here would download a variable serif that nothing renders.
+         If Fraunces ever comes back, it comes back HERE and in that token
+         together; one without the other either silently falls back to Arial
+         or silently pays for an unused download.
+
+         Archivo is requested as wght@400..700 only — the wdth axis is not
+         asked for because nothing sets font-stretch, and a second axis
+         roughly doubles the variable file for no rendered difference. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,300..700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400..700&family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" />
 
     <title>Freddy Fix It — Calgary's On-Demand Home Repair & Vehicle Service Marketplace</title>
     <meta name="description" content="Freddy Fix It connects Calgary homeowners with vetted, licensed and insured contractors. Post a job, get up to five free estimates from local pros, and choose the one you want for home repairs and vehicle maintenance." />

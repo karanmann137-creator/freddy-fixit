@@ -10,6 +10,37 @@ const style = document.createElement("style");
 style.textContent = `
   :root {
     --ff-font-scale: 1.1;
+
+    /* ── The display face ──────────────────────────────────────────
+       Every band headline on every page you *read* resolves through
+       this ONE token. It exists because the face was previously
+       hardcoded as the literal "'Fraunces', Georgia, serif" in 19
+       places across 12 files, so changing it meant 19 edits and any
+       one of them being missed rendered a page in two display faces
+       with no error anywhere.
+
+       It is Archivo, not Fraunces, and the reason is structural
+       rather than aesthetic. Every band on Home states itself TWICE:
+       the headline in the display face, and the card titles inside
+       that same band in Bebas Neue. With Fraunces — a high-contrast
+       serif — those two voices were unrelated, so each band read as
+       a collision rather than a hierarchy, with DM Sans body making
+       three faces per band. Archivo is Bebas's closest relative on
+       Google Fonts: same grotesque skeleton, same tight apertures,
+       so a headline and the card titles under it finally read as one
+       family at two sizes.
+
+       ⚠ Archivo at 500 is NOT Fraunces at 500. A grotesque needs more
+       weight and much tighter tracking to carry display sizes, which
+       is why the display sites pair this with --ff-display-wght (700)
+       and letter-spacing near -0.028em. Swapping the face here without
+       revisiting those two makes every headline look underset.
+
+       Fraunces is no longer requested by index.html — nothing in src/
+       references it. If it comes back, re-add it to that <link>. */
+    --ff-font-display: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+    --ff-display-wght: 700;
+
     --ff-fg: 255,255,255;        /* foreground "ink" used in rgba overlays/text */
     --ff-muted: 190,205,235;     /* muted secondary text */
     --ff-text: #f0f4ff;          /* solid primary text */

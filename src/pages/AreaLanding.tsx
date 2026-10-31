@@ -224,7 +224,7 @@ export default function AreaLanding() {
   return (
     <div style={{ fontFamily: "'DM Sans',sans-serif", background: "var(--ff-bg)", color: TEXT, minHeight: "100vh", padding: "6rem clamp(1rem, 4vw, 1.5rem) 5rem" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-      <style>{"h1,h2{font-family:'Fraunces',Georgia,serif;font-weight:500} h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.05em} .al-btn{background:#ea6b14;color:#fff;border:none;padding:.85rem 1.6rem;border-radius:8px;font-size:1.02rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:transform .15s,box-shadow .15s} .al-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(234,107,20,.32)} .al-link{color:#ea6b14;text-decoration:none} .al-link:hover{text-decoration:underline} .al-card{background:var(--ff-surface);border:1px solid rgba(var(--ff-fg), .07);border-radius:12px;padding:1.1rem 1.2rem}"}</style>
+      <style>{"h1,h2{font-family:var(--ff-font-display);font-weight:var(--ff-display-wght);letter-spacing:-.015em} h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.05em} .al-btn{background:#ea6b14;color:#fff;border:none;padding:.85rem 1.6rem;border-radius:8px;font-size:1.02rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:transform .15s,box-shadow .15s} .al-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(234,107,20,.32)} .al-link{color:#ea6b14;text-decoration:none} .al-link:hover{text-decoration:underline} .al-card{background:var(--ff-surface);border:1px solid rgba(var(--ff-fg), .07);border-radius:12px;padding:1.1rem 1.2rem}"}</style>
 
       <div style={{ maxWidth: 820, margin: "0 auto" }}>
         <button onClick={() => setLocation("/areas")} style={{ background: "transparent", border: "1px solid rgba(var(--ff-fg), .12)", color: "rgba(var(--ff-muted), .6)", padding: ".4rem .9rem", borderRadius: 6, cursor: "pointer", fontSize: ".82rem", fontFamily: "'DM Sans',sans-serif" }}>← All service areas</button>
@@ -341,7 +341,7 @@ export function AreasIndex() {
   return (
     <div style={{ fontFamily: "'DM Sans',sans-serif", background: "var(--ff-bg)", color: TEXT, minHeight: "100vh", padding: "6rem clamp(1rem, 4vw, 1.5rem) 5rem" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-      <style>{"h1,h2{font-family:'Fraunces',Georgia,serif;font-weight:500} .al-btn{background:#ea6b14;color:#fff;border:none;padding:.85rem 1.6rem;border-radius:8px;font-size:1.02rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}"}</style>
+      <style>{"h1,h2{font-family:var(--ff-font-display);font-weight:var(--ff-display-wght);letter-spacing:-.015em} .al-btn{background:#ea6b14;color:#fff;border:none;padding:.85rem 1.6rem;border-radius:8px;font-size:1.02rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}"}</style>
       <div style={{ maxWidth: 820, margin: "0 auto" }}>
         <h1 style={{ fontSize: "2.6rem", marginBottom: ".6rem" }}>Service Areas</h1>
         <p style={{ color: MUTED, fontWeight: 300, lineHeight: 1.8, fontSize: "1.05rem", marginBottom: "2.4rem" }}>

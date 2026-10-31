@@ -337,7 +337,14 @@ export default function Home() {
   return (
     <div style={{ fontFamily:"'DM Sans', sans-serif", background:"var(--ff-bg)", color:"var(--ff-text)", overflowX:"clip" as const }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=Fraunces:opsz,wght@9..144,300..700&display=swap');
+        /* ⚠ No @import here on purpose. This block used to open with a second
+           font request that was a strict SUBSET of the <link> in index.html
+           (that one asks for DM Sans up to 700, this asked only to 600), so it
+           could never load anything the page didn't already have — it only
+           blocked this stylesheet while the browser revalidated a request it
+           had already made. Worse, it asked for Fraunces, which nothing in
+           src/ renders any more: the display face resolves through
+           --ff-font-display. Add a face to index.html, never here. */
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         /* ── Hero ────────────────────────────────────────────────────────────
@@ -602,22 +609,31 @@ export default function Home() {
           .ff-hero-body { --ff-mod: clamp(0.5rem, 1.4vh, 0.8rem); }
         }
 
-        /* Fraunces, not Bebas. Bebas is a condensed all-caps display face —
-           it has no lowercase at all, so the headline was being SHOUTED at
-           a first-time visitor in 5.6rem type. A serif with real upper and
-           lower case reads as a sentence somebody wrote rather than a
-           poster, which is the whole point of the change: the promise is
-           meant to be read, not announced. It is also smaller now, because
-           lowercase letters carry far more width per character than Bebas's
-           condensed caps — the line occupies about the same space on screen
-           at two-thirds the font-size.
+        /* Not Bebas. Bebas is a condensed all-caps display face — it has no
+           lowercase at all, so the headline was being SHOUTED at a first-time
+           visitor in 5.6rem type. Real upper and lower case reads as a
+           sentence somebody wrote rather than a poster, which is the whole
+           point: the promise is meant to be read, not announced. It is also
+           smaller than the Bebas original, because lowercase carries far more
+           width per character than condensed caps — the line occupies about
+           the same space on screen at two-thirds the font-size.
 
-           Weight 500, not 700: the ask was "less bold". No
-           font-variation-settings here — setting 'wght' there would
-           override the font-weight declaration, and Fraunces' SOFT/WONK
-           axes aren't in the subset we request. */
-        .ff-h1 { font-family: 'Fraunces', Georgia, serif; font-weight: 500;
-          font-size: clamp(2.35rem, 5.2vw, 3.6rem); line-height: 1.06; letter-spacing: -0.015em;
+           The face is --ff-font-display (Archivo), which replaced Fraunces
+           site-wide. Fraunces solved the shouting but created a second
+           problem one band down: the card titles inside every band are Bebas,
+           so a high-contrast serif headline above them read as a collision
+           rather than a hierarchy. Archivo shares Bebas's grotesque skeleton,
+           so the two now relate.
+
+           ⚠ Weight comes from --ff-display-wght (700), NOT the 500 this
+           carried under Fraunces. That is not a reversal of the "less bold"
+           ask — a grotesque at 500 in 3.6rem type reads as under-set body
+           copy, where Fraunces' stroke contrast carried the same weight as
+           display. Tracking tightens with it for the same reason. Don't put
+           font-variation-settings here: setting 'wght' there would override
+           the font-weight declaration outright. */
+        .ff-h1 { font-family: var(--ff-font-display); font-weight: var(--ff-display-wght);
+          font-size: clamp(2.35rem, 5.2vw, 3.6rem); line-height: 1.04; letter-spacing: -0.028em;
           color: var(--ff-ink-1); margin: 0; }
         .ff-h1 em { font-style: normal; color: var(--ff-c10); }
         /* The three steps. Now DM Sans, since the headline it used to echo is
@@ -681,22 +697,29 @@ export default function Home() {
            instruction, and it has to out-rank the example text underneath
            it or the panel reads as a quote rather than a prompt.
 
-           ⚠ FRAUNCES, not DM Sans, and that is the whole answer to "the font
-           in the textbox doesn't match the main text". The headline beside it
-           is Fraunces; this label is the panel's own headline, so in DM Sans
-           it read as a form field borrowed from a dashboard and dropped onto
-           a page you read. The brand rule puts Fraunces on pages you READ and
-           Bebas on pages you OPERATE — the hero is the former, and a label is
-           only "small UI" when it sits in an operating surface.
+           ⚠ THE DISPLAY FACE, not DM Sans, and that is the whole answer to
+           "the font in the textbox doesn't match the main text". The headline
+           beside it is the display face; this label is the panel's own
+           headline, so in DM Sans it read as a form field borrowed from a
+           dashboard and dropped onto a page you read. The brand rule puts the
+           display face on pages you READ and Bebas on pages you OPERATE — the
+           hero is the former, and a label is only "small UI" when it sits in
+           an operating surface.
 
-           line-height had to rise off 1.3 → 1.32 for the face change: Fraunces
-           has real descenders where DM Sans at this size effectively didn't.
-           letter-spacing goes slightly negative because Fraunces sets wider
-           than DM Sans at the same size, and 1.22rem was picked to hold the
-           same optical weight against the box beneath it. The textarea itself
-           stays DM Sans — it is body copy the client will type into, not a
-           heading. */
-        .ff-panel-label { font-family: 'Fraunces', Georgia, serif; font-weight: 500;
+           ⚠ This is the ONE display site that keeps font-weight 500 rather
+           than --ff-display-wght, and it is deliberate. At 1.22rem the label
+           sits only a little above body copy, and 700 here made it compete
+           with the h1 two columns over instead of reading as its subordinate.
+           The weight bump exists to stop a grotesque looking under-set at
+           DISPLAY size; this isn't display size.
+
+           line-height 1.32 and the slight negative tracking survive the face
+           change from Fraunces: Archivo also has real descenders and also
+           sets wider than DM Sans at the same size. 1.22rem was picked to
+           hold the same optical weight against the box beneath it. The
+           textarea itself stays DM Sans — it is body copy the client will
+           type into, not a heading. */
+        .ff-panel-label { font-family: var(--ff-font-display); font-weight: 500;
           font-size: 1.22rem; line-height: 1.32; letter-spacing: -0.01em;
           color: var(--ff-ink-1); margin: 0; }
         /* A REAL textarea, not a button dressed as one. The examples type
@@ -906,11 +929,20 @@ export default function Home() {
         }
         .ff-about-inner { max-width: 900px; margin: 0 auto; padding: clamp(3rem, 9vw, 6rem) clamp(1rem, 4vw, 2rem); position: relative; z-index: 1; }
         .ff-about-eyebrow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.2em; color: #ea6b14; margin-bottom: 1.5rem; }
-        .ff-about-headline { font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-size: clamp(2.8rem, 7vw, 5rem); letter-spacing: -0.015em; line-height: 1.05; color: var(--ff-text); margin-bottom: 2rem; }
+        /* The largest display type on the site (up to 5rem), so it is the site
+           where under-tracking shows first — hence the full -0.028em rather
+           than the -0.015em that was right for Fraunces. */
+        .ff-about-headline { font-family: var(--ff-font-display); font-weight: var(--ff-display-wght); font-size: clamp(2.8rem, 7vw, 5rem); letter-spacing: -0.028em; line-height: 1.02; color: var(--ff-text); margin-bottom: 2rem; }
         .ff-about-headline span { color: #ea6b14; }
         .ff-about-body { font-size: 1.1rem; color: rgba(var(--ff-muted), 0.7); font-weight: 300; line-height: 1.8; max-width: 680px; margin-bottom: 3rem; }
         .ff-about-body strong { color: var(--ff-text); font-weight: 500; }
-        .ff-about-tagline { font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-size: clamp(1.4rem, 4vw, 2rem); letter-spacing: normal; color: rgba(234,107,20,0.85); border-left: 3px solid #ea6b14; padding-left: 1.25rem; line-height: 1.3; margin-bottom: 4rem; }
+        /* A pull-quote, so weight stays 500 rather than --ff-display-wght for
+           the same reason .ff-panel-label does: at 2rem it is set BELOW the
+           5rem headline it follows, and 700 here flattened the two into one
+           shout. letter-spacing comes off "normal" only slightly — a grotesque
+           set loose at quote size looks accidental, set tight it looks like a
+           heading, and this is neither. */
+        .ff-about-tagline { font-family: var(--ff-font-display); font-weight: 500; font-size: clamp(1.4rem, 4vw, 2rem); letter-spacing: -0.012em; color: rgba(234,107,20,0.85); border-left: 3px solid #ea6b14; padding-left: 1.25rem; line-height: 1.3; margin-bottom: 4rem; }
         .ff-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; }
         @media (max-width: 600px) { .ff-stats { grid-template-columns: minmax(0, 1fr); } }
         .ff-stat { background: rgba(var(--ff-fg), 0.03); border: 1px solid rgba(var(--ff-fg), 0.07); border-radius: 12px; padding: 1.75rem; }
@@ -1221,7 +1253,7 @@ export default function Home() {
       <div className="ff-on-dark" style={{ background:"var(--ff-bg)", padding:"6rem 2rem", position:"relative" as const, overflow:"hidden" as const }}>
         <div style={{ maxWidth:"960px", margin:"0 auto", position:"relative" as const, zIndex:1 }}>
           <p style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" as const }}>Our Vetting Standard</p>
-          <h2 style={{ fontFamily:"'Fraunces', Georgia, serif", fontWeight:500, fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:"-0.015em", color:"var(--ff-text)", textAlign:"center" as const, marginBottom:"1rem" }}>The Freddy <span style={{ color:"#ea6b14" }}>Verified</span> Promise.</h2>
+          <h2 style={{ fontFamily:"var(--ff-font-display)", fontWeight:"var(--ff-display-wght)" as any, fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:"-0.028em", color:"var(--ff-text)", textAlign:"center" as const, marginBottom:"1rem" }}>The Freddy <span style={{ color:"#ea6b14" }}>Verified</span> Promise.</h2>
           <p style={{ textAlign:"center" as const, fontSize:"1rem", color:"rgba(var(--ff-muted), .7)", fontWeight:300, maxWidth:"620px", margin:"0 auto 3rem", lineHeight:1.7 }}>
             Anyone can call themselves a handyman. Before a pro can take a single job on Freddy, they clear our verification checklist — and every job is payment-protected on top of it.
           </p>
@@ -1290,7 +1322,7 @@ export default function Home() {
         <style>{"details.ff-faq>summary::-webkit-details-marker{display:none}details.ff-faq>summary{list-style:none}details.ff-faq .ff-faq-icon{transition:transform .2s ease;display:inline-block}details.ff-faq[open] .ff-faq-icon{transform:rotate(45deg)}details.ff-faq[open]{border-color:rgba(234,107,20,.3)}"}</style>
         <div style={{ maxWidth:"800px", margin:"0 auto" }}>
           <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" }}>Good to Know</p>
-          <h2 style={{ fontFamily:"'Fraunces', Georgia, serif", fontWeight:500, fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:"-0.015em", color:"var(--ff-text)", textAlign:"center", marginBottom:"3rem" }}>Frequently Asked <span style={{ color:"#ea6b14" }}>Questions.</span></h2>
+          <h2 style={{ fontFamily:"var(--ff-font-display)", fontWeight:"var(--ff-display-wght)" as any, fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:"-0.028em", color:"var(--ff-text)", textAlign:"center", marginBottom:"3rem" }}>Frequently Asked <span style={{ color:"#ea6b14" }}>Questions.</span></h2>
           <div style={{ display:"flex", flexDirection:"column", gap:".75rem" }}>
             {FAQS.map((f, i) => (
               <details key={i} className="ff-faq" style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.2rem 1.5rem" }}>
@@ -1335,7 +1367,7 @@ export default function Home() {
       <div style={{ background:"var(--ff-bg)", padding:"6rem 2rem" }}>
         <div style={{ maxWidth:"900px", margin:"0 auto" }}>
           <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" }}>See It In Action</p>
-          <h2 style={{ fontFamily:"'Fraunces', Georgia, serif", fontWeight:500, fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:"-0.015em", color:"var(--ff-text)", textAlign:"center", marginBottom:".9rem" }}>How Freddy <span style={{ color:"#ea6b14" }}>Works.</span></h2>
+          <h2 style={{ fontFamily:"var(--ff-font-display)", fontWeight:"var(--ff-display-wght)" as any, fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:"-0.028em", color:"var(--ff-text)", textAlign:"center", marginBottom:".9rem" }}>How Freddy <span style={{ color:"#ea6b14" }}>Works.</span></h2>
           <p style={{ textAlign:"center", color:"rgba(var(--ff-muted), .6)", fontSize:".95rem", marginBottom:"3rem", maxWidth:"560px", marginLeft:"auto", marginRight:"auto" }}>Two short walkthroughs — one for homeowners booking a job, one for pros signing up to take them.</p>
 
           <div className="ff-video-grid">

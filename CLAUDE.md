@@ -25,7 +25,7 @@ ship one runnable thing, keep explanations short, never assume CLI fluency.
 | File | What's in it |
 |---|---|
 | `docs/overview-and-shipping.md` | Stack detail, how work ships, full installer rules, build/validate |
-| `docs/brand-and-motion.md` | Fonts (the Fraunces/Bebas surface split), colour tokens, `.ff-on-dark`, easing scale, band rhythm, nav paint-on-scroll, light-mode peek |
+| `docs/brand-and-motion.md` | Fonts (`--ff-font-display`; the display-face/Bebas surface split), colour tokens, `.ff-on-dark`, easing scale, band rhythm, nav paint-on-scroll, light-mode peek |
 | `docs/gotchas.md` | The full hard-won list: Money, Postgres, Frontend, Authoring |
 | `docs/money.md` | Fee model, 40/60 deposit split, milestone escrow, prepay pool, price changes, stuck-state audit |
 | `docs/money-incidents.md` | Card-on-file autopay (2026-08-31); the first live payout and the two-leg transfer fix (2026-08-30) |
@@ -123,10 +123,14 @@ CI: `.github/workflows/typecheck.yml` runs `npm run typecheck` non-blocking on p
 
 ## Brand tokens (summary — full rules in `docs/brand-and-motion.md`)
 Navy `#1a2236` · section navy `#151d2e` · footer `#111827` · orange `#ea6b14` · text `#f0f4ff`.
-Fonts **Fraunces** (headlines on pages you *read*), **Bebas Neue** (headings on pages you *operate* — all dashboards, onboarding, auth, forms — plus all small labels/chips/numerals/buttons/logo everywhere), DM Sans (body). All three load from the single `<link>` in `index.html`.
+Fonts **Archivo** (headlines on pages you *read*), **Bebas Neue** (headings on pages you *operate* — all dashboards, onboarding, auth, forms — plus all small labels/chips/numerals/buttons/logo everywhere), DM Sans (body). All three load from the single `<link>` in `index.html` — plus ~39 redundant per-page loaders that are each a subset of it, so **a face used site-wide belongs in that `<link>`, never in a page's own `<style>`**.
+- **The display face is `var(--ff-font-display)` and NOTHING names it directly** (2026-10-31). It was the literal `'Fraunces', Georgia, serif` in **19 places across 12 files**, so a face change meant 19 edits and any one miss rendered a page in two display faces with no error. Weight comes from `--ff-display-wght` (700). Both live in `:root` in `main.tsx`.
+- **Archivo replaced Fraunces for a structural reason, not an aesthetic one.** Every band states itself twice — headline in the display face, card titles *inside that band* in Bebas — so a high-contrast serif above Bebas read as a collision rather than a hierarchy, three faces per band with DM Sans body. Archivo shares Bebas's grotesque skeleton, so the two relate. **If the face ever changes again, the test is "does it sit above Bebas", not "is it nice".**
+- **A grotesque at 500 is not a serif at 500.** Display sites are weight **700** and tracking near **-0.028em**; Fraunces' stroke contrast carried display weight that Archivo needs mass and tightness for. Swap the token without revisiting those two and every headline looks under-set. Sub-display sites (`.ff-panel-label` at 1.22rem, `.ff-about-tagline` at 2rem) deliberately keep **500** so they stay subordinate to the h1 — the weight bump exists to stop a grotesque looking under-set at *display* size, and those aren't display size.
+- **Fraunces is GONE from `index.html`.** Nothing under `src/` renders it. If it comes back it comes back in that `<link>` **and** in the token together; one without the other either falls back to Arial or pays for an unused variable-font download.
 - A selector naming `h3` must be **SPLIT, never swapped** — h3s are card titles and stay Bebas, carrying the original tracking **verbatim** (the value is not uniform across files).
-- `line-height` must rise off `1` when a display heading changes face — Fraunces has real descenders.
-- Don't reach for `font-variation-settings` on Fraunces.
+- `line-height` must rise off `1` when a display heading changes face — both Fraunces and Archivo have real descenders where Bebas's all-caps metrics effectively didn't. Archivo's are shallower, so the display sites sit at 1.02–1.04 rather than 1.05–1.06; **at or above 1.0, never below**.
+- Don't reach for `font-variation-settings` on the display face — setting `wght` there overrides the `font-weight` declaration outright, which now means overriding `--ff-display-wght`.
 - There is **ONE easing scale** (`--ff-ease-out` / `--ff-ease-in-out` / `--ff-ease-drawer` in `main.tsx`) and one shadow scale. The easing tokens live in plain `:root`, deliberately **not** in `.ff-on-dark`.
 - `ff-enter` / `ff-enter-b` keep **separate `@keyframes` names** on purpose — swapping to a class naming the same keyframes doesn't restart the animation.
 - The dashboard press is `scale(0.97)`, asymmetric, and its three copies (`AdminDashboard`, `ClientDashboard`, `ContractorDashboard`) must stay byte-identical.
