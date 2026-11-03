@@ -58,12 +58,74 @@ Details that are load-bearing:
   thing between a stolen session and using our Resend domain as a mail cannon.
 - **A send failure does not raise.** The code is already stored, so another
   request recovers; raising on an auth path is the Aug 2026 shape again.
+- **`admin_clear_mfa` could clear the CALLER'S OWN factor until 2026-11-03, and that
+  made this entire section bypassable from a stolen password.** It checked only an
+  inline `exists(... id = auth.uid() and role='admin')` and accepted any user id.
+  The attack: sign in with the password (no code is owed yet — `mfa_ok()` is only
+  consulted when a *guarded* action is attempted), call `admin_clear_mfa(<own id>)`,
+  the `user_mfa` row is deleted, `mfa_ok()` now returns **true** because it returns
+  true for anyone not enrolled, and every `admin_guard()` function is open. Fixed
+  two independent ways: the function now demands `admin_guard()`, and
+  self-targeting raises outright. **The consequence is intended** — once enrolled,
+  the admin's only routes out of a lost factor are the ten recovery codes or
+  `delete from public.user_mfa` in the Supabase SQL editor, which needs the
+  *project-owner* login rather than the app login. A session that can strip its own
+  second factor does not have one.
+- **`admin_action_allowed(p_user_id)` is `mfa_ok()` for callers that have no
+  `auth.uid()`.** An edge function holds a service-role client plus the caller's
+  JWT, so it cannot evaluate `mfa_ok()` at all. This mirrors `mfa_ok()` exactly —
+  "not enrolled = ok" included — but takes a **named** user id and **returns**
+  `{ok, reason}` rather than raising, so the function can turn it into an HTTP
+  status with plain-English copy. service_role-only. **Diverge the two and the edge
+  functions start disagreeing with the RPCs about whether a code is owed.**
 - Codes are 6 digits from `extensions.gen_random_bytes` (pinned `search_path`,
   per the pgcrypto incident), hashed with `mfa_hash(code, user)` — never stored
   plain — expire in **10 minutes**, allow **5 attempts**, and a new request
   **supersedes** any outstanding code for that purpose so an older email can't
   be used afterwards. Enrolling mints **10 single-use recovery codes**, returned
   once and only as hashes thereafter.
+
+## Admin action audit log — `admin_audit_log` (2026-11-03)
+
+Built because the 2026-11-03 admin audit found that **nothing anywhere recorded what
+an admin had done**, while 38 admin-trusting RLS policies across 30 tables let the
+account read every client address, every private chat and every contractor licence
+document without leaving a trace.
+
+`public.admin_audit_log(id, created_at, actor_id, actor_email, action, target_table,
+target_id, detail jsonb, via)`. Read with `admin_audit_tail(p_limit)` — `is_admin()`
+only, deliberately not `admin_guard()`, so a mailer outage can't blind the log. The
+dashboard's **Activity** tab renders it.
+
+Load-bearing details:
+
+- **Append-only by construction.** A SELECT policy exists; **no INSERT, UPDATE or
+  DELETE policy exists at all**, and `log_admin_action` is granted to `service_role`
+  alone. Writes still work from inside the admin RPCs because a `SECURITY DEFINER`
+  body executes with the owner's privileges, not the caller's — while a direct call
+  from a user JWT gets `permission denied for function log_admin_action`. That
+  asymmetry is the whole design: **a log a compromised admin session can edit is not
+  a log.** There is no clear button in the UI and there must never be one.
+- **No foreign keys, and `actor_email` is snapshotted.** The single most important
+  row this table can hold is "the admin deleted this account". An FK to `auth.users`
+  would either cascade that row away at exactly the moment it matters or block the
+  delete it exists to record. Six months later a bare uuid answers nothing.
+- **The log call sits immediately after the guard**, which buys "logged iff
+  committed" for free: an RPC is one transaction, so a refused or failed action rolls
+  its own log row back, and nothing can act without logging because the log is
+  upstream of the work.
+- **`p_actor` exists for the edge callers**, which have no `auth.uid()` to fall back
+  on. `via` distinguishes `'rpc'` from `'edge'`.
+- Order differs by function, on purpose. `admin-delete-account` logs **before** it
+  deletes (afterwards it could only record a uuid — the profile row carrying the
+  email and name is gone). `admin-update-email` logs **after**, recording both
+  addresses, because the entry's purpose is answering "what was this login before?"
+  once the old address is nowhere in the database. `admin-message` logs **one entry
+  per batch**, not per recipient — `admin_messages` already holds the per-recipient
+  rows and 200 entries would drown every other action; `batch_id` is the join back.
+- In the edge functions the log is **not awaited into the result** and its error is
+  swallowed to the console: the mail has gone, the email has changed, the account is
+  wiped. A logging failure must never turn a completed action into an error.
 
 ## Rate limiting — one primitive, several users
 

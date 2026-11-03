@@ -36,6 +36,24 @@ serve(async (req) => {
     const { data: me } = await admin.from("profiles").select("role").eq("id", uid).maybeSingle();
     if (me?.role !== "admin") return json({ ok: false, error: "not authorized" }, 403);
 
+    // ── Second factor ───────────────────────────────────────────────────────
+    // Changing someone's LOGIN email is an account-takeover primitive: do it to
+    // a contractor and the next password reset lands in the new inbox. The DB
+    // RPCs that do irreversible things go through admin_guard(), which is
+    // role + mfa_ok(); an edge function has no auth.uid() of its own and so
+    // cannot call mfa_ok(), hence admin_action_allowed(uid), which answers the
+    // same question for a named user.
+    //
+    // FAILS CLOSED. Any error resolving the gate is a refusal, never a change —
+    // the same rule the contract gate follows. Note this is a no-op until the
+    // admin account actually enrols in two-step: admin_action_allowed mirrors
+    // mfa_ok() and returns ok for anyone not enrolled, so nobody is locked out
+    // by the mere existence of this check.
+    const { data: gate, error: gErr } = await admin.rpc("admin_action_allowed", { p_user_id: uid });
+    if (gErr || !(gate as any)?.ok) {
+      return json({ ok: false, error: (gate as any)?.reason || "Could not verify your sign-in. Try again." }, 403);
+    }
+
     // ── Payload ─────────────────────────────────────────────────────────────
     const body = await req.json().catch(() => ({}));
     const userId   = String(body?.user_id || "").trim();
@@ -80,6 +98,20 @@ serve(async (req) => {
       // Auth email changed but the profile row failed — report so the admin can retry.
       return json({ ok: false, error: "login email updated but profile sync failed: " + String(pErr.message || pErr) }, 500);
     }
+
+    // Logged AFTER the change, and both emails are recorded: the whole point of
+    // the entry is to be able to answer "what was this account's login before?"
+    // once the original address is no longer anywhere in the database.
+    // A logging failure must never undo a change that already happened, so this
+    // is not awaited into the result and its error is swallowed deliberately.
+    admin.rpc("log_admin_action", {
+      p_action: "admin-update-email",
+      p_target_table: "auth.users",
+      p_target_id: userId,
+      p_detail: { from: currentEmail, to: newEmail },
+      p_actor: uid,
+      p_via: "edge",
+    }).then(({ error }) => { if (error) console.error("audit log failed:", error.message); });
 
     return json({ ok: true, email: newEmail });
   } catch (e) {

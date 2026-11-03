@@ -37,6 +37,10 @@ const ADMIN_NAV: SidebarItem[] = [
   { key: "disputes", label: "Disputes", icon: "alert-triangle" },
   { key: "prepaid",  label: "Prepaid",  icon: "dollar" },
   { key: "leads",    label: "Leads",    icon: "user-check" },
+  // Last, because it is read-after-the-fact rather than something to work
+  // through. `clock` because Ic has no shield or history glyph and a missing
+  // glyph renders BLANK rather than erroring.
+  { key: "activity", label: "Activity", icon: "clock" },
 ];
 
 /**
@@ -68,7 +72,12 @@ export default function AdminDashboard() {
   const [requests, setRequests] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
-  const [tab, setTab] = useState<"health"|"platform"|"requests"|"jobs"|"picks"|"accounts"|"flagged"|"disputes"|"prepaid"|"leads">("requests");
+  const [tab, setTab] = useState<"health"|"platform"|"requests"|"jobs"|"picks"|"accounts"|"flagged"|"disputes"|"prepaid"|"leads"|"activity">("requests");
+  // Admin action audit trail (admin_audit_tail). `auditFailed` exists because a
+  // failed read is not an empty result — an audit log that renders a confident
+  // "nothing here" when the query broke is worse than no audit log at all.
+  const [audit, setAudit] = useState<any[]>([]);
+  const [auditFailed, setAuditFailed] = useState(false);
   const tabAnim = useEnterAnim(tab); // replays a 220ms fade+rise on tab change; nothing remounts
   const [prepays, setPrepays] = useState<any[]>([]);
   const [busyRefund, setBusyRefund] = useState<string|null>(null);
@@ -244,6 +253,13 @@ export default function AdminDashboard() {
       const { data: cf } = await supabase.rpc("admin_list_chat_flags", { p_limit: 200 });
       setChatFlags((cf as any[]) ?? []);
     } catch { setChatFlags([]); }
+    // Admin action trail. Own try/catch like the other newer tabs, and the
+    // error is kept rather than swallowed into an empty array — see auditFailed.
+    try {
+      const { data: al, error: alErr } = await supabase.rpc("admin_audit_tail", { p_limit: 300 });
+      setAuditFailed(!!alErr);
+      setAudit((al as any[]) ?? []);
+    } catch { setAuditFailed(true); setAudit([]); }
     // Platform mode + everything the pause is holding. Three separate try/catch
     // blocks so a DB that predates any one of them still renders the rest.
     try {
@@ -1449,6 +1465,65 @@ export default function AdminDashboard() {
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/*
+          Activity — every destructive admin action, newest first.
+          Read-only by construction: admin_audit_log has a SELECT policy and no
+          INSERT/UPDATE/DELETE policy at all, and writes go only through
+          log_admin_action, which is granted to service_role. There is deliberately
+          no "clear" button here and there never should be — a log the dashboard
+          can erase is not a log.
+          Times come pre-formatted from the DB as at_local (ff_local_ts), NOT
+          formatted here: a bare to_char on a timestamptz renders Calgary times
+          6–7 hours ahead, and doing it in two places is how they drift apart.
+        */}
+        {tab === "activity" && (
+          <div>
+            <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".82rem", marginBottom:"1rem", lineHeight:1.5 }}>
+              Every account deletion, job deletion, login-email change, bulk email, platform pause and
+              contractor status change — who did it, to what, and when. Read-only; nothing here can be edited or cleared.
+            </p>
+            {auditFailed && (
+              <p style={{ color:"var(--ff-warn)", fontSize:".9rem" }}>
+                Couldn&rsquo;t load the activity log. <button style={s.btn} onClick={() => loadAll()}>Retry</button>
+              </p>
+            )}
+            {!auditFailed && audit.length === 0 && (
+              <p style={{ color:"rgba(var(--ff-muted), .45)" }}>
+                No admin actions recorded yet. The log starts from 3 Nov 2026 — anything done before that was never recorded.
+              </p>
+            )}
+            {audit.map((a:any) => {
+              const d = a.detail && typeof a.detail === "object" ? a.detail : null;
+              const pairs = d ? Object.entries(d).filter(([, v]) => v !== null && v !== "" && v !== undefined) : [];
+              return (
+                <div key={a.id} style={s.card}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", flexWrap:"wrap" as const, gap:".5rem" }}>
+                    <div style={s.title}>{String(a.action || "action")}</div>
+                    <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .45)" }}>{a.at_local || ""}</div>
+                  </div>
+                  <div style={s.meta}>
+                    <Ic name="user" size={13} style={{ marginRight:4 }} />
+                    {a.actor_email || "(account since removed)"}
+                    {a.via === "edge" ? " · via dashboard tool" : ""}
+                  </div>
+                  {a.target_table && (
+                    <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .45)", wordBreak:"break-all" as const }}>
+                      {String(a.target_table)}{a.target_id ? " · " + String(a.target_id) : ""}
+                    </div>
+                  )}
+                  {pairs.length > 0 && (
+                    <div style={{ marginTop:".5rem", padding:".55rem .75rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .06)", borderRadius:"8px", fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.6, wordBreak:"break-word" as const }}>
+                      {pairs.map(([k, v]) => (
+                        <div key={k}>{k.replace(/_/g, " ")}: {typeof v === "object" ? JSON.stringify(v) : String(v)}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 

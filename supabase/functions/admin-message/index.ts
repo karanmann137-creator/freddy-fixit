@@ -71,6 +71,24 @@ serve(async (req) => {
     const { data: me } = await admin.from("profiles").select("role").eq("id", uid).maybeSingle();
     if (me?.role !== "admin") return json({ ok: false, error: "not authorized" }, 403);
 
+    // ── Second factor ───────────────────────────────────────────────────────
+    // A stolen admin session can reach up to 200 contractor inboxes from our
+    // own Resend domain in one call. That is a reputation and deliverability
+    // risk, not just a nuisance: auth mail and transactional mail share this
+    // domain, DKIM key and quota since 2026-08-30, so abusing it is a route to
+    // the Aug 2026 lockout from the other end. Same gate as the irreversible
+    // DB RPCs (admin_guard() = admin role AND mfa_ok()); an edge function has
+    // no auth.uid() of its own, so admin_action_allowed answers it for a
+    // named user id.
+    //
+    // FAILS CLOSED: any error resolving the gate is a refusal, never a send.
+    // No-op until the admin enrols — admin_action_allowed mirrors mfa_ok() and
+    // returns ok for anyone not enrolled.
+    const { data: gate, error: gErr } = await admin.rpc("admin_action_allowed", { p_user_id: uid });
+    if (gErr || !(gate as any)?.ok) {
+      return json({ ok: false, error: (gate as any)?.reason || "Could not verify your sign-in. Try again." }, 403);
+    }
+
     // ── Payload ─────────────────────────────────────────────────────────────
     const body = await req.json().catch(() => ({}));
     const ids: string[] = Array.isArray(body?.recipient_ids)
@@ -118,6 +136,24 @@ serve(async (req) => {
     }
 
     const sentCount = results.filter((r) => r.ok).length;
+
+    // One audit entry per BATCH, not per recipient: admin_messages already
+    // holds the per-recipient rows, and 200 of them here would drown every
+    // other action in the log. The batch_id is the join back to the detail.
+    // Not awaited and its error swallowed — the mail has already gone out, so
+    // a logging failure must not turn a successful send into an error.
+    admin.rpc("log_admin_action", {
+      p_action: "admin-message",
+      p_target_table: "admin_messages",
+      p_target_id: batchId,
+      p_detail: {
+        recipients: results.length, sent: sentCount, failed: results.length - sentCount,
+        subject,
+      },
+      p_actor: uid,
+      p_via: "edge",
+    }).then(({ error }) => { if (error) console.error("audit log failed:", error.message); });
+
     return json({ ok: true, batch_id: batchId, sent: sentCount, failed: results.length - sentCount, results });
   } catch (e) {
     console.error("admin-message error:", e);

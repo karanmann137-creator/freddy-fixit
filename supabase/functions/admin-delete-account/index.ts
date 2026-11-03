@@ -53,12 +53,48 @@ serve(async (req) => {
       .from("profiles").select("role").eq("id", user.id).maybeSingle();
     if (!me || me.role !== "admin") return json({ error: "Not authorized." }, 403);
 
+    // 1b. Second factor. This is the single most destructive call on the
+    //     platform — it is a true "make it gone" across six storage buckets
+    //     and the auth login, with no undo and no tombstone — so it gets the
+    //     same treatment as the irreversible DB RPCs, which go through
+    //     admin_guard() (= admin role AND mfa_ok()). An edge function has no
+    //     auth.uid() of its own and so cannot call mfa_ok(); admin_action_allowed
+    //     answers the same question for a named user id.
+    //
+    //     FAILS CLOSED: any error resolving the gate is a refusal, never a
+    //     delete. It is a no-op until the admin enrols — admin_action_allowed
+    //     mirrors mfa_ok() and returns ok for anyone not enrolled.
+    const { data: gate, error: gErr } = await admin.rpc("admin_action_allowed", { p_user_id: user.id });
+    if (gErr || !(gate as any)?.ok) {
+      return json({ error: (gate as any)?.reason || "Could not verify your sign-in. Try again." }, 403);
+    }
+
     // 2. Target.
     let body: any = {};
     try { body = await req.json(); } catch (_) { /* ignore */ }
     const uid: string = (body?.user_id ?? "").trim();
     if (!uid) return json({ error: "Missing user_id." }, 400);
     if (uid === user.id) return json({ error: "You can't delete your own admin account here." }, 400);
+
+    // 2b. Snapshot who this was, BEFORE destroying the evidence. Logging after
+    //     the wipe would record a uuid and nothing else, which is useless for
+    //     answering "whose account was removed?" six months later. The log row
+    //     is written first for the same reason, and deliberately carries no FK
+    //     to the user it describes.
+    const { data: victim } = await admin
+      .from("profiles").select("email, full_name, role").eq("id", uid).maybeSingle();
+    await admin.rpc("log_admin_action", {
+      p_action: "admin-delete-account",
+      p_target_table: "auth.users",
+      p_target_id: uid,
+      p_detail: {
+        email: victim?.email ?? null,
+        name: victim?.full_name ?? null,
+        role: victim?.role ?? null,
+      },
+      p_actor: user.id,
+      p_via: "edge",
+    });
 
     // 3. Delete disputes involving this user (NO ACTION FK would otherwise
     //    block the profile delete; job-owned disputes also cascade in step 4).
