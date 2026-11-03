@@ -1,6 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
+// v23 (2026-11-03): every outcome is now recorded in public.dispatch_log —
+// one row per recipient, successes AND failures. Before this, a non-2xx from
+// Resend was dropped on the floor: the contractor was never added to
+// `dispatched_to`, no bell, no log line, and from the outside the job simply
+// looked like nobody bid. There was no way to tell "we emailed 16 pros and
+// they ignored it" from "we emailed nobody". The terminal no-op branches
+// (no_contractors / no_match) log a contractor_id=null row for the same
+// reason. Logging FAILS OPEN — a logging error must never cost a send.
+//
 // v16 (2026-08-14): the DETAILS row is now run through scrubAddressText() —
 // masking the LOCATION field was pointless while the description underneath
 // still printed the street address the client typed. Also v15's waitlist guard.
@@ -29,6 +38,29 @@ const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 const cors  = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
 
 const RESERVE_MS = 48 * 60 * 60 * 1000; // preferred-pro reservation window
+
+// ── Dispatch log ───────────────────────────────────────────────────────────
+// Accumulated in memory and flushed once, so logging costs one round-trip for
+// the whole fan-out rather than one per recipient. Wrapped so that a failure
+// to WRITE the log can never take down the dispatch it is describing.
+type LogRow = {
+  request_id: string;
+  contractor_id: string | null;
+  ok: boolean;
+  status_code: number | null;
+  error: string | null;
+  reserved: boolean;
+};
+
+async function flushLog(rows: LogRow[]) {
+  if (!rows.length) return;
+  try {
+    const { error } = await admin.from("dispatch_log").insert(rows);
+    if (error) console.error("dispatch_log insert failed", error);
+  } catch (e) {
+    console.error("dispatch_log insert threw", e);
+  }
+}
 
 // ── Calgary geography (email ranking only) ─────────────────────────────────
 function extractZones(location: string): string[] {
@@ -155,6 +187,10 @@ serve(async (req) => {
       !!request.created_at &&
       (Date.now() - new Date(request.created_at).getTime() < RESERVE_MS);
 
+    const logRows: LogRow[] = [];
+    const logRow = (contractor_id: string | null, ok: boolean, status_code: number | null, error: string | null) =>
+      logRows.push({ request_id, contractor_id, ok, status_code, error, reserved });
+
     // Same matcher as the feed + in-app notifier: map the client's service label
     // to the required contractor specialties. No row -> passthrough (match all).
     const { data: mapRow } = await admin
@@ -176,8 +212,11 @@ serve(async (req) => {
                profile:profiles!contractors_id_fkey(first_name, last_name, email)`)
       .eq("status", "active");
 
-    if (!contractors?.length)
+    if (!contractors?.length) {
+      logRow(null, false, null, "no_contractors: zero rows with status='active'");
+      await flushLog(logRows);
       return new Response(JSON.stringify({ status: "no_contractors" }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
 
     let matched: any[];
     if (reserved) {
@@ -192,8 +231,16 @@ serve(async (req) => {
         .sort((a, b) => score(b, request) - score(a, request));
     }
 
-    if (!matched.length)
+    if (!matched.length) {
+      // The loudest signal in the whole log: the job reached NOBODY. Record why
+      // the candidate set emptied, because "active but already notified" and
+      // "no pro holds the mapped specialty" need opposite fixes.
+      logRow(null, false, null,
+        `no_match: ${contractors.length} active, ${alreadyNotified.length} already notified, ` +
+        `${hiddenIds.size} hidden, required=${required === null ? "passthrough" : JSON.stringify(required)}`);
+      await flushLog(logRows);
       return new Response(JSON.stringify({ status: "no_match" }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
 
     const notifiedIds: string[] = [];
     const area = maskLocation(request.location ?? "");
@@ -210,7 +257,11 @@ serve(async (req) => {
 
     for (const c of matched) {
       const email = c.profile?.email;
-      if (!email) continue;
+      if (!email) {
+        // Matched, in-trade, active — and unreachable. Silent before v23.
+        logRow(c.id, false, null, "no email on profile");
+        continue;
+      }
 
       const name  = c.profile?.first_name ?? "there";
       const intro = reserved
@@ -232,20 +283,36 @@ serve(async (req) => {
         <p style="margin-top:1rem;font-size:.78rem;color:rgba(190,205,235,.35);">You're receiving this because you're an active Freddy Fix It contractor. Questions? hello@freddyfixit.ca</p>
       </div>`;
 
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${RESEND_API_KEY}` },
-        body: JSON.stringify({
-          from: `Freddy Fix It <${FROM_EMAIL}>`,
-          to: email,
-          subject,
-          html,
-        }),
-      });
+      let res: Response | null = null;
+      try {
+        res = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${RESEND_API_KEY}` },
+          body: JSON.stringify({
+            from: `Freddy Fix It <${FROM_EMAIL}>`,
+            to: email,
+            subject,
+            html,
+          }),
+        });
+      } catch (e) {
+        // A thrown fetch used to abort the whole loop, taking the remaining
+        // recipients with it. Record it and carry on to the next pro.
+        logRow(c.id, false, null, `fetch threw: ${String(e).slice(0, 400)}`);
+        continue;
+      }
 
       if (res.ok) {
         notifiedIds.push(c.id);
+        logRow(c.id, true, res.status, null);
         await admin.from("contractors").update({ jobs_dispatched: (c.jobs_dispatched ?? 0) + 1 }).eq("id", c.id);
+      } else {
+        // NOT added to dispatched_to on purpose — a failed send should be
+        // retried by the next re-fire, not marked as "already told them".
+        let body = "";
+        try { body = (await res.text()).slice(0, 500); } catch { /* body already consumed */ }
+        logRow(c.id, false, res.status, body || `HTTP ${res.status}`);
+        console.error(`dispatch-job: Resend ${res.status} for contractor ${c.id}`, body);
       }
     }
 
@@ -255,7 +322,10 @@ serve(async (req) => {
         .eq("id", request_id);
     }
 
-    return new Response(JSON.stringify({ status: "dispatched", notified: notifiedIds.length, reserved }), { headers: { ...cors, "Content-Type": "application/json" } });
+    await flushLog(logRows);
+
+    const failed = logRows.filter(r => !r.ok && r.contractor_id).length;
+    return new Response(JSON.stringify({ status: "dispatched", notified: notifiedIds.length, failed, reserved }), { headers: { ...cors, "Content-Type": "application/json" } });
   } catch (e) {
     console.error(e);
     return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });

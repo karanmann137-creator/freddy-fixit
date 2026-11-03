@@ -302,6 +302,13 @@ export default function ClientDashboard() {
   // happened to be open, so it could never feed the sidebar badge or the inbox.
   const [bidChat, setBidChat] = useState<{ requestId:string; contractorId:string; name:string; title?:string|null } | null>(null);
   const [busyPick, setBusyPick] = useState<string|null>(null);
+  const [busyDecline, setBusyDecline] = useState<string|null>(null); // bid id being passed on
+  // job_repost_block() is the ONE answer to "can the client put this job back on
+  // the board?". null = yes; a string = the plain-English reason. `undefined` is
+  // the third state and it matters: it means we could not tell (read failed or
+  // not loaded yet), and a failed read is not an empty result — the button stays
+  // hidden rather than offering something the server would refuse.
+  const [repostBlock, setRepostBlock] = useState<string|null|undefined>(undefined);
   const [busyPay, setBusyPay] = useState(false);
   // A failed read is not an empty result. Without this a flaky request looked
   // identical to "no job yet" and the ENTIRE payment surface vanished silently.
@@ -1487,6 +1494,73 @@ export default function ClientDashboard() {
     }
   };
 
+  // The client passes on one estimate. This is NOT the same as the automatic
+  // "not chosen" decline that accept_bid writes on the losing bids — decline_bid
+  // stamps declined_by_client_at so a later re-open can never resurrect a bid the
+  // client deliberately turned down. The job only goes back on the board fresh
+  // when no live bid is left; passing on one of four just removes that one.
+  const declineBid = async (bidId: string) => {
+    if (!(await askConfirm({
+      title: "Pass on this estimate?",
+      message: "This pro won't work on your job. They'll be told you went another way. If this is the last estimate you have, your request goes back out to other pros as a fresh post.",
+      confirmLabel: "Yes, pass", danger: true,
+    }))) return;
+    setBusyDecline(bidId);
+    const { data, error } = await supabase.rpc("decline_bid", { p_bid_id: bidId });
+    setBusyDecline(null);
+    if (error) { notify("Couldn't pass on this estimate: " + error.message); return; }
+    setClientBids(prev => prev.filter((x: any) => x.id !== bidId));
+    const d: any = data ?? {};
+    if (d.reposted) {
+      notify(d.refired
+        ? "Passed. Your request is back out as a fresh post to " + Number(d.reach || 0) + " pros."
+        : "Passed. Your request is back on the board as a fresh post.", "ok");
+    } else {
+      notify("Passed on that estimate.", "ok");
+    }
+  };
+
+  // The 7-day escape hatch: the client picked a pro and nothing happened — no
+  // time, no price, no signed agreement. This cancels that job (never deletes
+  // it) and puts the request back on the board as a fresh post. job_repost_block
+  // is the server's single answer to whether it's allowed, and it refuses
+  // outright on any job holding money.
+  const repostJob = async () => {
+    if (!activeJob) return;
+    if (!(await askConfirm({
+      title: "Put this job back on the board?",
+      message: "This cancels the job with your current pro and re-posts your request as a fresh job other pros can bid on. Your pro will be told. This can't be undone.",
+      confirmLabel: "Re-post my job", danger: true,
+    }))) return;
+    setBusyReq(true);
+    const { data, error } = await supabase.rpc("repost_job", { p_job_id: activeJob.id });
+    setBusyReq(false);
+    if (error) { notify("Couldn't re-post the job: " + error.message); return; }
+    const d: any = data ?? {};
+    notify(d.refired
+      ? "Re-posted. " + Number(d.reach || 0) + " pros have been notified."
+      : "Re-posted. Your request is back on the board.", "ok");
+    setActiveJob(null);
+    setContractor(null);
+    setRepostBlock(undefined);
+    if (activeReq) setRequests(prev => prev.map(r => r.id === activeReq.id ? { ...r, status: "pending", assigned_contractor_id: null, preferred_contractor_id: null } : r));
+  };
+
+  // One predicate, loaded from the one server function. `undefined` means we
+  // could not tell — a failed read is not an empty result, so the button stays
+  // hidden rather than offering something the server would refuse.
+  useEffect(() => {
+    if (!activeJob?.id || activeJob.status !== "assigned") { setRepostBlock(undefined); return; }
+    let live = true;
+    supabase.rpc("job_repost_block", { p_job_id: activeJob.id }).then(({ data, error }) => {
+      if (!live) return;
+      setRepostBlock(error ? undefined : ((data as any) ?? null));
+    });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeJob?.id, activeJob?.status, activeJob?.scheduled_date, activeJob?.scheduled_at, activeJob?.client_approved_at]);
+  const canRepost = repostBlock === null;
+
   // Walkthrough-first: the contractor proposed a free site visit before pricing.
   const approveWalkthrough = async () => {
     if (!activeJob) return;
@@ -1699,6 +1773,11 @@ export default function ClientDashboard() {
     else if (activeJob?.status === "pending_confirmation" && !activeJob?.is_milestone && jobFullyFunded(activeJob)) attn.push({ key: "confirm", icon: "check-circle", tone: "accent", hero: "Your pro says the job is done.", text: "Your pro marked the job complete — confirm the work to release payment.", cta: "Confirm now", onClick: () => focusAnchor("ffc-confirm"), ownsScroll: true });
     if (activeJob?.status === "assigned" && activeJob?.schedule_proposed_at && !activeJob?.client_approved_at && !(activeJob?.client_rescheduled_at && !activeJob?.reschedule_accepted_at)) attn.push({ key: "sched", icon: "calendar", tone: "accent", hero: "Your pro proposed a time and price.", text: "Your pro proposed a time and price — approve it to book the visit.", cta: "Review proposal", onClick: () => focusAnchor("ffc-sched"), ownsScroll: true });
     if (activeJob?.status === "assigned" && activeJob?.walkthrough_proposed_at && !activeJob?.walkthrough_approved_at) attn.push({ key: "walkthrough", icon: "calendar", tone: "accent", hero: "Your pro wants a free walkthrough first.", text: "Your pro wants to do a free walkthrough before pricing — confirm the visit time.", cta: "Review time", onClick: () => focusAnchor("ffc-walkthrough"), ownsScroll: true });
+    // The match went quiet. canRepost is the SERVER's answer (job_repost_block),
+    // so this row can never offer something the button would be refused for —
+    // and it sits above the conversational rows because a week of silence is the
+    // one thing on this card the client can actually act on.
+    if (canRepost) attn.push({ key: "repost", icon: "refresh", tone: "warn", hero: "Your pro has gone quiet.", text: "It's been over a week since you chose your pro with no time or price agreed — you can re-post your job to other pros.", cta: "Re-post my job", onClick: () => focusAnchor("ffc-repost"), ownsScroll: true });
     if (!activeJob && clientBids.length > 0) attn.push({ key: "bids", icon: "user-check", tone: "accent", hero: clientBids.length + " pro" + (clientBids.length === 1 ? " has" : "s have") + " sent you an estimate.", text: clientBids.length + " pro" + (clientBids.length === 1 ? " has" : "s have") + " bid on your request — pick the one you like.", cta: "See bids", onClick: () => focusAnchor("ffc-bids"), ownsScroll: true });
     // A live request with no photo. This is the only row here that isn't
     // about something already owed — it's about the quality of the
@@ -2472,6 +2551,15 @@ export default function ClientDashboard() {
                           </span>
                         )}
                       </button>
+                      {/* Passing is final for this pro and is remembered — a later
+                          re-open never brings a passed-on estimate back. */}
+                      <button
+                        style={{ ...s.btn, padding:".35rem .8rem", fontSize:".74rem", color:"rgba(var(--ff-muted), .75)" }}
+                        disabled={busyDecline === b.id}
+                        onClick={() => declineBid(b.id)}
+                      >
+                        {busyDecline === b.id ? "…" : "Pass"}
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -2701,7 +2789,28 @@ export default function ClientDashboard() {
                           </div>
                         )}
                         {activeJob.status === "assigned" && !activeJob.schedule_proposed_at && !activeJob.walkthrough_proposed_at && !activeJob.slot_released_at && (
-                          <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .75)" }}><Ic name="check-circle" size={14} style={{ marginRight:4 }} />Matched! Waiting for your contractor to propose a time and price.</div>
+                          <div id="ffc-repost" style={{ scrollMarginTop:"5.5rem" }}>
+                            <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .75)" }}><Ic name="check-circle" size={14} style={{ marginRight:4 }} />Matched! Waiting for your contractor to propose a time and price.</div>
+                            {/* Seven days with no time and no price means the match
+                                didn't take. canRepost is the server's own answer
+                                (job_repost_block); the "not yet" line below is computed
+                                from the job's own date rather than by reading the
+                                server's wording back, so the two can't disagree. */}
+                            {canRepost ? (
+                              <div style={{ marginTop:".7rem", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(234,107,20,.07)", border:"1px solid rgba(234,107,20,.3)" }}>
+                                <div style={{ fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.55 }}>
+                                  <strong>Heard nothing from your pro?</strong> It's been over a week since you chose them and there's still no time or price agreed. You can put your job back on the board as a fresh post and let other pros bid. Nothing has been charged.
+                                </div>
+                                <button style={{ ...s.btn, marginTop:".6rem", fontSize:".8rem", padding:".45rem .9rem" }} disabled={busyReq} onClick={repostJob}>
+                                  <Ic name="refresh" size={13} style={{ marginRight:5 }} />{busyReq ? "Re-posting…" : "Re-post my job"}
+                                </button>
+                              </div>
+                            ) : (activeJob.created_at && (Date.now() - new Date(activeJob.created_at).getTime()) < 7 * 86400000) ? (
+                              <div style={{ marginTop:".5rem", fontSize:".76rem", color:"rgba(var(--ff-muted), .6)" }}>
+                                If you still have no time or price by {new Date(new Date(activeJob.created_at).getTime() + 7 * 86400000).toLocaleDateString()}, you'll be able to re-post your job to other pros from here.
+                              </div>
+                            ) : null}
+                          </div>
                         )}
                         {/* in_progress is the same screen as scheduled — the client still
                             needs the payment block, the photos and the timer. Without it
