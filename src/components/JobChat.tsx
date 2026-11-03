@@ -235,6 +235,11 @@ export default function JobChat({
   const send = async () => {
     const content = input.trim();
     if (sending) return;
+    // The lock used to be enforced only by not RENDERING the composer, which
+    // makes it a property of the layout rather than of the rule. Now that a
+    // read-only thread can be re-opened by a condition that clears (the payout
+    // lock), the guard belongs on the one function that writes a message.
+    if (readOnly) return;
     if (!content && !pending) return;
     setSending(true);
     setErr("");

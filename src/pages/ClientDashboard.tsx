@@ -55,6 +55,7 @@ import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 import FreddyRewind from "@/components/FreddyRewind";
 import { freqLabel } from "@/lib/recurrence";
 import { respText } from "@/lib/respTime";
+import { jobIsLive } from "@/lib/jobStage";
 import { DASH_NAV_EVENT, readDashNavFromUrl, clearDashNavFromUrl, type DashNavDetail } from "@/lib/notificationRoutes";
 import PriceGrade from "@/components/PriceGrade";
 import VerifiedMarks, { type VerifyFlags } from "@/components/VerifiedMarks";
@@ -1651,8 +1652,7 @@ export default function ClientDashboard() {
     // No signed agreement means the client physically can't pay, which means
     // the pro is never dispatched — so this is pushed BEFORE the rest, since
     // only the first three rows are shown.
-    if (activeJob && contractBlocked && !contractCheckError
-        && ["assigned", "scheduled", "in_progress", "pending_confirmation"].includes(activeJob.status)
+    if (activeJob && contractBlocked && !contractCheckError && jobIsLive(activeJob)
         && activeJob.payment_status !== "held" && activeJob.payment_status !== "released") {
       attn.push(contractStatus === "sent"
         ? { key: "contract", icon: "file", tone: "accent", hero: "Your service agreement is ready to sign.", text: "Your pro sent the service agreement — sign it so you can pay and lock in your visit.", cta: "Review & sign", onClick: focusContract, ownsScroll: true }

@@ -218,6 +218,7 @@ import { useServicePricing, rangeText, money, benchmarkFor, targetBid, TARGET_BI
 import PriceGrade from "@/components/PriceGrade";
 import { freqLabel } from "@/lib/recurrence";
 import { respShort } from "@/lib/respTime";
+import { jobIsLive } from "@/lib/jobStage";
 import { DASH_NAV_EVENT, readDashNavFromUrl, clearDashNavFromUrl, type DashNavDetail } from "@/lib/notificationRoutes";
 import { needsFor, pendingText, disabledText } from "@/lib/stripeRequirements";
 import FadeImg from "@/components/FadeImg";
@@ -1362,8 +1363,13 @@ export default function ContractorDashboard() {
   //
   // `contractor` is non-null here (the guard above returns), so this reads a
   // loaded row rather than a pending one.
-  const liveWonJobs = myJobs.filter((j: any) =>
-    ["assigned", "scheduled", "in_progress", "pending_confirmation"].includes(j.status));
+  // NOT the same set as `liveJobs` further down, which is "not cancelled and
+  // not completed" and is used for counting. `jobIsLive` is the narrower
+  // enumerated list — the stages where the contract and the payment gate
+  // actually apply — and is the one the client dashboard's agreement row and
+  // the chat lock also read. Keep the two names distinct; collapsing them
+  // would quietly change what the Pass counts.
+  const liveWonJobs = myJobs.filter(jobIsLive);
   const payoutLocked = !contractor.stripe_payouts_enabled && liveWonJobs.length > 0;
   // What the chat predicate is told. Spelled out once and shared, so the
   // attention row, the lock and the explanation in the chat can never disagree.
@@ -1423,8 +1429,7 @@ export default function ContractorDashboard() {
     // are off — the payment gate refuses the card either way, so this row would
     // be a control that can never succeed, burning a slot above the one row
     // that CAN clear the block.
-    if (!contractsFailed && !payoutLocked
-        && ["assigned", "scheduled", "in_progress", "pending_confirmation"].includes(job.status)
+    if (!contractsFailed && !payoutLocked && jobIsLive(job)
         && !["signed", "sent"].includes(contracts[job.id] ?? "")) {
       attn.push({ key: "contract-" + job.id, icon: "file" as const, tone: "accent" as const, hero: "SEND THE AGREEMENT", text: "“" + svc + "” needs a signed service agreement — your client can't pay until you send it.", cta: "Send agreement", onClick: () => focusContractJob(job) });
     }
@@ -3132,9 +3137,7 @@ export default function ContractorDashboard() {
           // Only the payout lock is clearable from inside the drawer, and only
           // while it's actually the reason — a cancelled or paid-out job must
           // keep the quiet grey notice, not an orange alert offering Stripe.
-          closedAction={!contractor.stripe_payouts_enabled
-            && chatJob.status !== "cancelled"
-            && !(chatJob.status === "completed" && chatJob.payment_status === "released")
+          closedAction={!contractor.stripe_payouts_enabled && jobIsLive(chatJob)
             ? { label: "Connect payouts", onClick: () => { void setupPayouts(); } }
             : null}
           onJump={() => { setActiveTab("jobs"); setJobFilter(null); if (activeJobId !== chatJob.id) openJob(chatJob); window.scrollTo({ top: 0, behavior: "smooth" }); }}

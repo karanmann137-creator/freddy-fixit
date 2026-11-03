@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { jobIsLive } from "@/lib/jobStage";
 
 /**
  * One row of `public.my_conversations()` — OR, since bid-stage chat got a home
@@ -258,20 +259,33 @@ export type ChatViewer = {
  *
  * The CLIENT side is never locked by this. They did nothing wrong and still
  * need to reach their pro — so `viewer: "client"` behaves exactly as before.
+ *
+ * `jobIsLive` rather than "not already closed": the lock is a nudge to unblock
+ * work in flight, so it must not reach a stage where there is no work left to
+ * unblock. Past `pending_confirmation` the only thing a pro might need the
+ * thread for is answering a claim, and taking that away would cost them money
+ * rather than prompt them to collect it.
  */
 export function chatReadOnly(job: any, ctx?: ChatViewer): boolean {
   if (!job) return true;
   if (job.status === "cancelled") return true;
   if (job.status === "completed" && job.payment_status === "released") return true;
-  return ctx?.viewer === "contractor" && ctx.payoutsEnabled === false;
+  return ctx?.viewer === "contractor" && ctx.payoutsEnabled === false && jobIsLive(job);
 }
 
-/** Why the box is closed, in one sentence. Agrees with `chatReadOnly` branch for branch. */
+/**
+ * Why the box is closed, in one sentence. Checked in the SAME ORDER as
+ * `chatReadOnly` so the two can never name different reasons for one thread.
+ *
+ * The payout lock is tested last because it is the only reversible one: a
+ * cancelled or paid-out job is permanently closed, and offering a pro a
+ * "connect payouts" button on one of those would be a control that changes
+ * nothing. Anything this function can't name falls through to the finished
+ * wording, which is the only way a thread was ever closed before this.
+ */
 export function chatClosedReason(job: any, ctx?: ChatViewer): string {
   if (job?.status === "cancelled") return "This job was cancelled, so messaging is closed.";
-  if (job?.status === "completed" && job?.payment_status === "released")
-    return "This job is finished and paid out, so messaging is closed.";
-  if (ctx?.viewer === "contractor" && ctx.payoutsEnabled === false)
+  if (ctx?.viewer === "contractor" && ctx.payoutsEnabled === false && jobIsLive(job))
     return "Finish your payout setup to message this client. Until Stripe is connected your client can't be charged for this job, so it can't go ahead.";
   return "This job is finished and paid out, so messaging is closed.";
 }
