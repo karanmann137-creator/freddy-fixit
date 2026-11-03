@@ -63,7 +63,7 @@ import type { Grade } from "@/lib/servicePricing";
 import DashboardSidebar, { type SidebarItem } from "@/components/DashboardSidebar";
 import { SettingsPanel } from "@/components/SettingsModal";
 import MessagesInbox, { partyName } from "@/components/MessagesInbox";
-import { useConversations, conversationKey, chatReadOnly, chatClosedReason, type Conversation } from "@/lib/chatUnread";
+import { useConversations, conversationKey, chatReadOnly, chatClosedReason, CHAT_AS_CLIENT, type Conversation } from "@/lib/chatUnread";
 import { useBidThreads, bidToConversation } from "@/lib/bidThreads";
 import FadeImg from "@/components/FadeImg";
 
@@ -2962,7 +2962,10 @@ export default function ClientDashboard() {
                       {activeJob && (
                         <button style={{ ...s.btn, marginLeft:"auto", color:"var(--ff-text)", borderColor:"rgba(234,107,20,.35)", background:"rgba(234,107,20,.12)", display:"flex", alignItems:"center", gap:".4rem" }} onClick={() => { setChatJob(activeJob); if (unreadFor(activeJob.id) > 0) void markConvRead(activeJob.id); }}>
                           <Ic name="message-square" size={14} />
-                          {chatReadOnly(activeJob) ? "View chat" : "Message " + contractor.first_name}
+                          {/* `viewer: "client"` is explicit so the contractor-only
+                              payout lock can never leak to this side — a client
+                              is never punished for their pro's Stripe setup. */}
+                          {chatReadOnly(activeJob, CHAT_AS_CLIENT) ? "View chat" : "Message " + contractor.first_name}
                           {unreadFor(activeJob.id) > 0 && (
                             <span style={{ minWidth:18, height:18, padding:"0 .3rem", borderRadius:999, background:"#ea6b14", color:"#fff", fontSize:".68rem", fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>
                               {unreadFor(activeJob.id) > 9 ? "9+" : unreadFor(activeJob.id)}
@@ -3156,8 +3159,8 @@ export default function ClientDashboard() {
           title={"Chat with " + (chatJob.id === activeJob?.id ? (contractor?.first_name ?? "your contractor") : "your contractor")}
           job={chatJob}
           role="client"
-          readOnly={chatReadOnly(chatJob)}
-          closedReason={chatClosedReason(chatJob)}
+          readOnly={chatReadOnly(chatJob, CHAT_AS_CLIENT)}
+          closedReason={chatClosedReason(chatJob, CHAT_AS_CLIENT)}
           // Only offer the jump when the drawer is on the request we're showing —
           // otherwise "Open the job" would land them on someone else's card.
           onJump={chatJob.id === activeJob?.id ? () => { setActiveTab("requests"); setChatJob(null); window.scrollTo({ top: 0, behavior: "smooth" }); } : undefined}

@@ -88,7 +88,7 @@ const CANNED: string[] = [
 // readOnly shows history without an input.
 export default function JobChat({
   jobId, meId, title, readOnly = false, onClose,
-  job = null, role = "client", closedReason, onJump, onJobPatch,
+  job = null, role = "client", closedReason, closedAction, onJump, onJobPatch,
 }: {
   jobId: string;
   meId: string;
@@ -98,6 +98,17 @@ export default function JobChat({
   job?: any;
   role?: Role;
   closedReason?: string;
+  /**
+   * The way OUT of a read-only chat, when there is one.
+   *
+   * Most closures are permanent — the job was cancelled, or it's finished and
+   * paid — and those render as the quiet grey line below. A payout lock is the
+   * one closure the viewer can clear themselves, so when an action is passed
+   * the notice is promoted to an orange alert with the button in it. A reason
+   * with no control is as bad as a control that can't succeed: a pro told to
+   * "finish payout setup" inside a locked drawer has to go find the thing.
+   */
+  closedAction?: { label: string; onClick: () => void } | null;
   onJump?: () => void;
   onJobPatch?: (patch: Record<string, any>) => void;
 }) {
@@ -529,7 +540,23 @@ export default function JobChat({
         </div>
 
         {/* Input or closed notice */}
-        {readOnly ? (
+        {readOnly && closedAction && role !== "admin" ? (
+          <div style={{
+            padding: "1rem 1.25rem", borderTop: "1px solid rgba(234,107,20,.45)",
+            background: "rgba(234,107,20,.12)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: ".4rem", fontFamily: "'Bebas Neue',sans-serif", letterSpacing: ".04em", fontSize: "1.05rem", color: "#ea6b14", marginBottom: ".35rem" }}>
+              <Ic name="alert-triangle" size={15} />MESSAGING IS LOCKED
+            </div>
+            <div style={{ fontSize: ".85rem", color: "var(--ff-text)", lineHeight: 1.55, marginBottom: ".7rem" }}>
+              {closedReason ?? "This conversation is locked."}
+            </div>
+            <button
+              onClick={closedAction.onClick}
+              style={{ width: "100%", padding: ".75rem 1rem", background: "#ea6b14", color: "#fff", border: "none", borderRadius: "10px", fontFamily: "'Bebas Neue',sans-serif", letterSpacing: ".05em", fontSize: "1rem", cursor: "pointer" }}
+            >{closedAction.label}</button>
+          </div>
+        ) : readOnly ? (
           <div style={{
             padding: "1rem 1.25rem", borderTop: "1px solid rgba(var(--ff-fg), .08)",
             fontSize: ".82rem", color: "rgba(var(--ff-muted), .5)", textAlign: "center",

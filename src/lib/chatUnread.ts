@@ -217,20 +217,61 @@ export function inboxTime(iso?: string | null): string {
 /* ── Who can still write ─────────────────────────────────────────────── */
 
 /**
+ * Who is looking at the thread, and what we know about them.
+ *
+ * Both fields are optional and the predicate FAILS OPEN on either: a caller
+ * that doesn't pass a viewer, or passes one whose payout status it couldn't
+ * read, gets exactly today's behaviour. "A failed read is not an empty
+ * result" — `payoutsEnabled` must be a literal `false` to lock anything, so a
+ * failed `contractors` read (undefined / null) never silences a pro's chat.
+ */
+/**
+ * The client side's context, as a constant. There is nothing dynamic about it —
+ * no client-side condition locks a client out — so it lives here rather than
+ * being re-spelled at each call site where a typo would silently change the
+ * answer.
+ */
+export const CHAT_AS_CLIENT = { viewer: "client" as const };
+
+export type ChatViewer = {
+  viewer?: "client" | "contractor";
+  /** `contractors.stripe_payouts_enabled`. `undefined`/`null` = we don't know. */
+  payoutsEnabled?: boolean | null;
+};
+
+/**
  * Messaging stays open through the claim window — a client needs to be able to
  * reach their pro while deciding whether to confirm, and for the three days
  * they have to raise a problem afterwards. It only goes read-only once the job
  * is finished AND the money has moved (or the job was cancelled), which is the
  * same point the contractor side already closed at.
+ *
+ * ONE exception, contractor-side only (2026-11-03): a pro who won a live job
+ * without finishing payout setup can read the thread but not write to it.
+ * Bidding is deliberately open to pros with no Stripe account — the alternative
+ * is an empty bid list — but `contract_ready()`'s fifth reason means the client
+ * CANNOT BE CHARGED for that job at all, so the job is dead on arrival until
+ * the pro finishes. Letting them chat as if the job were proceeding is the
+ * worst outcome: both sides invest, nobody can pay. The lock is the one thing
+ * they can't talk their way around, and it clears the instant Stripe reports
+ * payouts enabled.
+ *
+ * The CLIENT side is never locked by this. They did nothing wrong and still
+ * need to reach their pro — so `viewer: "client"` behaves exactly as before.
  */
-export function chatReadOnly(job: any): boolean {
+export function chatReadOnly(job: any, ctx?: ChatViewer): boolean {
   if (!job) return true;
   if (job.status === "cancelled") return true;
-  return job.status === "completed" && job.payment_status === "released";
+  if (job.status === "completed" && job.payment_status === "released") return true;
+  return ctx?.viewer === "contractor" && ctx.payoutsEnabled === false;
 }
 
-/** Why the box is closed, in one sentence. */
-export function chatClosedReason(job: any): string {
+/** Why the box is closed, in one sentence. Agrees with `chatReadOnly` branch for branch. */
+export function chatClosedReason(job: any, ctx?: ChatViewer): string {
   if (job?.status === "cancelled") return "This job was cancelled, so messaging is closed.";
+  if (job?.status === "completed" && job?.payment_status === "released")
+    return "This job is finished and paid out, so messaging is closed.";
+  if (ctx?.viewer === "contractor" && ctx.payoutsEnabled === false)
+    return "Finish your payout setup to message this client. Until Stripe is connected your client can't be charged for this job, so it can't go ahead.";
   return "This job is finished and paid out, so messaging is closed.";
 }

@@ -1346,6 +1346,40 @@ export default function ContractorDashboard() {
   // two are deliberately not derived from each other — `hero` names the move,
   // `text` explains it, and a truncated sentence would do neither.
   const attn: { key: string; icon: IconName; tone: RowTone; hero: string; text: string; cta: string; onClick: () => void; danger?: boolean }[] = [];
+
+  // ── Won work with nowhere to be paid ─────────────────────────────────────
+  // Bidding is deliberately open to pros who haven't connected Stripe — gating
+  // it would leave clients with an empty bid list. The cost is that a pro can
+  // WIN a job they cannot be paid for: `contract_ready()`'s fifth reason
+  // requires `stripe_payouts_enabled`, so the client's card is refused (HTTP
+  // 428) and the job cannot start. Nothing else on this page says that in those
+  // terms — the checklist item reads as housekeeping, not as "this job is
+  // frozen".
+  //
+  // ONE row, not one per job, pushed BEFORE the loop: the condition is about the
+  // account, not the job, and only four rows render, so a per-job version would
+  // evict everything else the moment a pro had two live jobs.
+  //
+  // `contractor` is non-null here (the guard above returns), so this reads a
+  // loaded row rather than a pending one.
+  const liveWonJobs = myJobs.filter((j: any) =>
+    ["assigned", "scheduled", "in_progress", "pending_confirmation"].includes(j.status));
+  const payoutLocked = !contractor.stripe_payouts_enabled && liveWonJobs.length > 0;
+  // What the chat predicate is told. Spelled out once and shared, so the
+  // attention row, the lock and the explanation in the chat can never disagree.
+  const payoutLockCtx = { viewer: "contractor" as const, payoutsEnabled: !!contractor.stripe_payouts_enabled };
+  if (payoutLocked) {
+    attn.push({
+      key: "payout-lock", icon: "alert-triangle" as const, tone: "warn" as const, danger: true,
+      hero: "CONNECT YOUR PAYOUTS TO CONTINUE",
+      text: liveWonJobs.length === 1
+        ? "You won “" + (liveWonJobs[0].request?.service_needed ?? "a job") + "”, but your client can't be charged and messaging is locked until you connect a bank account. It takes about two minutes."
+        : "You've won " + liveWonJobs.length + " jobs, but your clients can't be charged and messaging is locked until you connect a bank account. It takes about two minutes.",
+      cta: "Connect payouts",
+      onClick: () => { void setupPayouts(); },
+    });
+  }
+
   for (const job of myJobs) {
     const d = disputes[job.id];
     const svc = job.request?.service_needed ?? "a job";
@@ -1385,7 +1419,11 @@ export default function ContractorDashboard() {
     // outranks everything else on a live job. Only prompt when it's the
     // contractor's move (nothing sent yet); once it's with the client the
     // panel on the job already says who we're waiting on.
-    if (!contractsFailed
+    // `!payoutLocked` because sending the agreement cannot help while payouts
+    // are off — the payment gate refuses the card either way, so this row would
+    // be a control that can never succeed, burning a slot above the one row
+    // that CAN clear the block.
+    if (!contractsFailed && !payoutLocked
         && ["assigned", "scheduled", "in_progress", "pending_confirmation"].includes(job.status)
         && !["signed", "sent"].includes(contracts[job.id] ?? "")) {
       attn.push({ key: "contract-" + job.id, icon: "file" as const, tone: "accent" as const, hero: "SEND THE AGREEMENT", text: "“" + svc + "” needs a signed service agreement — your client can't pay until you send it.", cta: "Send agreement", onClick: () => focusContractJob(job) });
@@ -1615,7 +1653,15 @@ export default function ContractorDashboard() {
                       ? (steps.length > 0
                           ? "You're almost there — Stripe still needs " + (steps.length === 1 ? "one thing" : steps.length + " things") + " before money for completed jobs can reach you:"
                           : "Your bank connection isn't finished yet. Until it is, money for completed jobs can't be sent to you.")
-                      : "You haven't connected a bank account. Until you do, you won't be paid for completed jobs — clients can still book and pay, but your payout stays on hold.")}
+                      // Corrected 2026-11-03: this used to say "clients can
+                      // still book and pay, but your payout stays on hold",
+                      // which is wrong in the direction that costs the pro the
+                      // job. `contract_ready()`'s fifth reason requires
+                      // `stripe_payouts_enabled`, so the four payment-intent
+                      // functions return 428 and the client is never charged at
+                      // all. The old copy told a pro the one thing they could
+                      // safely ignore was the one thing freezing their work.
+                      : "You haven't connected a bank account. Until you do, your clients can't be charged for your jobs at all — so a job you win can't start, and messaging on it stays locked.")}
               </div>
               {!onlyWaiting && steps.length > 0 && (
                 <ul style={{ margin:".55rem 0 0", padding:0, listStyle:"none", display:"flex", flexDirection:"column" as const, gap:".45rem" }}>
@@ -3075,8 +3121,22 @@ export default function ContractorDashboard() {
           // Stays open right through the claim window — a client needs to reach
           // their pro while deciding, and for the 3 days they have to raise a
           // problem afterwards. chatReadOnly is the single rule for that.
-          readOnly={chatReadOnly(chatJob)}
-          closedReason={chatClosedReason(chatJob)}
+          //
+          // The viewer context adds exactly one lock: a pro who won a job but
+          // hasn't finished payout setup can read but not write, because
+          // contract_ready() means the client cannot be charged for that job at
+          // all. `contractor` is null while loading or if the read failed, which
+          // leaves payoutsEnabled undefined and the predicate open.
+          readOnly={chatReadOnly(chatJob, payoutLockCtx)}
+          closedReason={chatClosedReason(chatJob, payoutLockCtx)}
+          // Only the payout lock is clearable from inside the drawer, and only
+          // while it's actually the reason — a cancelled or paid-out job must
+          // keep the quiet grey notice, not an orange alert offering Stripe.
+          closedAction={!contractor.stripe_payouts_enabled
+            && chatJob.status !== "cancelled"
+            && !(chatJob.status === "completed" && chatJob.payment_status === "released")
+            ? { label: "Connect payouts", onClick: () => { void setupPayouts(); } }
+            : null}
           onJump={() => { setActiveTab("jobs"); setJobFilter(null); if (activeJobId !== chatJob.id) openJob(chatJob); window.scrollTo({ top: 0, behavior: "smooth" }); }}
           onJobPatch={(patch) => {
             setMyJobs(prev => prev.map(j => (j.id === chatJob.id ? { ...j, ...patch } : j)));
