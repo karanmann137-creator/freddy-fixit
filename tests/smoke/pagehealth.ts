@@ -23,9 +23,14 @@
  *   - error boundary  `src/components/ErrorBoundary.tsx` renders "Something went
  *                     wrong" and then returns HTTP 200 for the rest of time. The
  *                     boundary is correct behaviour; silently shipping it is not.
- *   - real content    #root with under ~300 characters of text is a shell, not a
- *                     page. This is the assertion that catches a white screen
- *                     that throws nothing at all.
+ *   - real content    #root with under ~300 characters of text is a blank page.
+ *                     Weak on its own: #root also carries the nav, cookie
+ *                     banner and footer from App.tsx, which together are ~1100
+ *                     characters, so this threshold can only catch a page that
+ *                     rendered NOTHING. The real proof that the page body
+ *                     mounted is the <h1>/`must` wait below. Do not raise this
+ *                     number to close the gap -- a magic constant tuned to the
+ *                     current footer copy goes red the day the footer changes.
  *
  * DELIBERATELY NOT WATCHED: console warnings, and console errors in general.
  * Third-party scripts (analytics, Stripe, the consent layer) log errors on a
@@ -98,31 +103,70 @@ export async function expectHealthy(
   where: string,
   opts: { h1?: boolean; must?: string[] } = {},
 ) {
-  const rootText = (await page.locator("#root").innerText().catch(() => "")) || "";
-  const lower = rootText.toLowerCase();
+  // Errors that have ALREADY landed are named first, before the waits below, so
+  // a genuinely broken chunk fails as "failed to load a lazy chunk" rather than
+  // sitting out a 15s <h1> timeout and then reporting "has no <h1>" -- the right
+  // message on the wrong cause is how a suite teaches someone to distrust it.
+  assertNoFaults(w, where);
 
-  expect(w.pageErrors, where + " threw during render").toEqual([]);
-  expect(w.chunkErrors, where + " failed to load a lazy chunk").toEqual([]);
-  expect(w.deadAssets, where + " requested an asset that 404d").toEqual([]);
+  // WAIT FOR THE PAGE BODY BEFORE READING ANY TEXT.
+  //
+  // This ordering is the whole correctness of this function, and it was wrong on
+  // the first real run. #root carries the nav, the consent banner and the footer
+  // from App.tsx, and those mount IMMEDIATELY -- the lazy page chunk arrives
+  // after. So a text snapshot taken on arrival is the shell, reliably, and every
+  // text assertion made against that snapshot is a coin flip on fetch latency.
+  //
+  // /get-a-quote failed exactly that way: the <h1> assertion PASSED, because
+  // toBeVisible retries, while the `must` check above it compared "estimate"
+  // against a snapshot captured before the form existed. The page was fine. The
+  // harness was not. Nothing is read here until something proves the body is up,
+  // and the text checks below re-read rather than reuse.
+  if (opts.h1 !== false) {
+    const h1 = page.locator("#root h1").first();
+    await expect(h1, where + " has no <h1>").toBeVisible({ timeout: 15_000 });
+    expect((await h1.innerText()).trim().length, where + " has an empty <h1>")
+      .toBeGreaterThan(0);
+  }
 
-  expect(lower, where + " rendered the error boundary").not.toContain(BOUNDARY_TEXT);
+  // Polled, not snapshotted. On an `h1: false` route (Login, the dashboards)
+  // this IS the render signal, so it must be allowed to wait.
+  for (const needle of opts.must || []) {
+    await expect
+      .poll(async () => (await rootText(page)).toLowerCase(), {
+        timeout: 15_000,
+        message: where + ' is missing the text "' + needle + '"',
+      })
+      .toContain(needle);
+  }
+
+  const text = await rootText(page);
+
+  expect(text.toLowerCase(), where + " rendered the error boundary")
+    .not.toContain(BOUNDARY_TEXT);
   expect(
-    rootText.length,
-    where + " rendered only " + rootText.length + " chars -- shell, not a page",
+    text.length,
+    where + " rendered only " + text.length + " chars -- blank, not a page",
   ).toBeGreaterThan(MIN_TEXT);
 
   // A blank <title> is how a wrong canonical starts. seo.ts sets one per route.
   const title = await page.title();
   expect(title.trim().length, where + " has an empty <title>").toBeGreaterThan(0);
 
-  if (opts.h1 !== false) {
-    const h1 = page.locator("#root h1").first();
-    await expect(h1, where + " has no <h1>").toBeVisible({ timeout: 10_000 });
-    expect((await h1.innerText()).trim().length, where + " has an empty <h1>")
-      .toBeGreaterThan(0);
-  }
+  // Re-checked after the waits: an error thrown late in render, or a chunk that
+  // 404s on a nested import, lands after the first pass and would otherwise be
+  // reported by the NEXT test, against the wrong route.
+  assertNoFaults(w, where);
+}
 
-  for (const needle of opts.must || []) {
-    expect(lower, where + ' is missing the text "' + needle + '"').toContain(needle);
-  }
+/** #root's rendered text, or "" if the node is gone. Never throws. */
+async function rootText(page: Page): Promise<string> {
+  return (await page.locator("#root").innerText().catch(() => "")) || "";
+}
+
+/** The three watcher lists, asserted empty with a message that names the fault. */
+function assertNoFaults(w: Watcher, where: string) {
+  expect(w.pageErrors, where + " threw during render").toEqual([]);
+  expect(w.chunkErrors, where + " failed to load a lazy chunk").toEqual([]);
+  expect(w.deadAssets, where + " requested an asset that 404d").toEqual([]);
 }

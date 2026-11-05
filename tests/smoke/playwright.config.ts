@@ -38,6 +38,14 @@ export default defineConfig({
   ],
 
   use: {
+    // Desktop first, and FIRST in this block on purpose. A trailing spread
+    // silently overwrites every key declared above it -- that is how the custom
+    // userAgent below got clobbered on the first build (TS2783), so the suite
+    // was identifying itself as plain Chrome 120 and nothing said so.
+    // A mobile pass is a separate concern and would double the run for a class
+    // of fault (layout) that this suite does not check.
+    ...devices["Desktop Chrome"],
+
     baseURL: process.env.FF_SMOKE_BASE_URL || "https://freddyfixit.ca",
     // Named so the owner can recognise it in Vercel analytics and allowlist it
     // if the firewall ever starts challenging automated traffic.
@@ -47,9 +55,6 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "off",
-    // Desktop first. A mobile pass is a separate concern and would double the
-    // run for a class of fault (layout) that this suite does not check.
-    ...devices["Desktop Chrome"],
   },
 
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
