@@ -1,0 +1,58 @@
+# Continuous checks for the two failure classes that build CLEANLY and break at
+# runtime. Neither is caught by `vite build`: esbuild does no typechecking, so a
+# module that exports nothing -- or nothing at all -- compiles happily and
+# explodes inside React.lazy in front of a visitor.
+#
+#   typecheck   caught b1361b6 (TS2322: Property 'default' is missing), where a
+#               page was truncated to 0 bytes and every client hit a white
+#               screen on /client-dashboard.
+#   mounts      catches fa5e2b5, where the <ContractPanel/> mounts were dropped
+#               and, because the payment gate fails CLOSED, every job on the
+#               platform became unpayable with no error on any surface.
+#
+# DELIBERATELY NOT A REQUIRED STATUS CHECK. Work ships by pushing straight to
+# main from tools/ship.py, which runs both of these locally before it will push
+# at all -- so the deploy path is already gated and branch protection here would
+# only risk blocking the owner's single route to production. What this workflow
+# adds is coverage of the pushes that DON'T come through ship.py, and a red X
+# plus an email when one of them is bad.
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Catches drift in a tree nobody has pushed to lately -- the mount guard reads
+  # the whole tree, so it is meaningful even with no new commits.
+  schedule:
+    - cron: "40 14 * * *"
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      # `npm ci` needs the lockfile to agree with package.json; it is the right
+      # call here precisely because it refuses when they have drifted.
+      - name: Install
+        run: npm ci
+
+      # The gate that matters. Baseline is 0 errors -- if this ever goes
+      # non-zero, fix the errors rather than raising the baseline.
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Runs regardless of the typecheck result: a missing mount and a type
+      # error are independent faults, and learning about only the first one
+      # wastes a round trip.
+      - name: Critical mounts
+        if: always()
+        run: python3 tools/check_mounts.py

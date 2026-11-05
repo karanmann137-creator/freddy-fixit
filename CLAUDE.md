@@ -119,7 +119,9 @@ npx esbuild <file> --loader:.tsx=tsx    # per-file parse check
 npx vite build                          # full build — OWNER'S MACHINE ONLY
 ```
 `vite build` **cannot run in the Linux sandbox** (rolldown ships a darwin-only native binding). Validate with typecheck + esbuild and embed `vite build` in the installer as the owner-machine gate.
-CI: `.github/workflows/typecheck.yml` runs `npm run typecheck` non-blocking on push/PR to main.
+CI: `.github/workflows/typecheck.yml` runs `npm run typecheck` **and `python3 tools/check_mounts.py`** on push/PR to main, plus nightly on a schedule. **This file claimed that workflow existed from before 2026-11-04, and it did not exist at all** — `.github/` was not in the repo, so the one check that catches the 0-byte-module class ran only when someone remembered to. Treat a documented check as absent until you have seen the file.
+It is deliberately **not** a required status check: work ships by pushing straight to main from `tools/ship.py`, which runs both gates locally before it will push, so branch protection here would only risk blocking the owner's single route to production. CI exists to cover the pushes that *don't* come through `ship.py`.
+**`tools/check_mounts.py` owns the critical-mount table — ONE copy, imported by `ship.py`.** It reads the **whole tree**, not just changed files: a mount dropped by a hand edit or a half-applied installer is invisible in the product, so "we'd have noticed" is not a backstop. Today it guards 15 needles across 7 files, including the `<VerifyCodeModal>` mounts, because dropping those re-opens the 2026-11-04 admin lockout.
 
 ## Brand tokens (summary — full rules in `docs/brand-and-motion.md`)
 Navy `#1a2236` · section navy `#151d2e` · footer `#111827` · orange `#ea6b14` · text `#f0f4ff`.
@@ -252,7 +254,7 @@ A **frontend-only** gate (like the address confirmation before deposit) is delib
 - **A 200 from GoTrue proves handoff, never delivery.** Only an inbox proves delivery. The permanent detection net is health check 7 `no_stuck_signups`; the remedy is `auth-rescue`.
 - **A welcome email is never worth an account** — anything running inside the signup transaction gets its own exception block.
 - Standing owner instruction: **don't send bulk email without asking.**
-- `platform_health_check()` returns **7** named checks. Read `platform_settings.mode` / `outbound_paused()` rather than trusting a doc for what's armed.
+- `platform_health_check()` returns **9** named checks (7 → 9 on 2026-11-04, adding `admin_can_act` and `no_jobs_blocked_on_payout_onboarding`; check 3's name list widened 6 → 15 to cover the gates and the doors). **The seven original checks all read values that EXIST, and every outage actually suffered here has been an ABSENCE** — which is why it sat 7/7 green while the owner was locked out of his own dashboard. You cannot SQL-query a missing button: that class lives in `tools/check_mounts.py`, not here. A new check must be **self-clearing** — a permanently-red check teaches the owner to ignore the whole report. Read `platform_settings.mode` / `outbound_paused()` rather than trusting a doc for what's armed.
 
 ## Matching
 **`service_specialty_map` is the single source of truth** for all three matchers (`notify_contractors_new_request()`, `dispatch-job`, `list_open_jobs()`). Changing the DATA keeps all three in lockstep with zero code changes.
@@ -264,12 +266,54 @@ A **frontend-only** gate (like the address confirmation before deposit) is delib
 - **Both halves of the approximate-location string are load-bearing** (`"T3A 1B2 · NW Calgary"`): `mask_location()`, `list_open_jobs()` ranking and `dispatch-job`'s subject all read the raw text, and a postal code with no area token is still a non-empty string that passes a blank check while silently ranking out-of-zone everywhere.
 - **`contractors` has no `updated_at`** — a deactivation window is invisible in the data after the fact.
 
+## Monitoring — four layers, and what each one CANNOT see
+
+Built 2026-11-04, after the owner asked why every fault on this platform is discovered by
+him personally. The answer was structural, and it is worth keeping in front of you when
+adding a check: **every outage here has been an ABSENCE** — a confirmation email that never
+sent, a `<ContractPanel/>` mount that got dropped, a module that built to zero bytes, a
+gate whose remedy was reachable from nowhere — and he is also effectively all of the
+platform's traffic, so no crowd notices first. The layers are deliberately different
+*shapes*, because a second check of the same shape buys nothing:
+
+| layer | reads | blind to |
+|---|---|---|
+| `platform_health_check()` — 9 checks, pg_cron 15:00 UTC, emails every admin | the **data** | anything that isn't a row. A missing button is not a row |
+| `.github/workflows/typecheck.yml` (`checks`) — push/PR + 14:40 UTC | the **tree** — `npm run typecheck` + `tools/check_mounts.py` | whether the tree that passed is the tree that got deployed |
+| `.github/workflows/smoke.yml` (`smoke`) — 13:30 UTC, `tests/smoke/` | the **live site**, in a real browser | anything behind auth without the optional secrets, and any surface needing a job (ContractPanel) |
+| `freddy-watchdog` skill — scheduled daily, read-only | **all three of the above, plus Vercel deploy state and real visitors' runtime errors** | nothing new — it exists because none of the three reports to anybody unless someone reads it |
+
+- **`tools/check_mounts.py` is the ONE copy of the critical-mount table.** `tools/ship.py`
+  imports it; CI runs it standalone on the whole tree with no regard for what changed. It
+  used to live inside ship.py and fire only for files a given ship happened to touch — the
+  wrong trigger, since a mount can be dropped by a hand edit or a bad merge. Membership
+  test for a new entry: **its absence must be invisible at runtime.** Don't add a mount
+  whose absence throws; the build already catches those.
+- **Neither workflow is a required status check, on purpose.** Work ships by pushing
+  straight to `main` from `tools/ship.py`, which runs both gates locally first — so the
+  deploy path is already gated, and branch protection would only risk blocking the owner's
+  single route to production.
+- **Every new check must be SELF-CLEARING.** A generic "feature table has 0 rows" sweep was
+  designed and rejected: on a platform with 12 requests and 5 jobs almost every feature
+  table is legitimately empty, so it would be red on day one and stay red. A gate that
+  cries wolf is a gate someone learns to skip, and that undoes all four layers at once.
+- **The watchdog is read-only by instruction.** It proposes and waits; it applies no
+  migration and ships no code. Standing owner instruction is "ran without me needing to
+  intervene, only approve".
+- **A failed read is never a pass** — the frontend rule, applied to monitoring. An
+  unreachable check reports "unknown", never green.
+- **`tests/smoke/` is its own npm package** so Playwright never enters the app's
+  dependency tree or lockfile (`checks` runs `npm ci`, which refuses on drift). Its report
+  output is gitignored because a failure screenshot of a signed-in dashboard is real user
+  data and this repo is PUBLIC.
+
 ## Operational reflexes
 - `freddy-incident` — triage a production problem (signups, email, unpayable job, stuck payouts, red health check).
 - `freddy-payment-change` — review gate before any money change.
 - `freddy-money-test` — verify the payout guards after a change.
 - `freddy-db-change` — discipline for migrations, RPCs, triggers, RLS, pg_cron.
 - `freddy-weekly-review` — the end-to-end site audit.
+- `freddy-watchdog` — the daily read-only sweep across all four monitoring layers.
 - `ship` — deploy frontend changes and delete dead files.
 
 ---

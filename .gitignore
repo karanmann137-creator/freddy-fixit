@@ -79,6 +79,16 @@ _skills-to-install/
 __pycache__/
 *.pyc
 
+# Smoke-test output. Regenerated on every run and uploaded as a CI artifact, so
+# the copies on disk are scratch. The load-bearing half of this rule: a failure
+# trace or screenshot can capture a SIGNED-IN dashboard, which is real user
+# data, and this repo is PUBLIC. The lockfile is ignored too — it is CI-only
+# scaffolding and pinning it here would just be a second thing to keep current.
+tests/smoke/playwright-report/
+tests/smoke/test-results/
+tests/smoke/smoke-results.json
+tests/smoke/package-lock.json
+
 # Weekly site reviews. Disposable snapshots, not source, and they carry operational
 # detail that does not belong in a public repo. tools/ship.py prunes them past 3 weeks
 # by the date in the filename, always keeping the newest one. reference/README.md is

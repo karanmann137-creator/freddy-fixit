@@ -1,0 +1,105 @@
+# Nightly browser smoke test against the LIVE site.
+#
+# WHY THIS EXISTS. `checks` (typecheck.yml) reads the source tree and
+# `platform_health_check()` reads the database. Between them sits the class of
+# fault that has caused every outage on this platform: the deployed bundle is
+# broken, or a surface is missing, and both the tree and the data look fine.
+# b1361b6 built cleanly and white-screened every client. fa5e2b5 dropped the
+# <ContractPanel/> mounts and made every job unpayable with no error anywhere.
+# The health check sat 7/7 green while the owner was locked out of his own
+# dashboard. Only a browser opening the real site can see that.
+#
+# WHAT IT COSTS. ~3-5 minutes of free GitHub Actions minutes per night, and
+# roughly 70 anonymous page views on freddyfixit.ca. It writes nothing, posts no
+# request and sends no email.
+#
+# ───────────────────────────────────────────────────────────────────────────────
+# OWNER SETUP — two optional secrets, and the run is useful without them.
+#
+# The anonymous half runs immediately with no setup. The signed-in half needs a
+# throwaway CLIENT account and SKIPS ITSELF (green, with a note) until you add:
+#
+#   Repo → Settings → Secrets and variables → Actions → New repository secret
+#     FF_SMOKE_EMAIL      the test client account's email
+#     FF_SMOKE_PASSWORD   its password
+#
+# The account must be role=client and must NOT be enrolled in two-step sign-in,
+# or CI parks on a code it cannot read. The repo is PUBLIC, so these can only
+# live in Secrets — never in a file.
+# ───────────────────────────────────────────────────────────────────────────────
+name: smoke
+
+on:
+  # 13:30 UTC = 06:30 Calgary. Deliberately BEFORE the 15:00 UTC
+  # platform-health-check cron, so if both have something to say they arrive in
+  # the order a person would want to read them: "the site is broken" first.
+  schedule:
+    - cron: "30 13 * * *"
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Target URL (defaults to https://freddyfixit.ca). Point at a Vercel preview to test before promoting."
+        required: false
+        default: ""
+
+# A long run must never stack on the next night's. Cancel the older one.
+concurrency:
+  group: smoke
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: tests/smoke
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # `npm install`, not `npm ci`: tests/smoke is a separate package whose
+      # lockfile is gitignored on purpose (see .gitignore). The app's own
+      # lockfile is untouched by any of this, which is the whole reason
+      # Playwright lives in its own package and not in the root devDependencies.
+      - name: Install Playwright
+        run: npm install
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run smoke test
+        env:
+          FF_SMOKE_BASE_URL: ${{ github.event.inputs.base_url }}
+          FF_SMOKE_EMAIL: ${{ secrets.FF_SMOKE_EMAIL }}
+          FF_SMOKE_PASSWORD: ${{ secrets.FF_SMOKE_PASSWORD }}
+        run: npm run smoke
+
+      # Runs on failure too — the trace and screenshots are the whole point of a
+      # test the owner was asleep for. Retention is short because a failure
+      # screenshot of a signed-in dashboard is real user data.
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-report
+          path: |
+            tests/smoke/playwright-report/
+            tests/smoke/smoke-results.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+      # One line in the run summary, so a glance at the Actions tab answers
+      # "did the signed-in half actually run" without opening the log.
+      - name: Note what ran
+        if: always()
+        run: |
+          if [ -n "${{ secrets.FF_SMOKE_EMAIL }}" ]; then
+            echo "Signed-in half: RAN (FF_SMOKE_EMAIL is set)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Signed-in half: SKIPPED — add the FF_SMOKE_EMAIL and FF_SMOKE_PASSWORD secrets to cover the client dashboard chunk." >> $GITHUB_STEP_SUMMARY
+          fi

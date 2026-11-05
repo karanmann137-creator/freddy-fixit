@@ -50,19 +50,15 @@ import sys
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # ---------------------------------------------------------------------------
-# Critical mounts. A file may be edited freely, but if one of these strings
-# stops appearing in it, something upstream deleted a mount and the change is
-# refused. fa5e2b5 dropped the <ContractPanel/> mounts and, because the payment
-# gate fails CLOSED, made every job on the platform unpayable with no error
-# anywhere -- the client simply had no surface on which to sign.
+# Critical mounts. The table has exactly ONE copy, in tools/check_mounts.py,
+# because CI runs that script on every push and this script runs it at ship
+# time -- two readers of one table. A second pasted copy here is how upsertMeta
+# ended up byte-identical across six SEO routes and then drifted.
 # ---------------------------------------------------------------------------
-INVARIANTS = {
-    "src/pages/ClientDashboard.tsx": ["<ContractPanel"],
-    "src/pages/ContractorDashboard.tsx": ["<ContractPanel", "STAGE_MATCH", "JobsCalendar"],
-    "src/pages/AdminDashboard.tsx": ["<ContractPanel"],
-    "src/App.tsx": ["<ChatWidget", "<GoogleReviewModal", "<FinishSignupBanner", "<ScrollToTop"],
-    "src/main.tsx": ["initAnalytics"],
-}
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import check_mounts  # noqa: E402
+
+INVARIANTS = check_mounts.INVARIANTS
 
 # Files that must never be deleted, whatever the reference scan says.
 UNDELETABLE = set(INVARIANTS) | {
@@ -206,23 +202,29 @@ def check_secrets(paths):
 # 4. Critical mounts.
 # ---------------------------------------------------------------------------
 def check_invariants(paths):
-    hit = 0
+    # Checked over the WHOLE tree, not just `paths`. Until 2026-11-04 this only
+    # looked at files the ship happened to touch, which meant a mount dropped by
+    # any other route -- a hand edit, a half-applied installer, a bad merge --
+    # was never looked at again. The thing it catches is silent in the product,
+    # so "we'd have noticed" is not available as a backstop.
     for p in paths:
-        if p not in INVARIANTS:
-            continue
-        full = os.path.join(REPO, p)
-        if not os.path.isfile(full):
-            die("%s is in INVARIANTS but is missing from the tree." % p)
-        text = open(full, encoding="utf-8", errors="ignore").read()
-        if len(text) < 400:
-            die("%s is only %d bytes. That is the 0-byte-truncation shape (b1361b6);\n"
-                "  esbuild will build it fine and every visitor will crash at runtime." % (p, len(text)))
-        for needle in INVARIANTS[p]:
-            if needle not in text:
-                die("%s no longer contains %s.\n"
-                    "  Dropping that mount is how fa5e2b5 made every job unpayable." % (p, needle))
-        hit += 1
-    ok("critical mounts intact (%d guarded file(s) touched)" % hit)
+        if p in INVARIANTS:
+            full = os.path.join(REPO, p)
+            if os.path.isfile(full):
+                text = open(full, encoding="utf-8", errors="ignore").read()
+                if len(text) < 400:
+                    die("%s is only %d bytes. That is the 0-byte-truncation shape (b1361b6);\n"
+                        "  esbuild will build it fine and every visitor will crash at runtime."
+                        % (p, len(text)))
+
+    misses = check_mounts.check(REPO)
+    if misses:
+        lines = "\n".join("  %s  missing: %s" % (rel, needle) for rel, needle in misses)
+        die("critical mount(s) missing:\n%s\n"
+            "  Dropping a mount is how fa5e2b5 made every job unpayable." % lines)
+    total = sum(len(v) for v in INVARIANTS.values())
+    ok("critical mounts intact (%d needle(s) across %d file(s), whole tree)"
+       % (total, len(INVARIANTS)))
 
 
 # ---------------------------------------------------------------------------
