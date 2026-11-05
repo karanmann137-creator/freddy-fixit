@@ -3,6 +3,8 @@ import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { clearMyProfile } from "@/lib/myProfile";
 import { stashedReferralCode, applyReferralAtSignup } from "@/lib/referralCode";
+import { mfaOwed } from "@/lib/mfa";
+import VerifyCodeModal from "@/components/VerifyCodeModal";
 
 // Lands here after (a) a Google/Apple OAuth round-trip, or (b) an email
 // confirmation link. Supabase parses the session out of the URL automatically.
@@ -16,9 +18,19 @@ import { stashedReferralCode, applyReferralAtSignup } from "@/lib/referralCode";
 //   - Established accounts skip the chooser and go straight to their dashboard.
 export default function AuthCallback() {
   const [, setLocation] = useLocation();
-  const [phase, setPhase] = useState<"loading" | "choose" | "error">("loading");
+  const [phase, setPhase] = useState<"loading" | "choose" | "error" | "verify">("loading");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("Signing you in…");
+  // The rest of the sign-in, parked while a two-step code is entered.
+  //
+  // Until 2026-11-04 this page had no MFA handling at all, so Google sign-in
+  // walked straight past the second factor that /login enforces — the prompt
+  // lived only in the password handler. That was two bugs in one: an enrolled
+  // account was never challenged on the OAuth route, and because nothing here
+  // refreshed `last_verified_at`, an admin who only ever signs in with Google
+  // could never clear `admin_guard()` at all. He sat locked out of his own
+  // dashboard with the fix on a screen he had no reason to visit.
+  const [afterVerify, setAfterVerify] = useState<null | (() => void)>(null);
 
   const routeByRole = (role: string | null | undefined) => {
     if (role === "admin") setLocation("/admin-dashboard");
@@ -31,17 +43,10 @@ export default function AuthCallback() {
     const params = new URLSearchParams(window.location.search);
     const wantedRole = params.get("role"); // "client" | "contractor" | null
 
-    (async () => {
-      // Give Supabase a moment to exchange the URL token for a session.
-      let user = null;
-      for (let i = 0; i < 10 && !cancelled; i++) {
-        const { data } = await supabase.auth.getUser();
-        if (data.user) { user = data.user; break; }
-        await new Promise(r => setTimeout(r, 250));
-      }
-      if (cancelled) return;
-      if (!user) { setMsg("We couldn't complete sign-in."); setPhase("error"); return; }
-
+    // Everything that happens once we know who signed in. Split out of the IIFE
+    // so the two-step prompt can park it and resume it verbatim — the routing
+    // below must not run twice, and must not be skipped when it does run.
+    const proceed = async (user: any) => {
       // The trigger creates the profile row; poll briefly in case it's a hair behind.
       let profile: { role: string } | null = null;
       for (let i = 0; i < 8 && !cancelled; i++) {
@@ -87,6 +92,34 @@ export default function AuthCallback() {
 
       // Brand-new account with no history — ask what they're here for.
       setPhase("choose");
+    };
+
+    (async () => {
+      // Give Supabase a moment to exchange the URL token for a session.
+      let user = null;
+      for (let i = 0; i < 10 && !cancelled; i++) {
+        const { data } = await supabase.auth.getUser();
+        if (data.user) { user = data.user; break; }
+        await new Promise(r => setTimeout(r, 250));
+      }
+      if (cancelled) return;
+      if (!user) { setMsg("We couldn't complete sign-in."); setPhase("error"); return; }
+
+      // Second factor, on the OAuth route as well as the password one. The
+      // session already exists by the time we get here — exactly as it does on
+      // /login — so this prompt gates the UI, and `admin_guard()` / RLS remain
+      // the gates that actually hold. mfaOwed() fails OPEN on a read error so a
+      // network blip can never strand someone on this page.
+      if (await mfaOwed()) {
+        if (cancelled) return;
+        // setState with a function argument would CALL it; the extra arrow is
+        // what stores the continuation instead of invoking it.
+        setAfterVerify(() => () => { setPhase("loading"); void proceed(user); });
+        setPhase("verify");
+        return;
+      }
+      if (cancelled) return;
+      await proceed(user);
     })();
 
     return () => { cancelled = true; };
@@ -113,15 +146,34 @@ export default function AuthCallback() {
     optSub: { fontSize: ".8rem", color: "rgba(var(--ff-muted), .55)", fontWeight: 300 },
   };
 
+  // Backing out of the code leaves a half-finished sign-in, so send them back to
+  // /login rather than to a dashboard they haven't cleared the factor for.
+  const cancelVerify = async () => {
+    await supabase.auth.signOut();
+    clearMyProfile();
+    setLocation("/login");
+  };
+
   return (
     <div style={s.wrap}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       <style>{"@keyframes ff-spin{to{transform:rotate(360deg)}}"}</style>
+      {phase === "verify" && (
+        <VerifyCodeModal
+          what="finishing your sign-in"
+          onDone={() => { const go = afterVerify; setAfterVerify(null); if (go) go(); }}
+          onCancel={cancelVerify}
+        />
+      )}
       <div style={s.card}>
-        {phase === "loading" && (
+        {/* The card stays behind the verify modal so the page isn't a blank
+            rectangle if the modal is dismissed by the browser. */}
+        {(phase === "loading" || phase === "verify") && (
           <>
             <div style={{ width: 36, height: 36, margin: "0 auto 1.25rem", border: "3px solid rgba(234,107,20,0.2)", borderTopColor: "#ea6b14", borderRadius: "50%", animation: "ff-spin .8s linear infinite" }} />
-            <p style={{ color: "rgba(var(--ff-muted), .7)", fontWeight: 300 }}>{msg}</p>
+            <p style={{ color: "rgba(var(--ff-muted), .7)", fontWeight: 300 }}>
+              {phase === "verify" ? "Waiting on your sign-in code…" : msg}
+            </p>
           </>
         )}
         {phase === "choose" && (

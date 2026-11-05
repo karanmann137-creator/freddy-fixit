@@ -85,6 +85,81 @@ Details that are load-bearing:
   be used afterwards. Enrolling mints **10 single-use recovery codes**, returned
   once and only as hashes thereafter.
 
+### 2026-11-04 — the gate with no door: a refusal whose remedy was unreachable
+
+The day after enrolling, the owner could not approve a pending contractor. The
+dashboard said **"Couldn't update contractor: Verify your sign-in code first,
+then try again."** and there was nowhere in the product to do that.
+
+Nothing was broken. `platform_health_check()` was **7/7 green** and there were
+zero failed cron runs in 36h; the red badge on the Health tab was `admin_health`
+reporting `awaiting_approval=1` / `pending_contractors=1` — and the pending
+contractor *was* the one he couldn't approve. The health alarm and the lockout
+were the same event seen twice, which is exactly how a one-fault incident gets
+triaged as two.
+
+The fault: `last_verified_at` was stamped at enrolment on 2026-11-03 21:48 UTC
+and **only `mfa_verify(p_purpose='login')` refreshes it**. The sole caller of
+that RPC was `handleSignIn` in `Login.tsx` — the **password** form. The admin has
+both `email` and `google` identities in `auth.identities`, `AuthCallback.tsx` had
+**no MFA handling whatsoever**, and `mfa_challenges` held one Nov-3 *enroll* row
+and zero *login* rows. So he came in through Google, walked straight past the
+second factor, aged out of the 12-hour window, and then met a refusal naming a
+code he had no route to request. `TwoStepPanel.tsx` only does enroll/disable.
+
+Two distinct bugs wearing one error message:
+
+1. **The OAuth route never challenged the factor at all** — an enrolled account
+   signing in with Google was never asked, which is a security hole, not just an
+   ergonomic one.
+2. **No surface could refresh a lapsed window** except the one form that route
+   skips, which is what turned the hole into a lockout.
+
+Fixed frontend-only:
+
+- **`mfaOwed()` in `src/lib/mfa.ts`** is the one predicate behind every "you need
+  to verify" surface, and it asks `mfa_status()` — the **server's state** —
+  rather than matching `admin_guard()`'s raise text. Matching the wording would
+  be the `"fund"`-substring mistake again: the wording is not the state, and
+  `verified_recently` is computed by the same 12-hour rule `mfa_ok()` uses, so
+  the predicate and the gate cannot disagree. It **fails OPEN** on a read error —
+  a network blip must not conjure a prompt in front of a valid window, and the
+  server gate is the one that actually holds.
+- **`src/components/VerifyCodeModal.tsx`** requests a `login`-purpose code and
+  verifies it in place. It signs nobody out and weakens nothing: the session was
+  always valid; what lapsed was the factor. The `requested` **ref** guard is
+  load-bearing — React 18 double-runs effects in dev, and a second code
+  supersedes the first, which reads to the user as "the code doesn't work".
+- **Refusal recovery in `AdminDashboard.tsx`**: every write path calls
+  `offerVerify(what, retry)`, which opens the modal **and resumes the refused
+  action by itself** on success. The `what` string names what is on hold so the
+  ask never feels random. Each gated handler took a `confirmed = false`
+  parameter so the retry does **not** re-show its `window.confirm` — a second
+  prompt reads as the app having forgotten, and teaches the owner to click
+  through confirmations on the exact buttons where that is most dangerous. The
+  modal is mounted **once**; `askConfirm`'s lesson applies — a missing mount
+  leaves a button that silently does nothing.
+- **`AuthCallback.tsx`** now runs the same prompt. All post-sign-in work moved
+  into a `proceed(user)` closure so the modal can park it and resume it verbatim
+  — the routing must not run twice and must not be skipped when it does run.
+  Note `setAfterVerify(() => () => …)`: the extra arrow is what *stores* the
+  continuation instead of `setState` calling it. Backing out signs out and
+  returns to `/login` rather than landing on a dashboard the factor isn't
+  cleared for.
+
+**The generalisable rule, which is already in the core as "a control that can
+never succeed is worse than no control": a guard must ship with its door.** When
+you add a check that refuses with "do X first", find every route into the
+product and prove X is reachable from each one. A refusal that names an
+impossible remedy is indistinguishable from a broken product, and the owner will
+(correctly) report it as one.
+
+Still outstanding from this incident: **`admin_dispatch_log` and
+`admin_anon_reachable_guards` are READS gated by `admin_guard()`**, against the
+rule that only irreversible writes carry the factor. Reads stay on `is_admin()`
+because the factor rides our own Resend mailer and a mailer outage must never
+blind the dashboard.
+
 ## Admin action audit log — `admin_audit_log` (2026-11-03)
 
 Built because the 2026-11-03 admin audit found that **nothing anywhere recorded what

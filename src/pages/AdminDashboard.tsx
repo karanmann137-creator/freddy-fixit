@@ -20,6 +20,8 @@ import DismissX from "@/components/DismissX";
 import DashSearch from "@/components/DashSearch";
 import { searchTokens, matchesSearch } from "@/lib/dashSearch";
 import { getDismissals, dismiss as dismissKey } from "@/lib/dismissals";
+import VerifyCodeModal from "@/components/VerifyCodeModal";
+import { mfaOwed } from "@/lib/mfa";
 
 // Re-signup flagging is computed server-side by admin_resignup_matches().
 // The Accounts tab lists every auth user (via admin_list_accounts) so the admin
@@ -97,6 +99,11 @@ export default function AdminDashboard() {
   const [busyDelete, setBusyDelete] = useState(false);
   const [busyDeleteAccount, setBusyDeleteAccount] = useState<string|null>(null);
   const [busyMfa, setBusyMfa] = useState<string|null>(null); // user id whose two-step is being cleared
+  // A lapsed two-step window turns every admin_guard() RPC into a refusal whose
+  // remedy lived only on the sign-in page. `verifyGate` holds the action that
+  // was refused so the modal can retry it; `what` names it in the prompt so the
+  // ask never feels like it came out of nowhere. One copy, every call site.
+  const [verifyGate, setVerifyGate] = useState<{ retry: () => void; what: string } | null>(null);
   const [busyNudge, setBusyNudge] = useState(false);
   const [busyRefire, setBusyRefire] = useState<string|null>(null); // request id being re-sent
   // Live Stripe payout diagnosis, keyed by contractor id. Fetched on demand
@@ -346,12 +353,37 @@ export default function AdminDashboard() {
   const pname = (p: any, fallback: string) =>
     (((p?.first_name ?? "") + " " + (p?.last_name ? p.last_name[0] + "." : "")).trim()) || fallback;
 
-  const deleteRequest = async (r: any) => {
-    if (!window.confirm("Delete this request permanently? This also removes any assigned job and its messages.")) return;
+  /**
+   * Every destructive admin action passes `admin_guard()`, which refuses once
+   * the two-step window (12h) has lapsed. Before 2026-11-04 that refusal was a
+   * dead end: the message says "verify your sign-in code first" and this page
+   * had nowhere to do that, so the only route back in was signing out and back
+   * in with a password — which Google sign-in skips entirely.
+   *
+   * Call this on ANY admin-write failure. It asks `mfa_status()` whether a code
+   * is actually owed (never the error's wording — see `mfaOwed`), and if so it
+   * opens the modal holding `retry` so the action resumes on its own. Returns
+   * true when the modal has taken over, so the caller skips its alert.
+   */
+  const offerVerify = async (what: string, retry: () => void): Promise<boolean> => {
+    if (!(await mfaOwed())) return false;
+    setVerifyGate({ retry, what });
+    return true;
+  };
+
+  // `confirmed` lets the verify-modal retry resume the action without asking the
+  // same "are you sure?" a second time. The person already answered it; a second
+  // prompt reads as the app having forgotten, and teaches them to click through
+  // confirmations without reading — which on these buttons is the real danger.
+  const deleteRequest = async (r: any, confirmed = false) => {
+    if (!confirmed && !window.confirm("Delete this request permanently? This also removes any assigned job and its messages.")) return;
     setBusyDelete(true);
     const { error } = await supabase.rpc("admin_delete_request", { p_request_id: r.id });
     setBusyDelete(false);
-    if (error) { alert("Couldn't delete: " + error.message); return; }
+    if (error) {
+      if (await offerVerify("deleting this request", () => deleteRequest(r, true))) return;
+      alert("Couldn't delete: " + error.message); return;
+    }
     setRequests(prev => prev.filter(x => x.id !== r.id));
   };
 
@@ -362,8 +394,8 @@ export default function AdminDashboard() {
   // admin_refire_request resets `dispatched_to` down to the pros who already bid
   // before re-invoking dispatch-job, so a pro who has already quoted is never
   // nudged about it and everyone else is emailed exactly once per press.
-  const refireRequest = async (r: any) => {
-    if (!window.confirm(
+  const refireRequest = async (r: any, confirmed = false) => {
+    if (!confirmed && !window.confirm(
       "Re-send this job to every matching contractor who hasn't bid on it yet?\n\n" +
       "Pros who already sent an estimate won't be emailed again."
     )) return;
@@ -378,22 +410,26 @@ export default function AdminDashboard() {
         ? "Nothing sent — every matching contractor has either already bid on this job or hidden it from their feed."
         : `Re-sent to ${reached} contractor${reached === 1 ? "" : "s"}.`);
     } catch (e: any) {
+      if (await offerVerify("re-sending this job", () => refireRequest(r, true))) return;
       alert("Couldn't re-send: " + (e?.message || String(e)));
     } finally { setBusyRefire(null); }
   };
 
-  const deleteJob = async (j: any) => {
-    if (!window.confirm("Delete this job permanently? This also removes its milestones, messages, reviews and disputes. This can't be undone.")) return;
+  const deleteJob = async (j: any, confirmed = false) => {
+    if (!confirmed && !window.confirm("Delete this job permanently? This also removes its milestones, messages, reviews and disputes. This can't be undone.")) return;
     setBusyJob(j.id);
     const { error } = await supabase.rpc("admin_delete_job", { p_job_id: j.id });
     setBusyJob(null);
-    if (error) { alert("Couldn't delete job: " + error.message); return; }
+    if (error) {
+      if (await offerVerify("deleting this job", () => deleteJob(j, true))) return;
+      alert("Couldn't delete job: " + error.message); return;
+    }
     setJobs(prev => prev.filter(x => x.id !== j.id));
   };
 
-  const deleteAccount = async (a: any) => {
+  const deleteAccount = async (a: any, confirmed = false) => {
     const who = [a.first_name, a.last_name].filter(Boolean).join(" ") || a.email || a.id.slice(0, 8);
-    if (!window.confirm(`Permanently delete ${who} and ALL of their data — jobs, requests, messages, reviews, photos and their login. This cannot be undone.`)) return;
+    if (!confirmed && !window.confirm(`Permanently delete ${who} and ALL of their data — jobs, requests, messages, reviews, photos and their login. This cannot be undone.`)) return;
     setBusyDeleteAccount(a.id);
     try {
       const { data, error } = await supabase.functions.invoke("admin-delete-account", { body: { user_id: a.id } });
@@ -404,6 +440,10 @@ export default function AdminDashboard() {
     } catch (e: any) {
       let msg = e?.message || String(e);
       try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
+      // The edge function checks `admin_action_allowed()`, which mirrors mfa_ok()
+      // deliberately — so the same lapsed window refuses here too, and the same
+      // modal is the remedy.
+      if (await offerVerify(`deleting ${who}`, () => deleteAccount(a, true))) return;
       alert("Couldn't delete account: " + msg);
     } finally { setBusyDeleteAccount(null); }
   };
@@ -413,9 +453,9 @@ export default function AdminDashboard() {
   // switched on safely -- without it, a lost mailbox is a permanently dead
   // account and the only remedy would be raw SQL. It clears the setting; it does
   // not sign anyone in, and it is logged by admin_clear_mfa itself.
-  const clearMfa = async (a: any) => {
+  const clearMfa = async (a: any, confirmed = false) => {
     const who = [a.first_name, a.last_name].filter(Boolean).join(" ") || a.email || a.id.slice(0, 8);
-    if (!window.confirm(`Turn OFF two-step sign-in for ${who}? They'll be able to sign in with just their password until they switch it back on. Only do this once you're sure who you're talking to.`)) return;
+    if (!confirmed && !window.confirm(`Turn OFF two-step sign-in for ${who}? They'll be able to sign in with just their password until they switch it back on. Only do this once you're sure who you're talking to.`)) return;
     setBusyMfa(a.id);
     try {
       const { data, error } = await supabase.rpc("admin_clear_mfa", { p_user_id: a.id });
@@ -423,6 +463,7 @@ export default function AdminDashboard() {
       if (!(data as any)?.ok) throw new Error((data as any)?.reason || "unknown");
       alert(`Two-step sign-in is now off for ${who}.`);
     } catch (e: any) {
+      if (await offerVerify(`turning off two-step for ${who}`, () => clearMfa(a, true))) return;
       alert("Couldn't turn off two-step: " + (e?.message || String(e)));
     } finally { setBusyMfa(null); }
   };
@@ -431,7 +472,11 @@ export default function AdminDashboard() {
     setBusyStatus(contractorId);
     const { error } = await supabase.rpc("admin_set_contractor_status", { p_id: contractorId, p_status: status });
     setBusyStatus(null);
-    if (error) { alert("Couldn't update contractor: " + error.message); return; }
+    if (error) {
+      if (await offerVerify(status === "active" ? "approving this contractor" : "deactivating this contractor",
+                            () => setContractorStatus(contractorId, status))) return;
+      alert("Couldn't update contractor: " + error.message); return;
+    }
     setAccounts(prev => prev.map(a => a.id === contractorId ? { ...a, contractor_status: status } : a));
   };
 
@@ -559,6 +604,11 @@ export default function AdminDashboard() {
     if (error || data?.error) {
       let msg = error?.message || data?.error || "Unknown error";
       try { if (error?.context?.json) { const b = await error.context.json(); if (b?.error) msg = b.error; } } catch {}
+      // resolve-dispute holds a service-role client, so it asks
+      // `admin_action_allowed()` rather than evaluating mfa_ok() itself. Same
+      // lapsed window, same remedy. The retry re-confirms deliberately: this one
+      // moves real money, and that is the confirmation worth asking twice.
+      if (await offerVerify("resolving this dispute", () => resolveDispute(d, action))) return;
       alert("Couldn't resolve dispute: " + msg);
       return;
     }
@@ -595,14 +645,14 @@ export default function AdminDashboard() {
     return data;
   };
 
-  const changeMode = async (mode: PlatformMode) => {
+  const changeMode = async (mode: PlatformMode, confirmed = false) => {
     if (mode === platMode) return;
     const warn = mode === "open"
       ? "Reopen the site to new client requests?\n\nThe overhaul banner disappears and new requests dispatch to contractors immediately.\n\nAnything already held stays held until you release it below."
       : mode === "waitlist"
       ? "Switch to WAITLIST mode?\n\nClients can still describe their job, but it's captured instead of sent to contractors. Nobody gets emailed.\n\nContractors can still sign up and browse."
       : "PAUSE the site?\n\nNew client requests stop entirely and the overhaul notice shows site-wide.\n\nContractors can still sign up and browse.";
-    if (!window.confirm(warn)) return;
+    if (!confirmed && !window.confirm(warn)) return;
     setBusyPlatform(true);
     try {
       await applyMode(mode, noticeDraft);
@@ -610,6 +660,7 @@ export default function AdminDashboard() {
           : mode === "waitlist" ? "Waitlist mode is on. New requests are captured, not dispatched."
           : "Site is paused. New client requests are blocked.");
     } catch (e: any) {
+      if (await offerVerify("changing the site mode", () => changeMode(mode, true))) return;
       alert("Couldn't change the mode: " + (e?.message || String(e)));
     } finally { setBusyPlatform(false); }
   };
@@ -634,6 +685,7 @@ export default function AdminDashboard() {
       });
       alert("Saved. Anyone who loads the site from now on sees the new wording.");
     } catch (e: any) {
+      if (await offerVerify("saving the notice wording", () => saveNotice())) return;
       alert("Couldn't save the wording: " + (e?.message || String(e)));
     } finally { setBusyPlatform(false); }
   };
@@ -641,9 +693,9 @@ export default function AdminDashboard() {
   // Releasing sends held requests through the normal dispatch path — contractors
   // get emailed. All four arguments are passed explicitly: leaning on PostgREST
   // to fill defaults risks overload ambiguity if the signature ever changes.
-  const releaseHeld = async (ids: string[]) => {
+  const releaseHeld = async (ids: string[], confirmed = false) => {
     if (!ids.length) return;
-    if (!window.confirm(
+    if (!confirmed && !window.confirm(
       `Release ${ids.length} held request${ids.length === 1 ? "" : "s"} to contractors?\n\n` +
       "Matching contractors get emailed straight away. This can't be undone."
     )) return;
@@ -660,6 +712,7 @@ export default function AdminDashboard() {
         ? "Nothing was released — those requests may have already gone out."
         : `Released ${n} request${n === 1 ? "" : "s"}. Matching contractors have been emailed.`);
     } catch (e: any) {
+      if (await offerVerify("releasing these held requests", () => releaseHeld(ids, true))) return;
       alert("Couldn't release: " + (e?.message || String(e)));
     } finally { setBusyRelease(false); }
   };
@@ -1799,6 +1852,16 @@ export default function AdminDashboard() {
           readOnly
           closedReason="You're reading this as an admin — you can see everything, including messages the chat guard blocked, but you can't post."
           onClose={() => setChatJob(null)}
+        />
+      )}
+      {/* Mounted once, for every refused action. `askConfirm`'s lesson applies
+          here too: the handler above hands control to this component, so a
+          missing mount would leave a button that silently does nothing. */}
+      {verifyGate && (
+        <VerifyCodeModal
+          what={verifyGate.what}
+          onDone={() => { const again = verifyGate.retry; setVerifyGate(null); again(); }}
+          onCancel={() => setVerifyGate(null)}
         />
       )}
     </div>

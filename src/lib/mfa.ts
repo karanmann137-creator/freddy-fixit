@@ -1,10 +1,13 @@
-// Two-step sign-in (email OTP) — shared types and copy.
+// Two-step sign-in (email OTP) — shared types, copy, and the "is a code owed?"
+// predicate.
 //
 // This file exists so the reason→English map has exactly ONE copy. Two surfaces
 // call the same RPCs (the Settings panel and the sign-in page), and a pasted
 // second copy is how `upsertMeta` ended up byte-identical across six SEO routes
 // and then drifted with nothing to show for it. A refusal message that is wrong
 // on one surface and right on the other is the kind of bug nobody reports.
+
+import { supabase } from "@/lib/supabase";
 
 export type MfaStatus = {
   enabled: boolean;
@@ -41,4 +44,27 @@ export function mfaReason(r?: string, left?: number): string {
     case "not_signed_in":     return "You've been signed out. Sign in again.";
     default:                  return "That didn't work. Try again.";
   }
+}
+
+/**
+ * Is a sign-in code currently owed?
+ *
+ * This is the ONE predicate behind every "you need to verify" surface, and it
+ * asks the SERVER's state rather than reading an error message. That is
+ * deliberate: `admin_guard()` raises the literal string "Verify your sign-in
+ * code first, then try again.", and matching on it would be the same mistake as
+ * matching the substring "fund" on a payment error — the wording is not the
+ * state, and the state can answer for itself. `mfa_status()` returns
+ * `verified_recently`, computed by the same 12-hour rule `mfa_ok()` uses, so
+ * this predicate and the server gate can never disagree.
+ *
+ * Fails OPEN on a read error. A network blip must not conjure a code prompt in
+ * front of someone whose window is perfectly valid, and failing open costs
+ * nothing: the server gate is the one that actually holds.
+ */
+export async function mfaOwed(): Promise<boolean> {
+  const { data, error } = await supabase.rpc("mfa_status");
+  if (error) return false;
+  const st = data as MfaStatus | null;
+  return !!st?.enabled && !st.verified_recently;
 }
