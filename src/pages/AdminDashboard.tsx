@@ -39,6 +39,12 @@ const ADMIN_NAV: SidebarItem[] = [
   { key: "disputes", label: "Disputes", icon: "alert-triangle" },
   { key: "prepaid",  label: "Prepaid",  icon: "dollar" },
   { key: "leads",    label: "Leads",    icon: "user-check" },
+  // Agents — the background workers' proposal queue. Sits here, before Activity,
+  // because it IS something to work through: nothing an agent produces reaches a
+  // client, a contractor, a social account or `main` until it is approved here.
+  // `sparkles` because Ic has no bot or cpu glyph and a missing glyph renders
+  // BLANK rather than erroring.
+  { key: "agents",   label: "Agents",   icon: "sparkles" },
   // Last, because it is read-after-the-fact rather than something to work
   // through. `clock` because Ic has no shield or history glyph and a missing
   // glyph renders BLANK rather than erroring.
@@ -74,7 +80,22 @@ export default function AdminDashboard() {
   const [requests, setRequests] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
-  const [tab, setTab] = useState<"health"|"platform"|"requests"|"jobs"|"picks"|"accounts"|"flagged"|"disputes"|"prepaid"|"leads"|"activity">("requests");
+  const [tab, setTab] = useState<"health"|"platform"|"requests"|"jobs"|"picks"|"accounts"|"flagged"|"disputes"|"prepaid"|"leads"|"agents"|"activity">("requests");
+  // The agent team. Two reads, two failure flags — `agentsFailed` and
+  // `actionsFailed` are separate because the registry answering while the queue
+  // breaks is a real state, and collapsing them would render a confident "no
+  // agents, nothing pending" for a read that simply didn't happen. A failed read
+  // is never an empty result.
+  const [agentOverview, setAgentOverview] = useState<any>(null);
+  const [agentsFailed, setAgentsFailed] = useState(false);
+  const [agentActions, setAgentActions] = useState<any[]>([]);
+  const [actionsFailed, setActionsFailed] = useState(false);
+  const [busyReview, setBusyReview] = useState<string|null>(null); // action id being approved/rejected
+  // Per-action edited payload, keyed by action id. Absent means "unedited" —
+  // which is NOT the same as "edited to match", because an absent entry sends
+  // p_payload => null and the RPC keeps what the agent wrote.
+  const [actionEdit, setActionEdit] = useState<Record<string, string>>({});
+  const [agentFilter, setAgentFilter] = useState<"pending"|"all">("pending");
   // Admin action audit trail (admin_audit_tail). `auditFailed` exists because a
   // failed read is not an empty result — an audit log that renders a confident
   // "nothing here" when the query broke is worse than no audit log at all.
@@ -267,6 +288,20 @@ export default function AdminDashboard() {
       setAuditFailed(!!alErr);
       setAudit((al as any[]) ?? []);
     } catch { setAuditFailed(true); setAudit([]); }
+    // The agent team. Both reads carry plain is_admin() server-side (not
+    // admin_guard), deliberately: the second factor rides our own Resend mailer,
+    // and a mailer outage must never blind the admin dashboard. Only the approval
+    // WRITE asks for a code.
+    try {
+      const { data: ao, error: aoErr } = await supabase.rpc("admin_agent_overview");
+      setAgentsFailed(!!aoErr);
+      setAgentOverview(aoErr ? null : (ao ?? null));
+    } catch { setAgentsFailed(true); setAgentOverview(null); }
+    try {
+      const { data: aa, error: aaErr } = await supabase.rpc("admin_list_agent_actions", { p_limit: 200, p_status: null });
+      setActionsFailed(!!aaErr);
+      setAgentActions(aaErr ? [] : ((aa as any[]) ?? []));
+    } catch { setActionsFailed(true); setAgentActions([]); }
     // Platform mode + everything the pause is holding. Three separate try/catch
     // blocks so a DB that predates any one of them still renders the rest.
     try {
@@ -385,6 +420,53 @@ export default function AdminDashboard() {
       alert("Couldn't delete: " + error.message); return;
     }
     setRequests(prev => prev.filter(x => x.id !== r.id));
+  };
+
+  /**
+   * Approve or reject one agent proposal.
+   *
+   * This is the single gate the whole agent team hangs off. Approving is what
+   * releases the `claim_token` a harness acts on, so it is irreversible from the
+   * agent's point of view — which is why `admin_review_agent_action` carries
+   * `admin_guard()` and writes to `admin_audit_log` immediately after it.
+   *
+   * `p_payload` is sent only when the owner actually edited the draft. Passing an
+   * unchanged copy would still stamp `edited: true` in the audit log, which turns
+   * "the owner rewrote this" into noise.
+   *
+   * The edit box is plain JSON on purpose: an agent's payload shape is per-kind and
+   * not yet settled, and a typed form per kind would silently drop fields it didn't
+   * know about. A parse failure refuses rather than sending a half-read object.
+   */
+  const reviewAction = async (a: any, approve: boolean, confirmed = false) => {
+    const raw = actionEdit[a.id];
+    let payload: any = null;
+    if (approve && typeof raw === "string") {
+      try { payload = JSON.parse(raw); }
+      catch { alert("That edited draft isn't valid JSON, so nothing was sent. Fix it or press Reset to go back to what the agent wrote."); return; }
+    }
+    if (!confirmed) {
+      const what = approve
+        ? `Approve this ${String(a.kind || "action").replace(/_/g, " ")} from ${a.agent_label || a.agent}?\n\nOnce approved it is released to the agent to carry out. You can't un-approve it.`
+        : `Reject this ${String(a.kind || "action").replace(/_/g, " ")}? The agent won't act on it.`;
+      if (!window.confirm(what)) return;
+    }
+    setBusyReview(a.id);
+    const { error } = await supabase.rpc("admin_review_agent_action", {
+      p_action_id: a.id, p_approve: approve, p_payload: payload,
+    });
+    setBusyReview(null);
+    if (error) {
+      if (await offerVerify(approve ? "approving this agent action" : "rejecting this agent action",
+                            () => reviewAction(a, approve, true))) return;
+      alert("Couldn't save that decision: " + error.message); return;
+    }
+    // Reflect it locally AND reload, so the per-agent pending counts in the header
+    // can't drift from the rows underneath them.
+    setAgentActions(prev => prev.map(x => x.id === a.id
+      ? { ...x, status: approve ? "approved" : "rejected" } : x));
+    setActionEdit(prev => { const n = { ...prev }; delete n[a.id]; return n; });
+    loadAll();
   };
 
   // Re-send the new-job email for a request that stalled. This normally happens by
@@ -1520,6 +1602,231 @@ export default function AdminDashboard() {
             ))}
           </div>
         )}
+
+        {/*
+          Agents — the background team's proposal queue, plus whether each agent is
+          actually running.
+
+          TWO panels, on purpose, because they answer two different questions and a
+          single list could only ever answer the first:
+            · the queue says "what is waiting on me"
+            · the roster says "is anything silently not running at all"
+
+          The roster is the one that matters here. Every outage this platform has
+          ever had was an ABSENCE — an email that never sent, a mount that got
+          dropped, a module that built to zero bytes — and an agent that quietly
+          stops producing looks exactly like an agent with nothing to say. The queue
+          alone cannot tell those apart, which is why the roster reads from
+          agent_registry (a declared list) rather than from the runs it has seen.
+
+          `stale` is computed in the DB against each agent's OWN declared cadence,
+          and a disabled agent is never stale. That is deliberate: `enabled` means "a
+          harness exists and this is expected to run", so nothing goes red until
+          somebody claims it is running. A permanently-red panel is one the owner
+          learns to scroll past, and that would undo the point of having it.
+        */}
+        {tab === "agents" && (() => {
+          const ov      = agentOverview && typeof agentOverview === "object" ? agentOverview : null;
+          const roster  = Array.isArray(ov?.agents) ? ov.agents : [];
+          const pending = agentActions.filter((a:any) => a.status === "pending");
+          const rows    = agentFilter === "pending" ? pending : agentActions;
+          return (
+            <div>
+              <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".82rem", marginBottom:"1rem", lineHeight:1.5 }}>
+                Background workers write drafts here and stop. Nothing an agent produces reaches a client,
+                a contractor, a social account or the live site until you approve it below.
+              </p>
+
+              {/* ---------- the queue ---------- */}
+              {actionsFailed && (
+                <p style={{ color:"var(--ff-warn)", fontSize:".9rem" }}>
+                  Couldn&rsquo;t load the proposal queue, so this list may be incomplete.{" "}
+                  <button style={s.btn} onClick={() => loadAll()}>Retry</button>
+                </p>
+              )}
+              {!actionsFailed && (
+                <>
+                  <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center", marginBottom:".9rem" }}>
+                    {(["pending","all"] as const).map(f => (
+                      <button key={f} onClick={() => setAgentFilter(f)}
+                        style={{ ...s.tab, padding:".4rem .9rem", ...(agentFilter === f ? s.activeTab : {}) }}>
+                        {f === "pending" ? `Waiting on you (${pending.length})` : `Everything (${agentActions.length})`}
+                      </button>
+                    ))}
+                    {Number(ov?.expiring_soon ?? 0) > 0 && (
+                      <span style={{ fontSize:".78rem", color:"var(--ff-warn)" }}>
+                        {ov.expiring_soon} expire{Number(ov.expiring_soon) === 1 ? "s" : ""} within 48h
+                      </span>
+                    )}
+                  </div>
+                  {rows.length === 0 && (
+                    <p style={{ color:"rgba(var(--ff-muted), .45)", fontSize:".9rem", lineHeight:1.6 }}>
+                      {agentFilter === "pending"
+                        ? "Nothing is waiting on you. Check the roster below — an empty queue can also mean nothing is running."
+                        : "No agent has proposed anything yet."}
+                    </p>
+                  )}
+                  {rows.map((a:any) => {
+                    const edited  = typeof actionEdit[a.id] === "string";
+                    const draft   = edited ? actionEdit[a.id] : JSON.stringify(a.payload ?? {}, null, 2);
+                    const isOpen  = a.status === "pending";
+                    const expired = !!a.is_expired;
+                    return (
+                      <div key={a.id} style={{ ...s.card, borderColor: isOpen && !expired ? "rgba(234,107,20,.3)" : "rgba(var(--ff-fg), .08)" }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", flexWrap:"wrap" as const, gap:".5rem" }}>
+                          <div style={s.title}>
+                            {String(a.kind || "action").replace(/_/g, " ")}
+                            <span style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .5)", marginLeft:".5rem", textTransform:"none" as const, letterSpacing:0 }}>
+                              {a.agent_label || a.agent}
+                            </span>
+                          </div>
+                          <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .45)" }}>{a.created_local || ""}</div>
+                        </div>
+
+                        <div style={s.meta}>
+                          Status: {String(a.status)}
+                          {a.approved_local ? ` · decided ${a.approved_local}` : ""}
+                          {/* Expiry is said in words rather than implied by a greyed button. A
+                              control that can never succeed is worse than no control. */}
+                          {isOpen && expired && <span style={{ color:"var(--ff-warn)" }}> · expired {a.expires_local || ""}, approving it will be refused</span>}
+                          {isOpen && !expired && a.expires_local ? ` · expires ${a.expires_local}` : ""}
+                        </div>
+
+                        {/* Social proposals carry the conversation they came from. Without it
+                            the owner is approving a reply with no idea what it replies to. */}
+                        {a.channel && (
+                          <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .5)" }}>
+                            {String(a.channel)}{a.display_name ? ` · ${a.display_name}` : ""}
+                            {a.intent ? ` · ${a.intent}` : ""}{a.turn_count ? ` · ${a.turn_count} turns` : ""}
+                          </div>
+                        )}
+                        {Array.isArray(a.transcript) && a.transcript.length > 0 && (
+                          <div style={{ marginTop:".5rem", padding:".55rem .75rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .06)", borderRadius:"8px", fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.6, maxHeight:"11rem", overflowY:"auto" as const }}>
+                            {a.transcript.map((m:any, i:number) => (
+                              <div key={i} style={{ marginBottom:".3rem" }}>
+                                <strong style={{ color:"rgba(var(--ff-muted), .55)" }}>{m.d === "out" ? "us" : "them"}:</strong> {String(m.b ?? "")}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <label style={{ display:"block", fontSize:".76rem", color:"rgba(var(--ff-muted), .5)", marginTop:".75rem", marginBottom:".3rem" }}>
+                          What the agent wants to do{edited ? " (edited)" : ""}
+                        </label>
+                        <textarea
+                          value={draft}
+                          readOnly={!isOpen}
+                          onChange={(e) => setActionEdit(prev => ({ ...prev, [a.id]: e.target.value }))}
+                          spellCheck={false}
+                          style={{ width:"100%", minHeight:"7rem", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", boxSizing:"border-box" as const, fontFamily:"ui-monospace, SFMono-Regular, Menlo, monospace", fontSize:".82rem", lineHeight:1.5, resize:"vertical" as const, opacity: isOpen ? 1 : .7 }}
+                        />
+
+                        {isOpen && (
+                          <div style={{ marginTop:".75rem", display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
+                            <button
+                              style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none" }}
+                              disabled={busyReview === a.id}
+                              onClick={() => reviewAction(a, true)}>
+                              {busyReview === a.id ? "…" : edited ? "Approve edited" : "Approve"}
+                            </button>
+                            <button
+                              style={s.btn}
+                              disabled={busyReview === a.id}
+                              onClick={() => reviewAction(a, false)}>
+                              Reject
+                            </button>
+                            {edited && (
+                              <button style={s.btn} disabled={busyReview === a.id}
+                                onClick={() => setActionEdit(prev => { const n = { ...prev }; delete n[a.id]; return n; })}>
+                                Reset
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* The harness writes back here. An approved action with an empty
+                            result and no claim is the shape of "approved, then nothing
+                            picked it up" — which is the failure this surface exists to
+                            make visible, so it is never hidden behind a chevron. */}
+                        {a.result && Object.keys(a.result).length > 0 && (
+                          <div style={{ marginTop:".6rem", fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", wordBreak:"break-word" as const }}>
+                            Result: {JSON.stringify(a.result)}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+
+              {/* ---------- the roster ---------- */}
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.1rem", letterSpacing:".04em", marginTop:"2rem", marginBottom:".3rem" }}>
+                The team
+              </div>
+              <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".8rem", marginBottom:".9rem", lineHeight:1.5 }}>
+                Every agent that is supposed to exist, whether or not it has ever run. An agent only shows as
+                overdue once it is switched on and has missed its own schedule.
+              </p>
+              {agentsFailed && (
+                <p style={{ color:"var(--ff-warn)", fontSize:".9rem" }}>
+                  Couldn&rsquo;t load the roster, so this is not a clean bill of health.{" "}
+                  <button style={s.btn} onClick={() => loadAll()}>Retry</button>
+                </p>
+              )}
+              {!agentsFailed && !ov && (
+                <div aria-busy="true" style={{ display:"grid", gap:".75rem" }}>
+                  <span className="ff-sr-only">Loading the agent roster</span>
+                  <Sk h={54} r={10} /><Sk h={54} r={10} />
+                </div>
+              )}
+              {!agentsFailed && ov && roster.length === 0 && (
+                <p style={{ color:"var(--ff-warn)", fontSize:".9rem" }}>
+                  No agents are registered at all. That is itself the problem — the roster is a declared list,
+                  so an empty one means nothing was ever set up rather than nothing being wrong.
+                </p>
+              )}
+              {!agentsFailed && roster.map((g:any) => (
+                <div key={g.agent} style={{ ...s.card, borderColor: g.stale ? "rgba(251,191,36,.3)" : g.last_run_status === "error" ? "rgba(239,68,68,.3)" : "rgba(var(--ff-fg), .08)" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", flexWrap:"wrap" as const, gap:".5rem" }}>
+                    <div style={s.title}>{g.label || g.agent}</div>
+                    <div style={{ fontSize:".76rem", color: g.enabled ? "var(--ff-success)" : "rgba(var(--ff-muted), .4)" }}>
+                      {g.enabled ? "on" : "not set up yet"}
+                    </div>
+                  </div>
+                  <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .6)" }}>{g.purpose || ""}</div>
+                  <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .45)" }}>
+                    {g.autonomy === "propose" ? "Asks you before anything happens"
+                      : g.autonomy === "notify" ? "Tells you, doesn't act"
+                      : "Acts on its own"}
+                    {g.expected_every ? ` · expected every ${g.expected_every}` : " · no schedule"}
+                    {Number(g.pending ?? 0) > 0 ? ` · ${g.pending} waiting on you` : ""}
+                  </div>
+                  <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .45)" }}>
+                    {g.last_run_local
+                      ? `Last ran ${g.last_run_local} · ${g.last_run_status || "?"}${Number(g.runs_7d ?? 0) ? ` · ${g.runs_7d} runs in 7 days` : ""}${Number(g.errors_7d ?? 0) ? ` · ${g.errors_7d} failed` : ""}`
+                      : "Has never run."}
+                  </div>
+                  {g.stale && (
+                    <div style={{ marginTop:".5rem", fontSize:".82rem", color:"var(--ff-warn)" }}>
+                      Overdue — this is switched on but hasn&rsquo;t run on schedule.
+                    </div>
+                  )}
+                  {g.last_run_error && (
+                    <div style={{ marginTop:".5rem", padding:".5rem .7rem", background:"rgba(239,68,68,.07)", border:"1px solid rgba(239,68,68,.2)", borderRadius:"8px", fontSize:".8rem", color:"rgba(var(--ff-muted), .85)", wordBreak:"break-word" as const }}>
+                      {String(g.last_run_error)}
+                    </div>
+                  )}
+                  {g.last_run_summary && !g.last_run_error && (
+                    <div style={{ marginTop:".5rem", fontSize:".8rem", color:"rgba(var(--ff-muted), .6)" }}>{String(g.last_run_summary)}</div>
+                  )}
+                </div>
+              ))}
+              {ov?.generated_at && (
+                <p style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .35)", marginTop:".75rem" }}>Checked {ov.generated_at}</p>
+              )}
+            </div>
+          );
+        })()}
 
         {/*
           Activity — every destructive admin action, newest first.

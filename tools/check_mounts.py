@@ -53,6 +53,20 @@ INVARIANTS = {
         # remedy named in an error message and reachable from nowhere.
         "<VerifyCodeModal",
         "offerVerify",
+        # 2026-11-04: the Agents tab is the ONLY surface that can approve an
+        # agent proposal -- admin_review_agent_action carries admin_guard(), so
+        # it needs a real auth.uid() and cannot be called from a SQL session or
+        # an artifact. Drop either half and the queue fills up silently while
+        # every agent waits on an approval that has nowhere to come from.
+        #
+        # This is precisely how the predecessor queue died. social_actions was
+        # correct, granted and gated, with working propose/list/review RPCs --
+        # and no UI was ever built for them, so it sat at 0 rows for months and
+        # read as dead code. Both needles, because the nav entry without the
+        # body is an empty tab and the body without the nav entry is a tab that
+        # cannot be reached. Neither throws.
+        '{ key: "agents"',
+        'tab === "agents"',
     ],
     # Same lockout reached from the other side: the OAuth route had no MFA
     # handling at all, so Google sign-in walked straight past the second factor
