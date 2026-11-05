@@ -62,7 +62,13 @@ loadtest-*.json
 # Contractor / client contact lists. PII must never reach a public repo.
 *.csv
 
-# private security audit - never commit to the public repo
+# Owner-private documents. A GLOB, not a list of names, for the same reason
+# apply-*.sh above is a glob: SECURITY-AUDIT-PRIVATE.md was listed by name, and
+# the next private document written (a record of deleted jobs carrying real
+# client emails, phones and street addresses) would have been published by the
+# very next `git add -A`. Anything that must stay off a PUBLIC repo gets the
+# -PRIVATE suffix and is covered automatically.
+*-PRIVATE.md
 SECURITY-AUDIT-PRIVATE.md
 AUTH_SETUP.md
 _skills-to-install/
