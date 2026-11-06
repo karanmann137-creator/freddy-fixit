@@ -1806,6 +1806,40 @@ export default function AdminDashboard() {
                       ? `Last ran ${g.last_run_local} · ${g.last_run_status || "?"}${Number(g.runs_7d ?? 0) ? ` · ${g.runs_7d} runs in 7 days` : ""}${Number(g.errors_7d ?? 0) ? ` · ${g.errors_7d} failed` : ""}`
                       : "Has never run."}
                   </div>
+                  {/* The declared cost budget, in plain English. It lives on the roster
+                      rather than in a doc because a doc enforces nothing: max_pending
+                      and max_proposals_per_run are checked inside
+                      agent_propose_action, the only write path into this queue.
+                      `model` is the CEILING an agent may reach for, not the only model
+                      it may use — a sonnet agent still does its triage on haiku. */}
+                  <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .45)" }}>
+                    {g.model === "none"
+                      ? "Costs nothing to run — reads the database, never asks an AI."
+                      : `Uses ${g.model === "haiku" ? "the cheap model" : g.model === "sonnet" ? "the mid model" : "the expensive model"} · up to ${g.max_model_calls_per_run} AI calls a run`}
+                    {g.max_proposals_per_run ? ` · at most ${g.max_proposals_per_run} suggestions a run` : ""}
+                    {g.max_pending ? `, ${g.max_pending} waiting at once` : ""}
+                    {Number(g.model_calls_7d ?? 0) > 0 ? ` · ${g.model_calls_7d} AI calls in 7 days` : ""}
+                  </div>
+                  {/* Measured, and self-clearing: this can only appear because a run in
+                      the last 7 days actually spent more than its declared budget.
+                      Raise the budget or fix the agent and it goes away on its own. */}
+                  {Number(g.budget_breach_7d ?? 0) > 0 && (
+                    <div style={{ marginTop:".5rem", fontSize:".82rem", color:"var(--ff-warn)" }}>
+                      Over budget — {g.budget_breach_7d} run{Number(g.budget_breach_7d) === 1 ? "" : "s"} in the
+                      last 7 days used more AI calls than this agent is allowed. Either it needs fixing or the
+                      allowance is too low.
+                    </div>
+                  )}
+                  {/* A cap firing is not an error, so it must not be silent either: the
+                      agent had more to say and was cut off, which is the owner's
+                      decision to revisit, not the agent's. */}
+                  {g.last_run_capped && (
+                    <div style={{ marginTop:".5rem", fontSize:".82rem", color:"rgba(var(--ff-muted), .7)" }}>
+                      Hit its limit on the last run ({g.last_run_capped === "max_pending"
+                        ? "too many suggestions already waiting on you"
+                        : "it reached the per-run suggestion limit"}) — it had more to suggest and stopped.
+                    </div>
+                  )}
                   {g.stale && (
                     <div style={{ marginTop:".5rem", fontSize:".82rem", color:"var(--ff-warn)" }}>
                       Overdue — this is switched on but hasn&rsquo;t run on schedule.
