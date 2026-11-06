@@ -313,6 +313,10 @@ export default function ClientDashboard() {
   // A failed read is not an empty result. Without this a flaky request looked
   // identical to "no job yet" and the ENTIRE payment surface vanished silently.
   const [jobLoadFailed, setJobLoadFailed] = useState(false);
+  // Same rule, same reason, different read: the bid list. A failed read rendered
+  // as "no estimates yet", and the Choose buttons are the client's only route
+  // out of this screen, so a silent zero strands the entire pick flow.
+  const [bidsFailed, setBidsFailed] = useState(false);
   // Set when Stripe redirects back here: "success" | "cancelled".
   const [payReturn, setPayReturn] = useState<string | null>(null);
   const [contractBlocked, setContractBlocked] = useState(false);      // agreement not signed yet → payment blocked
@@ -1432,7 +1436,15 @@ export default function ClientDashboard() {
     const ar = activeReq;
     if (ar && ar.status === "pending") {
       supabase.from("bids").select("*").eq("request_id", ar.id).eq("status", "pending").order("amount", { ascending: true })
-        .then(async ({ data }) => {
+        .then(async ({ data, error }) => {
+          // A failed read is not an empty result. `data ?? []` told the client
+          // "no estimates yet" when the truth was "we couldn't tell", with no
+          // error anywhere -- and since the Choose buttons are the only way
+          // forward from this screen, that silent zero stalls the pick flow
+          // completely. Keep the last-known bids on screen and say so, exactly
+          // as jobLoadFailed does for the job read.
+          if (error) { setBidsFailed(true); return; }
+          setBidsFailed(false);
           setClientBids(data ?? []);
           const ids = Array.from(new Set((data ?? []).map((b: any) => b.contractor_id)));
           if (ids.length) {
@@ -1463,7 +1475,7 @@ export default function ClientDashboard() {
             setBidMatch(mm);
           }
         });
-    } else { setClientBids([]); setBidMatch({}); setBidPhoto({}); }
+    } else { setBidsFailed(false); setClientBids([]); setBidMatch({}); setBidPhoto({}); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeReq?.id, activeReq?.status]);
 
@@ -2144,6 +2156,18 @@ export default function ClientDashboard() {
             <Ic name="alert-triangle" size={16} color="#ef4444" style={{ marginTop:2, flexShrink:0 }} />
             <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .85)", lineHeight:1.5 }}>
               <strong style={{ color:"var(--ff-text)" }}>We couldn't load the latest on this job.</strong> What you see below may be out of date — please refresh. Nothing has changed with your job or your money.
+            </div>
+          </div>
+        )}
+
+        {/* Same rule as above, for the bid read. Without this a flaky read of
+            the estimates was indistinguishable from "nobody has bid yet", and
+            the client had no reason to refresh and no way to pick. */}
+        {bidsFailed && (
+          <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(239,68,68,.08)", border:"1px solid rgba(239,68,68,.4)", display:"flex", alignItems:"flex-start", gap:".6rem" }}>
+            <Ic name="alert-triangle" size={16} color="#ef4444" style={{ marginTop:2, flexShrink:0 }} />
+            <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .85)", lineHeight:1.5 }}>
+              <strong style={{ color:"var(--ff-text)" }}>We couldn't load your estimates just now.</strong> This isn't the same as having none — please refresh. If any pros have quoted your request, they'll appear here.
             </div>
           </div>
         )}
