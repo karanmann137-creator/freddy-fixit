@@ -67,6 +67,13 @@ INVARIANTS = {
         # cannot be reached. Neither throws.
         '{ key: "agents"',
         'tab === "agents"',
+        # 2026-11-05: the only caller of the agent-draft-lead edge function.
+        # Its absence is invisible from every direction -- the two RPCs, the
+        # deployed function and the raised Haiku budget on the registry row all
+        # keep existing and throw nothing, the lead cards still render, and the
+        # only symptom is that the owner silently goes back to writing every
+        # follow-up himself. Exactly the shape this table is for.
+        "draftLead(a)",
     ],
     # Same lockout reached from the other side: the OAuth route had no MFA
     # handling at all, so Google sign-in walked straight past the second factor

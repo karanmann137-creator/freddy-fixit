@@ -91,6 +91,17 @@ export default function AdminDashboard() {
   const [agentActions, setAgentActions] = useState<any[]>([]);
   const [actionsFailed, setActionsFailed] = useState(false);
   const [busyReview, setBusyReview] = useState<string|null>(null); // action id being approved/rejected
+  // Drafting is a separate button with its own busy id, because it costs a model
+  // call and the owner must be able to tell "writing your message" apart from
+  // "filing your decision". Errors are keyed per action: a failure on one lead
+  // must never read as a failure on the lead below it.
+  const [busyDraft, setBusyDraft] = useState<string|null>(null);
+  const [draftErr, setDraftErr] = useState<Record<string, string>>({});
+  // Which copy button last succeeded. A clipboard write can be refused outright
+  // (insecure context, permission), so the "Copied" label is set only after the
+  // promise resolves — never optimistically, or the owner walks away believing
+  // he has the message.
+  const [copiedKey, setCopiedKey] = useState<string>("");
   // Per-action edited payload, keyed by action id. Absent means "unedited" —
   // which is NOT the same as "edited to match", because an absent entry sends
   // p_payload => null and the RPC keeps what the agent wrote.
@@ -445,9 +456,17 @@ export default function AdminDashboard() {
       try { payload = JSON.parse(raw); }
       catch { alert("That edited draft isn't valid JSON, so nothing was sent. Fix it or press Reset to go back to what the agent wrote."); return; }
     }
+    // `needs_harness === false` means no bot will ever act on this kind — it is a
+    // handoff to the owner, so approving it means "I've done this" and the RPC
+    // closes it at `sent`. The confirm text and the optimistic status below both
+    // read the same flag the server reads, so neither can describe an outcome the
+    // DB isn't about to write.
+    const handoff = a.needs_harness === false;
     if (!confirmed) {
       const what = approve
-        ? `Approve this ${String(a.kind || "action").replace(/_/g, " ")} from ${a.agent_label || a.agent}?\n\nOnce approved it is released to the agent to carry out. You can't un-approve it.`
+        ? (handoff
+            ? `Mark this ${String(a.kind || "action").replace(/_/g, " ")} as handled?\n\nNothing automatic happens — this just clears it off your list, so only do it once you've actually followed up.`
+            : `Approve this ${String(a.kind || "action").replace(/_/g, " ")} from ${a.agent_label || a.agent}?\n\nOnce approved it is released to the agent to carry out. You can't un-approve it.`)
         : `Reject this ${String(a.kind || "action").replace(/_/g, " ")}? The agent won't act on it.`;
       if (!window.confirm(what)) return;
     }
@@ -464,9 +483,75 @@ export default function AdminDashboard() {
     // Reflect it locally AND reload, so the per-agent pending counts in the header
     // can't drift from the rows underneath them.
     setAgentActions(prev => prev.map(x => x.id === a.id
-      ? { ...x, status: approve ? "approved" : "rejected" } : x));
+      ? { ...x, status: approve ? (handoff ? "sent" : "approved") : "rejected" } : x));
     setActionEdit(prev => { const n = { ...prev }; delete n[a.id]; return n; });
     loadAll();
+  };
+
+  /**
+   * Ask for a drafted follow-up on ONE lead-response finding.
+   *
+   * This is the only place on the platform where a click costs a token, and that
+   * placement is the whole cost design: the agent that FINDS these leads is a
+   * plain Postgres function on pg_cron with no network client, so detection is
+   * free and a quiet day costs nothing. The model runs here, once, on a lead the
+   * owner has already decided to chase.
+   *
+   * `functions.invoke` throws the response body away, so the reason has to be
+   * pulled off `error.context` — otherwise a precise refusal ("that lead is
+   * rejected", "the drafting key isn't set up") arrives as "Edge Function
+   * returned a non-2xx status code" and the owner has nothing to act on.
+   *
+   * On success the draft is written onto the payload server-side, so a reload
+   * keeps it. `saved: false` means it drafted but didn't persist — shown rather
+   * than swallowed, because the money was already spent and the text is still
+   * usable if he copies it now.
+   */
+  const draftLead = async (a: any) => {
+    setBusyDraft(a.id);
+    setDraftErr(prev => { const n = { ...prev }; delete n[a.id]; return n; });
+    try {
+      const { data, error } = await supabase.functions.invoke("agent-draft-lead", {
+        body: { action_id: a.id },
+      });
+      if (error) {
+        let m = error.message || "Couldn't draft that one.";
+        try { const j = await (error as any).context?.json?.(); if (j?.error) m = j.error; } catch {}
+        setDraftErr(prev => ({ ...prev, [a.id]: m }));
+        return;
+      }
+      if (!data?.ok || !data?.draft) {
+        setDraftErr(prev => ({ ...prev, [a.id]: data?.error || "Couldn't draft that one." }));
+        return;
+      }
+      // Merge into the row we already hold so the draft appears without a round
+      // trip, then reload to pick up anything else that moved.
+      setAgentActions(prev => prev.map(x => x.id === a.id
+        ? { ...x, payload: { ...(x.payload || {}), draft: data.draft } } : x));
+      if (data.saved === false) {
+        setDraftErr(prev => ({ ...prev, [a.id]: "Drafted, but it didn't save — copy it before you leave this page." }));
+      } else {
+        loadAll();
+      }
+    } catch (e: any) {
+      setDraftErr(prev => ({ ...prev, [a.id]: e?.message || "Couldn't draft that one." }));
+    } finally {
+      setBusyDraft(null);
+    }
+  };
+
+  // Copy that tells the truth. `navigator.clipboard` is absent on insecure
+  // origins and rejects when permission is denied, and a silent failure here
+  // means the owner pastes the previous thing he copied into a client's inbox.
+  const copyText = async (key: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(prev => (prev === key ? "" : prev)), 1800);
+    } catch {
+      setCopiedKey("");
+      alert("Couldn't copy that — select the text and copy it by hand.");
+    }
   };
 
   // Re-send the new-job email for a request that stalled. This normally happens by
@@ -1671,6 +1756,13 @@ export default function AdminDashboard() {
                     const draft   = edited ? actionEdit[a.id] : JSON.stringify(a.payload ?? {}, null, 2);
                     const isOpen  = a.status === "pending";
                     const expired = !!a.is_expired;
+                    // Mirror of what agent_lead_draft_context will accept. Kept
+                    // deliberately no wider than the server's own test, so the
+                    // button is absent rather than refused.
+                    const d = a.payload?.draft || null;
+                    const canDraft = a.agent === "lead-response"
+                      && ["pending","approved","sent"].includes(String(a.status))
+                      && !!a.payload?.client;
                     return (
                       <div key={a.id} style={{ ...s.card, borderColor: isOpen && !expired ? "rgba(234,107,20,.3)" : "rgba(var(--ff-fg), .08)" }}>
                         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", flexWrap:"wrap" as const, gap:".5rem" }}>
@@ -1688,7 +1780,7 @@ export default function AdminDashboard() {
                           {a.approved_local ? ` · decided ${a.approved_local}` : ""}
                           {/* Expiry is said in words rather than implied by a greyed button. A
                               control that can never succeed is worse than no control. */}
-                          {isOpen && expired && <span style={{ color:"var(--ff-warn)" }}> · expired {a.expires_local || ""}, approving it will be refused</span>}
+                          {isOpen && expired && <span style={{ color:"var(--ff-warn)" }}> · expired {a.expires_local || ""} — reject it and the agent will raise a fresh one</span>}
                           {isOpen && !expired && a.expires_local ? ` · expires ${a.expires_local}` : ""}
                         </div>
 
@@ -1710,8 +1802,111 @@ export default function AdminDashboard() {
                           </div>
                         )}
 
+                        {/* The owner is non-technical, so raw JSON is not a readable
+                            proposal. Any agent that writes a `summary` into its payload
+                            gets rendered in prose here, and the JSON below becomes the
+                            detail you only open if you want to edit. An agent with no
+                            summary still shows its JSON — this adds a surface, it does
+                            not replace one. */}
+                        {a.payload?.summary && (
+                          <div style={{ marginTop:".7rem", padding:".65rem .8rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
+                            <div style={{ fontSize:".92rem", color:"var(--ff-text)", lineHeight:1.5 }}>
+                              {String(a.payload.summary)}
+                            </div>
+                            {a.payload.detail && (
+                              <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.6, marginTop:".4rem" }}>
+                                {String(a.payload.detail)}
+                              </div>
+                            )}
+                            {(a.payload.client || a.payload.email || a.payload.phone) && (
+                              <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.6, marginTop:".4rem" }}>
+                                {[a.payload.client, a.payload.email, a.payload.phone].filter(Boolean).map(String).join(" · ")}
+                              </div>
+                            )}
+                            {a.payload.link && String(a.payload.link).startsWith("http") && (
+                              <a href={String(a.payload.link)} target="_blank" rel="noreferrer"
+                                 style={{ display:"inline-block", marginTop:".5rem", fontSize:".82rem", color:"#ea6b14", fontWeight:600 }}>
+                                {String(a.payload.action || "Open")} →
+                              </a>
+                            )}
+                            {a.payload.link && !String(a.payload.link).startsWith("http") && a.payload.action && (
+                              <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .55)", marginTop:".4rem" }}>
+                                {String(a.payload.action)}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* ---------- draft on approval ----------
+                            Detection is free: `agent_lead_response_run()` is a DB function
+                            with no network client, so it cannot spend a token. Writing the
+                            message is the only part that needs a model, so it hangs off a
+                            button — one Haiku call per lead the owner actually decides to
+                            chase, nothing on a quiet day.
+
+                            The button is shown only where the server will accept it
+                            (lead-response, a non-terminal status, a client name on the
+                            payload), because a control that can never succeed is worse
+                            than no control. */}
+                        {canDraft && (
+                          <div style={{ marginTop:".7rem" }}>
+                            <button
+                              style={{ ...s.btn, ...(d ? {} : { background:"#ea6b14", color:"#1a2236", border:"none" }) }}
+                              disabled={busyDraft === a.id}
+                              onClick={() => draftLead(a)}>
+                              {busyDraft === a.id ? "Writing…" : d ? "Rewrite the message" : "Draft a message"}
+                            </button>
+                            {!d && busyDraft !== a.id && (
+                              <span style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .45)", marginLeft:".55rem" }}>
+                                writes you a text and an email you can edit before sending
+                              </span>
+                            )}
+                            {draftErr[a.id] && (
+                              <div style={{ marginTop:".5rem", fontSize:".82rem", color:"var(--ff-warn)", lineHeight:1.5 }}>
+                                {draftErr[a.id]}
+                              </div>
+                            )}
+                            {d && (
+                              <div style={{ marginTop:".65rem", display:"grid", gap:".6rem" }}>
+                                {d.text && (
+                                  <div style={{ padding:".6rem .75rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
+                                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", marginBottom:".35rem" }}>
+                                      <span style={{ fontSize:".74rem", letterSpacing:".04em", color:"rgba(var(--ff-muted), .5)", fontFamily:"'Bebas Neue',sans-serif" }}>TEXT MESSAGE</span>
+                                      <button style={{ ...s.btn, padding:".25rem .6rem", fontSize:".74rem" }}
+                                        onClick={() => copyText(a.id + ":text", String(d.text))}>
+                                        {copiedKey === a.id + ":text" ? "Copied" : "Copy"}
+                                      </button>
+                                    </div>
+                                    <div style={{ fontSize:".88rem", color:"var(--ff-text)", lineHeight:1.55, whiteSpace:"pre-wrap" as const }}>{String(d.text)}</div>
+                                  </div>
+                                )}
+                                {d.email_body && (
+                                  <div style={{ padding:".6rem .75rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
+                                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", marginBottom:".35rem" }}>
+                                      <span style={{ fontSize:".74rem", letterSpacing:".04em", color:"rgba(var(--ff-muted), .5)", fontFamily:"'Bebas Neue',sans-serif" }}>EMAIL</span>
+                                      <button style={{ ...s.btn, padding:".25rem .6rem", fontSize:".74rem" }}
+                                        onClick={() => copyText(a.id + ":email", (d.email_subject ? "Subject: " + d.email_subject + "\n\n" : "") + String(d.email_body))}>
+                                        {copiedKey === a.id + ":email" ? "Copied" : "Copy"}
+                                      </button>
+                                    </div>
+                                    {d.email_subject && (
+                                      <div style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .8)", marginBottom:".3rem" }}>
+                                        <strong>Subject:</strong> {String(d.email_subject)}
+                                      </div>
+                                    )}
+                                    <div style={{ fontSize:".88rem", color:"var(--ff-text)", lineHeight:1.55, whiteSpace:"pre-wrap" as const }}>{String(d.email_body)}</div>
+                                  </div>
+                                )}
+                                <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .45)", lineHeight:1.5 }}>
+                                  Nothing was sent. Copy it, change anything you like, and send it yourself from your own phone or inbox.
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         <label style={{ display:"block", fontSize:".76rem", color:"rgba(var(--ff-muted), .5)", marginTop:".75rem", marginBottom:".3rem" }}>
-                          What the agent wants to do{edited ? " (edited)" : ""}
+                          {a.payload?.summary ? "The full detail" : "What the agent wants to do"}{edited ? " (edited)" : ""}
                         </label>
                         <textarea
                           value={draft}
@@ -1723,12 +1918,27 @@ export default function AdminDashboard() {
 
                         {isOpen && (
                           <div style={{ marginTop:".75rem", display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
-                            <button
-                              style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none" }}
-                              disabled={busyReview === a.id}
-                              onClick={() => reviewAction(a, true)}>
-                              {busyReview === a.id ? "…" : edited ? "Approve edited" : "Approve"}
-                            </button>
+                            {/* Expired proposals lose the button entirely rather than
+                                keeping one the server now refuses — `admin_review_agent_action`
+                                checks expires_at as of 2026-11-05, which is the day the
+                                warning line above stopped being a lie. Reject still works:
+                                clearing the inbox must always be possible.
+
+                                "Mark handled" vs "Approve" is not cosmetic. `needs_harness`
+                                is false for the kinds no bot will ever act on — a handoff to
+                                the owner — and for those the RPC writes `sent`, not
+                                `approved`. One predicate decides the label and the status, so
+                                the button cannot promise something the DB won't do. */}
+                            {!expired && (
+                              <button
+                                style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none" }}
+                                disabled={busyReview === a.id}
+                                onClick={() => reviewAction(a, true)}>
+                                {busyReview === a.id ? "…"
+                                  : a.needs_harness === false ? (edited ? "Mark handled (edited)" : "Mark handled")
+                                  : edited ? "Approve edited" : "Approve"}
+                              </button>
+                            )}
                             <button
                               style={s.btn}
                               disabled={busyReview === a.id}

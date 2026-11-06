@@ -1,8 +1,11 @@
 # The agent team — cost discipline and the approval gate
 
-Built 2026-11-04 (queue, telemetry, roster, approval UI) and 2026-11-05 (cost budgets).
-The queue half is proven; **no harness exists for any of the eight agents yet**, which is
-exactly what `enabled = false` means on every registry row.
+Built 2026-11-04 (queue, telemetry, roster, approval UI) and 2026-11-05 (cost budgets,
+then the first harness).
+
+**One of the eight agents now has a harness: `lead-response`, enabled 2026-11-05.** The
+other seven are still `enabled = false`, which is exactly what that flag means — no
+harness exists, so `stale` cannot fire for an agent nobody claimed was running.
 
 Read this before writing a harness, adding an agent, or raising a budget.
 
@@ -82,13 +85,13 @@ detail with no way to get the fresh version.
 
 ## The declared roster (2026-11-05)
 
-All eight are `enabled = false`. `enabled` means **"a harness exists and this agent is
+Seven of eight are `enabled = false`. `enabled` means **"a harness exists and this agent is
 expected to run"** — it is step one of wiring each harness, and until it is true `stale`
 cannot fire for an agent nobody claimed was running.
 
 | agent | model | AI calls/run | proposals/run | pending | why that model |
 |---|---|---|---|---|---|
-| `lead-response` | none | 0 | 10 | 25 | A join answers it. Requests with no bids, zero `trade_reach`, or a state that disagrees with the jobs table |
+| `lead-response` | haiku | 1 | 10 | 25 | **ENABLED — harness is `agent_lead_response_run()`, pg_cron `0 14 * * *`.** The scheduled run is a join and spends **nothing**; the Haiku ceiling exists only for the on-demand drafting step, which runs behind a click. See below |
 | `ops-watchdog` | none | 0 | 5 | 15 | Reads the 9 health checks, two CI results, deploy state, runtime errors. All values |
 | `contractor-supply` | none | 0 | 3 | 10 | `trade_reach(service) = 0` against demand. Pure arithmetic |
 | `outreach` | haiku | 5 | 5 | 10 | Classifying a candidate. **CASL review pending — list-only, no send** |
@@ -100,6 +103,115 @@ cannot fire for an agent nobody claimed was running.
 **`outreach` shares a Resend domain and quota with auth mail** (GoTrue over SMTP since
 2026-08-30). An outreach agent burning quota locks real people out of signup. That is a
 harder constraint than any budget in this table.
+
+---
+
+## `lead-response` — the first harness (2026-11-05)
+
+**It is a Postgres function on pg_cron, not an edge function, and that is the point: it
+cannot burn a token even by accident.** The owner's instruction was that agents not spend
+for no reason; a `model = 'none'` declaration is only a detector, but a harness with no
+network client is a gate. Every finding is a join — `trade_reach(service)` already answers
+"would anyone see this job", and a `client_requests` / `jobs` join already answers "did
+this lead get stranded".
+
+`public.agent_lead_response_run(p_trigger text default 'schedule')`. Four finding kinds in
+one `UNION ALL`, ordered by `prio` so that **a cap truncates the least important first**:
+
+| prio | kind | what it catches |
+|---|---|---|
+| 1 | `stranded_request` | not completed/cancelled, assignee set, **no `jobs` row** — the 2026-11-05 fault, now watched instead of hand-audited |
+| 2 | `stale_estimates` | pending, has pending bids, newest one **older than 30 days** — past the nudge ceiling, so nothing automated will ever chase it |
+| 3 | `unreachable_trade` | no pending bids and `trade_reach = 0` — nobody can see it |
+| 4 | `no_bids_exhausted` | no bids, reach > 0, `refire_count >= 2`, older than 7 days |
+
+Kinds 2–4 also require `assigned_contractor_id is null`, so a stranded request cannot
+double-propose. The base CTE is bounded to 365 days and `waitlisted = false`.
+
+**It sends no email.** Standing owner instruction is don't send bulk email without asking,
+and the proposals land in a queue he already reads.
+
+Armed: `cron.schedule('agent-lead-response', '0 14 * * *', …)` — 07:00 Calgary, an hour
+before the 15:00 UTC health check so a fresh finding is in the queue when that report
+lands. `expected_every = interval '1 day'`, which `admin_agent_overview`'s 1.5× grace
+margin turns into a 36h window, so `stale` only reddens after two consecutive misses.
+
+First real run: 9 `stale_estimates` findings, `model_calls = 0`.
+
+**The payload carries the client's name, email and phone**, because the whole point is that
+the owner can act on it without a second lookup. That is runtime data and **must never be
+pasted into a migration, a doc or a commit message** — this repo is PUBLIC.
+
+### Two traps this harness exposed in the already-shipped queue
+
+**Expiry was a lie, and fixing it honestly would have created a dead row.**
+`agent_propose_action` dedupes on `status in ('pending','approved','sent')`, and a proposal
+past its `expires_at` is still literally `'pending'` — so it was refreshed forever and
+never re-proposed, while the Agents tab claimed approving it "will be refused" and nothing
+checked the column. Adding the refusal alone would have produced a row the owner could
+neither approve nor refresh: *a control that can never succeed is worse than no control*.
+So `public.agent_expire_stale_actions()` flips expired pending rows to `'expired'` and is
+called **from `agent_run_start`**, where no harness can forget it. The UI now removes the
+Approve button entirely for an expired row; **Reject still works**, because clearing the
+inbox must always work.
+
+**`agent_run_start` inserts the run row BEFORE the sweep, and the sweep has its own
+`exception` block.** A plpgsql `begin…exception` is a subtransaction, so a run row created
+inside one rolls back with the error — and the run row is the only evidence the agent ran
+and failed. Same reason `agent_lead_response_run`'s handler calls `agent_run_finish(…,
+'error', …)` and **returns without re-raising**; `errors_7d` in `admin_agent_overview` is
+what surfaces it.
+
+### Handoffs — `agent_kind_needs_harness`
+
+All four lead-response kinds are **handoffs to the owner**: approving one means "I'll call
+this client", not "a worker will pick this up". Left at `'approved'` they would sit forever
+looking like work nothing collected. So `public.agent_kind_needs_harness(p_kind)` (`sql
+immutable`) returns false for those four, and `admin_review_agent_action` closes them at
+`'sent'` with `result` merged `{"handled_by":"owner","handled_at":…}`.
+
+**One predicate, shared by every reader** — it drives the button label ("Mark handled" vs
+"Approve"), the confirm text, the optimistic status in the UI and the status the RPC
+writes, so none of the four can disagree. **An unknown kind returns TRUE**, failing safe
+toward "approved, waiting on a worker" rather than silently marking work done.
+
+### Draft on approval (2026-11-05) — the one place a model runs, and why it's a button
+
+Finding the lead is free. Writing the message to the client is not. So those are two
+different triggers: detection is on the cron and spends nothing, and **drafting hangs off a
+"Draft a message" button on each lead card**. One Haiku call per lead the owner actually
+decided to chase. A quiet day costs zero, and a busy day costs exactly as much as the work
+he chose to do — which is the shape to copy for any future agent whose output a human sends.
+
+- `supabase/functions/agent-draft-lead` (deployed 2026-11-05) is the **only** caller of
+  `agent_lead_draft_context(uuid)` and `agent_lead_draft_save(uuid, jsonb)`. Both are
+  service_role-only, both `create or replace` so the ACL survives, both verified afterwards
+  with `has_function_privilege` rather than by reading the migration.
+- **It is admin-gated in code, not by `verify_jwt`** — the anon key is a valid project-signed
+  JWT that ships in the public bundle. Bearer → `getUser()` → `profiles.role === 'admin'`.
+- **No second factor.** Drafting is reversible and sends nothing, so it is a read-shaped
+  action; the rule is that *irreversible* admin writes carry the factor. What a stolen
+  session could actually do here is run up a token bill, so that is what's capped:
+  `chat_rate_check` at 30/hour, failing open like every other limiter.
+- **The run row opens before the model call and closes on all three outcomes.** A draft that
+  was generated but failed to persist comes back `ok:true, saved:false` with a copy-it-now
+  warning and finishes the run `warn` — the money was already spent, so swallowing it would
+  be the one dishonest option.
+- **The model string is tried from an ordered Haiku-only list and retried on 404 only.**
+  Neither candidate was ever proven against this project's key (`social-bot-brain` names a
+  model and has never run), so a missing model name degrades to the next candidate, while a
+  401/429/5xx fails loudly instead of being retried three times. Only successful calls count
+  toward `model_calls`, so probing cannot inflate reported spend. `LEAD_DRAFT_MODEL` env var
+  overrides the list, which makes a wrong model name a one-env-var fix.
+- **The button is absent, not refused, where the server would say no** — `canDraft` in
+  `AdminDashboard.tsx` mirrors `agent_lead_draft_context`'s own tests exactly
+  (lead-response, non-terminal status, a client name on the payload).
+- `draftLead(a)` is in `tools/check_mounts.py`. Dropping it throws nothing anywhere: the
+  RPCs, the deployed function and the raised budget all keep existing, the cards still
+  render, and the only symptom is the owner quietly going back to writing every follow-up
+  by hand.
+- `ANTHROPIC_API_KEY` must be set in Supabase → Edge Functions → Secrets. Without it the
+  function returns **503 with a plain-English reason**, not a crash.
 
 ---
 
@@ -142,5 +254,7 @@ agent_run_finish(v_run, 'ok'|'warn'|'error', '<one line a human reads>',
 4. Budgets are **per agent, not per policy**. If one agent's drafts are too thin, raise that
    agent's row. Changing the tier definitions above changes eight agents at once.
 
-Migrations: `supabase/migrations/20261104_agent_team_queue_and_registry.sql` (the queue) and
-`supabase/migrations/20261105_agent_cost_budgets.sql` (this).
+Migrations: `supabase/migrations/20261104_agent_team_queue_and_registry.sql` (the queue),
+`supabase/migrations/20261105_agent_cost_budgets.sql` (the budgets) and
+`supabase/migrations/20261105_lead_response_agent.sql` (the first harness, plus the expiry
+sweep and the handoff predicate).
