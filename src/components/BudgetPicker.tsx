@@ -43,14 +43,53 @@ export default function BudgetPicker({
 }) {
   const bm = benchmarkFor(services.join(", "), pricing);
 
-  // Nothing known about these services — say nothing rather than invent a
-  // figure. A price we made up is worse than no price.
-  if (!bm) return null;
-
   const label: React.CSSProperties = {
     fontSize: ".75rem", textTransform: "uppercase", letterSpacing: ".1em",
     color: "rgba(var(--ff-muted), .5)", marginBottom: ".5rem", fontWeight: 600,
   };
+
+  /**
+   * THE PRICE-CHANGE DISCLAIMER. Mounted OUTSIDE the `bm` check on purpose
+   * (2026-11-07). This component used to `return null` when no benchmark was
+   * known, so putting the disclaimer inside that branch would have shown it
+   * only to clients booking a service we happen to have a price for. The
+   * benchmark is the half that needs data; the disclaimer is the half that
+   * must appear on every posting, with or without a number beside it.
+   *
+   * Wording rules, all load-bearing:
+   *  - it says a change needs their APPROVAL, which is true on both branches
+   *    of propose_price_change(), rather than promising a particular button;
+   *  - it says a paid deposit is never recalculated, which matches the
+   *    "## If the price changes" clause in build_contract_body_internal() and
+   *    the written copy in notify-email. Three copies of that promise now
+   *    exist and they have to keep agreeing;
+   *  - it tells them to settle the details with the pro BEFORE confirming,
+   *    which is the only part of this that actually prevents the dispute.
+   */
+  const changeNote = (
+    <div style={{
+      display: "flex", alignItems: "flex-start", gap: ".6rem",
+      padding: ".85rem .9rem", borderRadius: "10px",
+      background: "rgba(var(--ff-muted), .06)",
+      border: "1px solid rgba(var(--ff-muted), .16)",
+    }}>
+      <Ic name="info" size={14} color="rgba(var(--ff-muted), .55)" style={{ marginTop: 3, flexShrink: 0 }} />
+      <div style={{ fontSize: ".82rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .75)" }}>
+        <strong style={{ color: "var(--ff-text)" }}>A price can change once a pro sees the work.</strong>
+        {" "}Scope and materials are the usual reasons. Any change needs your approval first,
+        and you will see what changed and why — a deposit you have already paid is never
+        recalculated.
+        <span style={{ display: "block", marginTop: ".5rem" }}>
+          Talk the details through with your pro before you confirm anything.
+        </span>
+      </div>
+    </div>
+  );
+
+  // Nothing known about these services — say nothing about price rather than
+  // invent a figure. A price we made up is worse than no price. The disclaimer
+  // still goes out.
+  if (!bm) return <div style={{ marginTop: "1.75rem" }}>{changeNote}</div>;
 
   return (
     <div style={{ marginTop: "1.75rem" }}>
@@ -76,6 +115,8 @@ export default function BudgetPicker({
       <p style={{ fontSize: ".74rem", color: "rgba(var(--ff-muted), .4)", marginTop: ".5rem", lineHeight: 1.5 }}>
         This is a guide, not a quote. Local pros will send you real estimates for your job, and you choose which one to accept.
       </p>
+
+      <div style={{ marginTop: "1.25rem" }}>{changeNote}</div>
     </div>
   );
 }

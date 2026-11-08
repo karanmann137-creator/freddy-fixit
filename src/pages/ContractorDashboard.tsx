@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { clearMyProfile } from "@/lib/myProfile";
-import { getCommissionRate } from "@/lib/platformRates";
+import { getCommissionRate, getFeeRate } from "@/lib/platformRates";
 import { compressImage } from "@/lib/imageCompress";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
 import JobDescription from "@/components/JobDescription";
@@ -27,7 +27,8 @@ import ProfileCompleteCelebration from "@/components/ProfileCompleteCelebration"
 import DashboardSidebar, { type SidebarItem } from "@/components/DashboardSidebar";
 import RequestHelpModal from "@/components/RequestHelpModal";
 import { jobCode } from "@/lib/jobCode";
-import { jobBalanceDue, jobAwaitingBalance } from "@/lib/jobFunding";
+import { jobBalanceDue, jobAwaitingBalance, jobFullyFunded } from "@/lib/jobFunding";
+import { priceChangeMath, pcMoney, pcRateLabel } from "@/lib/priceChange";
 import JobsCalendar from "@/components/JobsCalendar";
 import JobTimer from "@/components/JobTimer";
 import JobChecklist from "@/components/JobChecklist";
@@ -1050,6 +1051,51 @@ export default function ContractorDashboard() {
     setRequoteOpen(o => ({ ...o, [job.id]: false }));
   };
 
+  // Withdraw a price change the pro proposed themselves. The optimistic update
+  // clears both columns, matching exactly what the RPC writes, so the banner
+  // collapses back to the "Request a change" link with no refetch.
+  const withdrawPriceChange = async (job: any) => {
+    if (!(await askConfirm({
+      title: "Withdraw this price change?",
+      message: "The client will be told it is withdrawn and the price you both agreed to stays in place. You can always send a new revised estimate afterwards.",
+      confirmLabel: "Withdraw it",
+      danger: false,
+    }))) return;
+    setBusyJobId(job.id);
+    const { error } = await supabase.rpc("withdraw_price_change", { p_job_id: job.id });
+    setBusyJobId(null);
+    if (error) { notify("Couldn't withdraw it: " + error.message); return; }
+    setMyJobs(prev => prev.map(j => j.id === job.id ? { ...j, price_change_pending: null, price_change_proposed_at: null } : j));
+  };
+
+  // The CLIENT's service-fee rate, needed so the pro can see the client's real
+  // total on a price change. Only a fallback — `priceChangeMath` prefers the
+  // rate the client actually agreed to (`client_fee / amount`) whenever the job
+  // has been charged, because re-rating a live job at the current platform rate
+  // would move the goalposts mid-job.
+  const [feeRate, setFeeRate] = useState<number | null>(null);
+  useEffect(() => { getFeeRate().then(r => { if (r.ok) setFeeRate(r.rate); }); }, []);
+
+  // One money row, so the pending banner and the live preview punctuate alike.
+  // Deliberately a local presentational helper rather than a shared component:
+  // what MUST be shared between the two sides of a price change is the
+  // arithmetic, and that lives in src/lib/priceChange.ts.
+  const pcRow = (labelText: string, value: string, opts?: { strong?: boolean; color?: string; top?: boolean }) => (
+    <div style={{
+      display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:"1rem",
+      padding:".5rem 0",
+      ...(opts?.top ? { marginTop:".35rem", paddingTop:".7rem", borderTop:"1px solid rgba(var(--ff-fg), .14)" } : null),
+    }}>
+      <span style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.45 }}>{labelText}</span>
+      <span style={{
+        fontSize: opts?.strong ? ".98rem" : ".88rem",
+        fontWeight: opts?.strong ? 700 : 600,
+        color: opts?.color ?? "var(--ff-text)",
+        whiteSpace:"nowrap" as const,
+      }}>{value}</span>
+    </div>
+  );
+
   // Reusable "adjust the price" block. Shown at every live stage (scheduled,
   // in_progress, pending_confirmation) until the money is released to the pro.
   const renderPriceChange = (job: any) => {
@@ -1062,17 +1108,84 @@ export default function ContractorDashboard() {
     const pending = job.price_change_pending;
     return (
       <div style={{ borderTop:"1px solid rgba(var(--ff-fg), .07)", paddingTop:".7rem" }}>
-        {pending ? (
-          <div style={{ fontSize:".82rem", color:"var(--ff-warn)", lineHeight:1.45 }}>
-            <Ic name="clock" size={13} style={{ marginRight:4 }} />
-            {"Waiting for the client to approve your new price of $" + pending.amount + (pending.reason ? " — " + pending.reason : "") + ". It applies (and any extra is charged) once they approve."}
-          </div>
-        ) : !requoteOpen[job.id] ? (
+        {pending ? (() => {
+          /* THE PRO'S HALF OF THE SAME ARITHMETIC (rebuilt 2026-11-07).
+             This banner used to be one concatenated sentence carrying a raw
+             unformatted `pending.amount` and nothing else — no service fee, no
+             client total, no payout. So the pro proposing a change could not
+             answer the first question the client asks them in chat ("what am I
+             actually paying now?"), and the two sides were reading different
+             numbers off different screens. Both sides now compute from
+             src/lib/priceChange.ts, so they cannot disagree to the cent.
+
+             MONEY GUARDS: none. Display only — no reads, no writes. */
+          const pc = priceChangeMath({ ...job, payment_status: "held", price_change_pending: pending }, feeRate ?? 0.03);
+          if (!pc) return null;
+          const paidInFull = jobFullyFunded(job);
+          const payout = commission == null ? null : Math.round(pc.newPrice * (1 - commission) * 100) / 100;
+          return (
+            <div style={{ borderRadius:"14px", border:"1px solid rgba(245,158,11,.34)", background:"rgba(245,158,11,.07)", padding:"1.1rem 1.1rem 1.2rem" }}>
+              <div style={{ display:"flex", alignItems:"flex-start", gap:".6rem", marginBottom:".9rem" }}>
+                <Ic name="clock" size={16} color="#f59e0b" style={{ marginTop:2, flexShrink:0 }} />
+                <div>
+                  <div style={{ fontFamily:"var(--ff-font-head, inherit)", fontSize:"1rem", color:"var(--ff-text)", letterSpacing:".01em" }}>
+                    Waiting on the client to approve {pcMoney(pc.newPrice)}
+                  </div>
+                  <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.5, marginTop:".25rem" }}>
+                    The agreed price is still {pcMoney(pc.oldPrice)} until they do. Keep working to the original scope until you hear back.
+                  </div>
+                </div>
+              </div>
+
+              {pending.reason ? (
+                <div style={{ borderLeft:"3px solid #f59e0b", paddingLeft:".75rem", margin:"0 0 .95rem", fontSize:".82rem", color:"rgba(var(--ff-muted), .85)", lineHeight:1.6 }}>
+                  {pending.reason}
+                </div>
+              ) : null}
+
+              <div style={{ background:"rgba(var(--ff-fg), .035)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"11px", padding:".75rem .85rem" }}>
+                {pcRow("New job price", pcMoney(pc.newPrice))}
+                {pcRow("Client service fee (" + pcRateLabel(pc.rate) + ")", pcMoney(pc.newFee))}
+                {pcRow("What the client pays in total", pcMoney(pc.newTotal), { top:true })}
+                {payout != null ? pcRow("Your payout after commission", pcMoney(payout), { top:true, strong:true }) : null}
+              </div>
+
+              <div style={{ fontSize:".79rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.6, marginTop:".9rem" }}>
+                {paidInFull
+                  ? "They have already paid this job in full, so when they approve they are taken straight to a checkout for the " + pcMoney(pc.balanceOwed) + " difference. Nothing reaches you until that clears."
+                  : "They have paid " + pcMoney(pc.funded) + " so far. Nothing extra is charged today — the balance they settle at the end becomes " + pcMoney(pc.balanceOwed) + "."}
+              </div>
+
+              {/* THE INVERSE THE PRO NEVER HAD (2026-11-07). propose_price_change
+                  had no undo for the person who called it, so a wrong figure — or
+                  one the pro and client talked out of in chat — sat 'pending'
+                  forever. run_reminders step 6 kept nudging the client about a
+                  number the pro no longer wanted, and the only exits were the
+                  client approving a price nobody intended or declining it, which
+                  records the pro as declined when they actually withdrew.
+                  `withdraw_price_change` is the contractor-side twin of
+                  `decline_price_change`; it touches none of the four payout
+                  guards. */}
+              <div style={{ marginTop:"1rem", paddingTop:".9rem", borderTop:"1px solid rgba(var(--ff-fg), .1)" }}>
+                <button
+                  disabled={busyJobId === job.id}
+                  onClick={() => withdrawPriceChange(job)}
+                  style={{ background:"none", border:"none", color:"rgba(var(--ff-muted), .8)", fontFamily:"inherit", fontSize:".8rem", fontWeight:600, cursor:"pointer", padding:0, textDecoration:"underline" }}
+                >
+                  {busyJobId === job.id ? "Withdrawing…" : "Withdraw this price change"}
+                </button>
+                <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .55)", lineHeight:1.55, marginTop:".35rem" }}>
+                  Puts the price back to {pcMoney(pc.oldPrice)} and lets the client know. Use this if you sent the wrong figure, or if you have agreed in the messages to leave it alone.
+                </div>
+              </div>
+            </div>
+          );
+        })() : !requoteOpen[job.id] ? (
           <button onClick={() => setRequoteOpen(o => ({ ...o, [job.id]: true }))} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".82rem", fontWeight:600, cursor:"pointer", padding:0 }}>
             <Ic name="pencil" size={13} style={{ marginRight:4 }} />Need to adjust the price? Request a change
           </button>
         ) : (
-          <div style={{ display:"flex", flexDirection:"column", gap:".6rem" }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:".75rem" }}>
             <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.45 }}>Send the client a revised estimate. They'll re-approve (and cover any extra) before it takes effect — your chat history stays.</div>
             {/* Be straight with the pro about what a price rise risks. On an
                 unpaid job decline_price_reopen genuinely releases them and puts
@@ -1080,22 +1193,70 @@ export default function ContractorDashboard() {
                 above on its own was misleading. Once money is held the job
                 can't be handed away, so say that instead of implying it can. */}
             {(job.payment_status ?? "unpaid") === "unpaid" ? (
-              <div style={{ display:"flex", alignItems:"flex-start", gap:".5rem", padding:".6rem .7rem", borderRadius:"10px", background:"rgba(245,158,11,.10)", border:"1px solid rgba(245,158,11,.32)" }}>
+              <div style={{ display:"flex", alignItems:"flex-start", gap:".5rem", padding:".7rem .8rem", borderRadius:"10px", background:"rgba(245,158,11,.10)", border:"1px solid rgba(245,158,11,.32)" }}>
                 <Ic name="alert-triangle" size={14} color="#f59e0b" style={{ marginTop:2, flexShrink:0 }} />
-                <div style={{ fontSize:".78rem", color:"var(--ff-text)", lineHeight:1.5 }}>
+                <div style={{ fontSize:".78rem", color:"var(--ff-text)", lineHeight:1.55 }}>
                   <strong>Raising the price can cost you the job.</strong> Nothing has been paid yet, so the client can decline and re-open the request to the other pros who bid — in one tap, without talking to you first. Only raise it if the work genuinely changed, give the specific reason, and message them about it before you send this.
                 </div>
               </div>
             ) : (
-              <div style={{ display:"flex", alignItems:"flex-start", gap:".5rem", padding:".6rem .7rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .1)" }}>
+              <div style={{ display:"flex", alignItems:"flex-start", gap:".5rem", padding:".7rem .8rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .1)" }}>
                 <Ic name="info" size={14} color="#f59e0b" style={{ marginTop:2, flexShrink:0 }} />
-                <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
+                <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.55 }}>
                   The client has already paid on this job, so they can't hand it to another pro. But they can decline the change — you'd finish at the agreed price. Give the specific reason and message them first.
                 </div>
               </div>
             )}
             <input type="number" min="0" value={rf.amount} placeholder="New total price $" onChange={e => setRf({ amount: e.target.value })} style={ffInp} />
             <QuoteBreakdown v={rf} on={setRf} calloutHint={contractor?.min_callout ?? null} price={priceFor(job.request?.service_needed)} />
+
+            {/* LIVE PREVIEW of exactly what the client will be shown.
+                The total comes from `quoteTotal(rf)` — the SAME function
+                requestRequote sends to propose_price_change — so the preview
+                and the proposal can never drift apart. The arithmetic comes
+                from src/lib/priceChange.ts, the one module the client panel,
+                this form, the price_change email and the e-signed clause all
+                read, which is the whole reason it exists. */}
+            {(() => {
+              const t = quoteTotal(rf);
+              if (t == null || !(t > 0)) return null;
+              const pv = priceChangeMath({ ...job, payment_status: "held", price_change_pending: { amount: t } }, feeRate ?? 0.03);
+              if (!pv) return null;
+              const paidInFull = jobFullyFunded(job);
+              const payout = commission == null ? null : Math.round(pv.newPrice * (1 - commission) * 100) / 100;
+              return (
+                <div style={{ borderRadius:"13px", border:"1px dashed rgba(234,107,20,.4)", background:"rgba(234,107,20,.05)", padding:"1rem 1rem 1.05rem" }}>
+                  <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".11em", fontWeight:700, color:"#ea6b14", marginBottom:".7rem" }}>
+                    What the client will see
+                  </div>
+                  <div style={{ background:"rgba(var(--ff-fg), .035)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"11px", padding:".7rem .8rem" }}>
+                    {pcRow("Price they agreed to", pcMoney(pv.oldPrice))}
+                    {pv.isIncrease ? pcRow("Increase", "+" + pcMoney(pv.delta)) : pv.isReduction ? pcRow("Reduction", "−" + pcMoney(Math.abs(pv.delta))) : null}
+                    {pcRow("New job price", pcMoney(pv.newPrice), { top:true })}
+                    {pcRow("Service fee (" + pcRateLabel(pv.rate) + ")", pv.rate === 0 ? "Waived" : pcMoney(pv.newFee))}
+                    {pcRow("Their new total", pcMoney(pv.newTotal), { top:true, strong:true })}
+                  </div>
+                  <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.6, marginTop:".8rem" }}>
+                    {pv.isReduction
+                      ? (pv.funded - pv.newTotal > 0.005
+                          ? "They have paid " + pcMoney(pv.funded) + ", so " + pcMoney(Math.round((pv.funded - pv.newTotal) * 100) / 100) + " goes back to their card."
+                          : "The balance they settle at the end comes down to " + pcMoney(pv.balanceOwed) + ".")
+                      : pv.isIncrease
+                        ? (paidInFull
+                            ? "This job is paid in full, so approving sends them to a checkout for the " + pcMoney(pv.balanceOwed) + " difference right away."
+                            : "Nothing extra is charged today — the balance they settle at the end becomes " + pcMoney(pv.balanceOwed) + ".")
+                      : "Same total as before — this just re-itemises the quote."}
+                  </div>
+                  {payout != null ? (
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:"1rem", marginTop:".85rem", paddingTop:".7rem", borderTop:"1px solid rgba(var(--ff-fg), .1)" }}>
+                      <span style={{ fontSize:".79rem", color:"rgba(var(--ff-muted), .7)" }}>Your payout after commission</span>
+                      <strong style={{ fontSize:".95rem", color:"#ea6b14" }}>{pcMoney(payout)}</strong>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })()}
+
             <textarea value={rf.reason} rows={2} placeholder="Reason for the change (e.g. found a cracked pipe behind the wall)" onChange={e => setRf({ reason: e.target.value })} style={{ ...ffInp, resize:"vertical" as const }} />
             <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
               <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyJobId === job.id} onClick={() => requestRequote(job)}>{busyJobId === job.id ?"Sending…" : "Send revised estimate"}</button>

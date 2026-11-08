@@ -30,20 +30,50 @@ export function clearPlatformRates() { inflight = null; cached = null; }
 export async function getCommissionRate(): Promise<CommissionRate> {
   if (cached) return cached;
   if (inflight) return inflight;
-  inflight = (async (): Promise<CommissionRate> => {
-    try {
-      const { data, error } = await supabase.rpc("platform_commission_rate");
-      const n = Number(data);
-      // A value outside (0, 1) is not a rate. Refuse it rather than render a
-      // payout computed from nonsense — the caller shows nothing instead.
-      if (error || !Number.isFinite(n) || n <= 0 || n >= 1) { inflight = null; return { ok: false }; }
-      cached = { ok: true, rate: n };
-      inflight = null;
-      return cached;
-    } catch (_) {
-      inflight = null;
-      return { ok: false };
-    }
-  })();
+  inflight = read("platform_commission_rate", r => { cached = r; });
   return inflight;
+}
+
+// ---------------------------------------------------------------------------
+// The CLIENT-side service-fee rate — `platform_fee_rate()`, 0.03 today.
+//
+// Added 2026-11-07 for the contractor's price-change preview. The pro proposing
+// a new price has to be able to tell the client what the client will actually
+// be asked for, which is price + service fee, so the pro's screen needs the
+// same rate the client's does. Two surfaces (`ClientDashboard`, `MilestonePanel`)
+// still read this RPC inline with their own `useState(0.03)`; those default to
+// 0.03 before the read lands, which is fine for them because they only ever
+// render the client's own total. This reader refuses rather than guesses, for
+// the same reason `getCommissionRate` does — a wrong fee on a price change is
+// the number a dispute gets argued over.
+// ---------------------------------------------------------------------------
+let feeInflight: Promise<CommissionRate> | null = null;
+let feeCached: CommissionRate | null = null;
+
+/** Drop both cached rates. Only needed if a platform rate changes mid-session. */
+export function clearAllPlatformRates() { clearPlatformRates(); feeInflight = null; feeCached = null; }
+
+export async function getFeeRate(): Promise<CommissionRate> {
+  if (feeCached) return feeCached;
+  if (feeInflight) return feeInflight;
+  feeInflight = read("platform_fee_rate", r => { feeCached = r; });
+  return feeInflight;
+}
+
+/** Shared body: read an RPC that returns a rate, validate it, cache only success. */
+async function read(fn: string, store: (r: CommissionRate) => void): Promise<CommissionRate> {
+  try {
+    const { data, error } = await supabase.rpc(fn);
+    const n = Number(data);
+    // A value outside (0, 1) is not a rate. Refuse it rather than render a
+    // payout computed from nonsense — the caller shows nothing instead.
+    if (error || !Number.isFinite(n) || n <= 0 || n >= 1) return { ok: false };
+    const ok: CommissionRate = { ok: true, rate: n };
+    store(ok);
+    return ok;
+  } catch (_) {
+    return { ok: false };
+  } finally {
+    if (fn === "platform_commission_rate") inflight = null; else feeInflight = null;
+  }
 }

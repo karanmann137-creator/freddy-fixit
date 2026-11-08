@@ -1,4 +1,14 @@
-// Supabase Edge Function: send-notification  (v17)
+// Supabase Edge Function: send-notification  (v18)
+//
+// WHAT CHANGED IN v18 — `price_change` is suppressed. notify-email v16 finally
+// answers the notify_email('price_change') call that propose_price_change() has
+// been making all along (there was no such branch, so it returned `ignored` and
+// no price-change email had ever been sent). Now that a rich one exists — old
+// price, new price, the delta, the recalculated service fee, what it does to
+// the balance owed, and the reason the pro gave — this generic copy would be a
+// second, thinner email about the same event. Verified single-emitter before
+// suppressing, per the rule in CLAUDE.md: `price_change` is written by
+// public.propose_price_change() and by nothing else in the schema.
 //
 // WHAT CHANGED IN v17 — `referral_rewarded` gets a CTA override. It's a new
 // type with exactly one emitter (consume_referral_waiver, which inserts the
@@ -94,6 +104,10 @@ const EMAIL_HANDLED_ELSEWHERE = new Set([
   // offered a dashboard link, which is the step the first four clients
   // never got past.
   "bid_received",
+  // notify-email's price_change body carries the old price, the new price, the
+  // delta, the recalculated service fee and what it does to the balance owed.
+  // Single emitter: public.propose_price_change(), both branches.
+  "price_change",
 ]);
 
 const wrap = (inner: string) => `

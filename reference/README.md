@@ -20,6 +20,7 @@ turned up in every repo-wide grep and looked authoritative.
 | `marketing-brief.md` | Marketing brief | The task is marketing copy or positioning |
 | `milestone-escrow-spec.md` | Original milestone-escrow design | You need the *original intent* behind milestones — `docs/money.md` is what actually shipped |
 | `META-LEAD-SCOUT-ACTIVATION.docx` | Owner-facing activation steps (gitignored, binary) | The owner asks about Meta lead scout |
+| `JOB-SHAPES-AND-PRICE-CHANGE-SPEC.md` | 2026-11-07 proposal: 20 job shapes and their comms, mid-job price changes, multi-visit scheduling, material-invoice evidence, scale-based UI tiers, and an honest answer on payout speed. Audited against the live DB and then independently re-verified, so its "what exists today" half is accurate as of that date — **four of the six asks turned out to be already built and never exercised** | The task touches price changes after booking, multi-visit jobs, the contract's price clauses, or job-scale UI. §8 lists seven independent live gaps it found, including a held job with a pending price change having **no exit in any direction** |
 
 **Where a spec and the code disagree, the code and `docs/` win.** A spec describes what
 someone intended; it is not evidence of what exists. Before building anything a spec here

@@ -42,8 +42,30 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 INVARIANTS = {
     # The payment gate fails closed, so no ContractPanel means no job can ever
     # be paid for, with no error on any surface. This is the costliest entry.
-    "src/pages/ClientDashboard.tsx": ["<ContractPanel"],
-    "src/pages/ContractorDashboard.tsx": ["<ContractPanel", "STAGE_MATCH", "JobsCalendar"],
+    "src/pages/ClientDashboard.tsx": [
+        "<ContractPanel",
+        # 2026-11-07: the ONLY surface on the platform that can approve or
+        # decline a pending price change. adjust-payment and
+        # decline_price_change both need a real auth.uid(), so neither is
+        # reachable from a SQL session, an email or an artifact. Drop these and
+        # a held job with a pending change has no exit in ANY direction: the
+        # client cannot approve, cannot decline, confirm_job_completion blocks,
+        # auto_confirm_stale_jobs filters the job out, and run_reminders step 6
+        # keeps mailing the client about a decision they have no button for.
+        # Nothing throws, nothing renders red, and the pro never gets paid.
+        "approvePriceChange",
+        "declinePriceChange",
+    ],
+    "src/pages/ContractorDashboard.tsx": [
+        "<ContractPanel", "STAGE_MATCH", "JobsCalendar",
+        # 2026-11-07: the pro's only undo for a price change they proposed
+        # themselves. Without it the proposal sits 'pending' forever, the client
+        # keeps getting nudged about a figure the pro no longer wants, and the
+        # pro's only escape is to ask the client to "decline" them -- which
+        # records the wrong thing. Invisible: the RPC, the grant and the banner
+        # all keep existing.
+        "withdrawPriceChange",
+    ],
     "src/pages/AdminDashboard.tsx": [
         "<ContractPanel",
         # 2026-11-04: without this mount every admin_guard() RPC refuses with

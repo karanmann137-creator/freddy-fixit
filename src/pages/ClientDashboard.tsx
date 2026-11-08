@@ -44,6 +44,7 @@ import FileClaimModal, { type ClaimJob } from "@/components/FileClaimModal";
 import RequestHelpModal from "@/components/RequestHelpModal";
 import { jobCode } from "@/lib/jobCode";
 import { jobFullyFunded } from "@/lib/jobFunding";
+import { priceChangeMath, pcMoney, pcRateLabel } from "@/lib/priceChange";
 import { getDismissals, dismiss as dismissKey } from "@/lib/dismissals";
 import { searchTokens, matchesSearch } from "@/lib/dashSearch";
 import DashSearch from "@/components/DashSearch";
@@ -2696,22 +2697,127 @@ export default function ClientDashboard() {
 
                     {activeJob && activeJob.payment_status !== "disputed" && (
                       <div style={{ marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)" }}>
-                        {activeJob.price_change_pending && (
-                          <div {...anchor("ffc-price")} style={{ ...anchorPad, marginBottom:"1rem", padding:".9rem", borderRadius:"10px", background:"rgba(251,191,36,.08)", border:"1px solid rgba(251,191,36,.35)" }}>
-                            <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}><Ic name="alert-triangle" size={14} style={{ marginRight:4 }} />Your pro proposed a new price</div>
-                            <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .85)", lineHeight:1.5, marginBottom:".5rem" }}>
-                              {"Current: $" + Number(activeJob.amount ?? 0).toFixed(2) + "  \u2192  New: $" + Number(activeJob.price_change_pending.amount).toFixed(2)}
-                              {(() => { const d = Number(activeJob.price_change_pending.amount) - Number(activeJob.amount ?? 0); return d > 0.005 ? "  (you'll pay $" + d.toFixed(2) + " more)" : d < -0.005 ? "  (you'll be refunded $" + Math.abs(d).toFixed(2) + ")" : ""; })()}
+                        {/* THE PENDING PRICE CHANGE. Rebuilt 2026-11-07. The old version
+                            compressed the whole thing into one line -- "Current: $X ->
+                            New: $Y" plus a parenthetical delta -- and showed NO
+                            recalculated service fee, NO new total and NO new balance
+                            owed. So the client was asked to approve a charge whose size
+                            the screen never stated. Every number here now comes from
+                            `priceChangeMath`, which is the SAME module the `price_change`
+                            email renders from, so the inbox and the dashboard cannot
+                            disagree about what approving costs.
+
+                            The "what this means" box has FOUR branches because
+                            `adjust-payment` genuinely behaves four ways, and guessing
+                            wrong about which one applies is the dispute this panel exists
+                            to prevent:
+                              - increase on a FULLY funded job -> Stripe Checkout for the
+                                difference, NOW (the `mode:"topup"` redirect);
+                              - increase on a part-funded (deposit-paid) job -> nothing is
+                                collected now, the END balance rises instead;
+                              - reduction -> the excess is refunded across the charges;
+                              - no change -> a re-itemisation at the same total. */}
+                        {activeJob.price_change_pending && (() => {
+                          const pc = priceChangeMath(activeJob, feeRate, waivedForJob === activeJob.id);
+                          const pcReason = activeJob.price_change_pending.reason;
+                          if (!pc) return null;
+                          const paidInFull = jobFullyFunded(activeJob);
+                          const pcRow = (labelText: string, value: string, opts?: { strong?: boolean; color?: string; top?: boolean }) => (
+                            <div style={{
+                              display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:"1rem",
+                              padding:".5rem 0",
+                              ...(opts?.top ? { marginTop:".35rem", paddingTop:".7rem", borderTop:"1px solid rgba(var(--ff-fg), .14)" } : null),
+                            }}>
+                              <span style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.45 }}>{labelText}</span>
+                              <span style={{
+                                fontSize: opts?.strong ? ".98rem" : ".88rem",
+                                fontWeight: opts?.strong ? 700 : 600,
+                                color: opts?.color ?? "var(--ff-text)",
+                                whiteSpace:"nowrap" as const,
+                              }}>{value}</span>
                             </div>
-                            {activeJob.price_change_pending.reason && (
-                              <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.45, marginBottom:".6rem", fontStyle:"italic" as const }}>{"\u201c" + activeJob.price_change_pending.reason + "\u201d"}</div>
-                            )}
-                            <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
-                              <button style={s.primaryBtn} disabled={busyReq} onClick={approvePriceChange}>{busyReq ? "…" : (Number(activeJob.price_change_pending.amount) > Number(activeJob.amount ?? 0) + 0.005 ? "Approve & pay difference" : "Approve new price")}</button>
-                              <button style={s.btn} disabled={busyReq} onClick={declinePriceChange}>Decline</button>
+                          );
+                          return (
+                            <div {...anchor("ffc-price")} style={{ ...anchorPad, marginBottom:"1.25rem", padding:"1.15rem 1.15rem 1.25rem", borderRadius:"14px", background:"rgba(251,191,36,.07)", border:"1px solid rgba(251,191,36,.35)" }}>
+                              <div style={{ display:"flex", alignItems:"flex-start", gap:".6rem" }}>
+                                <Ic name="alert-triangle" size={16} color="var(--ff-warn)" style={{ marginTop:3, flexShrink:0 }} />
+                                <div>
+                                  <div style={{ fontSize:"1rem", fontWeight:700, color:"var(--ff-text)", lineHeight:1.3 }}>
+                                    {pc.isIncrease ? "Your pro proposed a higher price" : pc.isReduction ? "Your pro proposed a lower price" : "Your pro updated the price breakdown"}
+                                  </div>
+                                  <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.55, marginTop:".25rem" }}>
+                                    Nothing is charged at the new price until you approve it.
+                                  </div>
+                                </div>
+                              </div>
+
+                              {pcReason && (
+                                <div style={{ margin:"1.1rem 0 0", padding:".8rem .9rem", borderRadius:"10px", background:"rgba(234,107,20,.06)", borderLeft:"3px solid #ea6b14" }}>
+                                  <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".09em", fontWeight:700, color:"rgba(var(--ff-muted), .55)", marginBottom:".4rem" }}>Their reason</div>
+                                  <div style={{ fontSize:".86rem", color:"var(--ff-text)", lineHeight:1.6 }}>{"\u201c" + pcReason + "\u201d"}</div>
+                                </div>
+                              )}
+
+                              <div style={{ marginTop:"1.1rem", padding:".4rem .95rem .65rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .035)", border:"1px solid rgba(var(--ff-fg), .09)" }}>
+                                {pcRow("Price you agreed to", pcMoney(pc.oldPrice))}
+                                {(pc.isIncrease || pc.isReduction) && pcRow(
+                                  pc.isIncrease ? "Increase" : "Reduction",
+                                  (pc.isIncrease ? "+" : "\u2212") + pcMoney(Math.abs(pc.delta)),
+                                  { color: pc.isIncrease ? "#ea6b14" : "var(--ff-success)" },
+                                )}
+                                {pcRow("New job price", pcMoney(pc.newPrice))}
+                                {pc.rate > 0
+                                  ? pcRow("Service fee (" + pcRateLabel(pc.rate) + " of the job price)", pcMoney(pc.newFee))
+                                  : pcRow("Service fee", "Waived", { color:"var(--ff-success)" })}
+                                {pcRow("New total", pcMoney(pc.newTotal), { strong:true, color:"#ea6b14", top:true })}
+                              </div>
+
+                              <div style={{ marginTop:"1.1rem", padding:".9rem 1rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .035)", border:"1px solid rgba(var(--ff-fg), .09)" }}>
+                                <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".09em", fontWeight:700, color:"rgba(var(--ff-muted), .55)", marginBottom:".55rem" }}>
+                                  <Ic name="dollar" size={13} style={{ marginRight:5 }} />What this means for your payment
+                                </div>
+                                <div style={{ fontSize:".86rem", color:"rgba(var(--ff-muted), .85)", lineHeight:1.7 }}>
+                                  {pc.isIncrease && paidInFull && (<>
+                                    You have paid <strong style={{ color:"var(--ff-text)" }}>{pcMoney(pc.funded)}</strong>, which covers this job in full.
+                                    Approving takes you to a secure checkout for the <strong style={{ color:"var(--ff-text)" }}>{pcMoney(pc.balanceOwed)}</strong> difference.
+                                    What you have already paid is not re-collected and not recalculated.
+                                  </>)}
+                                  {pc.isIncrease && !paidInFull && (<>
+                                    You have paid <strong style={{ color:"var(--ff-text)" }}>{pcMoney(pc.funded)}</strong> so far, and that is not
+                                    re-collected or recalculated. <strong style={{ color:"var(--ff-text)" }}>Nothing is charged right now.</strong>{" "}
+                                    Approving raises what is due once the work is finished to <strong style={{ color:"var(--ff-text)" }}>{pcMoney(pc.balanceOwed)}</strong>.
+                                  </>)}
+                                  {pc.isReduction && (<>
+                                    You have paid <strong style={{ color:"var(--ff-text)" }}>{pcMoney(pc.funded)}</strong>.{" "}
+                                    {pc.funded - pc.newTotal > 0.005
+                                      ? <>Approving refunds <strong style={{ color:"var(--ff-success)" }}>{pcMoney(pc.funded - pc.newTotal)}</strong> to the card you paid with, usually within 5&ndash;10 business days.</>
+                                      : <>Approving lowers what is due once the work is finished to <strong style={{ color:"var(--ff-text)" }}>{pcMoney(pc.balanceOwed)}</strong>.</>}
+                                  </>)}
+                                  {!pc.isIncrease && !pc.isReduction && (<>
+                                    The total does not change &mdash; your pro has only re-itemised how the price breaks down.
+                                    You have paid <strong style={{ color:"var(--ff-text)" }}>{pcMoney(pc.funded)}</strong>, leaving <strong style={{ color:"var(--ff-text)" }}>{pcMoney(pc.balanceOwed)}</strong> due at the end.
+                                  </>)}
+                                </div>
+                                {activeJob.price_change_pending.subject === true && (
+                                  <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.6, marginTop:".7rem", paddingTop:".7rem", borderTop:"1px solid rgba(var(--ff-fg), .09)" }}>
+                                    Your pro marked this as subject to a closer look on site, so it could still move once they are into the work.
+                                  </div>
+                                )}
+                              </div>
+
+                              <div style={{ display:"flex", gap:".65rem", flexWrap:"wrap" as const, marginTop:"1.2rem" }}>
+                                <button style={s.primaryBtn} disabled={busyReq} onClick={approvePriceChange}>
+                                  {busyReq ? "\u2026" : (pc.isIncrease && paidInFull ? "Approve & pay " + pcMoney(pc.balanceOwed) : pc.isIncrease ? "Approve the new price" : pc.isReduction ? "Approve the lower price" : "Approve the update")}
+                                </button>
+                                <button style={s.btn} disabled={busyReq} onClick={declinePriceChange}>Decline</button>
+                              </div>
+                              <div style={{ fontSize:".79rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.65, marginTop:".85rem" }}>
+                                You do not have to accept it. Declining keeps the price you agreed to at <strong style={{ color:"rgba(var(--ff-muted), .85)" }}>{pcMoney(pc.oldPrice)}</strong>{" "}
+                                &mdash; talk it through in the messages on this job first, so what you agree stays on the record.
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          );
+                        })()}
                         {activeJob.status === "assigned" && activeJob.client_rescheduled_at && !activeJob.reschedule_accepted_at && (
                           <div>
                             <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}><Ic name="clock" size={14} style={{ marginRight:4 }} />Waiting for your pro to accept the new time</div>
@@ -2720,19 +2826,71 @@ export default function ClientDashboard() {
                         )}
                         {activeJob.status === "assigned" && activeJob.schedule_proposed_at && !activeJob.client_approved_at && !(activeJob.client_rescheduled_at && !activeJob.reschedule_accepted_at) && (
                           <div {...anchor("ffc-sched")} style={anchorPad}>
-                            {activeJob.price_hike_from != null && Number(activeJob.amount ?? 0) > Number(activeJob.price_hike_from) + 0.005 && (
-                              <div {...anchor("ffc-hike")} style={{ ...anchorPad, marginBottom:"1rem", padding:".9rem", borderRadius:"10px", background:"rgba(239,68,68,.09)", border:"1px solid rgba(239,68,68,.4)" }}>
-                                <div style={{ fontSize:".9rem", fontWeight:700, color:"#ef4444", marginBottom:".4rem" }}><Ic name="alert-triangle" size={14} style={{ marginRight:5 }} />Your pro raised the price</div>
-                                <div style={{ fontSize:".85rem", color:"var(--ff-text)", lineHeight:1.5, marginBottom:".45rem" }}>
-                                  You picked this contractor at <strong>{"$" + Number(activeJob.price_hike_from).toFixed(2)}</strong>. They now want <strong>{"$" + Number(activeJob.amount ?? 0).toFixed(2)}</strong> — that's <strong>{"$" + (Number(activeJob.amount ?? 0) - Number(activeJob.price_hike_from)).toFixed(2)}</strong> more.
+                            {/* PRE-WORK PRICE HIKE. This is the OTHER branch of
+                                `propose_price_change()`: on an unpaid job the new price is
+                                applied immediately and `client_approved_at` is cleared, so
+                                the old price survives only in `price_hike_from`. Same
+                                `priceChangeMath` module as the held-job panel above -- the
+                                two branches read different columns and that mapping lives
+                                in ONE place, not here. Nothing has been charged at this
+                                stage, so `funded` is 0 and there is no balance language.
+
+                                It gained the same fee/total breakdown as the held panel on
+                                2026-11-07 because it had the same hole: it stated the two
+                                prices and the delta, and never the service fee the client
+                                would actually be charged on top of the new price. */}
+                            {activeJob.price_hike_from != null && Number(activeJob.amount ?? 0) > Number(activeJob.price_hike_from) + 0.005 && (() => {
+                              const hk = priceChangeMath(activeJob, feeRate, waivedForJob === activeJob.id);
+                              if (!hk) return null;
+                              const hkRow = (labelText: string, value: string, opts?: { strong?: boolean; color?: string; top?: boolean }) => (
+                                <div style={{
+                                  display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:"1rem",
+                                  padding:".45rem 0",
+                                  ...(opts?.top ? { marginTop:".3rem", paddingTop:".65rem", borderTop:"1px solid rgba(var(--ff-fg), .14)" } : null),
+                                }}>
+                                  <span style={{ fontSize:".83rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.45 }}>{labelText}</span>
+                                  <span style={{ fontSize: opts?.strong ? ".96rem" : ".87rem", fontWeight: opts?.strong ? 700 : 600, color: opts?.color ?? "var(--ff-text)", whiteSpace:"nowrap" as const }}>{value}</span>
                                 </div>
-                                {activeJob.price_hike_reason && (
-                                  <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.45, marginBottom:".7rem", fontStyle:"italic" as const }}>{"\u201c" + activeJob.price_hike_reason + "\u201d"}</div>
-                                )}
-                                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5, marginBottom:".7rem" }}>You don't have to accept it. Approve the new price below, or decline and let the other pros who bid win your job.</div>
-                                <button style={{ ...s.primaryBtn, background:"#ef4444", color:"#fff" }} disabled={busyReq} onClick={declineReopen}>{busyReq ? "\u2026" : "Decline & re-open to other pros"}</button>
-                              </div>
-                            )}
+                              );
+                              return (
+                                <div {...anchor("ffc-hike")} style={{ ...anchorPad, marginBottom:"1.5rem", padding:"1.15rem 1.15rem 1.25rem", borderRadius:"14px", background:"rgba(239,68,68,.08)", border:"1px solid rgba(239,68,68,.4)" }}>
+                                  <div style={{ display:"flex", alignItems:"flex-start", gap:".6rem" }}>
+                                    <Ic name="alert-triangle" size={16} color="#ef4444" style={{ marginTop:3, flexShrink:0 }} />
+                                    <div>
+                                      <div style={{ fontSize:"1rem", fontWeight:700, color:"#ef4444", lineHeight:1.3 }}>Your pro raised the price</div>
+                                      <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.55, marginTop:".25rem" }}>
+                                        This is more than the estimate you picked them on. Nothing has been charged.
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {activeJob.price_hike_reason && (
+                                    <div style={{ margin:"1.1rem 0 0", padding:".8rem .9rem", borderRadius:"10px", background:"rgba(239,68,68,.07)", borderLeft:"3px solid #ef4444" }}>
+                                      <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".09em", fontWeight:700, color:"rgba(var(--ff-muted), .55)", marginBottom:".4rem" }}>Their reason</div>
+                                      <div style={{ fontSize:".86rem", color:"var(--ff-text)", lineHeight:1.6 }}>{"“" + activeJob.price_hike_reason + "”"}</div>
+                                    </div>
+                                  )}
+
+                                  <div style={{ marginTop:"1.1rem", padding:".4rem .95rem .65rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .035)", border:"1px solid rgba(var(--ff-fg), .09)" }}>
+                                    {hkRow("The estimate you picked", pcMoney(hk.oldPrice))}
+                                    {hkRow("Increase", "+" + pcMoney(hk.delta), { color:"#ef4444" })}
+                                    {hkRow("New job price", pcMoney(hk.newPrice))}
+                                    {hk.rate > 0
+                                      ? hkRow("Service fee (" + pcRateLabel(hk.rate) + " of the job price)", pcMoney(hk.newFee))
+                                      : hkRow("Service fee", "Waived", { color:"var(--ff-success)" })}
+                                    {hkRow("New total", pcMoney(hk.newTotal), { strong:true, color:"#ef4444", top:true })}
+                                  </div>
+
+                                  <div style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.7, marginTop:"1.1rem" }}>
+                                    You do not have to accept it. Approve the time and the new price below, or decline and let the other pros who bid
+                                    win your job instead &mdash; you keep your request and their estimates, and you do not start over.
+                                  </div>
+                                  <div style={{ marginTop:"1.1rem" }}>
+                                    <button style={{ ...s.primaryBtn, background:"#ef4444", color:"#fff" }} disabled={busyReq} onClick={declineReopen}>{busyReq ? "…" : "Decline & re-open to other pros"}</button>
+                                  </div>
+                                </div>
+                              );
+                            })()}
                             <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".4rem" }}>Your contractor proposed a time &amp; price</div>
                             <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .8)", marginBottom:".5rem" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />{activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "—"}{activeJob.amount ? " · $" + activeJob.amount : ""}</div>
                             <QuoteBreakdownView row={activeJob} assumptionsKey="quote_assumptions" />
