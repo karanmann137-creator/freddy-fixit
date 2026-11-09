@@ -61,21 +61,21 @@ const label: React.CSSProperties = {
 };
 const input: React.CSSProperties = {
   width: "100%", padding: ".55rem .7rem", borderRadius: "8px",
-  border: "1px solid rgba(var(--ff-fg), .18)", background: "rgba(var(--ff-fg), .03)",
+  border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .18)", background: "rgba(var(--ff-fg), .03)",
   color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".9rem", boxSizing: "border-box",
 };
 const primary: React.CSSProperties = {
-  padding: ".6rem 1.2rem", borderRadius: "9px", border: "none", background: "#ea6b14",
+  padding: ".6rem 1.2rem", borderRadius: "9px", border: "none", background: "var(--ff-c10)",
   color: "#fff", fontFamily: "inherit", fontSize: ".85rem", fontWeight: 600, cursor: "pointer",
 };
 const linkBtn: React.CSSProperties = {
-  background: "none", border: "none", padding: 0, color: "#ea6b14",
+  background: "none", border: "none", padding: 0, color: "var(--ff-c10)",
   fontFamily: "inherit", fontSize: ".8rem", cursor: "pointer", textDecoration: "underline",
 };
 const ghostBtn: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 6,
   padding: ".45rem .75rem", borderRadius: "8px",
-  border: "1px solid rgba(var(--ff-fg), .18)", background: "rgba(var(--ff-fg), .04)",
+  border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .18)", background: "rgba(var(--ff-fg), .04)",
   color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".8rem", cursor: "pointer",
 };
 
@@ -276,7 +276,7 @@ export default function ConfirmAddress({ job, onConfirmed, highlight }: Props) {
     return (
       <div {...anchor} style={{ ...card, background: "rgba(34,197,94,.07)", border: "1px solid rgba(34,197,94,.25)" }}>
         <div style={label}><Ic name="map-pin" size={13} />Service address</div>
-        <div style={{ fontSize: ".92rem", color: "var(--ff-text)", lineHeight: 1.5, marginBottom: ".45rem" }}>{current}</div>
+        <div style={{ fontSize: ".92rem", color: "var(--ff-text)", lineHeight: 1.5, marginBottom: "var(--ff-s2)" }}>{current}</div>
         <div style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .6)", lineHeight: 1.5 }}>
           Only your pro can see this. <button style={linkBtn} onClick={() => { setAddr(current); setEditing(true); setErr(null); setLocNote(null); }}>Change the address</button>
         </div>
@@ -286,8 +286,8 @@ export default function ConfirmAddress({ job, onConfirmed, highlight }: Props) {
 
   // ---- Needs confirming (or being changed) --------------------------------
   return (
-    <div {...anchor} style={{ ...card, background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.32)" }}>
-      <div style={{ ...label, color: "#ea6b14" }}><Ic name="map-pin" size={13} />{current ? "Change the service address" : "Confirm your address"}</div>
+    <div {...anchor} style={{ ...card, background: "rgba(var(--ff-accent-rgb), .08)", border: "1px solid rgba(var(--ff-accent-rgb), .32)" }}>
+      <div style={{ ...label, color: "var(--ff-c10)" }}><Ic name="map-pin" size={13} />{current ? "Change the service address" : "Confirm your address"}</div>
       <p style={{ fontSize: ".84rem", lineHeight: 1.6, color: "var(--ff-ink-2)", margin: "0 0 .75rem" }}>
         {current
           ? "Update where your pro should go. They'll see the change straight away."
@@ -300,7 +300,7 @@ export default function ConfirmAddress({ job, onConfirmed, highlight }: Props) {
           <div style={{ display: "flex", flexWrap: "wrap", gap: ".4rem" }}>
             {saved.map(r => (
               <button key={r.id} disabled={busy} onClick={() => void save(r.address)}
-                style={{ padding: ".45rem .7rem", borderRadius: "8px", border: "1px solid rgba(var(--ff-fg), .16)",
+                style={{ padding: ".45rem .7rem", borderRadius: "8px", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .16)",
                   background: "rgba(var(--ff-fg), .05)", color: "var(--ff-text)", fontFamily: "inherit",
                   fontSize: ".8rem", cursor: busy ? "default" : "pointer", opacity: busy ? .6 : 1, textAlign: "left" as const }}>
                 {r.address}

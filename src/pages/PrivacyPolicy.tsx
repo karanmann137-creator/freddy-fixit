@@ -1,14 +1,23 @@
+import { PageTitle } from "../components/ui";
+
 export default function PrivacyPolicy() {
   return (
     <div style={{ fontFamily:"'DM Sans',sans-serif", background:"var(--ff-bg)", color:"var(--ff-text)", minHeight:"100vh", padding:"6rem clamp(1rem, 4vw, 1.5rem) 4rem" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
       {/* table cells: overflow-wrap + tighter padding on a phone, so the 3-column
           service-provider table stays readable instead of pushing the page wide. */}
-      <style>{"h1,h2{font-family:var(--ff-font-display);font-weight:var(--ff-display-wght);letter-spacing:-.015em} h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em} h2{color:#ea6b14} p,li{line-height:1.8;color:rgba(var(--ff-muted), .85);font-weight:300} strong{color:var(--ff-text);font-weight:500} a{color:#ea6b14;overflow-wrap:anywhere} ul,ol{padding-left:1.5rem;margin:.5rem 0} li{margin:.3rem 0} table{width:100%;max-width:100%;border-collapse:collapse;margin:1rem 0;table-layout:fixed} td,th{padding:.6rem 1rem;border:1px solid rgba(var(--ff-fg), .1);font-size:.85rem;color:rgba(var(--ff-muted), .8);text-align:left;overflow-wrap:anywhere} th{color:var(--ff-text);background:rgba(var(--ff-fg), .04)} @media(max-width:600px){td,th{padding:.45rem .5rem;font-size:.78rem}}"}</style>
-      <div style={{ maxWidth:"800px", margin:"0 auto" }}>
+      <style>{"h1,h2{font-family:var(--ff-font-display);font-weight:var(--ff-display-wght);letter-spacing:-.015em} h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em} h2{color:var(--ff-c10)} p,li{line-height:1.8;color:rgba(var(--ff-muted), .85);font-weight:300} strong{color:var(--ff-text);font-weight:500} a{color:var(--ff-c10);overflow-wrap:anywhere} ul,ol{padding-left:1.5rem;margin:.5rem 0} li{margin:.3rem 0} table{width:100%;max-width:100%;border-collapse:collapse;margin:1rem 0;table-layout:fixed} td,th{padding:.6rem 1rem;border:var(--ff-hair-w) solid rgba(var(--ff-fg), .1);font-size:.85rem;color:rgba(var(--ff-muted), .8);text-align:left;overflow-wrap:anywhere} th{color:var(--ff-text);background:rgba(var(--ff-fg), .04)} @media(max-width:600px){td,th{padding:.45rem .5rem;font-size:.78rem}}"}</style>
+      {/* --ffu-ptitle-w tracks this column, not the sheet's 860px default. */}
+      <div style={{ maxWidth:"800px", margin:"0 auto", ["--ffu-ptitle-w" as any]:"800px" }}>
 
-        <h1 style={{ fontSize:"clamp(2.5rem,6vw,4rem)", color:"var(--ff-text)", marginBottom:".5rem" }}>Privacy Policy</h1>
-        <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)", marginBottom:"3rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 4, 2026 &nbsp;·&nbsp; Last Updated: August 25, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
+        {/* One h1, so no handoff: PageTitle's successor test finds nothing after
+            this and the bar simply stays for the whole scroll. The reason it is
+            worth having here is the same as on the User Agreement — 23 numbered
+            h2s and a scroll long enough that "what am I reading" stops being
+            obvious — minus the wrong-answer hazard. */}
+        <PageTitle title="Privacy Policy" style={{ marginBottom:"3rem" }}>
+          <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)", margin:0, textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 4, 2026 &nbsp;·&nbsp; Last Updated: August 25, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
+        </PageTitle>
 
         <section style={{ marginBottom:"2.5rem" }}>
           <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>1. Introduction</h2>
@@ -220,7 +229,7 @@ export default function PrivacyPolicy() {
           <p>We will acknowledge receipt of your inquiry within <strong>5 business days</strong> and will provide a substantive response within <strong>30 days</strong>. If you are not satisfied with our response, you may contact the <strong>Office of the Information and Privacy Commissioner of Alberta</strong> at <a href="https://www.oipc.ab.ca" target="_blank" rel="noopener noreferrer">www.oipc.ab.ca</a>.</p>
         </section>
 
-        <div style={{ borderTop:"1px solid rgba(var(--ff-fg), .08)", paddingTop:"2rem", marginTop:"2rem", textAlign:"center" }}>
+        <div style={{ borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", paddingTop:"2rem", marginTop:"2rem", textAlign:"center" }}>
           <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .3)" }}>
             &copy; {new Date().getFullYear()} Freddy FixIt Contractors Inc. &nbsp;·&nbsp;
             <a href="/user-agreement" style={{ color:"rgba(var(--ff-muted), .4)" }}>User Agreement</a> &nbsp;·&nbsp;

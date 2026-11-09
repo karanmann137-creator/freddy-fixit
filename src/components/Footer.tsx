@@ -41,9 +41,9 @@ function NewsletterSignup() {
       style={{
         flex: 1, padding: ".45rem .6rem", borderRadius: "6px", fontSize: ".75rem", fontWeight: 600, cursor: "pointer",
         fontFamily: "'DM Sans', sans-serif",
-        background: audience === v ? "rgba(234,107,20,.15)" : "transparent",
-        border: audience === v ? "1px solid rgba(234,107,20,.5)" : "1px solid rgba(var(--ff-fg), .12)",
-        color: audience === v ? "#ea6b14" : "rgba(var(--ff-muted), .5)",
+        background: audience === v ? "rgba(var(--ff-accent-rgb), .15)" : "transparent",
+        border: audience === v ? "1px solid rgba(var(--ff-accent-rgb), .5)" : "1px solid rgba(var(--ff-fg), .12)",
+        color: audience === v ? "var(--ff-c10)" : "rgba(var(--ff-muted), .5)",
       }}
     >
       {label}
@@ -51,8 +51,8 @@ function NewsletterSignup() {
   );
 
   return (
-    <div style={{ maxWidth: "440px", margin: "0 auto 1.5rem", padding: "1rem 1.1rem", background: "rgba(var(--ff-fg), .03)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: "10px", textAlign: "left" }}>
-      <div style={{ fontSize: ".85rem", fontWeight: 600, color: "rgba(var(--ff-muted), .75)", marginBottom: ".2rem" }}>
+    <div style={{ maxWidth: "440px", margin: "0 auto 1.5rem", padding: "1rem 1.1rem", background: "rgba(var(--ff-fg), .03)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: "10px", textAlign: "left" }}>
+      <div style={{ fontSize: ".85rem", fontWeight: 600, color: "rgba(var(--ff-muted), .75)", marginBottom: "var(--ff-s1)" }}>
         Free weekly Calgary tips 🛠️
       </div>
       <div style={{ fontSize: ".72rem", color: "rgba(var(--ff-muted), .45)", lineHeight: 1.55, marginBottom: ".65rem" }}>
@@ -70,19 +70,19 @@ function NewsletterSignup() {
           onKeyDown={e => { if (e.key === "Enter") submit(); }}
           placeholder="you@email.com"
           autoComplete="email"
-          style={{ flex: 1, minWidth: 0, padding: ".55rem .7rem", borderRadius: "6px", border: "1px solid rgba(var(--ff-fg), .14)", background: "rgba(var(--ff-fg), .04)", color: "var(--ff-text)", fontSize: ".82rem", fontFamily: "'DM Sans', sans-serif", outline: "none" }}
+          style={{ flex: 1, minWidth: 0, padding: ".55rem .7rem", borderRadius: "6px", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .14)", background: "rgba(var(--ff-fg), .04)", color: "var(--ff-text)", fontSize: ".82rem", fontFamily: "'DM Sans', sans-serif" }}
         />
         <button
           type="button"
           onClick={submit}
           disabled={state === "busy"}
-          style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: "6px", padding: ".55rem .9rem", fontSize: ".8rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", opacity: state === "busy" ? 0.6 : 1, whiteSpace: "nowrap" }}
+          style={{ background: "var(--ff-c10)", color: "#fff", border: "none", borderRadius: "6px", padding: ".55rem .9rem", fontSize: ".8rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", opacity: state === "busy" ? 0.6 : 1, whiteSpace: "nowrap" }}
         >
           {state === "busy" ? "…" : "Sign up"}
         </button>
       </div>
       {state === "err" && (
-        <div style={{ fontSize: ".72rem", color: "var(--ff-danger)", marginTop: ".45rem" }}>
+        <div style={{ fontSize: ".72rem", color: "var(--ff-danger)", marginTop: "var(--ff-s2)" }}>
           Please enter a valid email address and try again.
         </div>
       )}
@@ -98,7 +98,7 @@ export default function Footer() {
   const onOnboarding = ["/client-onboarding", "/contractor-onboarding"].some(p => loc === p || loc.startsWith(p + "/"));
   const bar: React.CSSProperties = {
     background: "var(--ff-surface-2)",
-    borderTop: "1px solid rgba(var(--ff-fg), 0.06)",
+    borderTop: "var(--ff-hair-w) solid rgba(var(--ff-fg), 0.06)",
     padding: "2rem 1.5rem",
     textAlign: "center",
     fontSize: "0.75rem",
@@ -118,13 +118,13 @@ export default function Footer() {
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       {!onOnboarding && <NewsletterSignup />}
       <div style={{ fontSize: "1rem", fontWeight: 500, color: "rgba(var(--ff-muted), 0.6)", marginBottom: "0.5rem", display: "flex", flexWrap: "wrap", gap: ".2rem .55rem", justifyContent: "center", alignItems: "center" }}>
-        <a href="tel:+18255618331" style={{ color: "#ea6b14", textDecoration: "none" }}>Call (825) 561-8331</a>
+        <a href="tel:+18255618331" style={{ color: "var(--ff-c10)", textDecoration: "none" }}>Call (825) 561-8331</a>
         <span style={{ color: "rgba(var(--ff-muted), 0.35)" }}>·</span>
-        <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("ff:open-chat"))} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#ea6b14", fontFamily: "inherit", fontSize: "1rem", fontWeight: 500 }}>Chat with us</button>
+        <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("ff:open-chat"))} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--ff-c10)", fontFamily: "inherit", fontSize: "1rem", fontWeight: 500 }}>Chat with us</button>
         <span style={{ color: "rgba(var(--ff-muted), 0.35)" }}>·</span>
-        <a href="mailto:hello@freddyfixit.ca" style={{ color: "#ea6b14", textDecoration: "none" }}>hello@freddyfixit.ca</a>
+        <a href="mailto:hello@freddyfixit.ca" style={{ color: "var(--ff-c10)", textDecoration: "none" }}>hello@freddyfixit.ca</a>
         <span style={{ color: "rgba(var(--ff-muted), 0.35)" }}>·</span>
-        <a href={"mailto:hello@freddyfixit.ca?subject=" + encodeURIComponent("🐞 Bug report — Freddy Fix It")} style={{ color: "#ea6b14", textDecoration: "none" }}>Report a bug</a>
+        <a href={"mailto:hello@freddyfixit.ca?subject=" + encodeURIComponent("🐞 Bug report — Freddy Fix It")} style={{ color: "var(--ff-c10)", textDecoration: "none" }}>Report a bug</a>
       </div>
       <div style={{ fontSize: ".72rem", color: "rgba(var(--ff-muted), 0.4)", marginBottom: "0.75rem" }}>Questions before you book? Call, chat or email — no signup needed.</div>
       <div>Home Repairs · Vehicle Maintenance · Trusted Tradespeople</div>

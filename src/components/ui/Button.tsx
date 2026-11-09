@@ -3,12 +3,32 @@ import { cx } from "./uiStyles";
 
 /**
  * ── The press ───────────────────────────────────────────────────────────
- * scale(0.97), and ASYMMETRIC: .16s on the way back up, .1s on the way down.
- * That asymmetry is the whole feel — a symmetric press reads as mushy. It
- * matches the three existing `.ffdash` copies in AdminDashboard,
- * ClientDashboard and ContractorDashboard, which CLAUDE.md requires to stay
- * byte-identical to each other. The point of this component is that there is
- * eventually ONE copy instead of four.
+ * scale(0.97), and ASYMMETRIC — a symmetric press reads as mushy. The numbers
+ * are NOT here, on purpose: they live in uiStyles.ts with the rule that
+ * implements them (.ffu-btn at :401, and the long argument at :377-399 for why
+ * the downstroke overrides the timing function). Read them there.
+ *
+ * ⚠️ This docblock used to restate them as ".16s up, .1s down" and was STALE —
+ * the release moved to .34s var(--ff-ease-spring) on 2026-11-08 and nothing
+ * pointed the comment at it. That is the general hazard with a number copied
+ * into prose beside the code it describes: it reads as authoritative, it is
+ * checked by nothing, and the next person trusts it over the stylesheet. A
+ * comment near a value should say WHERE the value lives, not what it is.
+ *
+ * ⚠️ AND THE PRESS HAS NOW DIVERGED FROM THE DASHBOARDS. The three `.ffdash`
+ * copies in AdminDashboard, ClientDashboard and ContractorDashboard are still
+ * the original `transform .16s var(--ff-ease-out)` with `.1s` on :active —
+ * byte-identical to each other, as CLAUDE.md requires, but no longer the same
+ * feel as this component. The spring went onto the primitive only.
+ *
+ * That is a state to resolve, not to leave: the goal was always ONE copy
+ * instead of four, and a button that settles differently depending on whether
+ * it came from here or from the page's own sheet is the thing a shared
+ * primitive exists to prevent. Resolving it means deciding whether the spring
+ * is right for a dashboard — where presses are frequent and utilitarian, and
+ * an overshoot met fifty times a session is a different proposition from one
+ * met on a landing page. Do not "sync" the three sheets to the spring without
+ * answering that; and if the answer is yes, all three move in one edit.
  *
  * ── `loading` and why it does not just set disabled ─────────────────────
  * A disabled button with no spinner is indistinguishable from a broken one, so

@@ -67,12 +67,12 @@ export default function JobDescription({
           style={{
             background: "none", border: "none", padding: ".5rem 0", marginTop: ".1rem",
             minHeight: 44, cursor: "pointer", fontFamily: "'DM Sans',sans-serif",
-            fontSize: ".8rem", fontWeight: 600, color: "#ea6b14",
-            display: "inline-flex", alignItems: "center", gap: ".25rem",
+            fontSize: ".8rem", fontWeight: 600, color: "var(--ff-c10)",
+            display: "inline-flex", alignItems: "center", gap: "var(--ff-s1)",
           }}
         >
           {open ? "Show less" : "Read more"}
-          <Ic name={open ? "chevron-up" : "chevron-down"} size={13} color="#ea6b14" />
+          <Ic name={open ? "chevron-up" : "chevron-down"} size={13} color="var(--ff-c10)" />
         </button>
       )}
     </div>

@@ -216,5 +216,5 @@ export function gradeBlurb(g: Grade | null, kind: "budget" | "pro"): string {
 
 // A+ is good news in both directions, so the colour maps to the grade itself.
 export function gradeColor(g: Grade | null): string {
-  return g === "A+" ? "#22c55e" : g === "A" ? "#ea6b14" : "#f59e0b";
+  return g === "A+" ? "#22c55e" : g === "A" ? "var(--ff-c10)" : "#f59e0b";
 }

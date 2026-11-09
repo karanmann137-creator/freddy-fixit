@@ -141,7 +141,13 @@ const POPULAR: { label: string; slug: string }[] = [
   { label: "Snow Removal", slug: "snow-removal" },
 ];
 
-const ORANGE = "#ea6b14";
+// A token, not a hex, as of 2026-11-08 — and the reason it could not be one
+// before was `Ic`, not this constant. Every use site here is either a CSS
+// `color:` declaration or Ic's `color` prop, and Ic now turns that prop into a
+// real CSS declaration instead of an SVG stroke attribute. Its two siblings
+// below were already tokens, so the literal was the odd one out: it rendered
+// the DARK-mode orange on the light-mode ground at all twelve sites.
+const ORANGE = "var(--ff-c10)";
 const TEXT = "var(--ff-text)";
 const MUTED = "rgba(var(--ff-muted), .82)";
 
@@ -224,13 +230,13 @@ export default function AreaLanding() {
   return (
     <div style={{ fontFamily: "'DM Sans',sans-serif", background: "var(--ff-bg)", color: TEXT, minHeight: "100vh", padding: "6rem clamp(1rem, 4vw, 1.5rem) 5rem" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-      <style>{"h1,h2{font-family:var(--ff-font-display);font-weight:var(--ff-display-wght);letter-spacing:-.015em} h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.05em} .al-btn{background:#ea6b14;color:#fff;border:none;padding:.85rem 1.6rem;border-radius:8px;font-size:1.02rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:transform .15s,box-shadow .15s} .al-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(234,107,20,.32)} .al-link{color:#ea6b14;text-decoration:none} .al-link:hover{text-decoration:underline} .al-card{background:var(--ff-surface);border:1px solid rgba(var(--ff-fg), .07);border-radius:12px;padding:1.1rem 1.2rem}"}</style>
+      <style>{"h1,h2{font-family:var(--ff-font-display);font-weight:var(--ff-display-wght);letter-spacing:-.015em} h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.05em} .al-btn{background:var(--ff-c10);color:#fff;border:none;padding:.85rem 1.6rem;border-radius:8px;font-size:1.02rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:transform .15s,box-shadow .15s} .al-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(var(--ff-accent-rgb), .32)} .al-link{color:var(--ff-c10);text-decoration:none} .al-link:hover{text-decoration:underline} .al-card{background:var(--ff-surface);border:var(--ff-hair-w) solid rgba(var(--ff-fg), .07);border-radius:12px;padding:1.1rem 1.2rem}"}</style>
 
       <div style={{ maxWidth: 820, margin: "0 auto" }}>
-        <button onClick={() => setLocation("/areas")} style={{ background: "transparent", border: "1px solid rgba(var(--ff-fg), .12)", color: "rgba(var(--ff-muted), .6)", padding: ".4rem .9rem", borderRadius: 6, cursor: "pointer", fontSize: ".82rem", fontFamily: "'DM Sans',sans-serif" }}>← All service areas</button>
+        <button onClick={() => setLocation("/areas")} style={{ background: "transparent", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", color: "rgba(var(--ff-muted), .6)", padding: ".4rem .9rem", borderRadius: 6, cursor: "pointer", fontSize: ".82rem", fontFamily: "'DM Sans',sans-serif" }}>← All service areas</button>
 
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginTop: "1.4rem" }}>
-          <div style={{ width: 56, height: 56, borderRadius: 14, background: "rgba(234,107,20,.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <div style={{ width: 56, height: 56, borderRadius: 14, background: "rgba(var(--ff-accent-rgb), .12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Ic name="map-pin" size={30} color={ORANGE} />
           </div>
           <h1 style={{ fontSize: "2.4rem", margin: 0, lineHeight: 1.05 }}>{area.h1}</h1>
@@ -250,7 +256,7 @@ export default function AreaLanding() {
             { icon: "dollar", t: "Payment held until you confirm" },
             { icon: "map-pin", t: "Local to " + area.name },
           ].map((b) => (
-            <div key={b.t} style={{ display: "flex", alignItems: "center", gap: ".45rem", background: "var(--ff-surface)", border: "1px solid rgba(var(--ff-fg), .07)", borderRadius: 999, padding: ".4rem .9rem", fontSize: ".86rem", color: MUTED }}>
+            <div key={b.t} style={{ display: "flex", alignItems: "center", gap: "var(--ff-s2)", background: "var(--ff-surface)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .07)", borderRadius: 999, padding: ".4rem .9rem", fontSize: ".86rem", color: MUTED }}>
               <Ic name={b.icon as any} size={15} color={ORANGE} />{b.t}
             </div>
           ))}
@@ -259,7 +265,7 @@ export default function AreaLanding() {
         <h2 style={{ color: ORANGE, fontSize: "1.5rem", marginBottom: "1rem" }}>Popular services in {area.name}</h2>
         <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap", marginBottom: "2.6rem" }}>
           {POPULAR.map((s) => (
-            <a key={s.slug} className="al-link" href={"/services/" + s.slug} style={{ background: "var(--ff-surface)", border: "1px solid rgba(var(--ff-fg), .07)", borderRadius: 999, padding: ".4rem .9rem", fontSize: ".88rem" }}>{s.label}</a>
+            <a key={s.slug} className="al-link" href={"/services/" + s.slug} style={{ background: "var(--ff-surface)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .07)", borderRadius: 999, padding: ".4rem .9rem", fontSize: ".88rem" }}>{s.label}</a>
           ))}
         </div>
 
@@ -297,7 +303,7 @@ export default function AreaLanding() {
           ))}
         </div>
 
-        <div style={{ background: "linear-gradient(135deg,rgba(234,107,20,.16),rgba(234,107,20,.04))", border: "1px solid rgba(234,107,20,.25)", borderRadius: 16, padding: "1.8rem", textAlign: "center" }}>
+        <div style={{ background: "linear-gradient(135deg,rgba(var(--ff-accent-rgb), .16),rgba(var(--ff-accent-rgb), .04))", border: "1px solid rgba(var(--ff-accent-rgb), .25)", borderRadius: 16, padding: "var(--ff-s8)", textAlign: "center" }}>
           <h2 style={{ fontSize: "1.7rem", marginBottom: ".5rem" }}>Ready to get started in {area.name}?</h2>
           <p style={{ color: MUTED, fontWeight: 300, marginBottom: "1.2rem" }}>Post your job free and get up to 5 written estimates from vetted local pros.</p>
           <button className="al-btn" onClick={book}>Get my free estimates →</button>
@@ -330,7 +336,7 @@ export function AreasIndex() {
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(220px, 100%), 1fr))", gap: ".8rem", marginBottom: "2.4rem" }}>
       {slugs.map((s) => (
         <a key={s} href={"/areas/" + s} onClick={(e) => { e.preventDefault(); setLocation("/areas/" + s); }}
-          style={{ display: "flex", alignItems: "center", gap: ".7rem", background: "var(--ff-surface)", border: "1px solid rgba(var(--ff-fg), .07)", borderRadius: 12, padding: "1rem 1.15rem", textDecoration: "none", color: "var(--ff-text)" }}>
+          style={{ display: "flex", alignItems: "center", gap: "var(--ff-s3)", background: "var(--ff-surface)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .07)", borderRadius: 12, padding: "1rem 1.15rem", textDecoration: "none", color: "var(--ff-text)" }}>
           <Ic name="map-pin" size={20} color={ORANGE} />
           <span style={{ fontWeight: 600 }}>{AREAS[s].name}</span>
         </a>
@@ -341,7 +347,7 @@ export function AreasIndex() {
   return (
     <div style={{ fontFamily: "'DM Sans',sans-serif", background: "var(--ff-bg)", color: TEXT, minHeight: "100vh", padding: "6rem clamp(1rem, 4vw, 1.5rem) 5rem" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-      <style>{"h1,h2{font-family:var(--ff-font-display);font-weight:var(--ff-display-wght);letter-spacing:-.015em} .al-btn{background:#ea6b14;color:#fff;border:none;padding:.85rem 1.6rem;border-radius:8px;font-size:1.02rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}"}</style>
+      <style>{"h1,h2{font-family:var(--ff-font-display);font-weight:var(--ff-display-wght);letter-spacing:-.015em} .al-btn{background:var(--ff-c10);color:#fff;border:none;padding:.85rem 1.6rem;border-radius:8px;font-size:1.02rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}"}</style>
       <div style={{ maxWidth: 820, margin: "0 auto" }}>
         <h1 style={{ fontSize: "2.6rem", marginBottom: ".6rem" }}>Service Areas</h1>
         <p style={{ color: MUTED, fontWeight: 300, lineHeight: 1.8, fontSize: "1.05rem", marginBottom: "2.4rem" }}>
@@ -351,7 +357,7 @@ export function AreasIndex() {
         {grid(zones)}
         <h2 style={{ color: ORANGE, fontSize: "1.4rem", marginBottom: "1rem" }}>Nearby towns</h2>
         {grid(towns)}
-        <div style={{ background: "linear-gradient(135deg,rgba(234,107,20,.16),rgba(234,107,20,.04))", border: "1px solid rgba(234,107,20,.25)", borderRadius: 16, padding: "1.8rem", textAlign: "center", marginTop: "1rem" }}>
+        <div style={{ background: "linear-gradient(135deg,rgba(var(--ff-accent-rgb), .16),rgba(var(--ff-accent-rgb), .04))", border: "1px solid rgba(var(--ff-accent-rgb), .25)", borderRadius: 16, padding: "var(--ff-s8)", textAlign: "center", marginTop: "1rem" }}>
           <h2 style={{ fontSize: "1.7rem", marginBottom: ".5rem" }}>Not sure where to start?</h2>
           <p style={{ color: MUTED, fontWeight: 300, marginBottom: "1.2rem" }}>Post your job free and get up to 5 written estimates from vetted local pros.</p>
           <button className="al-btn" onClick={() => setLocation("/client-onboarding")}>Get my free estimates →</button>

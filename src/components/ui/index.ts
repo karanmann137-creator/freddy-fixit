@@ -37,3 +37,8 @@ export { Stepper, type Step, type StepState } from "./Stepper";
 export { Pill, type PillTone } from "./Pill";
 export { Button, ButtonRow, Stack } from "./Button";
 export { AttentionCard, TrustLine } from "./AttentionCard";
+// The one primitive here that is for READ pages rather than the dashboards. It
+// belongs in this folder anyway — no business logic, and its styles belong in
+// the one shared sheet — but see its ⚠️ note: mounting it on a dashboard is a
+// bug, because TopNav hides itself on scroll there and the bar would float.
+export { PageTitle } from "./PageTitle";

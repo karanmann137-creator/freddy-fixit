@@ -72,7 +72,7 @@ export function SkCard({ children, style }: { children?: ReactNode; style?: CSSP
       aria-hidden="true"
       style={{
         background: "var(--ff-surface)",
-        border: "1px solid var(--ff-card-border)",
+        border: "var(--ff-hair-w) solid var(--ff-card-border)",
         borderRadius: 12,
         padding: "clamp(0.9rem, 3vw, 1.25rem)",
         ...style,
@@ -137,7 +137,7 @@ export function StalledNotice({ after = 12000 }: { after?: number }) {
         This is taking longer than usual.{" "}
         <button
           onClick={() => window.location.reload()}
-          style={{ background: "none", border: "none", padding: 0, color: "#ea6b14", font: "inherit", fontWeight: 600, cursor: "pointer" }}
+          style={{ background: "none", border: "none", padding: 0, color: "var(--ff-c10)", font: "inherit", fontWeight: 600, cursor: "pointer" }}
         >
           Reload the page
         </button>
@@ -193,7 +193,7 @@ export function DashboardSkeleton({ rows = 3 }: { rows?: number }) {
           style={{
             width: w, flex: "0 0 " + w, height: "calc(100vh - 3.75rem)",
             position: "sticky", top: "3.75rem", alignSelf: "flex-start",
-            borderRight: "1px solid rgba(var(--ff-fg), .08)", background: "var(--ff-card-bg)",
+            borderRight: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", background: "var(--ff-card-bg)",
             padding: w === "232px" ? "1.1rem .7rem" : "1.1rem .4rem",
             display: "grid", gap: 10, alignContent: "start",
           }}
@@ -210,7 +210,7 @@ export function DashboardSkeleton({ rows = 3 }: { rows?: number }) {
           <div
             aria-hidden="true"
             style={{
-              background: "rgba(var(--ff-fg), .03)", borderBottom: "1px solid rgba(var(--ff-fg), .07)",
+              background: "rgba(var(--ff-fg), .03)", borderBottom: "var(--ff-hair-w) solid rgba(var(--ff-fg), .07)",
               padding: ".75rem 1.5rem", display: "flex", justifyContent: "space-between",
               alignItems: "center", flexWrap: "wrap", gap: ".75rem",
             }}

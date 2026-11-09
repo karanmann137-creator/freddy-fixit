@@ -56,3 +56,19 @@ jobs:
       - name: Critical mounts
         if: always()
         run: python3 tools/check_mounts.py
+
+      # The two style guards, added 2026-11-08. Same `if: always()` for the same
+      # reason as the mounts step -- these are independent faults and the point
+      # of a scheduled run is to learn about all of them in one trip.
+      #
+      # Both catch defects with NO runtime symptom, which is why they are worth
+      # a CI step at all: a navy band rendering the light theme, a field with no
+      # focus ring, the dark-mode orange painted on the off-white ground. The
+      # build is clean in every one of those cases.
+      - name: Theme tokens
+        if: always()
+        run: python3 tools/check_tokens.py
+
+      - name: UX laws
+        if: always()
+        run: python3 tools/check_ux.py

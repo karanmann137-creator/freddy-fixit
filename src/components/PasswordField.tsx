@@ -155,12 +155,12 @@ export default function PasswordField({
       </div>
 
       {meter && value.length > 0 && st && (
-        <div style={{ marginTop: ".45rem" }}>
+        <div style={{ marginTop: "var(--ff-s2)" }}>
           <div
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-              gap: ".25rem",
+              gap: "var(--ff-s1)",
             }}
             aria-hidden="true"
           >

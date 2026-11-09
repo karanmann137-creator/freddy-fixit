@@ -63,7 +63,7 @@ function inline(s: string, key: number): React.ReactNode[] {
       nodes.push(<strong key={key + "-b" + i}>{m[1]}</strong>);
     } else {
       nodes.push(
-        <a key={key + "-a" + i} href={m[3]} style={{ color: "#ea6b14" }} target="_blank" rel="noopener noreferrer">
+        <a key={key + "-a" + i} href={m[3]} style={{ color: "var(--ff-c10)" }} target="_blank" rel="noopener noreferrer">
           {m[2]}
         </a>,
       );

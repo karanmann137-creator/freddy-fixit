@@ -17,7 +17,7 @@ function BarChart({ title, subtitle, data, unit, lowerBetter }: {
   const svgH = data.length * rowH + 24;
 
   return (
-    <div style={{ background: "rgba(var(--ff-fg), .03)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 10, padding: "1.5rem", margin: "2rem 0" }}>
+    <div style={{ background: "rgba(var(--ff-fg), .03)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: 10, padding: "1.5rem", margin: "2rem 0" }}>
       <p style={{ fontFamily: "'Bebas Neue',sans-serif", letterSpacing: ".06em", fontSize: "1.1rem", color: "var(--ff-text)", margin: "0 0 .25rem" }}>{title}</p>
       {subtitle && <p style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .4)", margin: "0 0 1rem" }}>{subtitle}</p>}
       <svg viewBox={`0 0 ${svgW} ${svgH}`} width="100%" style={{ overflow: "visible" }}>
@@ -45,21 +45,21 @@ function FeatureTable({ rows }: { rows: { feature: string; freddy: boolean | str
     : <span style={{ color: "rgba(var(--ff-muted), .6)", fontSize: ".85rem" }}>{v}</span>;
 
   const cols = ["Feature", "Freddy Fix It", "Jiffy", "HomeStars", "TaskRabbit", "HouseCall Pro", "Kijiji"];
-  const colColors = ["", "#ea6b14", "#3b82f6", "#ef4444", "#a855f7", "#10b981", "#6b7280"];
+  const colColors = ["", "var(--ff-c10)", "#3b82f6", "#ef4444", "#a855f7", "#10b981", "#6b7280"];
 
   return (
     <div style={{ overflowX: "auto", margin: "2rem 0" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: ".88rem" }}>
         <thead>
           <tr>{cols.map((c, i) => (
-            <th key={c} style={{ padding: ".6rem 1rem", textAlign: i === 0 ? "left" : "center", color: colColors[i] || "rgba(var(--ff-muted), .5)", fontWeight: 600, fontSize: ".78rem", textTransform: "uppercase", letterSpacing: ".06em", borderBottom: "1px solid rgba(var(--ff-fg), .1)" }}>{c}</th>
+            <th key={c} style={{ padding: ".6rem 1rem", textAlign: i === 0 ? "left" : "center", color: colColors[i] || "rgba(var(--ff-muted), .5)", fontWeight: 600, fontSize: ".78rem", textTransform: "uppercase", letterSpacing: ".06em", borderBottom: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)" }}>{c}</th>
           ))}</tr>
         </thead>
         <tbody>{rows.map((r, i) => (
           <tr key={r.feature} style={{ background: i % 2 === 0 ? "transparent" : "rgba(var(--ff-fg), .025)" }}>
-            <td style={{ padding: ".65rem 1rem", color: "rgba(var(--ff-muted), .8)", borderBottom: "1px solid rgba(var(--ff-fg), .05)" }}>{r.feature}</td>
+            <td style={{ padding: ".65rem 1rem", color: "rgba(var(--ff-muted), .8)", borderBottom: "var(--ff-hair-w) solid rgba(var(--ff-fg), .05)" }}>{r.feature}</td>
             {[r.freddy, r.jiffy, r.homestars, r.taskrabbit, r.housecall, r.kijiji].map((v, j) => (
-              <td key={j} style={{ padding: ".65rem 1rem", textAlign: "center", borderBottom: "1px solid rgba(var(--ff-fg), .05)" }}>{check(v)}</td>
+              <td key={j} style={{ padding: ".65rem 1rem", textAlign: "center", borderBottom: "var(--ff-hair-w) solid rgba(var(--ff-fg), .05)" }}>{check(v)}</td>
             ))}
           </tr>
         ))}</tbody>
@@ -74,7 +74,7 @@ function ArticleComparison() {
   const [, setLocation] = useLocation();
   return (
     <article>
-      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>About this comparison:</strong> This article reflects our general understanding of how different kinds of platforms work, based on publicly available information as of 2026. Features, pricing, and policies change often and can vary by individual contractor. Always confirm the current details directly with each platform before deciding.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>About this comparison:</strong> This article reflects our general understanding of how different kinds of platforms work, based on publicly available information as of 2026. Features, pricing, and policies change often and can vary by individual contractor. Always confirm the current details directly with each platform before deciding.</p>
 
       <p>If you're a Calgary homeowner looking to hire a contractor, you've got options — and they work in very different ways. Rather than rank specific companies, here's a plain-language guide to the main <em>types</em> of platforms and what to weigh with each.</p>
 
@@ -83,7 +83,7 @@ function ArticleComparison() {
       <p><strong>Directory and review platforms</strong> (such as HomeStars) let you browse contractor listings and reviews and reach out yourself. They're useful for research, but how quickly you hear back depends on individual contractors checking their leads.</p>
       <p><strong>General task platforms</strong> (such as TaskRabbit) cover a wide range of errands and tasks across many cities. Coverage and specialization for skilled home trades can vary by market.</p>
       <p><strong>Classified listings</strong> (such as Kijiji) connect you with individuals directly. There's no platform-level vetting, so checking licensing, insurance, and references is entirely up to you.</p>
-      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".88rem" }}><strong>A note on HouseCall Pro:</strong> HouseCall Pro is primarily <em>contractor business software</em> — a scheduling and invoicing tool contractors use to run their operations, rather than a marketplace homeowners book through directly. We mention it because some contractors advertise that they "use HouseCall Pro," which can be confusing.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".88rem" }}><strong>A note on HouseCall Pro:</strong> HouseCall Pro is primarily <em>contractor business software</em> — a scheduling and invoicing tool contractors use to run their operations, rather than a marketplace homeowners book through directly. We mention it because some contractors advertise that they "use HouseCall Pro," which can be confusing.</p>
 
       <h2>What to Compare</h2>
       <p><strong>Speed.</strong> If you need someone quickly, active-dispatch platforms generally connect you faster than browsing a directory and waiting for replies.</p>
@@ -95,9 +95,9 @@ function ArticleComparison() {
       <p>Freddy Fix It is built specifically for Calgary. Every contractor must submit their trade licence and proof of insurance before they can accept a job. You post once, receive up to five written bids from vetted contractors, and reviews are only unlocked after a job is completed and confirmed by both parties. We also offer recurring and seasonal scheduling for ongoing maintenance.</p>
       <p>Whichever platform you choose, the same fundamentals protect you: hire licensed, insured contractors, get the price in writing first, and keep records of the work.</p>
 
-      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+      <div style={{ background: "rgba(var(--ff-accent-rgb), .08)", border: "1px solid rgba(var(--ff-accent-rgb), .25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
         <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Ready to try a fast way to find a vetted Calgary contractor?</p>
-        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
+        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "var(--ff-c10)", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
   );
@@ -107,7 +107,7 @@ function ArticlePricing() {
   return (
     <article>
       <p>One of the most common questions Calgary homeowners ask before hiring a contractor: <em>how much should I actually be paying?</em> Pricing varies by trade, job complexity, and contractor experience — but here are some general ranges to give you a rough sense in 2026.</p>
-      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general ballpark ranges for illustration only, not firm estimates or guarantees. Actual prices depend on your specific job and the contractor you hire. Always get a written estimate before any work begins.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general ballpark ranges for illustration only, not firm estimates or guarantees. Actual prices depend on your specific job and the contractor you hire. Always get a written estimate before any work begins.</p>
 
       <h2>Calgary Contractor Hourly Rates by Trade (2026)</h2>
       <BarChart
@@ -115,7 +115,7 @@ function ArticlePricing() {
         subtitle="Estimated 2026 market rates in CAD, before materials"
         unit="$/hr"
         data={[
-          { label: "HVAC Technician",  value: 160, color: "#ea6b14" },
+          { label: "HVAC Technician",  value: 160, color: "var(--ff-c10)" },
           { label: "Electrician",      value: 145, color: "#f59e0b" },
           { label: "Plumber",          value: 130, color: "#3b82f6" },
           { label: "General Handyman", value: 95,  color: "#22c55e" },
@@ -178,7 +178,7 @@ function ArticleVetting() {
   return (
     <article>
       <p>Calgary's contractor market is busy and competitive, and not everything is verified at the point of hire. Homeowners who skip vetting may be taking on avoidable risk. Here's why it matters and what to look for.</p>
-      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> This article is general information, not legal, insurance, or financial advice. Rules and coverage vary by situation. For your specific circumstances, check with your insurer and consult a qualified professional.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> This article is general information, not legal, insurance, or financial advice. Rules and coverage vary by situation. For your specific circumstances, check with your insurer and consult a qualified professional.</p>
 
       <h2>1. Unlicensed Work Could Affect Your Home Insurance</h2>
       <p>In Alberta, certain trade work — such as electrical, gas, and plumbing — is generally required to be performed by licensed tradespeople. Depending on your policy, an insurer could question or deny a claim connected to improper or unpermitted work, so it's worth confirming coverage details with your provider. As a sensible precaution, ask a contractor for their trade ticket before they start.</p>
@@ -206,7 +206,7 @@ function ArticlePlumberCost() {
   return (
     <article>
       <p>Plumbing problems don't wait for a convenient time — and neither should you. Whether it's a leaky faucet, a burst pipe, or a water heater replacement, having a rough sense of what Calgary plumbers charge in 2026 can help you spot a fair deal.</p>
-      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general ballpark ranges for illustration only, not firm estimates or guarantees. Actual costs depend on your specific job and the contractor you hire. Always get a written estimate before work begins.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general ballpark ranges for illustration only, not firm estimates or guarantees. Actual costs depend on your specific job and the contractor you hire. Always get a written estimate before work begins.</p>
 
       <h2>Calgary Plumber Rates by Job Type (2026)</h2>
       <BarChart
@@ -214,7 +214,7 @@ function ArticlePlumberCost() {
         subtitle="All-in cost estimates in CAD including labour; materials extra where noted"
         unit="$"
         data={[
-          { label: "Water heater replacement", value: 1800, color: "#ea6b14" },
+          { label: "Water heater replacement", value: 1800, color: "var(--ff-c10)" },
           { label: "Main shutoff valve",        value: 650,  color: "#f59e0b" },
           { label: "Toilet install/replace",    value: 350,  color: "#3b82f6" },
           { label: "Sump pump replacement",     value: 900,  color: "#22c55e" },
@@ -234,9 +234,9 @@ function ArticlePlumberCost() {
       <h2>Red Flags to Watch For</h2>
       <p>Be cautious of any plumber who gives you a rock-bottom estimate over the phone without seeing the job, asks for full payment upfront, or can't provide a trade licence number. All plumbers on Freddy Fix It are licensed and insured — you get a written estimate before anyone touches your pipes.</p>
 
-      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+      <div style={{ background: "rgba(var(--ff-accent-rgb), .08)", border: "1px solid rgba(var(--ff-accent-rgb), .25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
         <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Need a plumber in Calgary? Get 5 written estimates from licensed pros.</p>
-        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
+        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "var(--ff-c10)", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
   );
@@ -247,7 +247,7 @@ function ArticleRoofCost() {
   return (
     <article>
       <p>Replacing a roof is one of the largest home maintenance expenses a Calgary homeowner will face. Hail seasons, heavy snow loads, and UV exposure mean Calgary roofs work harder than most. Here's a general sense of what a replacement can cost in 2026 — and what drives the price up or down.</p>
-      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general ballpark ranges for illustration only, not firm estimates or guarantees. Roofing costs vary widely with materials, roof size, and condition. Always get a written estimate and an on-site assessment before committing.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general ballpark ranges for illustration only, not firm estimates or guarantees. Roofing costs vary widely with materials, roof size, and condition. Always get a written estimate and an on-site assessment before committing.</p>
 
       <h2>Calgary Roof Replacement Cost by Size</h2>
       <BarChart
@@ -255,7 +255,7 @@ function ArticleRoofCost() {
         subtitle="Full removal and replace with standard 30-year asphalt shingles, labour + materials"
         unit="k$"
         data={[
-          { label: "Small bungalow (1,000 sq ft)", value: 8,  color: "#ea6b14" },
+          { label: "Small bungalow (1,000 sq ft)", value: 8,  color: "var(--ff-c10)" },
           { label: "Average home (1,500 sq ft)",   value: 12, color: "#3b82f6" },
           { label: "Large home (2,200 sq ft)",     value: 17, color: "#22c55e" },
           { label: "Two-storey (2,800 sq ft)",     value: 22, color: "#a855f7" },
@@ -273,9 +273,9 @@ function ArticleRoofCost() {
       <h2>Repair vs. Replace</h2>
       <p>If your roof is under 15 years old and damage is isolated (a few cracked shingles, one flashing failure), repair may be the right call — typically $300–$800. Over 20 years old or more than 30% damaged, replacement is almost always more cost-effective than patching.</p>
 
-      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+      <div style={{ background: "rgba(var(--ff-accent-rgb), .08)", border: "1px solid rgba(var(--ff-accent-rgb), .25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
         <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Get estimates from vetted Calgary roofers — no obligation.</p>
-        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Roofing Job</button>
+        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "var(--ff-c10)", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Roofing Job</button>
       </div>
     </article>
   );
@@ -305,9 +305,9 @@ function ArticleSpring() {
       <h2>Book Contractors Early</h2>
       <p>May and June are the busiest months for Calgary contractors — roofers, painters, and landscapers are booked solid by mid-April. If you identified issues this spring, post your job on Freddy Fix It now to get in the queue before wait times stretch to July.</p>
 
-      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+      <div style={{ background: "rgba(var(--ff-accent-rgb), .08)", border: "1px solid rgba(var(--ff-accent-rgb), .25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
         <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Book spring maintenance contractors before the rush — post a job today.</p>
-        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
+        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "var(--ff-c10)", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
   );
@@ -320,7 +320,7 @@ function ArticleElectricianCost() {
   return (
     <article>
       <p>Whether you're adding a circuit for a hot tub, upgrading an aging panel, or finally fixing that dead outlet, electrical work is one area where cutting corners isn't worth it. Here's a rough sense of what Calgary electricians charge in 2026 so you can budget and spot a fair estimate.</p>
-      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general ballpark ranges for illustration only, not firm estimates or guarantees. Actual costs depend on your specific job and the contractor you hire. Always get a written estimate before work begins.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general ballpark ranges for illustration only, not firm estimates or guarantees. Actual costs depend on your specific job and the contractor you hire. Always get a written estimate before work begins.</p>
 
       <h2>Calgary Electrician Costs by Job Type (2026)</h2>
       <BarChart
@@ -328,7 +328,7 @@ function ArticleElectricianCost() {
         subtitle="All-in cost estimates in CAD including labour; materials extra where noted"
         unit="$"
         data={[
-          { label: "200A panel upgrade",      value: 2600, color: "#ea6b14" },
+          { label: "200A panel upgrade",      value: 2600, color: "var(--ff-c10)" },
           { label: "EV charger install",      value: 1300, color: "#f59e0b" },
           { label: "Add a dedicated circuit", value: 450,  color: "#3b82f6" },
           { label: "Hot tub hookup",          value: 1100, color: "#22c55e" },
@@ -348,9 +348,9 @@ function ArticleElectricianCost() {
       <h2>Red Flags to Watch For</h2>
       <p>Be wary of anyone who offers to do panel or service work "without a permit to save you money," can't provide a Master Electrician or journeyman certification, or estimates a major job sight-unseen. Electrical mistakes cause fires — this is the wrong place to gamble. Every electrician on Freddy Fix It is licensed and insured, and you get a written estimate before any work starts.</p>
 
-      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+      <div style={{ background: "rgba(var(--ff-accent-rgb), .08)", border: "1px solid rgba(var(--ff-accent-rgb), .25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
         <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Need an electrician in Calgary? Get written estimates from licensed pros.</p>
-        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
+        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "var(--ff-c10)", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
   );
@@ -361,7 +361,7 @@ function ArticleFurnaceCost() {
   return (
     <article>
       <p>In Calgary, your furnace isn't a luxury — it's survival gear for seven months of the year. When it starts making noise, short-cycling, or quits on a -30°C night, you need to know whether you're looking at a cheap repair or a full replacement. Here's what to expect in 2026.</p>
-      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general ballpark ranges for illustration only, not firm estimates or guarantees. Actual costs depend on your specific equipment, home, and the contractor you hire. Always get a written estimate before work begins.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general ballpark ranges for illustration only, not firm estimates or guarantees. Actual costs depend on your specific equipment, home, and the contractor you hire. Always get a written estimate before work begins.</p>
 
       <h2>Repair vs Replacement Costs (2026)</h2>
       <BarChart
@@ -369,7 +369,7 @@ function ArticleFurnaceCost() {
         subtitle="All-in cost estimates in CAD including labour"
         unit="$"
         data={[
-          { label: "High-eff. replacement", value: 6000, color: "#ea6b14" },
+          { label: "High-eff. replacement", value: 6000, color: "var(--ff-c10)" },
           { label: "Mid-range replacement", value: 4500, color: "#f59e0b" },
           { label: "Blower motor repair",   value: 650,  color: "#3b82f6" },
           { label: "Ignitor / flame sensor", value: 300, color: "#22c55e" },
@@ -391,9 +391,9 @@ function ArticleFurnaceCost() {
       <h2>Red Flags to Watch For</h2>
       <p>Be cautious of a technician who pushes a full replacement on the first visit without showing you the failed part, or who can't provide a gas fitter licence. A cracked heat exchanger is a legitimate reason to replace — but ask to see it. Every HVAC pro on Freddy Fix It is licensed and insured, and you get a written estimate before any work begins.</p>
 
-      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+      <div style={{ background: "rgba(var(--ff-accent-rgb), .08)", border: "1px solid rgba(var(--ff-accent-rgb), .25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
         <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Furnace trouble? Get written estimates from licensed Calgary HVAC pros.</p>
-        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
+        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "var(--ff-c10)", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
   );
@@ -417,7 +417,7 @@ function ArticleHiringContractor() {
       <h2>How Permits Work in Calgary</h2>
       <p>Many homeowners don't realize how much work legally requires a permit. In Calgary, permits are generally required for structural changes, new or altered electrical circuits, plumbing and gas work, furnace and water heater replacement, decks above a certain height, and basement developments. Cosmetic work — painting, flooring, trim, simple fixture swaps — usually does not.</p>
       <p><strong>Why it matters to you:</strong> Permitted work is inspected by a Safety Codes Officer, which protects your safety and your insurance coverage. Unpermitted work can stall a home sale, fail an inspection, and void claims if something fails later. The contractor pulls the permit, but the responsibility ultimately attaches to your property — so confirm it's being done.</p>
-      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Tip:</strong> Permit rules and fees change. Confirm current requirements for your specific project directly with the City of Calgary before work begins.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Tip:</strong> Permit rules and fees change. Confirm current requirements for your specific project directly with the City of Calgary before work begins.</p>
 
       <h2>Red Flags That Should End the Conversation</h2>
       <p>Walk away from anyone who pressures you to decide on the spot, only takes cash, won't put anything in writing, can't show a licence or insurance, or estimates a complex job without seeing it. These aren't quirks — they're how the costliest contractor horror stories start.</p>
@@ -425,9 +425,9 @@ function ArticleHiringContractor() {
       <h2>How Freddy Fix It Helps</h2>
       <p>Every contractor on Freddy Fix It submits a trade licence and proof of insurance before they can accept work, you get written estimates before anyone starts, and there's a built-in process if a job doesn't go as planned. It takes the screening work off your plate.</p>
 
-      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+      <div style={{ background: "rgba(var(--ff-accent-rgb), .08)", border: "1px solid rgba(var(--ff-accent-rgb), .25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
         <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Skip the screening — get estimates from licensed, insured Calgary contractors.</p>
-        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
+        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "var(--ff-c10)", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
   );
@@ -438,7 +438,7 @@ function ArticleBasementCost() {
   return (
     <article>
       <p>A finished basement is one of the best returns on a Calgary home — extra living space, a rental suite, or a place for the kids to disappear during a long winter. But "how much does it cost?" is the first question, and the honest answer is: it depends on what you build. Here's a plain-language 2026 breakdown.</p>
-      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general 2026 ballpark ranges for illustration only, not firm estimates. Actual costs depend on your layout, finishes, and the contractor you hire. Always get a written estimate before work begins.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> The figures below are general 2026 ballpark ranges for illustration only, not firm estimates. Actual costs depend on your layout, finishes, and the contractor you hire. Always get a written estimate before work begins.</p>
 
       <h2>Cost Per Square Foot (2026)</h2>
       <BarChart
@@ -446,7 +446,7 @@ function ArticleBasementCost() {
         subtitle="All-in estimates in CAD; finishes and suite requirements drive the range"
         unit=""
         data={[
-          { label: "Legal suite (per sq ft)",   value: 95, color: "#ea6b14" },
+          { label: "Legal suite (per sq ft)",   value: 95, color: "var(--ff-c10)" },
           { label: "Full finish + bath",        value: 75, color: "#f59e0b" },
           { label: "Standard lifestyle finish", value: 60, color: "#3b82f6" },
           { label: "Basic / open rec room",     value: 45, color: "#22c55e" },
@@ -467,9 +467,9 @@ function ArticleBasementCost() {
       <h2>Red Flags to Watch For</h2>
       <p>Be cautious of any estimate that skips permits to "save you money," lumps everything into one vague number with no breakdown, or asks for a large deposit before drawings exist. Unpermitted basement work is the classic problem that surfaces at resale — a home inspector flags it, and you pay to fix it twice. Every contractor on Freddy Fix It is licensed and insured, and pulls the permits the job needs.</p>
 
-      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+      <div style={{ background: "rgba(var(--ff-accent-rgb), .08)", border: "1px solid rgba(var(--ff-accent-rgb), .25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
         <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Planning a basement? Get written estimates from licensed Calgary contractors.</p>
-        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
+        <button onClick={() => setLocation("/client-onboarding")} style={{ background: "var(--ff-c10)", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
   );
@@ -480,7 +480,7 @@ function ArticleWindshieldChip() {
   return (
     <article>
       <p>If you drive in Calgary, a rock chip is a matter of when, not if. Gravel on winter roads, construction on Deerfoot, and highway trips to the mountains all take a toll on your windshield. The good news: a small chip caught early is one of the cheapest fixes your vehicle will ever need. Ignore it, and it can spread into a crack that costs ten times as much.</p>
-      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> Figures below are general 2026 Calgary ballpark ranges, not firm estimates, and are not insurance advice. Coverage varies by policy — confirm the details with your own insurer.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> Figures below are general 2026 Calgary ballpark ranges, not firm estimates, and are not insurance advice. Coverage varies by policy — confirm the details with your own insurer.</p>
 
       <h2>Repair vs Replace: The 2026 Cost Gap</h2>
       <BarChart
@@ -506,9 +506,9 @@ function ArticleWindshieldChip() {
       <h2>Don't Wait — Calgary Reasons</h2>
       <p>Beyond cost, a cracked windshield in the driver's sightline can fail a commercial or out-of-province inspection and is a safety issue in low winter light. Catching chips early is the cheapest vehicle maintenance habit you can build living here.</p>
 
-      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+      <div style={{ background: "rgba(var(--ff-accent-rgb), .08)", border: "1px solid rgba(var(--ff-accent-rgb), .25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
         <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Need mobile auto glass or vehicle maintenance in Calgary? Get an estimate.</p>
-        <button onClick={() => setLocation("/client-onboarding?service=Vehicle Maintenance")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
+        <button onClick={() => setLocation("/client-onboarding?service=Vehicle Maintenance")} style={{ background: "var(--ff-c10)", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
   );
@@ -519,7 +519,7 @@ function ArticleWinterTires() {
   return (
     <article>
       <p>Every Calgary fall, the same debate comes up: are winter tires actually worth it, or are all-seasons "good enough"? Having driven through a few -30 cold snaps and the first icy Crowchild commute of the season, most locals land in the same place. Here's the plain-language case, the 2026 costs, and when to make the swap.</p>
-      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> General 2026 information for Calgary drivers, not insurance or safety advice. Discounts, laws, and prices change — confirm specifics with your insurer and installer.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> General 2026 information for Calgary drivers, not insurance or safety advice. Discounts, laws, and prices change — confirm specifics with your insurer and installer.</p>
 
       <h2>Winter Tires vs All-Seasons: The Real Difference</h2>
       <p>It isn't just about snow — it's about <strong>temperature</strong>. All-season rubber stiffens once it drops below about <strong>7°C</strong>, which means less grip even on bare, dry pavement. Winter tires use a softer compound and aggressive siping that stays pliable in the cold. Modern winter tires can offer up to 50% more traction than all-seasons and cut braking distance on ice by up to about 25% — often the difference between stopping and sliding through an intersection.</p>
@@ -533,7 +533,7 @@ function ArticleWinterTires() {
         subtitle="Estimates in CAD; varies by tire size and vehicle"
         unit="$"
         data={[
-          { label: "4 tires + rims (mounted)", value: 1400, color: "#ea6b14" },
+          { label: "4 tires + rims (mounted)", value: 1400, color: "var(--ff-c10)" },
           { label: "Set of 4 quality tires",   value: 1000, color: "#3b82f6" },
           { label: "Seasonal swap-over",        value: 90,   color: "#22c55e" },
           { label: "Seasonal storage",          value: 80,   color: "#a855f7" },
@@ -548,9 +548,9 @@ function ArticleWinterTires() {
       <h2>Getting the Most From Them</h2>
       <p>Run all four (never just two — a mismatched set can make handling worse), keep them properly inflated since cold air drops pressure, and pair them with the rest of your cold-weather prep. For the full battery, block-heater, and fluids rundown, see our guide to <strong>winterizing your vehicle in Calgary</strong>.</p>
 
-      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+      <div style={{ background: "rgba(var(--ff-accent-rgb), .08)", border: "1px solid rgba(var(--ff-accent-rgb), .25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
         <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Need tires swapped or vehicle maintenance in Calgary? Get an estimate.</p>
-        <button onClick={() => setLocation("/client-onboarding?service=Vehicle Maintenance")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
+        <button onClick={() => setLocation("/client-onboarding?service=Vehicle Maintenance")} style={{ background: "var(--ff-c10)", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
   );
@@ -561,7 +561,7 @@ function ArticleWinterizeVehicle() {
   return (
     <article>
       <p>Calgary winters test a vehicle harder than almost anywhere in Canada — not because of constant deep cold, but because of the swings. A +5°C chinook one day and -30°C the next is brutal on batteries, fluids, and anything rubber. A little prep in October saves you from a no-start morning in January. Here's the checklist that actually matters here.</p>
-      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> General cold-weather guidance for Calgary drivers, not manufacturer-specific advice. Always follow your owner's manual for grades and intervals.</p>
+      <p style={{ background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: 8, padding: "1rem 1.25rem", fontSize: ".85rem" }}><strong>Please note:</strong> General cold-weather guidance for Calgary drivers, not manufacturer-specific advice. Always follow your owner's manual for grades and intervals.</p>
 
       <h2>1. Test Your Battery Before It Fails</h2>
       <p>Cold is a battery killer: output can drop by <strong>up to 50%</strong> at sub-zero temperatures, and a battery that cranked fine in October can die on the first -25°C morning. Have it <strong>load-tested</strong> before winter — most shops do it free — and replace anything weak or older than about four years rather than gambling. If your car sits for days at a time, a battery maintainer keeps it topped up.</p>
@@ -581,9 +581,9 @@ function ArticleWinterizeVehicle() {
       <h2>6. Don't Forget the Tires</h2>
       <p>All the prep above matters less if you're still on all-seasons in January. Winter tires are the single biggest safety upgrade for Calgary driving — we cover timing, cost, and the insurance discount in our dedicated <strong>Calgary winter tires guide</strong>.</p>
 
-      <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
+      <div style={{ background: "rgba(var(--ff-accent-rgb), .08)", border: "1px solid rgba(var(--ff-accent-rgb), .25)", borderRadius: 10, padding: "1.5rem", margin: "2.5rem 0", textAlign: "center" }}>
         <p style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--ff-text)", margin: "0 0 .75rem" }}>Want your vehicle winter-ready? Get a maintenance estimate from a Calgary pro.</p>
-        <button onClick={() => setLocation("/client-onboarding?service=Vehicle Maintenance")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
+        <button onClick={() => setLocation("/client-onboarding?service=Vehicle Maintenance")} style={{ background: "var(--ff-c10)", color: "#fff", border: "none", borderRadius: 8, padding: ".75rem 2rem", fontSize: "1rem", fontWeight: 600, cursor: "pointer" }}>Post a Job — It's Free</button>
       </div>
     </article>
   );
@@ -666,7 +666,7 @@ const POSTS: Record<string, {
 };
 
 const TAG_COLORS: Record<string, string> = {
-  Comparison: "#ea6b14", Pricing: "#3b82f6", Maintenance: "#22c55e", Tips: "#a855f7", Vehicle: "#14b8a6", Contractor: "#f59e0b",
+  Comparison: "var(--ff-c10)", Pricing: "#3b82f6", Maintenance: "#22c55e", Tips: "#a855f7", Vehicle: "#14b8a6", Contractor: "#f59e0b",
 };
 const tagColor = (tag: string) => TAG_COLORS[tag] ?? "#a855f7";
 
@@ -771,18 +771,18 @@ export default function BlogPost() {
   const Content = post ? post.content : () => <MdBody md={dbPost!.body_md} />;
 
   return (
-    <div style={{ fontFamily: "'DM Sans',sans-serif", background: "var(--ff-bg)", backgroundImage: "radial-gradient(ellipse 55% 30% at 22% -2%, rgba(234,107,20,0.26) 0%, transparent 66%), radial-gradient(ellipse 50% 34% at 82% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), repeating-linear-gradient(45deg, transparent 0 27px, rgba(var(--ff-fg), 0.02) 27px, rgba(var(--ff-fg), 0.02) 28px), repeating-linear-gradient(-45deg, transparent 0 27px, rgba(var(--ff-fg), 0.016) 27px, rgba(var(--ff-fg), 0.016) 28px)", backgroundAttachment: "fixed", color: "var(--ff-text)", minHeight: "100vh", padding: "6rem clamp(1rem, 4vw, 1.5rem) 5rem" }}>
+    <div style={{ fontFamily: "'DM Sans',sans-serif", background: "var(--ff-bg)", backgroundImage: "radial-gradient(ellipse 55% 30% at 22% -2%, rgba(var(--ff-accent-rgb), 0.26) 0%, transparent 66%), radial-gradient(ellipse 50% 34% at 82% -6%, rgba(var(--ff-accent-rgb), 0.16) 0%, transparent 70%), repeating-linear-gradient(45deg, transparent 0 27px, rgba(var(--ff-fg), 0.02) 27px, rgba(var(--ff-fg), 0.02) 28px), repeating-linear-gradient(-45deg, transparent 0 27px, rgba(var(--ff-fg), 0.016) 27px, rgba(var(--ff-fg), 0.016) 28px)", backgroundAttachment: "fixed", color: "var(--ff-text)", minHeight: "100vh", padding: "6rem clamp(1rem, 4vw, 1.5rem) 5rem" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
       <style>{`
         h1,h2{font-family:var(--ff-font-display);font-weight:var(--ff-display-wght);letter-spacing:-.015em}
         h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em}
-        h2{color:#ea6b14;font-size:1.5rem;margin-top:2.5rem;margin-bottom:.6rem}
+        h2{color:var(--ff-c10);font-size:1.5rem;margin-top:2.5rem;margin-bottom:.6rem}
         h3{color:var(--ff-text);font-size:1.1rem;margin-top:1.4rem;margin-bottom:.3rem}
         article p{line-height:1.85;color:rgba(var(--ff-muted), .82);font-weight:300;margin-bottom:1rem}
         article strong{color:var(--ff-text);font-weight:500}
         article em{color:rgba(var(--ff-muted), .65)}
-        .back-btn{background:transparent;border:1px solid rgba(var(--ff-fg), .12);color:rgba(var(--ff-muted), .6);padding:.4rem .9rem;border-radius:6px;cursor:pointer;font-size:.82rem;font-family:'DM Sans',sans-serif;transition:border-color .2s}
-        .back-btn:hover{border-color:rgba(234,107,20,.4);color:var(--ff-text)}
+        .back-btn{background:transparent;border:var(--ff-hair-w) solid rgba(var(--ff-fg), .12);color:rgba(var(--ff-muted), .6);padding:.4rem .9rem;border-radius:6px;cursor:pointer;font-size:.82rem;font-family:'DM Sans',sans-serif;transition:border-color .2s}
+        .back-btn:hover{border-color:rgba(var(--ff-accent-rgb), .4);color:var(--ff-text)}
       `}</style>
 
       <div style={{ maxWidth: "740px", margin: "0 auto" }}>
@@ -792,14 +792,14 @@ export default function BlogPost() {
             If the photo fails to load, the gradients still render the band gracefully. */}
         <div style={{
           position: "relative", overflow: "hidden", borderRadius: 16,
-          border: "1px solid rgba(var(--ff-fg), .08)", margin: "2rem 0 3rem",
+          border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", margin: "2rem 0 3rem",
           padding: "2.75rem 1.75rem",
           background: "var(--ff-surface-141)",
-          backgroundImage: `linear-gradient(rgba(var(--ff-bg-rgb), 0.80), rgba(var(--ff-bg-rgb), 0.90)), radial-gradient(ellipse 70% 90% at 12% 0%, ${tagColor(view.tag)}55 0%, transparent 60%), radial-gradient(ellipse 60% 80% at 95% 110%, rgba(234,107,20,.28) 0%, transparent 60%), url("${TAG_IMAGES[view.tag] ?? ""}")`,
+          backgroundImage: `linear-gradient(rgba(var(--ff-bg-rgb), 0.80), rgba(var(--ff-bg-rgb), 0.90)), radial-gradient(ellipse 70% 90% at 12% 0%, ${tagColor(view.tag)}55 0%, transparent 60%), radial-gradient(ellipse 60% 80% at 95% 110%, rgba(var(--ff-accent-rgb), .28) 0%, transparent 60%), url("${TAG_IMAGES[view.tag] ?? ""}")`,
           backgroundSize: "cover, cover, cover, cover",
           backgroundPosition: "center, center, center, center",
         }}>
-          <span style={{ display: "inline-block", fontSize: ".72rem", fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: tagColor(view.tag), background: tagColor(view.tag) + "22", padding: ".25rem .6rem", borderRadius: 4, marginBottom: ".9rem" }}>{view.tag}</span>
+          <span style={{ display: "inline-block", fontSize: ".72rem", fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: tagColor(view.tag), background: tagColor(view.tag) + "22", padding: ".25rem .6rem", borderRadius: 4, marginBottom: "var(--ff-s4)" }}>{view.tag}</span>
 
           <h1 style={{ fontSize: "clamp(1.8rem,4vw,2.8rem)", color: "var(--ff-text)", lineHeight: 1.2, marginBottom: "1rem" }}>{view.title}</h1>
 
@@ -812,9 +812,9 @@ export default function BlogPost() {
 
         <Content />
 
-        <div style={{ borderTop: "1px solid rgba(var(--ff-fg), .07)", marginTop: "3rem", paddingTop: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+        <div style={{ borderTop: "var(--ff-hair-w) solid rgba(var(--ff-fg), .07)", marginTop: "3rem", paddingTop: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
           <button className="back-btn" onClick={() => setLocation("/blog")}>← Back to Blog</button>
-          <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8, padding: ".6rem 1.5rem", fontSize: ".9rem", fontWeight: 600, cursor: "pointer" }}>Post a Job</button>
+          <button onClick={() => setLocation("/client-onboarding")} style={{ background: "var(--ff-c10)", color: "#fff", border: "none", borderRadius: 8, padding: ".6rem 1.5rem", fontSize: ".9rem", fontWeight: 600, cursor: "pointer" }}>Post a Job</button>
         </div>
       </div>
     </div>

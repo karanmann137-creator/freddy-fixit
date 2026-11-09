@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/imageCompress";
 import { scanImage, shouldBlock, rejectMessage } from "@/lib/imageSafety";
+import { ensureUiStyles } from "./ui/uiStyles";
 
 // Contractor's side of the story on an open claim. Mirrors the client's claim
 // form: a written response plus optional photos, submitted via respond_to_dispute.
@@ -18,6 +19,7 @@ export default function RespondToClaim({
   onClose: () => void;
   onSubmitted: (response: string) => void;
 }) {
+  ensureUiStyles();
   const [response, setResponse] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
@@ -64,27 +66,19 @@ export default function RespondToClaim({
   };
 
   const label = { fontSize: ".72rem", textTransform: "uppercase" as const, letterSpacing: ".1em", color: "rgba(var(--ff-muted), .5)", marginBottom: ".35rem", display: "block" };
-  const field = { width: "100%", padding: ".6rem .8rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".88rem", boxSizing: "border-box" as const };
+  const field = { width: "100%", padding: ".6rem .8rem", background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".88rem", boxSizing: "border-box" as const };
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", zIndex: 10000,
-        display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem",
-        fontFamily: "'DM Sans',sans-serif",
-      }}
-    >
+    <div onClick={onClose} className="ffu-scrim">
       <div
         onClick={e => e.stopPropagation()}
-        style={{
-          width: "100%", maxWidth: "460px", maxHeight: "90vh", overflowY: "auto",
-          background: "var(--ff-bg)", border: "1px solid rgba(var(--ff-fg), .12)",
-          borderRadius: "16px", padding: "1.5rem", color: "var(--ff-text)",
-          boxShadow: "0 20px 60px rgba(0,0,0,.6)",
-        }}
+        className="ffu-modal"
+        role="dialog"
+        aria-modal="true"
+        style={{ ["--ffu-modal-w" as any]: "460px" }}
       >
-        <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.4rem", letterSpacing: ".05em", color: "#ea6b14", marginBottom: ".4rem" }}>
+        <span className="ffu-grab" aria-hidden="true" />
+        <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.4rem", letterSpacing: ".05em", color: "var(--ff-c10)", marginBottom: ".4rem" }}>
           Respond to Claim
         </div>
         <div style={{ fontSize: ".84rem", color: "rgba(var(--ff-muted), .7)", lineHeight: 1.5, marginBottom: "1rem" }}>
@@ -92,9 +86,9 @@ export default function RespondToClaim({
         </div>
 
         {claim?.reason && (
-          <div style={{ background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: "10px", padding: ".75rem .9rem", marginBottom: "1rem" }}>
-            <div style={{ ...label, marginBottom: ".25rem" }}>The client's claim</div>
-            <div style={{ fontSize: ".85rem", fontWeight: 600, marginBottom: ".2rem" }}>{claim.reason}</div>
+          <div style={{ background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: "10px", padding: ".75rem .9rem", marginBottom: "1rem" }}>
+            <div style={{ ...label, marginBottom: "var(--ff-s1)" }}>The client's claim</div>
+            <div style={{ fontSize: ".85rem", fontWeight: 600, marginBottom: "var(--ff-s1)" }}>{claim.reason}</div>
             {claim.description && <div style={{ fontSize: ".82rem", color: "rgba(var(--ff-muted), .8)", lineHeight: 1.5 }}>{claim.description}</div>}
           </div>
         )}
@@ -116,7 +110,7 @@ export default function RespondToClaim({
           {files.length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: ".4rem", marginTop: ".6rem" }}>
               {files.map((f, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: ".4rem", padding: ".3rem .6rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .1)", borderRadius: "6px", fontSize: ".76rem" }}>
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: ".4rem", padding: ".3rem .6rem", background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", borderRadius: "6px", fontSize: ".76rem" }}>
                   <span style={{ maxWidth: "min(120px, 55vw)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
                   <button onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "rgba(var(--ff-muted), .6)", cursor: "pointer", fontSize: ".9rem", lineHeight: 1, padding: 0 }}>✕</button>
                 </div>
@@ -131,14 +125,14 @@ export default function RespondToClaim({
           <button
             onClick={submit}
             disabled={busy}
-            style={{ flex: 1, padding: ".75rem 1rem", background: "#ea6b14", color: "#fff", border: "none", borderRadius: "8px", fontFamily: "inherit", fontSize: ".9rem", fontWeight: 500, cursor: busy ? "default" : "pointer", opacity: busy ? .7 : 1 }}
+            style={{ flex: 1, padding: ".75rem 1rem", background: "var(--ff-c10)", color: "#fff", border: "none", borderRadius: "8px", fontFamily: "inherit", fontSize: ".9rem", fontWeight: 500, cursor: busy ? "default" : "pointer", opacity: busy ? .7 : 1 }}
           >
             {busy ? "Submitting…" : "Submit response"}
           </button>
           <button
             onClick={onClose}
             disabled={busy}
-            style={{ padding: ".75rem 1.1rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .1)", borderRadius: "8px", color: "rgba(var(--ff-muted), .7)", fontFamily: "inherit", fontSize: ".9rem", cursor: "pointer" }}
+            style={{ padding: ".75rem 1.1rem", background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", borderRadius: "8px", color: "rgba(var(--ff-muted), .7)", fontFamily: "inherit", fontSize: ".9rem", cursor: "pointer" }}
           >
             Cancel
           </button>

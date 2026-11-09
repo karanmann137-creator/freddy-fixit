@@ -344,13 +344,13 @@ export default function JobChat({
   const chip: React.CSSProperties = {
     display: "inline-flex", alignItems: "center", gap: ".35rem",
     padding: ".38rem .65rem", borderRadius: 999,
-    background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .1)",
+    background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)",
     color: "rgba(var(--ff-muted), .85)", fontFamily: "inherit", fontSize: ".76rem",
     cursor: "pointer", whiteSpace: "nowrap",
   };
   const chipHot: React.CSSProperties = {
     ...chip,
-    background: "rgba(234,107,20,.12)", border: "1px solid rgba(234,107,20,.35)",
+    background: "rgba(var(--ff-accent-rgb), .12)", border: "1px solid rgba(var(--ff-accent-rgb), .35)",
     color: "var(--ff-text)", fontWeight: 500,
   };
 
@@ -368,20 +368,20 @@ export default function JobChat({
         onClick={e => e.stopPropagation()}
         style={{
           width: "100%", maxWidth: "440px", height: "100%",
-          background: "var(--ff-bg)", borderLeft: "1px solid rgba(var(--ff-fg), .1)",
+          background: "var(--ff-bg)", borderLeft: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)",
           display: "flex", flexDirection: "column", boxShadow: "-20px 0 60px rgba(0,0,0,.5)",
         }}
       >
         {/* Header + job context */}
         <div style={{
-          padding: ".9rem 1.1rem", background: "rgba(234,107,20,.1)",
-          borderBottom: "1px solid rgba(var(--ff-fg), .08)",
+          padding: ".9rem 1.1rem", background: "rgba(var(--ff-accent-rgb), .1)",
+          borderBottom: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)",
         }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: ".6rem" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: ".7rem", minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--ff-s3)", minWidth: 0 }}>
               <div style={{
                 width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
-                background: "rgba(234,107,20,.2)", border: "1px solid rgba(234,107,20,.4)",
+                background: "rgba(var(--ff-accent-rgb), .2)", border: "1px solid rgba(var(--ff-accent-rgb), .4)",
                 display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem",
               }}>💬</div>
               <div style={{ minWidth: 0 }}>
@@ -410,17 +410,17 @@ export default function JobChat({
               {j.status && (
                 <span style={{
                   padding: ".2rem .5rem", borderRadius: 999,
-                  background: "rgba(var(--ff-fg), .08)", border: "1px solid rgba(var(--ff-fg), .1)",
+                  background: "rgba(var(--ff-fg), .08)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)",
                 }}>{STATUS_LABEL[j.status] ?? j.status}</span>
               )}
               {j.scheduled_at && (
-                <span style={{ display: "inline-flex", alignItems: "center", gap: ".25rem" }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--ff-s1)" }}>
                   <Ic name="calendar" size={12} />{formatWhen(j.scheduled_at)}
                 </span>
               )}
               {(j.request?.location || j.location) && (
                 <span style={{
-                  display: "inline-flex", alignItems: "center", gap: ".25rem",
+                  display: "inline-flex", alignItems: "center", gap: "var(--ff-s1)",
                   minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                 }}>
                   <Ic name="map-pin" size={12} />{j.request?.location || j.location}
@@ -491,10 +491,10 @@ export default function JobChat({
                     borderRadius: mine ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
                     background: blocked
                       ? "rgba(239,68,68,.1)"
-                      : mine ? "linear-gradient(135deg,#ea6b14,#f09020)" : "rgba(var(--ff-fg), .07)",
+                      : mine ? "linear-gradient(135deg,var(--ff-c10),#f09020)" : "rgba(var(--ff-fg), .07)",
                     border: blocked
                       ? "1px dashed rgba(239,68,68,.45)"
-                      : mine ? "none" : "1px solid rgba(var(--ff-fg), .08)",
+                      : mine ? "none" : "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)",
                     color: "var(--ff-text)", fontSize: ".88rem", lineHeight: 1.5, whiteSpace: "pre-wrap",
                     opacity: blocked ? .75 : 1,
                     textDecoration: blocked ? "line-through" : "none",
@@ -530,7 +530,7 @@ export default function JobChat({
                   }}>{messageTime(m.created_at)}</div>
                   {blocked && (
                     <div style={{
-                      maxWidth: "78%", marginTop: ".2rem",
+                      maxWidth: "78%", marginTop: "var(--ff-s1)",
                       fontSize: ".73rem", lineHeight: 1.5, color: "#fca5a5",
                       textAlign: mine ? "right" : "left",
                     }}>
@@ -547,23 +547,23 @@ export default function JobChat({
         {/* Input or closed notice */}
         {readOnly && closedAction && role !== "admin" ? (
           <div style={{
-            padding: "1rem 1.25rem", borderTop: "1px solid rgba(234,107,20,.45)",
-            background: "rgba(234,107,20,.12)",
+            padding: "1rem 1.25rem", borderTop: "1px solid rgba(var(--ff-accent-rgb), .45)",
+            background: "rgba(var(--ff-accent-rgb), .12)",
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: ".4rem", fontFamily: "'Bebas Neue',sans-serif", letterSpacing: ".04em", fontSize: "1.05rem", color: "#ea6b14", marginBottom: ".35rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: ".4rem", fontFamily: "'Bebas Neue',sans-serif", letterSpacing: ".04em", fontSize: "1.05rem", color: "var(--ff-c10)", marginBottom: ".35rem" }}>
               <Ic name="alert-triangle" size={15} />MESSAGING IS LOCKED
             </div>
-            <div style={{ fontSize: ".85rem", color: "var(--ff-text)", lineHeight: 1.55, marginBottom: ".7rem" }}>
+            <div style={{ fontSize: ".85rem", color: "var(--ff-text)", lineHeight: 1.55, marginBottom: "var(--ff-s3)" }}>
               {closedReason ?? "This conversation is locked."}
             </div>
             <button
               onClick={closedAction.onClick}
-              style={{ width: "100%", padding: ".75rem 1rem", background: "#ea6b14", color: "#fff", border: "none", borderRadius: "10px", fontFamily: "'Bebas Neue',sans-serif", letterSpacing: ".05em", fontSize: "1rem", cursor: "pointer" }}
+              style={{ width: "100%", padding: ".75rem 1rem", background: "var(--ff-c10)", color: "#fff", border: "none", borderRadius: "10px", fontFamily: "'Bebas Neue',sans-serif", letterSpacing: ".05em", fontSize: "1rem", cursor: "pointer" }}
             >{closedAction.label}</button>
           </div>
         ) : readOnly ? (
           <div style={{
-            padding: "1rem 1.25rem", borderTop: "1px solid rgba(var(--ff-fg), .08)",
+            padding: "1rem 1.25rem", borderTop: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)",
             fontSize: ".82rem", color: "rgba(var(--ff-muted), .5)", textAlign: "center",
           }}>
             {role === "admin"
@@ -571,7 +571,7 @@ export default function JobChat({
               : (closedReason ?? "This job is finished, so messaging is closed.")}
           </div>
         ) : (
-          <div style={{ borderTop: "1px solid rgba(var(--ff-fg), .08)" }}>
+          <div style={{ borderTop: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)" }}>
             {err && (
               <div style={{
                 padding: ".55rem 1rem", fontSize: ".78rem", color: "#fca5a5",
@@ -623,7 +623,7 @@ export default function JobChat({
                   onChange={e => setTimeVal(e.target.value)}
                   style={{
                     flex: "1 1 170px", minWidth: 0, padding: ".45rem .6rem",
-                    background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .1)",
+                    background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)",
                     borderRadius: 8, color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".82rem",
                   }}
                 />
@@ -676,7 +676,7 @@ export default function JobChat({
                 disabled={sending}
                 style={{
                   padding: ".55rem .7rem", borderRadius: "9px", flexShrink: 0,
-                  background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .1)",
+                  background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)",
                   color: "rgba(var(--ff-muted), .8)", cursor: sending ? "default" : "pointer", fontSize: "1.1rem", lineHeight: 1,
                 }}
               >📎</button>
@@ -693,9 +693,9 @@ export default function JobChat({
                 placeholder={pending ? "Add a caption…" : "Type a message…  (Shift+Enter for a new line)"}
                 style={{
                   flex: 1, minWidth: 0, padding: ".7rem .9rem", resize: "none", maxHeight: 140,
-                  background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .1)",
+                  background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)",
                   borderRadius: "9px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".9rem",
-                  outline: "none", lineHeight: 1.45,
+                  lineHeight: 1.45,
                 }}
               />
               <button
@@ -703,7 +703,7 @@ export default function JobChat({
                 disabled={!canSend}
                 style={{
                   padding: ".7rem 1.1rem", borderRadius: "9px", border: "none", flexShrink: 0,
-                  background: canSend ? "#ea6b14" : "rgba(var(--ff-fg), .08)",
+                  background: canSend ? "var(--ff-c10)" : "rgba(var(--ff-fg), .08)",
                   color: canSend ? "#fff" : "rgba(var(--ff-muted), .3)",
                   cursor: canSend ? "pointer" : "default",
                   fontFamily: "inherit", fontSize: ".9rem", fontWeight: 600,

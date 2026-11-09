@@ -166,11 +166,11 @@ export default function ContractorProfileCompletion({
   };
 
   const lbl: React.CSSProperties = { display: "block", fontSize: ".72rem", textTransform: "uppercase", letterSpacing: ".1em", color: "rgba(var(--ff-muted), .55)", marginBottom: ".5rem" };
-  const inp: React.CSSProperties = { width: "100%", padding: ".55rem .7rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".85rem", boxSizing: "border-box" };
-  const chip = (on: boolean): React.CSSProperties => ({ padding: ".5rem .85rem", borderRadius: "99px", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600, border: on ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .14)", background: on ? "rgba(234,107,20,.16)" : "rgba(var(--ff-fg), .05)", color: on ? "#ea6b14" : "rgba(var(--ff-muted), .7)" });
+  const inp: React.CSSProperties = { width: "100%", padding: ".55rem .7rem", background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".85rem", boxSizing: "border-box" };
+  const chip = (on: boolean): React.CSSProperties => ({ padding: ".5rem .85rem", borderRadius: "99px", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600, border: on ? "1px solid var(--ff-c10)" : "1px solid rgba(var(--ff-fg), .14)", background: on ? "rgba(var(--ff-accent-rgb), .16)" : "rgba(var(--ff-fg), .05)", color: on ? "var(--ff-c10)" : "rgba(var(--ff-muted), .7)" });
   const checkRow = (checked: boolean, onChange: (v: boolean) => void, text: string) => (
     <label style={{ display: "flex", alignItems: "center", gap: ".55rem", fontSize: ".85rem", color: "var(--ff-text)", cursor: "pointer", marginBottom: ".6rem" }}>
-      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} style={{ accentColor: "#ea6b14", width: 16, height: 16 }} />
+      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} style={{ accentColor: "var(--ff-c10)", width: 16, height: 16 }} />
       {text}
     </label>
   );
@@ -180,13 +180,13 @@ export default function ContractorProfileCompletion({
       {/* Profile photo — the one thing on this page a client actually sees. */}
       <div {...sect(GAP_ANCHORS.photo)}>
         <span style={lbl}>Profile photo</span>
-        <div style={{ display: "flex", alignItems: "center", gap: ".9rem", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--ff-s4)", flexWrap: "wrap" }}>
           <div style={{ width: 72, height: 72, borderRadius: "50%", overflow: "hidden", flex: "0 0 auto",
-            background: "rgba(234,107,20,.14)", border: "1px solid rgba(var(--ff-fg), .12)",
+            background: "rgba(var(--ff-accent-rgb), .14)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .12)",
             display: "flex", alignItems: "center", justifyContent: "center" }}>
             {(photoPreview || contractor?.photo_url)
               ? <FadeImg src={photoPreview || contractor.photo_url} alt="Your profile photo" style={{ width: "100%", height: "100%", objectFit: "cover" as const }} />
-              : <span style={{ fontSize: "1.4rem", fontWeight: 700, color: "#ea6b14" }}>
+              : <span style={{ fontSize: "1.4rem", fontWeight: 700, color: "var(--ff-c10)" }}>
                   {((profile?.first_name?.[0] ?? "") + (profile?.last_name?.[0] ?? "")).toUpperCase() || "?"}
                 </span>}
           </div>
@@ -222,8 +222,8 @@ export default function ContractorProfileCompletion({
           {WORK_TYPES.map(w => (
             <button key={w.id} type="button" onClick={() => setWorkType(w.id)}
               style={{ textAlign: "left", padding: ".7rem .9rem", borderRadius: "10px", cursor: "pointer", fontFamily: "inherit",
-                border: workType === w.id ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .12)",
-                background: workType === w.id ? "rgba(234,107,20,.1)" : "rgba(var(--ff-fg), .04)", color: "var(--ff-text)" }}>
+                border: workType === w.id ? "1px solid var(--ff-c10)" : "1px solid rgba(var(--ff-fg), .12)",
+                background: workType === w.id ? "rgba(var(--ff-accent-rgb), .1)" : "rgba(var(--ff-fg), .04)", color: "var(--ff-text)" }}>
               <div style={{ fontSize: ".88rem", fontWeight: 600 }}>{w.label}</div>
               <div style={{ fontSize: ".76rem", color: "rgba(var(--ff-muted), .6)", marginTop: ".15rem" }}>{w.sub}</div>
             </button>
@@ -264,7 +264,7 @@ export default function ContractorProfileCompletion({
               <div style={{ flex: "1 1 180px", fontSize: ".82rem", color: "var(--ff-text)" }}>
                 {DOC_LABELS[key]}
                 {existingDocs[key] && !docFiles[key] && <span style={{ color: "#22c55e", marginLeft: ".4rem", fontSize: ".76rem" }}>✓ on file</span>}
-                {docFiles[key] && <span style={{ color: "#ea6b14", marginLeft: ".4rem", fontSize: ".76rem" }}>{docFiles[key]!.name}</span>}
+                {docFiles[key] && <span style={{ color: "var(--ff-c10)", marginLeft: ".4rem", fontSize: ".76rem" }}>{docFiles[key]!.name}</span>}
               </div>
               <input type="file" accept="image/*,application/pdf" onChange={e => pickDoc(key, e)} style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .7)" }} />
             </div>
@@ -273,13 +273,13 @@ export default function ContractorProfileCompletion({
       </div>
 
       {msg && (
-        <div style={{ padding: ".65rem .85rem", borderRadius: "8px", fontSize: ".82rem", marginBottom: ".9rem",
+        <div style={{ padding: ".65rem .85rem", borderRadius: "8px", fontSize: ".82rem", marginBottom: "var(--ff-s4)",
           background: msg.kind === "ok" ? "rgba(34,197,94,.1)" : "rgba(239,68,68,.1)",
           border: msg.kind === "ok" ? "1px solid rgba(34,197,94,.25)" : "1px solid rgba(239,68,68,.25)",
           color: msg.kind === "ok" ? "#22c55e" : "var(--ff-danger)" }}>{msg.text}</div>
       )}
       <button onClick={save} disabled={busy}
-        style={{ padding: ".7rem 1.4rem", borderRadius: "8px", border: "none", background: "#ea6b14", color: "#fff", fontFamily: "inherit", fontSize: ".9rem", fontWeight: 600, cursor: busy ? "default" : "pointer", opacity: busy ? .6 : 1 }}>
+        style={{ padding: ".7rem 1.4rem", borderRadius: "8px", border: "none", background: "var(--ff-c10)", color: "#fff", fontFamily: "inherit", fontSize: ".9rem", fontWeight: 600, cursor: busy ? "default" : "pointer", opacity: busy ? .6 : 1 }}>
         {busy ? "Saving…" : "Save profile details"}
       </button>
     </div>

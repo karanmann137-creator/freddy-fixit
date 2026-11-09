@@ -119,7 +119,7 @@ const POSTS = [
 ];
 
 const TAG_COLORS: Record<string, string> = {
-  Comparison: "#ea6b14",
+  Comparison: "var(--ff-c10)",
   Pricing: "#3b82f6",
   Maintenance: "#22c55e",
   Tips: "#a855f7",
@@ -169,25 +169,25 @@ export default function Blog() {
   ];
 
   return (
-    <div style={{ fontFamily: "'DM Sans',sans-serif", background: "var(--ff-bg)", backgroundImage: "radial-gradient(ellipse 55% 30% at 22% -2%, rgba(234,107,20,0.26) 0%, transparent 66%), radial-gradient(ellipse 50% 34% at 82% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), repeating-linear-gradient(45deg, transparent 0 27px, rgba(var(--ff-fg), 0.02) 27px, rgba(var(--ff-fg), 0.02) 28px), repeating-linear-gradient(-45deg, transparent 0 27px, rgba(var(--ff-fg), 0.016) 27px, rgba(var(--ff-fg), 0.016) 28px)", backgroundAttachment: "fixed", color: "var(--ff-text)", minHeight: "100vh", padding: "6rem clamp(1rem, 4vw, 1.5rem) 4rem" }}>
+    <div style={{ fontFamily: "'DM Sans',sans-serif", background: "var(--ff-bg)", backgroundImage: "radial-gradient(ellipse 55% 30% at 22% -2%, rgba(var(--ff-accent-rgb), 0.26) 0%, transparent 66%), radial-gradient(ellipse 50% 34% at 82% -6%, rgba(var(--ff-accent-rgb), 0.16) 0%, transparent 70%), repeating-linear-gradient(45deg, transparent 0 27px, rgba(var(--ff-fg), 0.02) 27px, rgba(var(--ff-fg), 0.02) 28px), repeating-linear-gradient(-45deg, transparent 0 27px, rgba(var(--ff-fg), 0.016) 27px, rgba(var(--ff-fg), 0.016) 28px)", backgroundAttachment: "fixed", color: "var(--ff-text)", minHeight: "100vh", padding: "6rem clamp(1rem, 4vw, 1.5rem) 4rem" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
       <style>{`
         h1,h2{font-family:var(--ff-font-display);font-weight:var(--ff-display-wght);letter-spacing:-.015em}
         h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em}
-        .blog-card{background:rgba(var(--ff-fg), .04);border:1px solid rgba(var(--ff-fg), .08);border-radius:12px;padding:2rem;cursor:pointer;transition:border-color .2s,transform .2s}
-        .blog-card:hover{border-color:rgba(234,107,20,.4);transform:translateY(-2px)}
+        .blog-card{background:rgba(var(--ff-fg), .04);border:var(--ff-hair-w) solid rgba(var(--ff-fg), .08);border-radius:12px;padding:2rem;cursor:pointer;transition:border-color .2s,transform .2s}
+        .blog-card:hover{border-color:rgba(var(--ff-accent-rgb), .4);transform:translateY(-2px)}
         .tag{display:inline-block;font-size:.72rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:.25rem .6rem;border-radius:4px}
       `}</style>
 
       <div style={{ maxWidth: "900px", margin: "0 auto" }}>
-        <p style={{ fontSize: ".8rem", color: "#ea6b14", textTransform: "uppercase", letterSpacing: ".12em", fontWeight: 600 }}>Freddy Fix It Blog</p>
-        <h1 style={{ fontSize: "clamp(2.5rem,6vw,4rem)", color: "var(--ff-text)", marginBottom: ".5rem", marginTop: ".25rem" }}>Home Improvement Insights for Calgary Homeowners</h1>
+        <p style={{ fontSize: ".8rem", color: "var(--ff-c10)", textTransform: "uppercase", letterSpacing: ".12em", fontWeight: 600 }}>Freddy Fix It Blog</p>
+        <h1 style={{ fontSize: "clamp(2.5rem,6vw,4rem)", color: "var(--ff-text)", marginBottom: ".5rem", marginTop: "var(--ff-s1)" }}>Home Improvement Insights for Calgary Homeowners</h1>
         <p style={{ color: "rgba(var(--ff-muted), .6)", marginBottom: "3rem", maxWidth: "600px" }}>Tips, guides, and honest comparisons to help you find the right contractor and keep your Calgary home in top shape.</p>
 
         {/* Featured post */}
         <div
           className="blog-card"
-          style={{ marginBottom: "2rem", background: "rgba(234,107,20,.06)", borderColor: "rgba(234,107,20,.2)" }}
+          style={{ marginBottom: "2rem", background: "rgba(var(--ff-accent-rgb), .06)", borderColor: "rgba(var(--ff-accent-rgb), .2)" }}
           onClick={() => setLocation(`/blog/${featured.slug}`)}
         >
           <div style={{ display: "flex", alignItems: "center", gap: ".75rem", marginBottom: "1rem" }}>
@@ -199,7 +199,7 @@ export default function Blog() {
           <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
             <span style={{ fontSize: ".8rem", color: "rgba(var(--ff-muted), .4)" }}>{featured.date}</span>
             <span style={{ fontSize: ".8rem", color: "rgba(var(--ff-muted), .4)" }}>{featured.readTime}</span>
-            <span style={{ fontSize: ".85rem", color: "#ea6b14", fontWeight: 500, marginLeft: "auto" }}>Read article →</span>
+            <span style={{ fontSize: ".85rem", color: "var(--ff-c10)", fontWeight: 500, marginLeft: "auto" }}>Read article →</span>
           </div>
         </div>
 

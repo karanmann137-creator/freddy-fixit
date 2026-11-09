@@ -135,18 +135,18 @@ export default function Login() {
     } finally { setLoading(false); }
   };
 
-  const inp = { width:"100%", padding:".75rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".95rem", outline:"none", boxSizing:"border-box" as const };
+  const inp = { width:"100%", padding:".75rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".95rem", boxSizing:"border-box" as const };
   const s = {
-    wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 80% 50% at 50% -10%, rgba(234,107,20,0.15) 0%, transparent 70%)", display:"flex", flexDirection:"column" as const, alignItems:"center", justifyContent:"center", padding:"2rem 1rem", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
+    wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 80% 50% at 50% -10%, rgba(var(--ff-accent-rgb), 0.15) 0%, transparent 70%)", display:"flex", flexDirection:"column" as const, alignItems:"center", justifyContent:"center", padding:"2rem 1rem", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
     inner: { maxWidth:"420px", width:"100%" },
     logo: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.2rem", letterSpacing:".1em", textAlign:"center" as const, marginBottom:"2rem" },
-    card: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"2rem" },
-    heading: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.8rem", letterSpacing:".06em", marginBottom:".25rem" },
+    card: { background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"2rem" },
+    heading: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.8rem", letterSpacing:".06em", marginBottom: "var(--ff-s1)" },
     sub: { fontSize:".85rem", color:"rgba(var(--ff-muted), .5)", fontWeight:300, marginBottom:"1.75rem" },
     label: { display:"block", fontSize:".75rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .55)", marginBottom:".5rem" },
     err: { background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"var(--ff-danger)", marginBottom:"1rem" },
-    btn: { width:"100%", padding:".9rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"8px", fontFamily:"inherit", fontSize:".95rem", fontWeight:500, cursor:"pointer", transition:"all .2s", boxSizing:"border-box" as const },
-    textBtn: { background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem", color:"#ea6b14", padding:0 },
+    btn: { width:"100%", padding: "var(--ff-s4)", background:"var(--ff-c10)", color:"#fff", border:"none", borderRadius:"8px", fontFamily:"inherit", fontSize:".95rem", fontWeight:500, cursor:"pointer", transition:"all .2s", boxSizing:"border-box" as const },
+    textBtn: { background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem", color:"var(--ff-c10)", padding:0 },
     // This page is outside the dashboards' scoped `.ffdash` stylesheet, so
     // :disabled styling has to be applied inline or a busy button looks live.
     dim: (on: boolean) => ({ opacity: on ? .6 : 1, cursor: on ? "not-allowed" : "pointer" }),
@@ -157,12 +157,12 @@ export default function Login() {
     <div style={s.wrap}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       <div style={s.inner}>
-        <div style={s.logo}>FREDDY <span style={{ color:"#ea6b14" }}>FIXIT</span></div>
+        <div style={s.logo}>FREDDY <span style={{ color:"var(--ff-c10)" }}>FIXIT</span></div>
 
         <div style={s.card}>
           {resetSent ? (
             <div style={{ textAlign:"center", padding:"1.5rem 0" }}>
-              <div style={{ marginBottom:"1rem" }}><Ic name="mail" size={48} color="#ea6b14" /></div>
+              <div style={{ marginBottom:"1rem" }}><Ic name="mail" size={48} color="var(--ff-c10)" /></div>
               <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.6rem", letterSpacing:".06em", marginBottom:".5rem" }}>Check Your Email</div>
               <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .6)", fontWeight:300, lineHeight:1.6 }}>
                 We sent a reset link to <strong>{email}</strong>. Check your inbox and follow the link to set a new password.
@@ -232,7 +232,7 @@ export default function Login() {
               </div>
               <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .4)", textAlign:"center", marginTop:"1rem", lineHeight:1.5 }}>
                 Locked out of both? Email{" "}
-                <a href="mailto:hello@freddyfixit.ca" style={{ color:"#ea6b14", textDecoration:"none" }}>hello@freddyfixit.ca</a>{" "}
+                <a href="mailto:hello@freddyfixit.ca" style={{ color:"var(--ff-c10)", textDecoration:"none" }}>hello@freddyfixit.ca</a>{" "}
                 and we can switch two-step off for you.
               </p>
             </>
@@ -244,7 +244,7 @@ export default function Login() {
               {needsConfirm && (
                 <div style={{ marginBottom:"1rem" }}>
                   <button type="button" onClick={resendConfirmation} disabled={loading}
-                    style={{ ...s.btn, background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.4)", color:"#ea6b14", ...s.dim(loading) }}>
+                    style={{ ...s.btn, background:"rgba(var(--ff-accent-rgb), .12)", border:"1px solid rgba(var(--ff-accent-rgb), .4)", color:"var(--ff-c10)", ...s.dim(loading) }}>
                     {loading ? <><span className="ff-btn-spin" aria-hidden="true" />Sending…</> : "Resend confirmation email"}
                   </button>
                   {resendNote && <p style={{ fontSize:".8rem", color:"#22c55e", marginTop:".5rem", textAlign:"center" }}>{resendNote}</p>}
@@ -274,7 +274,7 @@ export default function Login() {
                 <span style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .35)" }}>No account yet?</span>
                 <div style={{ flex:1, height:"1px", background:"rgba(var(--ff-fg), .08)" }} />
               </div>
-              <button style={{ ...s.btn, background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", color:"rgba(var(--ff-muted), .8)" }} onClick={() => setLocation("/")}>
+              <button style={{ ...s.btn, background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", color:"rgba(var(--ff-muted), .8)" }} onClick={() => setLocation("/")}>
                 Get Started on Home Page
               </button>
             </>
@@ -300,7 +300,7 @@ export default function Login() {
         </div>
 
         <p style={s.footer}>
-          Questions? <a href="mailto:hello@freddyfixit.ca" style={{ color:"#ea6b14", textDecoration:"none" }}>hello@freddyfixit.ca</a>
+          Questions? <a href="mailto:hello@freddyfixit.ca" style={{ color:"var(--ff-c10)", textDecoration:"none" }}>hello@freddyfixit.ca</a>
         </p>
       </div>
     </div>

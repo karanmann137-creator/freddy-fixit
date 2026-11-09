@@ -57,6 +57,8 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # ---------------------------------------------------------------------------
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import check_mounts  # noqa: E402
+import check_tokens  # noqa: E402
+import check_ux  # noqa: E402
 
 INVARIANTS = check_mounts.INVARIANTS
 
@@ -225,6 +227,33 @@ def check_invariants(paths):
     total = sum(len(v) for v in INVARIANTS.values())
     ok("critical mounts intact (%d needle(s) across %d file(s), whole tree)"
        % (total, len(INVARIANTS)))
+
+
+# ---------------------------------------------------------------------------
+# 4b. Theme tokens and the three checkable UX laws.
+#
+# Same shape as the mounts gate above, and here for the same reason: both of
+# these catch defects with NO runtime symptom -- a navy band rendering the
+# light theme, a field with no focus ring, the dark-mode orange painted on the
+# off-white ground. Nothing throws, the build is clean, and you find out by
+# looking at the site, which on this platform means the owner finds out.
+#
+# Both modules own their own rules in ONE copy and are imported here rather
+# than reimplemented, exactly as check_mounts is. CI runs the same two files
+# standalone (.github/workflows/typecheck.yml) to cover the pushes that do not
+# come through this script.
+# ---------------------------------------------------------------------------
+def check_style_guards():
+    for mod, label in ((check_tokens, "theme tokens"), (check_ux, "ux laws")):
+        problems = mod.check(REPO)
+        if problems:
+            die("%s: %d problem(s).\n%s\n"
+                "  Run `python3 tools/%s.py` for the full explanation."
+                % (label, len(problems),
+                   "\n".join("  - " + p.replace("\n      ", "\n    ") for p in problems),
+                   mod.__name__))
+    ok("theme tokens in parity; ux laws hold (focus rule present, orange ratchet "
+       "not risen, no unringed outline:none)")
 
 
 # ---------------------------------------------------------------------------
@@ -593,6 +622,7 @@ def main():
 
     check_secrets(added)
     check_invariants(added)
+    check_style_guards()
     check_deletions(to_delete)
     if not a.skip_typecheck:
         run_typecheck()

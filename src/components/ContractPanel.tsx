@@ -44,7 +44,7 @@ function renderMd(md: string) {
     if (list.length) {
       out.push(
         <ul key={"ul" + out.length} style={{ margin: ".3rem 0 .6rem 1.1rem", padding: 0 }}>
-          {list.map((li, i) => <li key={i} style={{ fontSize: ".84rem", lineHeight: 1.55, marginBottom: ".2rem" }}>{inline(li)}</li>)}
+          {list.map((li, i) => <li key={i} style={{ fontSize: ".84rem", lineHeight: 1.55, marginBottom: "var(--ff-s1)" }}>{inline(li)}</li>)}
         </ul>
       );
       list = [];
@@ -61,7 +61,7 @@ function renderMd(md: string) {
   for (const raw of lines) {
     const line = raw.trimEnd();
     if (/^#\s+/.test(line)) { flush(); out.push(<div key={out.length} style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "1.15rem", letterSpacing: ".02em", margin: ".6rem 0 .35rem", color: "var(--ff-text)" }}>{line.replace(/^#\s+/, "")}</div>); }
-    else if (/^##\s+/.test(line)) { flush(); out.push(<div key={out.length} style={{ fontSize: ".82rem", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: ".06em", color: "#ea6b14", margin: ".7rem 0 .3rem" }}>{line.replace(/^##\s+/, "")}</div>); }
+    else if (/^##\s+/.test(line)) { flush(); out.push(<div key={out.length} style={{ fontSize: ".82rem", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: ".06em", color: "var(--ff-c10)", margin: ".7rem 0 .3rem" }}>{line.replace(/^##\s+/, "")}</div>); }
     else if (/^[-*]\s+/.test(line)) { list.push(line.replace(/^[-*]\s+/, "")); }
     else if (line === "") { flush(); }
     // `--ff-text-rgb` was never declared anywhere in the repo, so the literal
@@ -77,10 +77,10 @@ function renderMd(md: string) {
 
 // scrollMarginTop keeps the panel clear of the fixed top nav when a dashboard
 // scrolls it into view (see CONTRACT_ANCHOR below).
-const cardBase: React.CSSProperties = { margin: "1rem 0 1.25rem", padding: "1.1rem 1.2rem", borderRadius: "12px", background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", scrollMarginTop: "5.5rem" };
+const cardBase: React.CSSProperties = { margin: "1rem 0 1.25rem", padding: "1.1rem 1.2rem", borderRadius: "12px", background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", scrollMarginTop: "5.5rem" };
 const label: React.CSSProperties = { fontSize: ".72rem", textTransform: "uppercase" as const, letterSpacing: ".1em", color: "rgba(var(--ff-muted), .5)", marginBottom: ".6rem", display: "flex", alignItems: "center", gap: 6 };
 const btn: React.CSSProperties = { padding: ".55rem 1.1rem", borderRadius: "9px", border: "none", fontFamily: "inherit", fontSize: ".85rem", fontWeight: 600, cursor: "pointer" };
-const input: React.CSSProperties = { width: "100%", padding: ".55rem .7rem", borderRadius: "8px", border: "1px solid rgba(var(--ff-fg), .18)", background: "rgba(var(--ff-fg), .03)", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".9rem", boxSizing: "border-box" };
+const input: React.CSSProperties = { width: "100%", padding: ".55rem .7rem", borderRadius: "8px", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .18)", background: "rgba(var(--ff-fg), .03)", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".9rem", boxSizing: "border-box" };
 
 // The dashboards scroll to and ring this panel when a client taps "Review &
 // sign" in Needs-your-attention, so the id has to be stable and has to exist on
@@ -246,10 +246,10 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
     return (
       <div {...anchor} style={{ ...cardBase, borderColor: "rgba(239,68,68,.35)" }}>
         <div style={label}><Ic name="alert-triangle" size={14} color="#ef4444" />Service agreement</div>
-        <div style={{ fontSize: ".85rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .9)", marginBottom: ".7rem" }}>
+        <div style={{ fontSize: ".85rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .9)", marginBottom: "var(--ff-s3)" }}>
           We couldn't load this job's agreement just now, so we can't show you where it stands. Nothing has been lost — please try again.
         </div>
-        <button style={{ ...btn, background: "#ea6b14", color: "#fff" }} onClick={() => { setLoading(true); void load(); }}>Try again</button>
+        <button style={{ ...btn, background: "var(--ff-c10)", color: "#fff" }} onClick={() => { setLoading(true); void load(); }}>Try again</button>
       </div>
     );
   }
@@ -262,7 +262,7 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
     return (
       <div {...anchor} style={{ ...cardBase, borderColor: "rgba(34,197,94,.35)", background: "rgba(34,197,94,.06)" }}>
         <div style={label}><Ic name="check-circle" size={14} color="#22c55e" />Service agreement — signed</div>
-        <div style={{ fontSize: ".85rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .9)", marginBottom: ".7rem" }}>
+        <div style={{ fontSize: ".85rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .9)", marginBottom: "var(--ff-s3)" }}>
           Signed by both parties{contract?.signed_at ? ` on ${fmt(contract.signed_at)}` : ""}. This agreement is now in effect.
         </div>
         <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
@@ -290,8 +290,8 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
     // draft / none → compose
     return (
       <div {...anchor} style={cardBase}>
-        <div style={label}><Ic name="clipboard-list" size={14} color="#ea6b14" />Service agreement — required before payment</div>
-        <div style={{ fontSize: ".82rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .85)", marginBottom: ".9rem" }}>
+        <div style={label}><Ic name="clipboard-list" size={14} color="var(--ff-c10)" />Service agreement — required before payment</div>
+        <div style={{ fontSize: ".82rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .85)", marginBottom: "var(--ff-s4)" }}>
           This job needs a signed agreement before any money is collected. Review the agreement below, add anything you like, then sign to send it to your client for their signature.
         </div>
 
@@ -302,7 +302,7 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
             thing that writes them); it shows their current value and says where
             to set them. Never move or conditionally unmount the panel itself —
             dropping its mount once made every job on the platform unpayable. */}
-        <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", marginBottom: ".9rem" }}>
+        <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", marginBottom: "var(--ff-s4)" }}>
           {([
             ["calendar", "Date & time", job?.scheduled_at ? new Date(job.scheduled_at).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : null],
             ["dollar", "Price", job?.amount != null ? "$" + job.amount : null],
@@ -312,7 +312,7 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
               background: value ? "rgba(var(--ff-fg), .04)" : "rgba(251,191,36,.08)",
               border: value ? "1px solid rgba(var(--ff-fg), .1)" : "1px solid rgba(251,191,36,.3)",
             }}>
-              <div style={{ fontSize: ".68rem", textTransform: "uppercase", letterSpacing: ".1em", color: "rgba(var(--ff-muted), .5)", marginBottom: ".2rem" }}>
+              <div style={{ fontSize: ".68rem", textTransform: "uppercase", letterSpacing: ".1em", color: "rgba(var(--ff-muted), .5)", marginBottom: "var(--ff-s1)" }}>
                 <Ic name={icon as any} size={11} style={{ marginRight: 4 }} />{label}
               </div>
               <div style={{ fontSize: ".84rem", fontWeight: 600, color: value ? "var(--ff-text)" : "var(--ff-warn)" }}>
@@ -327,7 +327,7 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
             nothing visible and read as a broken button. It is now labelled as a
             choice, carries aria-pressed, and the selected option says so. */}
         <div style={{ fontSize: ".8rem", fontWeight: 600, marginBottom: ".4rem", color: "var(--ff-text)" }}>Which agreement?</div>
-        <div role="group" style={{ display: "flex", gap: ".5rem", marginBottom: ".9rem", flexWrap: "wrap" }}>
+        <div role="group" style={{ display: "flex", gap: ".5rem", marginBottom: "var(--ff-s4)", flexWrap: "wrap" }}>
           {(["generated", "uploaded"] as const).map(sv => {
             const on = source === sv;
             return (
@@ -338,10 +338,10 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
                 style={{
                   ...btn,
                   display: "inline-flex", alignItems: "center", gap: ".35rem",
-                  background: on ? "#ea6b14" : "rgba(var(--ff-fg), .06)",
+                  background: on ? "var(--ff-c10)" : "rgba(var(--ff-fg), .06)",
                   color: on ? "#fff" : "var(--ff-text)",
                   fontWeight: on ? 700 : 500,
-                  border: on ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .14)",
+                  border: on ? "1px solid var(--ff-c10)" : "1px solid rgba(var(--ff-fg), .14)",
                 }}
               >
                 {on && <Ic name="check" size={13} color="#fff" />}
@@ -352,14 +352,14 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
         </div>
 
         {source === "generated" ? (
-          <div style={{ maxHeight: 300, overflowY: "auto", padding: ".8rem 1rem", borderRadius: "10px", background: "rgba(var(--ff-fg), .03)", border: "1px solid rgba(var(--ff-fg), .1)", marginBottom: ".9rem" }}>
+          <div style={{ maxHeight: 300, overflowY: "auto", padding: ".8rem 1rem", borderRadius: "10px", background: "rgba(var(--ff-fg), .03)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", marginBottom: "var(--ff-s4)" }}>
             {bodyForView ? renderMd(bodyForView) : <div style={{ fontSize: ".82rem", color: "rgba(var(--ff-muted), .6)" }}>Preparing your agreement…</div>}
           </div>
         ) : (
-          <div style={{ marginBottom: ".9rem" }}>
+          <div style={{ marginBottom: "var(--ff-s4)" }}>
             <input type="file" accept="application/pdf,image/*,.doc,.docx" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 15 * 1024 * 1024) { setErr("That file is over 15 MB — please attach a smaller copy."); e.target.value = ""; return; } setErr(null); setFile(f); }} style={{ fontSize: ".85rem", color: "var(--ff-text)" }} />
             {(file || contract?.uploaded_path) && <div style={{ fontSize: ".8rem", color: "#22c55e", marginTop: ".4rem" }}><Ic name="check" size={12} style={{ marginRight: 4 }} />{file ? file.name : "Document attached"}</div>}
-            <label style={{ display: "flex", gap: ".5rem", alignItems: "flex-start", marginTop: ".7rem", fontSize: ".8rem", lineHeight: 1.5, color: "rgba(var(--ff-muted), .9)", cursor: "pointer" }}>
+            <label style={{ display: "flex", gap: ".5rem", alignItems: "flex-start", marginTop: "var(--ff-s3)", fontSize: ".8rem", lineHeight: 1.5, color: "rgba(var(--ff-muted), .9)", cursor: "pointer" }}>
               <input type="checkbox" checked={uploadAck} onChange={e => setUploadAck(e.target.checked)} style={{ marginTop: 3 }} />
               <span>I confirm this document is between me and my client only. It does not place any liability, obligation, or warranty on Freddy Fix It, and Freddy Fix It's standard terms and Alberta cancellation rights still apply.</span>
             </label>
@@ -367,13 +367,13 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
         )}
 
         {/* custom clauses */}
-        <div style={{ marginBottom: ".9rem" }}>
+        <div style={{ marginBottom: "var(--ff-s4)" }}>
           <div style={{ fontSize: ".8rem", fontWeight: 600, marginBottom: ".35rem", color: "var(--ff-text)" }}>Additional terms (optional)</div>
           <textarea value={clauses} onChange={e => setClauses(e.target.value)} rows={3} placeholder="e.g. warranty details, materials not included, access notes…" style={{ ...input, resize: "vertical" as const }} />
         </div>
 
         {/* sign */}
-        <div style={{ borderTop: "1px solid rgba(var(--ff-fg), .1)", paddingTop: ".9rem" }}>
+        <div style={{ borderTop: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", paddingTop: "var(--ff-s4)" }}>
           <div style={{ fontSize: ".8rem", fontWeight: 600, marginBottom: ".35rem", color: "var(--ff-text)" }}>Sign as the contractor</div>
           <input value={sigName} onChange={e => setSigName(e.target.value)} placeholder="Type your full legal name" style={{ ...input, marginBottom: ".6rem" }} autoComplete="name" />
           <label style={{ display: "flex", gap: ".5rem", alignItems: "flex-start", fontSize: ".8rem", lineHeight: 1.5, color: "rgba(var(--ff-muted), .9)", cursor: "pointer", marginBottom: ".8rem" }}>
@@ -394,7 +394,7 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
             onClick={contractorSign}
             style={{
               ...btn, width: "100%", padding: ".9rem 1rem", fontSize: ".95rem", fontWeight: 700,
-              background: "#ea6b14", color: "#fff", minHeight: 52,
+              background: "var(--ff-c10)", color: "#fff", minHeight: 52,
               opacity: (busy || notReady) ? .6 : 1, cursor: notReady ? "not-allowed" : "pointer",
             }}
           >
@@ -410,7 +410,7 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
     if (status !== "sent") {
       return (
         <div {...anchor} style={cardBase}>
-          <div style={label}><Ic name="clipboard-list" size={14} color="#ea6b14" />Service agreement</div>
+          <div style={label}><Ic name="clipboard-list" size={14} color="var(--ff-c10)" />Service agreement</div>
           <div style={{ fontSize: ".85rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .9)" }}>
             Your contractor is preparing the agreement for this job. You'll be asked to review and sign it here before any payment is collected — we'll email you when it's ready.
           </div>
@@ -418,8 +418,8 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
       );
     }
     return (
-      <div {...anchor} style={{ ...cardBase, borderColor: "rgba(234,107,20,.35)" }}>
-        <div style={label}><Ic name="clipboard-list" size={14} color="#ea6b14" />Review & sign your agreement</div>
+      <div {...anchor} style={{ ...cardBase, borderColor: "rgba(var(--ff-accent-rgb), .35)" }}>
+        <div style={label}><Ic name="clipboard-list" size={14} color="var(--ff-c10)" />Review & sign your agreement</div>
         <div style={{ fontSize: ".82rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .85)", marginBottom: ".8rem" }}>
           Your contractor signed on {fmt(contract?.contractor_signed_at)}. Please read the agreement, then add your signature. This is required before any payment.
         </div>
@@ -431,11 +431,11 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
           </div>
         )}
 
-        <div style={{ maxHeight: 320, overflowY: "auto", padding: ".8rem 1rem", borderRadius: "10px", background: "rgba(var(--ff-fg), .03)", border: "1px solid rgba(var(--ff-fg), .1)", marginBottom: ".9rem" }}>
+        <div style={{ maxHeight: 320, overflowY: "auto", padding: ".8rem 1rem", borderRadius: "10px", background: "rgba(var(--ff-fg), .03)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", marginBottom: "var(--ff-s4)" }}>
           {bodyForView ? renderMd(bodyForView) : <div style={{ fontSize: ".82rem", color: "rgba(var(--ff-muted), .6)" }}>Agreement unavailable — please refresh.</div>}
           {contract?.custom_clauses && (
             <>
-              <div style={{ fontSize: ".82rem", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: ".06em", color: "#ea6b14", margin: ".8rem 0 .3rem" }}>Additional terms (from the contractor)</div>
+              <div style={{ fontSize: ".82rem", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: ".06em", color: "var(--ff-c10)", margin: ".8rem 0 .3rem" }}>Additional terms (from the contractor)</div>
               {renderMd(contract.custom_clauses)}
             </>
           )}
@@ -458,7 +458,7 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
   // ---------- ADMIN (read-only) ----------
   return (
     <div {...anchor} style={cardBase}>
-      <div style={label}><Ic name="clipboard-list" size={14} color="#ea6b14" />Service agreement — {status ?? "not started"}</div>
+      <div style={label}><Ic name="clipboard-list" size={14} color="var(--ff-c10)" />Service agreement — {status ?? "not started"}</div>
       {!contract && <div style={{ fontSize: ".85rem", color: "rgba(var(--ff-muted), .8)" }}>No agreement prepared yet.</div>}
       {contract && (
         <div style={{ fontSize: ".82rem", lineHeight: 1.7, color: "rgba(var(--ff-muted), .9)" }}>

@@ -117,7 +117,7 @@ export default function AddressAutocomplete({ value, onChange, placeholder, styl
       {open && suggestions.length > 0 && (
         <div style={{
           position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 50,
-          background: "var(--ff-bg)", border: "1px solid rgba(var(--ff-fg), .15)", borderRadius: "10px",
+          background: "var(--ff-bg)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .15)", borderRadius: "10px",
           boxShadow: "0 12px 34px rgba(0,0,0,.4)", overflow: "hidden",
         }}>
           {suggestions.map((sug, i) => (
@@ -128,8 +128,8 @@ export default function AddressAutocomplete({ value, onChange, placeholder, styl
               style={{
                 padding: ".6rem .8rem", fontSize: ".85rem", cursor: "pointer",
                 color: "var(--ff-text)",
-                background: i === active ? "rgba(234,107,20,.14)" : "transparent",
-                borderBottom: i < suggestions.length - 1 ? "1px solid rgba(var(--ff-fg), .06)" : "none",
+                background: i === active ? "rgba(var(--ff-accent-rgb), .14)" : "transparent",
+                borderBottom: i < suggestions.length - 1 ? "var(--ff-hair-w) solid rgba(var(--ff-fg), .06)" : "none",
               }}
             >{sug}</div>
           ))}

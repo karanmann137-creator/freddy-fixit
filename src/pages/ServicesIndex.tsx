@@ -23,7 +23,7 @@ export default function ServicesIndex() {
   return (
     <div style={{ fontFamily: "'DM Sans',sans-serif", background: "var(--ff-bg)", color: "var(--ff-text)", minHeight: "100vh", padding: "6rem clamp(1rem, 4vw, 1.5rem) 5rem" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-      <style>{"h1,h2{font-family:var(--ff-font-display);font-weight:var(--ff-display-wght);letter-spacing:-.015em} .si-card{background:var(--ff-surface);border:1px solid rgba(var(--ff-fg), .07);border-radius:12px;padding:1.1rem;cursor:pointer;transition:transform .15s,border-color .15s;text-decoration:none;display:block} .si-card:hover{transform:translateY(-2px);border-color:rgba(234,107,20,.45)}"}</style>
+      <style>{"h1,h2{font-family:var(--ff-font-display);font-weight:var(--ff-display-wght);letter-spacing:-.015em} .si-card{background:var(--ff-surface);border:var(--ff-hair-w) solid rgba(var(--ff-fg), .07);border-radius:12px;padding:1.1rem;cursor:pointer;transition:transform .15s,border-color .15s;text-decoration:none;display:block} .si-card:hover{transform:translateY(-2px);border-color:rgba(var(--ff-accent-rgb), .45)}"}</style>
       <div style={{ maxWidth: 980, margin: "0 auto" }}>
         <h1 style={{ fontSize: "2.6rem", marginBottom: ".4rem" }}>Services in Calgary</h1>
         <p style={{ color: "rgba(var(--ff-muted), .82)", fontWeight: 300, fontSize: "1.05rem", marginBottom: "2.4rem", maxWidth: 640 }}>Vetted, licensed and insured local pros for home repairs and vehicle maintenance. Pick a service to learn more, or post a job and get up to 5 written estimates.</p>
@@ -32,17 +32,17 @@ export default function ServicesIndex() {
             const s = SERVICES[slug];
             return (
               <a key={slug} className="si-card" href={"/services/" + slug}>
-                <div style={{ width: 44, height: 44, borderRadius: 11, background: "rgba(234,107,20,.12)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: ".7rem" }}>
-                  <Ic name={s.icon} size={24} color="#ea6b14" />
+                <div style={{ width: 44, height: 44, borderRadius: 11, background: "rgba(var(--ff-accent-rgb), .12)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "var(--ff-s3)" }}>
+                  <Ic name={s.icon} size={24} color="var(--ff-c10)" />
                 </div>
-                <div style={{ fontWeight: 600, fontSize: "1.05rem", marginBottom: ".25rem" }}>{s.h1.replace(" in Calgary", "")}</div>
+                <div style={{ fontWeight: 600, fontSize: "1.05rem", marginBottom: "var(--ff-s1)" }}>{s.h1.replace(" in Calgary", "")}</div>
                 <div style={{ color: "rgba(var(--ff-muted), .7)", fontSize: ".88rem", fontWeight: 300 }}>{s.name} in Calgary</div>
               </a>
             );
           })}
         </div>
         <div style={{ textAlign: "center", marginTop: "3rem" }}>
-          <button onClick={() => setLocation("/client-onboarding")} style={{ background: "#ea6b14", color: "#fff", border: "none", padding: ".9rem 1.8rem", borderRadius: 8, fontSize: "1.05rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>Post a job — get 5 free estimates →</button>
+          <button onClick={() => setLocation("/client-onboarding")} style={{ background: "var(--ff-c10)", color: "#fff", border: "none", padding: ".9rem 1.8rem", borderRadius: 8, fontSize: "1.05rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>Post a job — get 5 free estimates →</button>
         </div>
       </div>
     </div>

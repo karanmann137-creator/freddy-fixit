@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
 import { Ic } from "@/components/Ic";
 import { formatWhen } from "@/lib/chatParse";
+import { ensureUiStyles } from "./ui/uiStyles";
 
 /**
  * The scheduling prompt that pops when the OTHER person named a time in the
@@ -31,6 +32,7 @@ export default function ChatTimePrompt({
   onSuggest: () => void;         // open the chat so they can type another time
   onClose: () => void;
 }) {
+  ensureUiStyles();
   const [busy, setBusy] = useState<"" | "accept" | "decline">("");
   const [err, setErr] = useState("");
   const [done, setDone] = useState<string>("");
@@ -66,29 +68,21 @@ export default function ChatTimePrompt({
   };
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed", inset: 0, zIndex: 9999,
-        background: "rgba(8,11,20,.6)", backdropFilter: "blur(2px)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: "1rem", fontFamily: "'DM Sans', sans-serif",
-      }}
-    >
+    <div onClick={onClose} className="ffu-scrim">
       <div
         onClick={e => e.stopPropagation()}
-        style={{
-          width: "100%", maxWidth: 440, background: "var(--ff-bg)",
-          border: "1px solid rgba(234,107,20,.45)", borderRadius: 14,
-          boxShadow: "0 24px 70px rgba(0,0,0,.5)", overflow: "hidden",
-        }}
+        className="ffu-modal ffu-modal-flush"
+        role="dialog"
+        aria-modal="true"
+        style={{ ["--ffu-modal-w" as any]: "440px" }}
       >
+        <span className="ffu-grab" aria-hidden="true" />
         <div style={{
-          padding: "1rem 1.25rem", background: "rgba(234,107,20,.1)",
-          borderBottom: "1px solid rgba(var(--ff-fg), .08)",
-          display: "flex", alignItems: "center", gap: ".7rem",
+          padding: "1rem 1.25rem", background: "rgba(var(--ff-accent-rgb), .1)",
+          borderBottom: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)",
+          display: "flex", alignItems: "center", gap: "var(--ff-s3)",
         }}>
-          <Ic name="calendar" size={18} style={{ color: "#ea6b14" }} />
+          <Ic name="calendar" size={18} style={{ color: "var(--ff-c10)" }} />
           <div style={{ fontSize: ".95rem", fontWeight: 600, color: "var(--ff-text)" }}>
             {done ? "All set" : "A time was suggested in the chat"}
           </div>
@@ -108,13 +102,13 @@ export default function ChatTimePrompt({
             </>
           ) : (
             <>
-              <div style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .6)", marginBottom: ".25rem" }}>{title}</div>
-              <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#ea6b14", marginBottom: ".7rem" }}>{when}</div>
+              <div style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .6)", marginBottom: "var(--ff-s1)" }}>{title}</div>
+              <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--ff-c10)", marginBottom: "var(--ff-s3)" }}>{when}</div>
 
               {job.chat_time_msg && (
                 <div style={{
                   fontSize: ".84rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .8)",
-                  background: "rgba(var(--ff-fg), .05)", borderLeft: "3px solid rgba(234,107,20,.5)",
+                  background: "rgba(var(--ff-fg), .05)", borderLeft: "3px solid rgba(var(--ff-accent-rgb), .5)",
                   borderRadius: 6, padding: ".6rem .75rem", margin: "0 0 .9rem", whiteSpace: "pre-wrap",
                 }}>
                   “{job.chat_time_msg}”
@@ -162,8 +156,8 @@ function btn(primary: boolean, disabled = false): CSSProperties {
     padding: ".65rem 1.05rem", borderRadius: 9, fontFamily: "inherit",
     fontSize: ".87rem", fontWeight: 600, cursor: disabled ? "default" : "pointer",
     opacity: disabled ? .6 : 1,
-    border: primary ? "none" : "1px solid rgba(var(--ff-fg), .18)",
-    background: primary ? "#ea6b14" : "rgba(var(--ff-fg), .06)",
+    border: primary ? "none" : "var(--ff-hair-w) solid rgba(var(--ff-fg), .18)",
+    background: primary ? "var(--ff-c10)" : "rgba(var(--ff-fg), .06)",
     color: primary ? "#fff" : "var(--ff-text)",
   };
 }

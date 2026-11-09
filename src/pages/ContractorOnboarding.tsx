@@ -372,17 +372,17 @@ export default function ContractorOnboarding() {
     } finally { setLoading(false); }
   };
 
-  const inp = { width:"100%", padding:".75rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".95rem", outline:"none", boxSizing:"border-box" as const };
+  const inp = { width:"100%", padding:".75rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".95rem", boxSizing:"border-box" as const };
   const s = {
-    wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"linear-gradient(rgba(var(--ff-bg-rgb), 0.90), rgba(var(--ff-bg-rgb), 0.95)), radial-gradient(ellipse 50% 32% at 18% -4%, rgba(234,107,20,0.30) 0%, transparent 68%), radial-gradient(ellipse 55% 36% at 84% -8%, rgba(234,107,20,0.18) 0%, transparent 70%), repeating-linear-gradient(45deg, transparent 0 26px, rgba(var(--ff-fg), 0.022) 26px, rgba(var(--ff-fg), 0.022) 27px), repeating-linear-gradient(-45deg, transparent 0 26px, rgba(var(--ff-fg), 0.018) 26px, rgba(var(--ff-fg), 0.018) 27px), url(\"https://images.unsplash.com/photo-1685320198649-781e83a61de4?auto=format&fit=crop&w=1600&q=65\")", backgroundSize:"auto, auto, auto, auto, auto, cover", backgroundPosition:"center, center, center, center, center, center", backgroundAttachment:"fixed", padding:"3rem 1rem 4rem", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
+    wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"linear-gradient(rgba(var(--ff-bg-rgb), 0.90), rgba(var(--ff-bg-rgb), 0.95)), radial-gradient(ellipse 50% 32% at 18% -4%, rgba(var(--ff-accent-rgb), 0.30) 0%, transparent 68%), radial-gradient(ellipse 55% 36% at 84% -8%, rgba(var(--ff-accent-rgb), 0.18) 0%, transparent 70%), repeating-linear-gradient(45deg, transparent 0 26px, rgba(var(--ff-fg), 0.022) 26px, rgba(var(--ff-fg), 0.022) 27px), repeating-linear-gradient(-45deg, transparent 0 26px, rgba(var(--ff-fg), 0.018) 26px, rgba(var(--ff-fg), 0.018) 27px), url(\"https://images.unsplash.com/photo-1685320198649-781e83a61de4?auto=format&fit=crop&w=1600&q=65\")", backgroundSize:"auto, auto, auto, auto, auto, cover", backgroundPosition:"center, center, center, center, center, center", backgroundAttachment:"fixed", padding:"3rem 1rem 4rem", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
     inner: { maxWidth:"580px", margin:"0 auto" },
-    card: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"2rem" },
+    card: { background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"2rem" },
     label: { display:"block", fontSize:".78rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .6)", marginBottom:".6rem" },
     err: { fontSize:".78rem", color:"var(--ff-danger)", marginTop:".35rem" },
-    chip: { display:"flex", alignItems:"center", gap:".5rem", padding:".75rem 1rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px", color:"rgba(var(--ff-muted), .75)", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", textAlign:"left" as const, width:"100%" },
-    chipSel: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.5)", color:"var(--ff-text)" },
-    availBtn: { display:"flex", alignItems:"center", gap:"1rem", padding:"1rem 1.25rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"10px", color:"rgba(var(--ff-muted), .8)", fontFamily:"inherit", cursor:"pointer", textAlign:"left" as const, width:"100%", marginBottom:".75rem" },
-    availBtnSel: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.5)", color:"var(--ff-text)" },
+    chip: { display:"flex", alignItems:"center", gap:".5rem", padding:".75rem 1rem", background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"8px", color:"rgba(var(--ff-muted), .75)", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", textAlign:"left" as const, width:"100%" },
+    chipSel: { background:"rgba(var(--ff-accent-rgb), .12)", borderColor:"rgba(var(--ff-accent-rgb), .5)", color:"var(--ff-text)" },
+    availBtn: { display:"flex", alignItems:"center", gap:"1rem", padding:"1rem 1.25rem", background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"10px", color:"rgba(var(--ff-muted), .8)", fontFamily:"inherit", cursor:"pointer", textAlign:"left" as const, width:"100%", marginBottom:".75rem" },
+    availBtnSel: { background:"rgba(var(--ff-accent-rgb), .12)", borderColor:"rgba(var(--ff-accent-rgb), .5)", color:"var(--ff-text)" },
     navBtn: { flex:1, padding:".85rem 1.5rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer", border:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:".4rem" },
   };
 
@@ -390,18 +390,18 @@ export default function ContractorOnboarding() {
     <div style={s.wrap}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       <div style={{ ...s.inner, textAlign:"center", paddingTop:"4rem" }}>
-        <div style={{ width:"72px", height:"72px", background:"rgba(234,107,20,.15)", border:"2px solid rgba(234,107,20,.4)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 2rem" }}>
-          <Ic name="mail" size={32} color="#ea6b14" />
+        <div style={{ width:"72px", height:"72px", background:"rgba(var(--ff-accent-rgb), .15)", border:"2px solid rgba(var(--ff-accent-rgb), .4)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 2rem" }}>
+          <Ic name="mail" size={32} color="var(--ff-c10)" />
         </div>
-        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.6rem", letterSpacing:".06em", marginBottom:".5rem" }}>Verify Your <span style={{ color:"#ea6b14" }}>Email</span></h1>
+        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.6rem", letterSpacing:".06em", marginBottom:".5rem" }}>Verify Your <span style={{ color:"var(--ff-c10)" }}>Email</span></h1>
         <p style={{ color:"rgba(var(--ff-muted), .7)", marginBottom:".5rem", lineHeight:1.6 }}>We sent a confirmation link to <strong>{form.email}</strong>. Click it to activate your account and sign in.</p>
         <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".85rem", marginBottom:"2rem", fontWeight:300 }}>Your details are saved. After verifying, sign in and upload any remaining documents from your dashboard.</p>
         {(Object.values(docFiles).some(Boolean) || photoFile) && (
-          <p style={{ background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.45)", borderRadius:"10px", padding:".85rem 1rem", color:"var(--ff-text)", fontSize:".85rem", lineHeight:1.55, marginBottom:"2rem", textAlign:"left" }}>
+          <p style={{ background:"rgba(var(--ff-accent-rgb), .1)", border:"1px solid rgba(var(--ff-accent-rgb), .45)", borderRadius:"10px", padding:".85rem 1rem", color:"var(--ff-text)", fontSize:".85rem", lineHeight:1.55, marginBottom:"2rem", textAlign:"left" }}>
             One thing: the files you picked can't be uploaded until your email is verified — please re-add your photo/documents from your dashboard's Profile tab after signing in.
           </p>
         )}
-        <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff", maxWidth:"260px", margin:"0 auto" }} onClick={() => setLocation("/login")}>Go to Sign In →</button>
+        <button style={{ ...s.navBtn, background:"var(--ff-c10)", color:"#fff", maxWidth:"260px", margin:"0 auto" }} onClick={() => setLocation("/login")}>Go to Sign In →</button>
       </div>
     </div>
   );
@@ -410,19 +410,21 @@ export default function ContractorOnboarding() {
     <div style={s.wrap}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       <div style={{ ...s.inner, textAlign:"center", paddingTop:"4rem" }}>
-        <div style={{ width:"72px", height:"72px", background:"rgba(234,107,20,.15)", border:"2px solid rgba(234,107,20,.4)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 2rem" }}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ea6b14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        {/* `color` on the wrapper, currentColor through the attribute — the twin of
+            ClientOnboarding's success badge; see the note there. */}
+        <div style={{ width:"72px", height:"72px", background:"rgba(var(--ff-accent-rgb), .15)", border:"2px solid rgba(var(--ff-accent-rgb), .4)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 2rem", color:"var(--ff-c10)" }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
-        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"3rem", letterSpacing:".06em", marginBottom:".5rem" }}>Welcome to <span style={{ color:"#ea6b14" }}>the Team!</span></h1>
+        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"3rem", letterSpacing:".06em", marginBottom:".5rem" }}>Welcome to <span style={{ color:"var(--ff-c10)" }}>the Team!</span></h1>
         <p style={{ color:"rgba(var(--ff-muted), .65)", marginBottom:"2rem" }}>Your profile has been submitted. We'll review it within 24 hours.</p>
         {uploadWarn && (
-          <p style={{ background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.45)", borderRadius:"10px", padding:".85rem 1rem", color:"var(--ff-text)", fontSize:".88rem", lineHeight:1.55, marginBottom:"2rem", textAlign:"left" }}>
+          <p style={{ background:"rgba(var(--ff-accent-rgb), .1)", border:"1px solid rgba(var(--ff-accent-rgb), .45)", borderRadius:"10px", padding:".85rem 1rem", color:"var(--ff-text)", fontSize:".88rem", lineHeight:1.55, marginBottom:"2rem", textAlign:"left" }}>
             Heads up — we couldn't upload your {uploadWarn}. Please add {uploadWarn.includes(",") ? "them" : "it"} again from your dashboard's Profile tab.
           </p>
         )}
         <div style={{ display:"flex", gap:".75rem", justifyContent:"center" }}>
-          <button style={{ ...s.navBtn, background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"1px solid rgba(var(--ff-fg), .1)" }} onClick={() => setLocation("/")}>← Home</button>
-          <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff" }} onClick={() => setLocation("/contractor-dashboard")}>My Dashboard →</button>
+          <button style={{ ...s.navBtn, background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)" }} onClick={() => setLocation("/")}>← Home</button>
+          <button style={{ ...s.navBtn, background:"var(--ff-c10)", color:"#fff" }} onClick={() => setLocation("/contractor-dashboard")}>My Dashboard →</button>
         </div>
       </div>
     </div>
@@ -439,9 +441,9 @@ export default function ContractorOnboarding() {
         <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:"2rem" }}>{STEP_TITLES[step-1]}</h1>
 
         {restored && (
-          <div style={{ display:"flex", alignItems:"center", gap:".75rem", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.25)", borderRadius:"8px", padding:".7rem 1rem", marginBottom:"1.5rem", fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:".75rem", background:"rgba(var(--ff-accent-rgb), .08)", border:"1px solid rgba(var(--ff-accent-rgb), .25)", borderRadius:"8px", padding:".7rem 1rem", marginBottom:"1.5rem", fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
             <span style={{ flex:1 }}>We saved your progress — pick up where you left off. You'll just need to re-attach any files.</span>
-            <button onClick={() => { try { localStorage.removeItem("ff_contractor_draft"); } catch {} window.location.reload(); }} style={{ background:"none", border:"none", color:"#ea6b14", cursor:"pointer", fontFamily:"inherit", fontSize:".78rem", textDecoration:"underline", flexShrink:0 }}>Start over</button>
+            <button onClick={() => { try { localStorage.removeItem("ff_contractor_draft"); } catch {} window.location.reload(); }} style={{ background:"none", border:"none", color:"var(--ff-c10)", cursor:"pointer", fontFamily:"inherit", fontSize:".78rem", textDecoration:"underline", flexShrink:0 }}>Start over</button>
           </div>
         )}
 
@@ -533,9 +535,9 @@ export default function ContractorOnboarding() {
                   <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginBottom:".5rem" }}>
                     {selectedSpec.map(sv => (
                       <button key={sv} type="button" onClick={() => toggleSpec(sv)}
-                        style={{ display:"inline-flex", alignItems:"center", gap:".5rem", padding:".55rem .9rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".88rem", fontWeight:500, cursor:"pointer", background:"rgba(234,107,20,.15)", border:"1px solid #ea6b14", color:"var(--ff-text)" }}>
+                        style={{ display:"inline-flex", alignItems:"center", gap:".5rem", padding:".55rem .9rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".88rem", fontWeight:500, cursor:"pointer", background:"rgba(var(--ff-accent-rgb), .15)", border:"1px solid var(--ff-c10)", color:"var(--ff-text)" }}>
                         {sv}
-                        <span aria-hidden style={{ color:"#ea6b14", fontSize:"1.05rem", lineHeight:1 }}>×</span>
+                        <span aria-hidden style={{ color:"var(--ff-c10)", fontSize:"1.05rem", lineHeight:1 }}>×</span>
                       </button>
                     ))}
                   </div>
@@ -560,7 +562,7 @@ export default function ContractorOnboarding() {
                 placeholder="Search your trade (e.g. plumbing, drywall, snow)…"
               />
 
-              <div style={{ marginTop:"1.75rem", paddingTop:"1.5rem", borderTop:"1px solid rgba(var(--ff-fg), .08)" }}>
+              <div style={{ marginTop:"1.75rem", paddingTop:"1.5rem", borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)" }}>
                 <p style={s.label}>Your Line of Work</p>
                 <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"1.25rem", fontWeight:300, lineHeight:1.6 }}>
                   Pick the option that fits most of your work. This is how we know what to ask for next — a furniture mover or assembler doesn&rsquo;t need a trade licence, while electrical or plumbing work does.
@@ -571,12 +573,12 @@ export default function ContractorOnboarding() {
                       <div style={{ fontSize:".95rem", fontWeight:500 }}>{w.label}</div>
                       <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .5)", marginTop:".15rem", lineHeight:1.45 }}>{w.sub}</div>
                     </div>
-                    {form.workType === w.id && <span style={{ color:"#ea6b14", fontSize:"1.1rem", flexShrink:0 }}>✓</span>}
+                    {form.workType === w.id && <span style={{ color:"var(--ff-c10)", fontSize:"1.1rem", flexShrink:0 }}>✓</span>}
                   </button>
                 ))}
                 {errors.workType && <p style={s.err}>{errors.workType}</p>}
                 {wt && (
-                  <div style={{ background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.15)", borderRadius:"8px", padding:".9rem 1rem", fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.6, marginTop:"1rem" }}>
+                  <div style={{ background:"rgba(var(--ff-accent-rgb), .06)", border:"1px solid rgba(var(--ff-accent-rgb), .15)", borderRadius:"8px", padding:".9rem 1rem", fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.6, marginTop:"1rem" }}>
                     {wt.licence === "required"
                       ? "This is a regulated trade in Alberta — we'll ask for your provincial trade licence and proof of liability insurance."
                       : wt.licence === "optional"
@@ -594,8 +596,8 @@ export default function ContractorOnboarding() {
             const isEvery = availDays.length === 7;
             const presetBtn = (sel: boolean) => ({
               padding:".5rem 1rem", borderRadius:"99px", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem", fontWeight:600,
-              border: sel ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .14)",
-              background: sel ? "#ea6b14" : "rgba(var(--ff-fg), .05)", color: sel ? "#fff" : "var(--ff-text)",
+              border: sel ? "1px solid var(--ff-c10)" : "1px solid rgba(var(--ff-fg), .14)",
+              background: sel ? "var(--ff-c10)" : "rgba(var(--ff-fg), .05)", color: sel ? "#fff" : "var(--ff-text)",
             });
             return (
             <div>
@@ -616,25 +618,25 @@ export default function ContractorOnboarding() {
                 style={{ ...inp, marginBottom:".6rem", letterSpacing:".06em" }}
               />
               {zoneHint.length > 0 && (
-                <p style={{ fontSize:".78rem", color:"#ea6b14", marginBottom:".75rem" }}>
+                <p style={{ fontSize:".78rem", color:"var(--ff-c10)", marginBottom:".75rem" }}>
                   ✓ Added {zoneHint.join(" and ")} from your postal code — tap any others below.
                 </p>
               )}
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:".7rem" }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap: "var(--ff-s3)" }}>
                 {AREAS.map(z => (
                   <button key={z} style={{ ...s.chip, ...(selectedArea.includes(z) ? s.chipSel : {}) }} onClick={() => toggleArea(z)}>
-                    <span><Ic name="map-pin" size={14} color="#ea6b14" /></span><span>{z}</span>
-                    {selectedArea.includes(z) && <span style={{ marginLeft:"auto", color:"#ea6b14" }}>✓</span>}
+                    <span><Ic name="map-pin" size={14} color="var(--ff-c10)" /></span><span>{z}</span>
+                    {selectedArea.includes(z) && <span style={{ marginLeft:"auto", color:"var(--ff-c10)" }}>✓</span>}
                   </button>
                 ))}
               </div>
               {errors.area && <p style={s.err}>{errors.area}</p>}
-              {selectedArea.length > 0 && <p style={{ fontSize:".78rem", color:"#ea6b14", marginTop:".75rem" }}>✓ {selectedArea.length} area{selectedArea.length > 1 ? "s" : ""} selected</p>}
+              {selectedArea.length > 0 && <p style={{ fontSize:".78rem", color:"var(--ff-c10)", marginTop:".75rem" }}>✓ {selectedArea.length} area{selectedArea.length > 1 ? "s" : ""} selected</p>}
               <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .45)", marginTop:".5rem", lineHeight:1.5 }}>
                 Jobs outside your areas still reach you — they just sit lower in your list.
               </p>
 
-              <div style={{ marginTop:"1.75rem", paddingTop:"1.5rem", borderTop:"1px solid rgba(var(--ff-fg), .08)" }}>
+              <div style={{ marginTop:"1.75rem", paddingTop:"1.5rem", borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)" }}>
                 <p style={s.label}>When You Work</p>
               </div>
               <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .5)", marginBottom:"1.25rem", fontWeight:300, lineHeight:1.6 }}>
@@ -653,9 +655,9 @@ export default function ContractorOnboarding() {
                   return (
                     <button type="button" key={day} onClick={() => toggleDay(day)} aria-label={day}
                       style={{ display:"flex", alignItems:"center", gap:".35rem", padding:".55rem .9rem", borderRadius:"99px", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem", fontWeight:600,
-                        border: on ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .14)",
-                        background: on ? "rgba(234,107,20,.16)" : "rgba(var(--ff-fg), .05)",
-                        color: on ? "#ea6b14" : "rgba(var(--ff-muted), .6)" }}>
+                        border: on ? "1px solid var(--ff-c10)" : "1px solid rgba(var(--ff-fg), .14)",
+                        background: on ? "rgba(var(--ff-accent-rgb), .16)" : "rgba(var(--ff-fg), .05)",
+                        color: on ? "var(--ff-c10)" : "rgba(var(--ff-muted), .6)" }}>
                       {on && <span style={{ fontSize:".78rem" }}>✓</span>}{day.slice(0,3)}
                     </button>
                   );
@@ -663,8 +665,8 @@ export default function ContractorOnboarding() {
               </div>
 
               {availDays.length > 0 && (
-                <div style={{ marginTop:"1.4rem", paddingTop:"1.3rem", borderTop:"1px solid rgba(var(--ff-fg), .07)" }}>
-                  <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .55)", marginBottom:".7rem" }}>
+                <div style={{ marginTop:"1.4rem", paddingTop:"1.3rem", borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .07)" }}>
+                  <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .55)", marginBottom: "var(--ff-s3)" }}>
                     What hours on those days?
                   </div>
                   <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const }}>
@@ -694,12 +696,12 @@ export default function ContractorOnboarding() {
                   : "Let clients know what you bring to the table. You can update any of this later from your dashboard."}
               </p>
               <label style={{ display:"flex", alignItems:"center", gap:".6rem", cursor:"pointer", fontSize:".9rem", color:"rgba(var(--ff-muted), .85)" }}>
-                <input type="checkbox" checked={form.licensed} onChange={e=>setFB("licensed",e.target.checked)} style={{ width:"18px", height:"18px", accentColor:"#ea6b14", cursor:"pointer", flexShrink:0 }} />
+                <input type="checkbox" checked={form.licensed} onChange={e=>setFB("licensed",e.target.checked)} style={{ width:"18px", height:"18px", accentColor:"var(--ff-c10)", cursor:"pointer", flexShrink:0 }} />
                 <span>I'm a licensed contractor</span>
               </label>
               {form.licensed && <input style={{ ...inp, marginTop:".5rem" }} placeholder="License number" value={form.licenseNumber} onChange={e=>setF("licenseNumber",e.target.value)} />}
-              <label style={{ display:"flex", alignItems:"center", gap:".6rem", cursor:"pointer", fontSize:".9rem", color:"rgba(var(--ff-muted), .85)", marginTop:".9rem" }}>
-                <input type="checkbox" checked={form.hasInsurance} onChange={e=>setFB("hasInsurance",e.target.checked)} style={{ width:"18px", height:"18px", accentColor:"#ea6b14", cursor:"pointer", flexShrink:0 }} />
+              <label style={{ display:"flex", alignItems:"center", gap:".6rem", cursor:"pointer", fontSize:".9rem", color:"rgba(var(--ff-muted), .85)", marginTop: "var(--ff-s4)" }}>
+                <input type="checkbox" checked={form.hasInsurance} onChange={e=>setFB("hasInsurance",e.target.checked)} style={{ width:"18px", height:"18px", accentColor:"var(--ff-c10)", cursor:"pointer", flexShrink:0 }} />
                 <span>I carry liability insurance</span>
               </label>
               {form.hasInsurance && (
@@ -712,14 +714,14 @@ export default function ContractorOnboarding() {
                     <label style={{
                       display:"flex", alignItems:"center", gap:".75rem",
                       padding:".75rem 1rem",
-                      background: docFiles.insurance ? "rgba(234,107,20,.08)" : "rgba(var(--ff-fg), .04)",
-                      border: `1px solid ${docFiles.insurance ? "rgba(234,107,20,.4)" : "rgba(var(--ff-fg), .1)"}`,
+                      background: docFiles.insurance ? "rgba(var(--ff-accent-rgb), .08)" : "rgba(var(--ff-fg), .04)",
+                      border: `1px solid ${docFiles.insurance ? "rgba(var(--ff-accent-rgb), .4)" : "rgba(var(--ff-fg), .1)"}`,
                       borderRadius:"8px", cursor:"pointer", transition:"all .2s",
                     }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={docFiles.insurance ? "#ea6b14" : "rgba(var(--ff-muted), .5)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={docFiles.insurance ? "var(--ff-c10)" : "rgba(var(--ff-muted), .5)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
                       </svg>
-                      <span style={{ fontSize:".88rem", color: docFiles.insurance ? "#ea6b14" : "rgba(var(--ff-muted), .6)", flex:1 }}>
+                      <span style={{ fontSize:".88rem", color: docFiles.insurance ? "var(--ff-c10)" : "rgba(var(--ff-muted), .6)", flex:1 }}>
                         {docFiles.insurance ? docFiles.insurance.name : "Upload insurance certificate — or snap a photo (PDF/JPG/PNG, max 10MB)"}
                       </span>
                       {docFiles.insurance && <span style={{ color:"#22c55e", fontSize:"1rem" }}>✓</span>}
@@ -741,8 +743,8 @@ export default function ContractorOnboarding() {
                   </div>
                 </>
               )}
-              <label style={{ display:"flex", alignItems:"center", gap:".6rem", cursor:"pointer", fontSize:".9rem", color:"rgba(var(--ff-muted), .85)", marginTop:".9rem" }}>
-                <input type="checkbox" checked={form.operatesAlone} onChange={e=>setForm(f=>({ ...f, operatesAlone:e.target.checked, hasWcb: e.target.checked ? false : f.hasWcb }))} style={{ width:"18px", height:"18px", accentColor:"#ea6b14", cursor:"pointer", flexShrink:0 }} />
+              <label style={{ display:"flex", alignItems:"center", gap:".6rem", cursor:"pointer", fontSize:".9rem", color:"rgba(var(--ff-muted), .85)", marginTop: "var(--ff-s4)" }}>
+                <input type="checkbox" checked={form.operatesAlone} onChange={e=>setForm(f=>({ ...f, operatesAlone:e.target.checked, hasWcb: e.target.checked ? false : f.hasWcb }))} style={{ width:"18px", height:"18px", accentColor:"var(--ff-c10)", cursor:"pointer", flexShrink:0 }} />
                 <span>I operate alone (no employees) &mdash; WCB not required</span>
               </label>
               {form.operatesAlone && (
@@ -751,8 +753,8 @@ export default function ContractorOnboarding() {
                 </p>
               )}
               {!form.operatesAlone && (
-                <label style={{ display:"flex", alignItems:"center", gap:".6rem", cursor:"pointer", fontSize:".9rem", color:"rgba(var(--ff-muted), .85)", marginTop:".9rem" }}>
-                  <input type="checkbox" checked={form.hasWcb} onChange={e=>setFB("hasWcb",e.target.checked)} style={{ width:"18px", height:"18px", accentColor:"#ea6b14", cursor:"pointer", flexShrink:0 }} />
+                <label style={{ display:"flex", alignItems:"center", gap:".6rem", cursor:"pointer", fontSize:".9rem", color:"rgba(var(--ff-muted), .85)", marginTop: "var(--ff-s4)" }}>
+                  <input type="checkbox" checked={form.hasWcb} onChange={e=>setFB("hasWcb",e.target.checked)} style={{ width:"18px", height:"18px", accentColor:"var(--ff-c10)", cursor:"pointer", flexShrink:0 }} />
                   <span>I have WCB / WorkSafe coverage</span>
                 </label>
               )}
@@ -775,10 +777,10 @@ export default function ContractorOnboarding() {
             <div>
               <p style={s.label}>Profile Photo <span style={{ color:"rgba(var(--ff-muted), .45)", fontWeight:300 }}>(optional)</span></p>
               <div style={{ border:"2px dashed rgba(var(--ff-fg), .12)", borderRadius:"12px", padding:"1.5rem", textAlign:"center", marginBottom:"1.75rem" }}>
-                <div style={{ marginBottom:".75rem" }}><Ic name="camera" size={40} color="#ea6b14" /></div>
-                <p style={{ color:"rgba(var(--ff-muted), .6)", fontSize:".88rem", marginBottom:".25rem" }}>Pros with a photo get picked more often</p>
-                <label htmlFor="co-photo-upload" style={{ display:"inline-flex", alignItems:"center", gap:".5rem", marginTop:".75rem", padding:".6rem 1.25rem", background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.3)", borderRadius:"8px", cursor:"pointer", fontSize:".85rem", color:"#ea6b14", fontWeight:500 }}>
-                  <Ic name="camera" size={16} color="#ea6b14" />
+                <div style={{ marginBottom:".75rem" }}><Ic name="camera" size={40} color="var(--ff-c10)" /></div>
+                <p style={{ color:"rgba(var(--ff-muted), .6)", fontSize:".88rem", marginBottom: "var(--ff-s1)" }}>Pros with a photo get picked more often</p>
+                <label htmlFor="co-photo-upload" style={{ display:"inline-flex", alignItems:"center", gap:".5rem", marginTop:".75rem", padding:".6rem 1.25rem", background:"rgba(var(--ff-accent-rgb), .12)", border:"1px solid rgba(var(--ff-accent-rgb), .3)", borderRadius:"8px", cursor:"pointer", fontSize:".85rem", color:"var(--ff-c10)", fontWeight:500 }}>
+                  <Ic name="camera" size={16} color="var(--ff-c10)" />
                   {photoFile ? photoFile.name : "Choose a photo"}
                   <input id="co-photo-upload" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 5*1024*1024) { setSubmitError("Photo must be under 5MB. Please choose a smaller one."); e.target.value = ""; return; } setSubmitError(""); setPhotoFile(f); }} style={{ display:"none" }} />
                 </label>
@@ -798,7 +800,7 @@ export default function ContractorOnboarding() {
                   <label style={{ ...s.label, display:"flex", alignItems:"center", gap:".4rem" }}>
                     {doc.label}
                     {doc.required
-                      ? <span style={{ color:"#ea6b14", fontSize:".7rem" }}>Needed before approval</span>
+                      ? <span style={{ color:"var(--ff-c10)", fontSize:".7rem" }}>Needed before approval</span>
                       : <span style={{ color:"rgba(var(--ff-muted), .35)", fontSize:".7rem" }}>Optional</span>
                     }
                   </label>
@@ -806,14 +808,14 @@ export default function ContractorOnboarding() {
                   <label style={{
                     display:"flex", alignItems:"center", gap:".75rem",
                     padding:".75rem 1rem",
-                    background: docFiles[doc.key] ? "rgba(234,107,20,.08)" : "rgba(var(--ff-fg), .04)",
-                    border: `1px solid ${docFiles[doc.key] ? "rgba(234,107,20,.4)" : "rgba(var(--ff-fg), .1)"}`,
+                    background: docFiles[doc.key] ? "rgba(var(--ff-accent-rgb), .08)" : "rgba(var(--ff-fg), .04)",
+                    border: `1px solid ${docFiles[doc.key] ? "rgba(var(--ff-accent-rgb), .4)" : "rgba(var(--ff-fg), .1)"}`,
                     borderRadius:"8px", cursor:"pointer", transition:"all .2s",
                   }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={docFiles[doc.key] ? "#ea6b14" : "rgba(var(--ff-muted), .5)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={docFiles[doc.key] ? "var(--ff-c10)" : "rgba(var(--ff-muted), .5)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
                     </svg>
-                    <span style={{ fontSize:".88rem", color: docFiles[doc.key] ? "#ea6b14" : "rgba(var(--ff-muted), .6)", flex:1 }}>
+                    <span style={{ fontSize:".88rem", color: docFiles[doc.key] ? "var(--ff-c10)" : "rgba(var(--ff-muted), .6)", flex:1 }}>
                       {docFiles[doc.key] ? docFiles[doc.key]!.name : "Choose file or take a photo (PDF or image, max 10MB)"}
                     </span>
                     {docFiles[doc.key] && <span style={{ color:"#22c55e", fontSize:"1rem" }}>✓</span>}
@@ -834,27 +836,27 @@ export default function ContractorOnboarding() {
                 </div>
               ))}
               {errors.docs && <p style={s.err}>{errors.docs}</p>}
-              <div style={{ background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.15)", borderRadius:"8px", padding:".9rem 1rem", fontSize:".8rem", color:"rgba(var(--ff-muted), .65)", lineHeight:1.6 }}>
+              <div style={{ background:"rgba(var(--ff-accent-rgb), .06)", border:"1px solid rgba(var(--ff-accent-rgb), .15)", borderRadius:"8px", padding:".9rem 1rem", fontSize:".8rem", color:"rgba(var(--ff-muted), .65)", lineHeight:1.6 }}>
                 🔒 Documents are stored securely and only used for verification. They are never shared with clients.
               </div>
-              <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", margin:"1.5rem 0 .5rem", padding:"1rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
+              <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", margin:"1.5rem 0 .5rem", padding:"1rem", background:"rgba(var(--ff-fg), .03)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
                 <input
                   type="checkbox"
                   id="agreeTerms"
                   checked={agreedToTerms}
                   onChange={e => { setAgreedToTerms(e.target.checked); if (e.target.checked) setSubmitError(""); }}
-                  style={{ marginTop:"2px", accentColor:"#ea6b14", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }}
+                  style={{ marginTop:"2px", accentColor:"var(--ff-c10)", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }}
                 />
                 <label htmlFor="agreeTerms" style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.6, cursor:"pointer", fontWeight:300 }}>
                   I am 18 or older and I agree to Freddy Fix It&rsquo;s{" "}
-                  <a href="/user-agreement" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>User Agreement</a>
+                  <a href="/user-agreement" target="_blank" rel="noopener noreferrer" style={{ color:"var(--ff-c10)", textDecoration:"none" }}>User Agreement</a>
                   {" "}and{" "}
-                  <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>Privacy Policy</a>.
+                  <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color:"var(--ff-c10)", textDecoration:"none" }}>Privacy Policy</a>.
                   {" "}I confirm that I hold all licences, permits, and insurance required to perform the services I offer in Alberta.
                 </label>
               </div>
-              <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", margin:".5rem 0", padding:".85rem 1rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
-                <input type="checkbox" id="newsTips" checked={newsletterOptIn} onChange={e => setNewsletterOptIn(e.target.checked)} style={{ marginTop:"2px", accentColor:"#ea6b14", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }} />
+              <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", margin:".5rem 0", padding:".85rem 1rem", background:"rgba(var(--ff-fg), .03)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
+                <input type="checkbox" id="newsTips" checked={newsletterOptIn} onChange={e => setNewsletterOptIn(e.target.checked)} style={{ marginTop:"2px", accentColor:"var(--ff-c10)", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }} />
                 <label htmlFor="newsTips" style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.6, cursor:"pointer", fontWeight:300 }}>
                   Email me practical tips on winning more jobs on Freddy Fix It (about once a week &mdash; unsubscribe anytime).
                 </label>
@@ -866,12 +868,12 @@ export default function ContractorOnboarding() {
         </div>
 
         <div style={{ display:"flex", gap:".75rem", marginTop:"2rem" }}>
-          <button style={{ ...s.navBtn, background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"1px solid rgba(var(--ff-fg), .1)" }} onClick={back}>
+          <button style={{ ...s.navBtn, background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)" }} onClick={back}>
             {step===1 ? "← Home" : "← Back"}
           </button>
           {step < TOTAL
-            ? <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff" }} onClick={next}>Next →</button>
-            : <button style={{ ...s.navBtn, background:"linear-gradient(135deg,#ea6b14,#f09020)", color:"#fff", opacity: loading ? .6 : 1 }} onClick={handleSubmit} disabled={loading}>
+            ? <button style={{ ...s.navBtn, background:"var(--ff-c10)", color:"#fff" }} onClick={next}>Next →</button>
+            : <button style={{ ...s.navBtn, background:"linear-gradient(135deg,var(--ff-c10),#f09020)", color:"#fff", opacity: loading ? .6 : 1 }} onClick={handleSubmit} disabled={loading}>
                 {loading ? <><span className="ff-btn-spin" aria-hidden="true" />Uploading your details…</> : "Complete Registration →"}
               </button>
           }
@@ -880,7 +882,7 @@ export default function ContractorOnboarding() {
 
         <p style={{ textAlign:"center", marginTop:"1.25rem", fontSize:".82rem", color:"rgba(var(--ff-muted), .4)" }}>
           Already have an account?{" "}
-          <button onClick={() => setLocation("/login")} style={{ background:"none", border:"none", cursor:"pointer", color:"#ea6b14", fontFamily:"inherit", fontSize:".82rem", padding:0 }}>
+          <button onClick={() => setLocation("/login")} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--ff-c10)", fontFamily:"inherit", fontSize:".82rem", padding:0 }}>
             Sign in
           </button>
         </p>

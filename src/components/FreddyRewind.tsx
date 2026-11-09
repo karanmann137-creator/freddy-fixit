@@ -2,13 +2,46 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Ic } from "@/components/Ic";
 import { Sk } from "@/components/Skeleton";
+import { ensureUiStyles } from "@/components/ui/uiStyles";
 
 type Mode = "contractor" | "client";
 
 // A Spotify-Wrapped-style shareable summary card. Pulls the user's lifetime
 // stats from a SECURITY DEFINER RPC, renders a branded preview, and can export
 // a 1080x1350 PNG (story format) plus copy/share a referral link.
+//
+// ── On .ffu-scrim / .ffu-modal, and why it carries .ff-anchor (2026-11-08) ──
+// The last hand-rolled dialog. The conversion itself is ordinary; the class
+// pair is the interesting part and it fixes a LIVE LIGHT-MODE BUG that the
+// conversion exposed rather than caused.
+//
+// Everything inside this card is painted light-on-dark with literals: the
+// share preview is a navy gradient with #f0f4ff text, the failure message is
+// rgba(190,205,235,.75), the close × falls back to #f0f4ff. The card's ground,
+// though, was var(--ff-bg) — off-white under data-theme="light". So in light
+// mode the × and the failure copy were already near-invisible on their own
+// ground, and moving to the primitive's --ff-glass would have changed nothing
+// about that. The answer is to stop the ground from following the theme at all:
+// .ff-on-dark re-declares the dark values on this subtree, and .ff-anchor is
+// what keeps them in force under light mode too (the plain class is scoped to
+// dark by default — see the long note above the selector in main.tsx).
+//
+// ui/Pass.tsx already applies the same pair (`forceNavy`, default true), so
+// this is the second user of the modifier and not a revival of a dead one —
+// main.tsx's own comment still claimed it was dormant and was corrected in the
+// same pass. The test both uses pass: a subtree painted in light-on-dark
+// LITERALS cannot follow the theme, so its ground must not either. One class
+// instead of re-tinting a dozen values.
+//
+// It DOES get a .ffu-grab, unlike ProfileCompleteCelebration: the grabber
+// promises a dismiss by scrim tap, and this scrim really has one (onClick on
+// the scrim, stopPropagation on the card).
+//
+// The confetti containing-block trap does not apply here — the only canvas in
+// this file is created with document.createElement for the PNG export and is
+// never mounted.
 export default function FreddyRewind({ mode, onClose }: { mode: Mode; onClose: () => void }) {
+  ensureUiStyles();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -64,7 +97,7 @@ export default function FreddyRewind({ mode, onClose }: { mode: Mode; onClose: (
       x.fillStyle = g; x.fillRect(0, 0, W, H);
       // glow
       const rg = x.createRadialGradient(W * 0.8, 120, 40, W * 0.8, 120, 700);
-      rg.addColorStop(0, "rgba(234,107,20,0.28)"); rg.addColorStop(1, "rgba(234,107,20,0)");
+      rg.addColorStop(0, "rgba(var(--ff-accent-rgb), 0.28)"); rg.addColorStop(1, "rgba(var(--ff-accent-rgb), 0)");
       x.fillStyle = rg; x.fillRect(0, 0, W, H);
 
       x.textBaseline = "alphabetic";
@@ -130,11 +163,22 @@ export default function FreddyRewind({ mode, onClose }: { mode: Mode; onClose: (
   };
 
   return (
-    <div onClick={onClose} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.72)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:"1rem", fontFamily:"'DM Sans',sans-serif" }}>
-      <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:"420px", maxHeight:"92vh", overflowY:"auto", background:"var(--ff-bg, #151d2e)", borderRadius:"18px", border:"1px solid rgba(234,107,20,.3)", padding:"1.25rem" }}>
+    <div onClick={onClose} className="ffu-scrim">
+      <div
+        onClick={e => e.stopPropagation()}
+        className="ffu-modal ff-on-dark ff-anchor"
+        /* Variables, not maxWidth/padding — an inline declaration beats the
+           sheet branch and the dialog would stop going full-bleed on a phone. */
+        style={{ ["--ffu-modal-w" as any]: "420px", ["--ffu-modal-pad" as any]: "1.25rem" }}
+      >
+        <span className="ffu-grab" aria-hidden="true" />
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:".75rem" }}>
-          <div style={{ fontWeight:800, color:"#ea6b14", letterSpacing:".05em" }}>{new Date().getFullYear()} REWIND</div>
-          <button onClick={onClose} style={{ background:"none", border:"none", color:"var(--ff-text,#f0f4ff)", cursor:"pointer", fontSize:"1.4rem", lineHeight:1 }}>×</button>
+          <div style={{ fontWeight:800, color:"var(--ff-c10)", letterSpacing:".05em" }}>{new Date().getFullYear()} REWIND</div>
+          {/* .ffu-iconbtn rather than a bare glyph button: a × with no box is
+              about 14px wide, and the (pointer: coarse) block in main.tsx only
+              floors min-HEIGHT on a button, so the live touch target was a tall
+              sliver. Same defect, same fix as the other icon buttons. */}
+          <button onClick={onClose} aria-label="Close" className="ffu-iconbtn" style={{ fontSize:"1.4rem", lineHeight:1 }}>×</button>
         </div>
 
         {loading ? (
@@ -151,36 +195,36 @@ export default function FreddyRewind({ mode, onClose }: { mode: Mode; onClose: (
         ) : (
           <>
             <div style={{ borderRadius:"16px", padding:"1.5rem", background:"linear-gradient(135deg,#1a2236,#111827)", color:"#f0f4ff", position:"relative", overflow:"hidden" }}>
-              <div style={{ position:"absolute", top:"-60px", right:"-60px", width:"220px", height:"220px", borderRadius:"50%", background:"radial-gradient(rgba(234,107,20,.35),transparent 70%)" }} />
-              <div style={{ fontWeight:800, color:"#ea6b14", letterSpacing:".08em", fontSize:".8rem" }}>FREDDY FIX IT</div>
+              <div style={{ position:"absolute", top:"-60px", right:"-60px", width:"220px", height:"220px", borderRadius:"50%", background:"radial-gradient(rgba(var(--ff-accent-rgb), .35),transparent 70%)" }} />
+              <div style={{ fontWeight:800, color:"var(--ff-c10)", letterSpacing:".08em", fontSize:".8rem" }}>FREDDY FIX IT</div>
               <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.4rem", lineHeight:1.05, marginTop:".4rem", marginBottom:"1.1rem" }}>
                 {name}{String(name).endsWith("s") ? "'" : "'s"} year in fixes
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:"1rem 1.25rem" }}>
                 {stats.map((st, i) => (
                   <div key={i}>
-                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"#ea6b14", lineHeight:1 }}>{st[0]}</div>
+                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"var(--ff-c10)", lineHeight:1 }}>{st[0]}</div>
                     <div style={{ fontSize:".72rem", color:"#c9d4ef" }}>{st[1]}</div>
                   </div>
                 ))}
               </div>
               <div style={{ marginTop:"1.2rem", fontWeight:700, fontSize:".95rem" }}>{highlight}</div>
               {code && (
-                <div style={{ marginTop:"1rem", background:"rgba(234,107,20,.15)", borderRadius:"10px", padding:".6rem .8rem", fontSize:".8rem", color:"#ea6b14", fontWeight:700 }}>
+                <div style={{ marginTop:"1rem", background:"rgba(var(--ff-accent-rgb), .15)", borderRadius:"10px", padding:".6rem .8rem", fontSize:".8rem", color:"var(--ff-c10)", fontWeight:700 }}>
                   {mode === "client" ? "Share your code — friends get their first service fee waived: " : "Invite a friend — they get their first service fee waived: "}<span style={{ color:"#fff" }}>{code}</span>
                 </div>
               )}
             </div>
 
             <div style={{ display:"flex", gap:".6rem", marginTop:"1rem" }}>
-              <button onClick={download} disabled={busy} style={{ flex:1, padding:".8rem", borderRadius:"10px", border:"none", background:"#ea6b14", color:"#fff", fontWeight:700, cursor:"pointer", display:"inline-flex", alignItems:"center", justifyContent:"center", gap:".4rem" }}>
+              <button onClick={download} disabled={busy} style={{ flex:1, padding:".8rem", borderRadius:"10px", border:"none", background:"var(--ff-c10)", color:"#fff", fontWeight:700, cursor:"pointer", display:"inline-flex", alignItems:"center", justifyContent:"center", gap:".4rem" }}>
                 <Ic name="download" size={15} />{busy ? "Saving…" : "Save image"}
               </button>
-              <button onClick={share} style={{ flex:1, padding:".8rem", borderRadius:"10px", border:"1px solid rgba(234,107,20,.5)", background:"transparent", color:"#ea6b14", fontWeight:700, cursor:"pointer" }}>
+              <button onClick={share} style={{ flex:1, padding:".8rem", borderRadius:"10px", border:"1px solid rgba(var(--ff-accent-rgb), .5)", background:"transparent", color:"var(--ff-c10)", fontWeight:700, cursor:"pointer" }}>
                 {copied ? "Copied!" : "Share"}
               </button>
             </div>
-            <div style={{ fontSize:".72rem", color:"rgba(190,205,235,.5)", textAlign:"center", marginTop:".7rem" }}>
+            <div style={{ fontSize:".72rem", color:"rgba(190,205,235,.5)", textAlign:"center", marginTop: "var(--ff-s3)" }}>
               Post it to your story and tag us. Every share brings Calgary another vetted fix.
             </div>
           </>

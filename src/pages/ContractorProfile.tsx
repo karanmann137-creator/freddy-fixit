@@ -134,10 +134,10 @@ export default function ContractorProfile() {
   const s = {
     wrap:  { minHeight:"100vh", background:"var(--ff-bg)", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
     inner: { maxWidth:"860px", margin:"0 auto", padding:"2rem 1.5rem" },
-    card:  { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"1.75rem", marginBottom:"1.5rem" },
-    chip:  { padding:".3rem .75rem", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.25)", borderRadius:"99px", fontSize:".78rem", color:"rgba(var(--ff-muted), .8)", display:"inline-block", margin:".2rem" },
-    btn:   { padding:".65rem 1.4rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer" },
-    scoreCard: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.25rem", textAlign:"center" as const },
+    card:  { background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"1.75rem", marginBottom:"1.5rem" },
+    chip:  { padding:".3rem .75rem", background:"rgba(var(--ff-accent-rgb), .1)", border:"1px solid rgba(var(--ff-accent-rgb), .25)", borderRadius:"99px", fontSize:".78rem", color:"rgba(var(--ff-muted), .8)", display:"inline-block", margin: "var(--ff-s1)" },
+    btn:   { padding:".65rem 1.4rem", background:"var(--ff-c10)", color:"#fff", border:"none", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer" },
+    scoreCard: { background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.25rem", textAlign:"center" as const },
   };
 
   // Shaped like the profile that is coming -- avatar, name, chips, then the
@@ -187,9 +187,9 @@ export default function ContractorProfile() {
 
         {/* Admin review panel — everything needed to vet + approve, right here */}
         {myRole === "admin" && admin && (
-          <div style={{ ...s.card, border:"1px solid rgba(234,107,20,.45)", background:"rgba(234,107,20,.06)" }}>
+          <div style={{ ...s.card, border:"1px solid rgba(var(--ff-accent-rgb), .45)", background:"rgba(var(--ff-accent-rgb), .06)" }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const, gap:".75rem", marginBottom:"1rem" }}>
-              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", color:"#ea6b14" }}>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", color:"var(--ff-c10)" }}>
                 Admin Review
                 <span style={{ ...s.chip, marginLeft:".6rem", verticalAlign:"middle",
                   background: admin.status === "active" ? "rgba(34,197,94,.12)" : admin.status === "inactive" ? "rgba(239,68,68,.12)" : "rgba(245,158,11,.12)",
@@ -211,11 +211,11 @@ export default function ContractorProfile() {
                 )}
               </div>
             </div>
-            {adminMsg && <div style={{ fontSize:".85rem", color:"#ea6b14", marginBottom:".9rem" }}>{adminMsg}</div>}
+            {adminMsg && <div style={{ fontSize:".85rem", color:"var(--ff-c10)", marginBottom: "var(--ff-s4)" }}>{adminMsg}</div>}
 
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(min(240px, 100%), 1fr))", gap:".9rem", fontSize:".85rem", lineHeight:1.65 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(min(240px, 100%), 1fr))", gap: "var(--ff-s4)", fontSize:".85rem", lineHeight:1.65 }}>
               <div>
-                <div style={{ fontWeight:600, marginBottom:".2rem" }}>Contact</div>
+                <div style={{ fontWeight:600, marginBottom: "var(--ff-s1)" }}>Contact</div>
                 <div style={{ color:"rgba(var(--ff-muted), .75)" }}>
                   {admin.email ?? "No email"}<br />
                   {admin.phone ?? "No phone"}<br />
@@ -223,7 +223,7 @@ export default function ContractorProfile() {
                 </div>
               </div>
               <div>
-                <div style={{ fontWeight:600, marginBottom:".2rem" }}>Trade & experience</div>
+                <div style={{ fontWeight:600, marginBottom: "var(--ff-s1)" }}>Trade & experience</div>
                 <div style={{ color:"rgba(var(--ff-muted), .75)" }}>
                   {admin.work_type ?? "Not set"}{admin.years_of_experience != null ? " · " + admin.years_of_experience + " yrs" : ""}<br />
                   {admin.availability?.days?.length
@@ -232,7 +232,7 @@ export default function ContractorProfile() {
                 </div>
               </div>
               <div>
-                <div style={{ fontWeight:600, marginBottom:".2rem" }}>Credentials</div>
+                <div style={{ fontWeight:600, marginBottom: "var(--ff-s1)" }}>Credentials</div>
                 <div style={{ color:"rgba(var(--ff-muted), .75)" }}>
                   Licensed: {admin.licensed ? "Yes" + (admin.license_number ? " (#" + admin.license_number + ")" : "") : "No"}<br />
                   Insurance: {admin.has_liability_insurance ? "Yes" + (admin.insurance_provider ? " — " + admin.insurance_provider : "") + (admin.insurance_expiry ? ", expires " + admin.insurance_expiry : "") : "No"}<br />
@@ -240,7 +240,7 @@ export default function ContractorProfile() {
                 </div>
               </div>
               <div>
-                <div style={{ fontWeight:600, marginBottom:".2rem" }}>Pricing & payouts</div>
+                <div style={{ fontWeight:600, marginBottom: "var(--ff-s1)" }}>Pricing & payouts</div>
                 <div style={{ color:"rgba(var(--ff-muted), .75)" }}>
                   {admin.hourly_rate != null ? "$" + admin.hourly_rate + "/hr" : "No hourly rate"}
                   {admin.min_callout != null ? " · min callout $" + admin.min_callout : ""}<br />
@@ -251,13 +251,13 @@ export default function ContractorProfile() {
             </div>
 
             {admin.work_references && (
-              <div style={{ marginTop:".9rem", fontSize:".85rem" }}>
+              <div style={{ marginTop: "var(--ff-s4)", fontSize:".85rem" }}>
                 <span style={{ fontWeight:600 }}>References: </span>
                 <span style={{ color:"rgba(var(--ff-muted), .75)" }}>{admin.work_references}</span>
               </div>
             )}
 
-            <div style={{ marginTop:".9rem", fontSize:".85rem" }}>
+            <div style={{ marginTop: "var(--ff-s4)", fontSize:".85rem" }}>
               <span style={{ fontWeight:600 }}>AI doc review: </span>
               {admin.review_result?.results ? (
                 <div style={{ color:"rgba(var(--ff-muted), .75)", marginTop:".3rem" }}>
@@ -282,12 +282,12 @@ export default function ContractorProfile() {
             </div>
 
             <div style={{ marginTop:"1rem" }}>
-              <div style={{ fontWeight:600, fontSize:".85rem", marginBottom:".45rem" }}>Documents</div>
+              <div style={{ fontWeight:600, fontSize:".85rem", marginBottom: "var(--ff-s2)" }}>Documents</div>
               {admin.doc_urls && Object.keys(admin.doc_urls).some(k => admin.doc_urls[k]) ? (
                 <div style={{ display:"flex", gap:".55rem", flexWrap:"wrap" as const }}>
                   {Object.entries(admin.doc_urls as Record<string, string | null>).map(([k, path]) => path ? (
                     <button key={k} onClick={() => openDoc(path)}
-                      style={{ padding:".45rem .9rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".8rem", cursor:"pointer" }}>
+                      style={{ padding:".45rem .9rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".8rem", cursor:"pointer" }}>
                       <Ic name="file" size={13} style={{ marginRight:5 }} />{DOC_LABELS[k] ?? k}
                     </button>
                   ) : null)}
@@ -301,14 +301,14 @@ export default function ContractorProfile() {
 
         {/* Header card */}
         <div style={{ ...s.card, display:"flex", gap:"1.5rem", alignItems:"flex-start", flexWrap:"wrap" as const }}>
-          <div style={{ width:80, height:80, borderRadius:"50%", overflow:"hidden", background:"rgba(234,107,20,.1)", border:"2px solid rgba(234,107,20,.25)", flexShrink:0 }}>
+          <div style={{ width:80, height:80, borderRadius:"50%", overflow:"hidden", background:"rgba(var(--ff-accent-rgb), .1)", border:"2px solid rgba(var(--ff-accent-rgb), .25)", flexShrink:0 }}>
             {contractor.photo_url
               ? <FadeImg src={contractor.photo_url} alt={contractor.first_name} style={{ width:"100%", height:"100%", objectFit:"cover" as const }} />
               : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"2rem" }}>🔧</div>
             }
           </div>
           <div style={{ flex:1, minWidth:"200px" }}>
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.8rem", letterSpacing:".06em", marginBottom:".2rem" }}>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.8rem", letterSpacing:".06em", marginBottom: "var(--ff-s1)" }}>
               {contractor.first_name} {contractor.last_name}
             </div>
             {contractor.company_name && (
@@ -344,7 +344,7 @@ export default function ContractorProfile() {
             <button style={s.btn} onClick={() => setLocation("/client-onboarding?pro=" + id)}>Book This Contractor →</button>
             {contractor.google_reviews_url && (
               <a href={contractor.google_reviews_url} target="_blank" rel="noopener noreferrer"
-                style={{ padding:".5rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"8px", color:"rgba(var(--ff-muted), .7)", fontSize:".82rem", textAlign:"center" as const, textDecoration:"none" }}>
+                style={{ padding:".5rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", borderRadius:"8px", color:"rgba(var(--ff-muted), .7)", fontSize:".82rem", textAlign:"center" as const, textDecoration:"none" }}>
                 Google Reviews ↗
               </a>
             )}
@@ -358,7 +358,7 @@ export default function ContractorProfile() {
               const avg = avgScore(key);
               return avg ? (
                 <div key={key} style={s.scoreCard}>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"#ea6b14", marginBottom:".2rem" }}>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"var(--ff-c10)", marginBottom: "var(--ff-s1)" }}>
                     {avg}<span style={{ fontSize:"1rem", color:"rgba(var(--ff-muted), .4)" }}>/10</span>
                   </div>
                   <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)" }}>{label}</div>
@@ -371,10 +371,10 @@ export default function ContractorProfile() {
         {/* Portfolio */}
         {portfolio.length > 0 && (
           <div style={s.card}>
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", color:"#ea6b14", marginBottom:"1.25rem" }}>Past Work</div>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", color:"var(--ff-c10)", marginBottom:"1.25rem" }}>Past Work</div>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(min(140px, 100%), 1fr))", gap:".75rem" }}>
               {portfolio.map((item: any) => (
-                <div key={item.id} style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"10px", overflow:"hidden" }}>
+                <div key={item.id} style={{ background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"10px", overflow:"hidden" }}>
                   {item.photo_path && <FadeImg src={pfUrl(item.photo_path)} alt={item.title || "Past job"} style={{ width:"100%", height:"110px", objectFit:"cover" as const, display:"block" }} />}
                   {(item.title || item.description) && (
                     <div style={{ padding:".5rem .6rem" }}>
@@ -391,17 +391,17 @@ export default function ContractorProfile() {
         {/* Reviews */}
         {reviews.length > 0 && (
           <div style={s.card}>
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", color:"#ea6b14", marginBottom:"1.25rem" }}>Client Reviews</div>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", color:"var(--ff-c10)", marginBottom:"1.25rem" }}>Client Reviews</div>
             {reviews.map((r: any) => (
-              <div key={r.id} style={{ padding:"1rem 0", borderBottom:"1px solid rgba(var(--ff-fg), .06)" }}>
+              <div key={r.id} style={{ padding:"1rem 0", borderBottom:"var(--ff-hair-w) solid rgba(var(--ff-fg), .06)" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:".5rem" }}>
                   <span style={{ fontWeight:500 }}>{r.reviewer_first_name ?? "Client"}</span>
                   <span style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .4)" }}>{new Date(r.created_at).toLocaleDateString()}</span>
                 </div>
                 <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginBottom:".5rem" }}>
                   {[["Price", r.price_score], ["Experience", r.experience_score], ["Results", r.result_score]].map(([l, v]) => v != null && (
-                    <span key={String(l)} style={{ ...s.chip, fontSize:".74rem", background:"rgba(234,107,20,.08)" }}>
-                      {l}: <strong style={{ color:"#ea6b14" }}>{v}/10</strong>
+                    <span key={String(l)} style={{ ...s.chip, fontSize:".74rem", background:"rgba(var(--ff-accent-rgb), .08)" }}>
+                      {l}: <strong style={{ color:"var(--ff-c10)" }}>{v}/10</strong>
                     </span>
                   ))}
                 </div>

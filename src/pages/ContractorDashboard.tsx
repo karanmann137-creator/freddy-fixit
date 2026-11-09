@@ -240,8 +240,8 @@ const A_PHOTOS   = "ffp-photos";
 const A_ONWAY    = "ffp-onway";
 const A_BALANCE  = "ffp-balance";
 
-const ffInp = { width:"100%", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const };
-const ffLbl = { fontSize:".66rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .45)", marginBottom:".2rem" };
+const ffInp = { width:"100%", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const };
+const ffLbl = { fontSize:".66rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .45)", marginBottom: "var(--ff-s1)" };
 
 function quoteTotal(f: any): number | null {
   const keys = ["labour","parts","callout"];
@@ -272,22 +272,22 @@ function QuoteBreakdown({ v, on, calloutHint, price, target }: { v: any; on: (pa
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:".55rem", flexBasis:"100%", width:"100%" }}>
       {tgt != null && (
-        <div style={{ display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".5rem", padding:".5rem .6rem", background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.35)", borderRadius:"8px" }}>
+        <div style={{ display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".5rem", padding:".5rem .6rem", background:"rgba(var(--ff-accent-rgb), .12)", border:"1px solid rgba(var(--ff-accent-rgb), .35)", borderRadius:"8px" }}>
           <span style={{ fontSize:".8rem", color:"var(--ff-text)" }}>
             <span style={{ color:"rgba(var(--ff-muted), .7)" }}>Suggested bid </span>
-            <strong style={{ color:"#ea6b14" }}>{money(tgt)}</strong>
+            <strong style={{ color:"var(--ff-c10)" }}>{money(tgt)}</strong>
             <span style={{ display:"block", marginTop:"2px", fontSize:".72rem", color:"rgba(var(--ff-muted), .6)" }}>
               {Math.round(TARGET_BID_DISCOUNT * 100)}% under the category average — a guide, not a limit.
             </span>
           </span>
           <button type="button" onClick={() => on({ amount: String(tgt), labour:"", parts:"", callout:"", used_base_price: false })}
-            style={{ marginLeft:"auto", padding:".3rem .6rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"6px", fontSize:".74rem", fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+            style={{ marginLeft:"auto", padding:".3rem .6rem", background:"var(--ff-c10)", color:"#fff", border:"none", borderRadius:"6px", fontSize:".74rem", fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
             Use suggested
           </button>
         </div>
       )}
       {hasRef && (
-        <div style={{ display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".5rem", padding:".5rem .6rem", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.25)", borderRadius:"8px" }}>
+        <div style={{ display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".5rem", padding:".5rem .6rem", background:"rgba(var(--ff-accent-rgb), .08)", border:"1px solid rgba(var(--ff-accent-rgb), .25)", borderRadius:"8px" }}>
           <span style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .8)" }}>
             {price!.base_price != null && <>Platform base <b style={{ color:"var(--ff-text)" }}>{money(price!.base_price)}</b></>}
             {price!.typical_low != null && price!.typical_high != null && <> · Typical {money(price!.typical_low)}–{money(price!.typical_high)}</>}
@@ -295,7 +295,7 @@ function QuoteBreakdown({ v, on, calloutHint, price, target }: { v: any; on: (pa
           </span>
           {price!.base_price != null && (
             <button type="button" onClick={() => on({ amount: String(price!.base_price), labour:"", parts:"", callout:"", used_base_price: true })}
-              style={{ marginLeft:"auto", padding:".3rem .6rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"6px", fontSize:".74rem", fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+              style={{ marginLeft:"auto", padding:".3rem .6rem", background:"var(--ff-c10)", color:"#fff", border:"none", borderRadius:"6px", fontSize:".74rem", fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
               Use base price
             </button>
           )}
@@ -1084,7 +1084,7 @@ export default function ContractorDashboard() {
     <div style={{
       display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:"1rem",
       padding:".5rem 0",
-      ...(opts?.top ? { marginTop:".35rem", paddingTop:".7rem", borderTop:"1px solid rgba(var(--ff-fg), .14)" } : null),
+      ...(opts?.top ? { marginTop:".35rem", paddingTop: "var(--ff-s3)", borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .14)" } : null),
     }}>
       <span style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.45 }}>{labelText}</span>
       <span style={{
@@ -1107,7 +1107,7 @@ export default function ContractorDashboard() {
     const setRf = (patch: any) => setRequoteForm(o => ({ ...o, [job.id]: { ...rf, ...patch } }));
     const pending = job.price_change_pending;
     return (
-      <div style={{ borderTop:"1px solid rgba(var(--ff-fg), .07)", paddingTop:".7rem" }}>
+      <div style={{ borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .07)", paddingTop: "var(--ff-s3)" }}>
         {pending ? (() => {
           /* THE PRO'S HALF OF THE SAME ARITHMETIC (rebuilt 2026-11-07).
              This banner used to be one concatenated sentence carrying a raw
@@ -1125,13 +1125,13 @@ export default function ContractorDashboard() {
           const payout = commission == null ? null : Math.round(pc.newPrice * (1 - commission) * 100) / 100;
           return (
             <div style={{ borderRadius:"14px", border:"1px solid rgba(245,158,11,.34)", background:"rgba(245,158,11,.07)", padding:"1.1rem 1.1rem 1.2rem" }}>
-              <div style={{ display:"flex", alignItems:"flex-start", gap:".6rem", marginBottom:".9rem" }}>
+              <div style={{ display:"flex", alignItems:"flex-start", gap:".6rem", marginBottom: "var(--ff-s4)" }}>
                 <Ic name="clock" size={16} color="#f59e0b" style={{ marginTop:2, flexShrink:0 }} />
                 <div>
                   <div style={{ fontFamily:"var(--ff-font-head, inherit)", fontSize:"1rem", color:"var(--ff-text)", letterSpacing:".01em" }}>
                     Waiting on the client to approve {pcMoney(pc.newPrice)}
                   </div>
-                  <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.5, marginTop:".25rem" }}>
+                  <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.5, marginTop: "var(--ff-s1)" }}>
                     The agreed price is still {pcMoney(pc.oldPrice)} until they do. Keep working to the original scope until you hear back.
                   </div>
                 </div>
@@ -1143,14 +1143,14 @@ export default function ContractorDashboard() {
                 </div>
               ) : null}
 
-              <div style={{ background:"rgba(var(--ff-fg), .035)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"11px", padding:".75rem .85rem" }}>
+              <div style={{ background:"rgba(var(--ff-fg), .035)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"11px", padding:".75rem .85rem" }}>
                 {pcRow("New job price", pcMoney(pc.newPrice))}
                 {pcRow("Client service fee (" + pcRateLabel(pc.rate) + ")", pcMoney(pc.newFee))}
                 {pcRow("What the client pays in total", pcMoney(pc.newTotal), { top:true })}
                 {payout != null ? pcRow("Your payout after commission", pcMoney(payout), { top:true, strong:true }) : null}
               </div>
 
-              <div style={{ fontSize:".79rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.6, marginTop:".9rem" }}>
+              <div style={{ fontSize:".79rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.6, marginTop: "var(--ff-s4)" }}>
                 {paidInFull
                   ? "They have already paid this job in full, so when they approve they are taken straight to a checkout for the " + pcMoney(pc.balanceOwed) + " difference. Nothing reaches you until that clears."
                   : "They have paid " + pcMoney(pc.funded) + " so far. Nothing extra is charged today — the balance they settle at the end becomes " + pcMoney(pc.balanceOwed) + "."}
@@ -1166,7 +1166,7 @@ export default function ContractorDashboard() {
                   `withdraw_price_change` is the contractor-side twin of
                   `decline_price_change`; it touches none of the four payout
                   guards. */}
-              <div style={{ marginTop:"1rem", paddingTop:".9rem", borderTop:"1px solid rgba(var(--ff-fg), .1)" }}>
+              <div style={{ marginTop:"1rem", paddingTop: "var(--ff-s4)", borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)" }}>
                 <button
                   disabled={busyJobId === job.id}
                   onClick={() => withdrawPriceChange(job)}
@@ -1181,7 +1181,7 @@ export default function ContractorDashboard() {
             </div>
           );
         })() : !requoteOpen[job.id] ? (
-          <button onClick={() => setRequoteOpen(o => ({ ...o, [job.id]: true }))} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".82rem", fontWeight:600, cursor:"pointer", padding:0 }}>
+          <button onClick={() => setRequoteOpen(o => ({ ...o, [job.id]: true }))} style={{ background:"none", border:"none", color:"var(--ff-c10)", fontFamily:"inherit", fontSize:".82rem", fontWeight:600, cursor:"pointer", padding:0 }}>
             <Ic name="pencil" size={13} style={{ marginRight:4 }} />Need to adjust the price? Request a change
           </button>
         ) : (
@@ -1200,7 +1200,7 @@ export default function ContractorDashboard() {
                 </div>
               </div>
             ) : (
-              <div style={{ display:"flex", alignItems:"flex-start", gap:".5rem", padding:".7rem .8rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .1)" }}>
+              <div style={{ display:"flex", alignItems:"flex-start", gap:".5rem", padding:".7rem .8rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)" }}>
                 <Ic name="info" size={14} color="#f59e0b" style={{ marginTop:2, flexShrink:0 }} />
                 <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.55 }}>
                   The client has already paid on this job, so they can't hand it to another pro. But they can decline the change — you'd finish at the agreed price. Give the specific reason and message them first.
@@ -1225,11 +1225,11 @@ export default function ContractorDashboard() {
               const paidInFull = jobFullyFunded(job);
               const payout = commission == null ? null : Math.round(pv.newPrice * (1 - commission) * 100) / 100;
               return (
-                <div style={{ borderRadius:"13px", border:"1px dashed rgba(234,107,20,.4)", background:"rgba(234,107,20,.05)", padding:"1rem 1rem 1.05rem" }}>
-                  <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".11em", fontWeight:700, color:"#ea6b14", marginBottom:".7rem" }}>
+                <div style={{ borderRadius:"13px", border:"1px dashed rgba(var(--ff-accent-rgb), .4)", background:"rgba(var(--ff-accent-rgb), .05)", padding:"1rem 1rem 1.05rem" }}>
+                  <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".11em", fontWeight:700, color:"var(--ff-c10)", marginBottom: "var(--ff-s3)" }}>
                     What the client will see
                   </div>
-                  <div style={{ background:"rgba(var(--ff-fg), .035)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"11px", padding:".7rem .8rem" }}>
+                  <div style={{ background:"rgba(var(--ff-fg), .035)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"11px", padding:".7rem .8rem" }}>
                     {pcRow("Price they agreed to", pcMoney(pv.oldPrice))}
                     {pv.isIncrease ? pcRow("Increase", "+" + pcMoney(pv.delta)) : pv.isReduction ? pcRow("Reduction", "−" + pcMoney(Math.abs(pv.delta))) : null}
                     {pcRow("New job price", pcMoney(pv.newPrice), { top:true })}
@@ -1248,9 +1248,9 @@ export default function ContractorDashboard() {
                       : "Same total as before — this just re-itemises the quote."}
                   </div>
                   {payout != null ? (
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:"1rem", marginTop:".85rem", paddingTop:".7rem", borderTop:"1px solid rgba(var(--ff-fg), .1)" }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:"1rem", marginTop:".85rem", paddingTop: "var(--ff-s3)", borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)" }}>
                       <span style={{ fontSize:".79rem", color:"rgba(var(--ff-muted), .7)" }}>Your payout after commission</span>
-                      <strong style={{ fontSize:".95rem", color:"#ea6b14" }}>{pcMoney(payout)}</strong>
+                      <strong style={{ fontSize:".95rem", color:"var(--ff-c10)" }}>{pcMoney(payout)}</strong>
                     </div>
                   ) : null}
                 </div>
@@ -1259,7 +1259,7 @@ export default function ContractorDashboard() {
 
             <textarea value={rf.reason} rows={2} placeholder="Reason for the change (e.g. found a cracked pipe behind the wall)" onChange={e => setRf({ reason: e.target.value })} style={{ ...ffInp, resize:"vertical" as const }} />
             <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
-              <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyJobId === job.id} onClick={() => requestRequote(job)}>{busyJobId === job.id ?"Sending…" : "Send revised estimate"}</button>
+              <button style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none" }} disabled={busyJobId === job.id} onClick={() => requestRequote(job)}>{busyJobId === job.id ?"Sending…" : "Send revised estimate"}</button>
               <button style={{ ...s.btn }} onClick={() => setRequoteOpen(o => ({ ...o, [job.id]: false }))}>Cancel</button>
             </div>
           </div>
@@ -1396,7 +1396,7 @@ export default function ContractorDashboard() {
   // simply doesn't render.
   const awaitingUnknown = awaitingJobs.some(j => j.amount && netPayout(j) == null);
   const awaitingTotal = awaitingUnknown ? 0 : awaitingJobs.reduce((t,j) => t + (j.amount ? (netPayout(j) ?? 0) : 0), 0);
-  const STATUS_COLORS: Record<string,string> = { pending:"#f59e0b", matched:"#3b82f6", in_progress:"#ea6b14", completed:"#22c55e", cancelled:"#ef4444", assigned:"#3b82f6", scheduled:"#8b5cf6", pending_confirmation:"#f59e0b" };
+  const STATUS_COLORS: Record<string,string> = { pending:"#f59e0b", matched:"#3b82f6", in_progress:"var(--ff-c10)", completed:"#22c55e", cancelled:"#ef4444", assigned:"#3b82f6", scheduled:"#8b5cf6", pending_confirmation:"#f59e0b" };
   // "Reliability streak" — consecutive most-recent finished jobs that were completed & confirmed with no claim.
   const streak = (() => {
     const finished = [...myJobs]
@@ -1408,14 +1408,14 @@ export default function ContractorDashboard() {
   })();
 
   const s = {
-    wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
+    wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(var(--ff-accent-rgb), 0.16) 0%, transparent 70%), radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
     // `header` and `logo` were removed on 2026-10-30. `header` was the v1
     // greeting strip, which the <Pass> replaced; `logo` had already been dead
     // for some time (the global TopNav carries the wordmark). Both are deleted
     // rather than left in place because a style key that nothing reads still
     // looks like the live answer to "how is the top of this page styled".
-    tabsBar: { background:"rgba(var(--ff-fg), .02)", borderBottom:"1px solid rgba(var(--ff-fg), .06)", padding:"0 1.5rem", overflowX:"auto" as const },
-    tabsInner: { maxWidth:"900px", margin:"0 auto", display:"flex", gap:".25rem" },
+    tabsBar: { background:"rgba(var(--ff-fg), .02)", borderBottom:"var(--ff-hair-w) solid rgba(var(--ff-fg), .06)", padding:"0 1.5rem", overflowX:"auto" as const },
+    tabsInner: { maxWidth:"900px", margin:"0 auto", display:"flex", gap: "var(--ff-s1)" },
     // ── Retargeted onto the token scale on 2026-10-30 ──────────────────────
     // Same move, and the same reasoning, as ClientDashboard's `s` object: these
     // objects have 50 call sites between `btn`, `card` and `cardTitle`, and
@@ -1432,14 +1432,14 @@ export default function ContractorDashboard() {
     // Fluid padding: on a ~276px-wide phone column a flat 1.5rem/1.75rem ate
     // ~20% of the usable width before any content was drawn.
     content: { maxWidth:"900px", margin:"0 auto", padding:"clamp(1rem, 4vw, 2rem) clamp(.75rem, 3vw, 1.5rem)" },
-    card: { background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"var(--ff-r3)", padding:"clamp(1rem, 4vw, 1.75rem)", marginBottom:"var(--ff-s6)" },
+    card: { background:"var(--ff-card-bg)", border:"var(--ff-hair-w) solid var(--ff-card-border)", borderRadius:"var(--ff-r3)", padding:"clamp(1rem, 4vw, 1.75rem)", marginBottom:"var(--ff-s6)" },
     cardTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", lineHeight:1.1, color:"var(--ff-accent-500)", marginBottom:"var(--ff-s5)" },
-    jobCard: { background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", padding:"clamp(.9rem, 3.5vw, 1.5rem)", marginBottom:"var(--ff-s4)", cursor:"pointer" },
-    btn: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s4)", background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", color:"var(--ff-text)", fontFamily:"'Bebas Neue',sans-serif", fontSize:".88rem", letterSpacing:".09em", cursor:"pointer" },
-    earnCard: { background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", padding:"var(--ff-s5)", textAlign:"center" as const },
-    chip: { padding:".3rem .75rem", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.18)", borderRadius:"99px", fontSize:".78rem", color:"rgba(var(--ff-muted), .8)", display:"inline-block", margin:".2rem" },
-    slot: { padding:".38rem .85rem", borderRadius:"99px", fontSize:".78rem", cursor:"pointer", border:"1px solid rgba(var(--ff-fg), .1)", background:"rgba(var(--ff-fg), .04)", color:"rgba(var(--ff-muted), .7)", fontFamily:"inherit", margin:".2rem" },
-    slotSel: { background:"rgba(234,107,20,.15)", borderColor:"rgba(234,107,20,.5)", color:"var(--ff-text)" },
+    jobCard: { background:"var(--ff-card-bg)", border:"var(--ff-hair-w) solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", padding:"clamp(.9rem, 3.5vw, 1.5rem)", marginBottom:"var(--ff-s4)", cursor:"pointer" },
+    btn: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s4)", background:"var(--ff-card-bg)", border:"var(--ff-hair-w) solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", color:"var(--ff-text)", fontFamily:"'Bebas Neue',sans-serif", fontSize:".88rem", letterSpacing:".09em", cursor:"pointer" },
+    earnCard: { background:"var(--ff-card-bg)", border:"var(--ff-hair-w) solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", padding:"var(--ff-s5)", textAlign:"center" as const },
+    chip: { padding:".3rem .75rem", background:"rgba(var(--ff-accent-rgb), .08)", border:"1px solid rgba(var(--ff-accent-rgb), .18)", borderRadius:"99px", fontSize:".78rem", color:"rgba(var(--ff-muted), .8)", display:"inline-block", margin: "var(--ff-s1)" },
+    slot: { padding:".38rem .85rem", borderRadius:"99px", fontSize:".78rem", cursor:"pointer", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", background:"rgba(var(--ff-fg), .04)", color:"rgba(var(--ff-muted), .7)", fontFamily:"inherit", margin: "var(--ff-s1)" },
+    slotSel: { background:"rgba(var(--ff-accent-rgb), .15)", borderColor:"rgba(var(--ff-accent-rgb), .5)", color:"var(--ff-text)" },
   };
 
   // A layout-matched shell rather than a centred spinner: the sidebar, header
@@ -1457,7 +1457,7 @@ export default function ContractorDashboard() {
       <div style={{ textAlign:"center", color:"rgba(var(--ff-muted), .7)", maxWidth:"320px", padding:"1.5rem" }}>
         <div style={{ marginBottom:".75rem", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".04em" }}>Couldn't load your dashboard</div>
         <div style={{ fontSize:".9rem", marginBottom:"1.25rem" }}>Check your connection and try again.</div>
-        <button style={{ padding:".75rem 1.5rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer" }} onClick={() => window.location.reload()}>Retry</button>
+        <button style={{ padding:".75rem 1.5rem", background:"var(--ff-c10)", color:"#fff", border:"none", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer" }} onClick={() => window.location.reload()}>Retry</button>
       </div>
     </div>
   );
@@ -1478,12 +1478,12 @@ export default function ContractorDashboard() {
     <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       <div style={{ textAlign:"center", maxWidth:"380px", padding:"1.5rem" }}>
-        <div style={{ width:56, height:56, borderRadius:"50%", margin:"0 auto 1rem", background:"linear-gradient(135deg,#ea6b14,#f59e42)", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.9rem" }}>F</div>
+        <div style={{ width:56, height:56, borderRadius:"50%", margin:"0 auto 1rem", background:"linear-gradient(135deg,var(--ff-c10),#f59e42)", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.9rem" }}>F</div>
         <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.7rem", letterSpacing:".04em", lineHeight:1.1, color:"var(--ff-text)", marginBottom:".5rem" }}>You're almost there</div>
         <div style={{ fontSize:".92rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.55, marginBottom:"1.25rem" }}>
           Your login is set up, but we still need a few details before you can see and bid on jobs. It takes about two minutes — and if you started earlier, we saved your progress.
         </div>
-        <button style={{ padding:".8rem 1.6rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"10px", fontFamily:"'DM Sans',sans-serif", fontSize:".95rem", fontWeight:600, cursor:"pointer" }}
+        <button style={{ padding:".8rem 1.6rem", background:"var(--ff-c10)", color:"#fff", border:"none", borderRadius:"10px", fontFamily:"'DM Sans',sans-serif", fontSize:".95rem", fontWeight:600, cursor:"pointer" }}
           onClick={() => setLocation("/contractor-onboarding")}>Finish setting up →</button>
       </div>
     </div>
@@ -1708,9 +1708,9 @@ export default function ContractorDashboard() {
   return (
     <div style={s.wrap} className="ffdash">
       <style>{".ffdash button{transition:filter .16s var(--ff-ease-out), transform .16s var(--ff-ease-out), opacity .16s var(--ff-ease-out)} .ffdash button:hover:not(:disabled){filter:brightness(1.09)} .ffdash button:active:not(:disabled){transform:scale(0.97); transition-duration:.1s} .ffdash button:disabled{opacity:.55; cursor:not-allowed}"
-        + " @keyframes ff-pulse-ring{0%{box-shadow:0 0 0 0 rgba(234,107,20,.55); background:rgba(234,107,20,.14)}70%{box-shadow:0 0 0 12px rgba(234,107,20,0); background:rgba(234,107,20,.05)}100%{box-shadow:0 0 0 0 rgba(234,107,20,0); background:rgba(234,107,20,0)}}"
-        + " .ffdash .ff-pulse{outline:2px solid rgba(234,107,20,.75); outline-offset:6px; border-radius:10px; animation:ff-pulse-ring 1.5s ease-out 3}"
-        + " @media (prefers-reduced-motion: reduce){.ffdash .ff-pulse{animation:none; background:rgba(234,107,20,.12)}}"}</style>
+        + " @keyframes ff-pulse-ring{0%{box-shadow:0 0 0 0 rgba(var(--ff-accent-rgb), .55); background:rgba(var(--ff-accent-rgb), .14)}70%{box-shadow:0 0 0 12px rgba(var(--ff-accent-rgb), 0); background:rgba(var(--ff-accent-rgb), .05)}100%{box-shadow:0 0 0 0 rgba(var(--ff-accent-rgb), 0); background:rgba(var(--ff-accent-rgb), 0)}}"
+        + " .ffdash .ff-pulse{outline:2px solid rgba(var(--ff-accent-rgb), .75); outline-offset:6px; border-radius:10px; animation:ff-pulse-ring 1.5s ease-out 3}"
+        + " @media (prefers-reduced-motion: reduce){.ffdash .ff-pulse{animation:none; background:rgba(var(--ff-accent-rgb), .12)}}"}</style>
       {toast && (
         <div onClick={() => setToast(null)} className="ff-toast-in" style={{ position:"fixed", left:"50%", bottom:"calc(1.5rem + var(--ff-fsb-h, 0px))", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
       )}
@@ -1807,9 +1807,9 @@ export default function ContractorDashboard() {
           // Nothing outstanding and Stripe is reviewing => reassure, don't nag.
           const onlyWaiting = steps.length === 0 && !!waiting;
           return (
-          <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.45)", display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".75rem", justifyContent:"space-between" }}>
+          <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(var(--ff-accent-rgb), .1)", border:"1px solid rgba(var(--ff-accent-rgb), .45)", display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".75rem", justifyContent:"space-between" }}>
             <div style={{ flex:"1 1 260px" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".85rem", fontWeight:600, color:"#ea6b14", marginBottom:".3rem" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".85rem", fontWeight:600, color:"var(--ff-c10)", marginBottom:".3rem" }}>
                 <Ic name="alert-triangle" size={14} />{onlyWaiting ? "Payout setup is being reviewed" : "Finish payout setup to get paid"}
               </div>
               <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
@@ -1830,10 +1830,10 @@ export default function ContractorDashboard() {
                       : "You haven't connected a bank account. Until you do, your clients can't be charged for your jobs at all — so a job you win can't start, and messaging on it stays locked.")}
               </div>
               {!onlyWaiting && steps.length > 0 && (
-                <ul style={{ margin:".55rem 0 0", padding:0, listStyle:"none", display:"flex", flexDirection:"column" as const, gap:".45rem" }}>
+                <ul style={{ margin:".55rem 0 0", padding:0, listStyle:"none", display:"flex", flexDirection:"column" as const, gap: "var(--ff-s2)" }}>
                   {steps.map((n, i) => (
-                    <li key={i} style={{ display:"flex", gap:".45rem", alignItems:"flex-start" }}>
-                      <span style={{ flex:"0 0 auto", marginTop:".15rem" }}><Ic name="alert-triangle" size={12} color="#ea6b14" /></span>
+                    <li key={i} style={{ display:"flex", gap: "var(--ff-s2)", alignItems:"flex-start" }}>
+                      <span style={{ flex:"0 0 auto", marginTop:".15rem" }}><Ic name="alert-triangle" size={12} color="var(--ff-c10)" /></span>
                       <span>
                         <span style={{ display:"block", fontSize:".8rem", fontWeight:600, color:"var(--ff-text)" }}>{n.label}</span>
                         <span style={{ display:"block", fontSize:".76rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.45 }}>{n.detail}</span>
@@ -1850,7 +1850,7 @@ export default function ContractorDashboard() {
               )}
             </div>
             {!onlyWaiting && (
-              <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", whiteSpace:"nowrap" as const }} disabled={busyStripe} onClick={setupPayouts}>
+              <button style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none", whiteSpace:"nowrap" as const }} disabled={busyStripe} onClick={setupPayouts}>
                 {busyStripe ? "Opening Stripe…" : (contractor.stripe_account_id ? "Finish setup" : "Set up payouts")}
               </button>
             )}
@@ -1865,9 +1865,9 @@ export default function ContractorDashboard() {
           // (e.g. insurance lapses) the reminder comes back on its own.
           if ((contractor.setup_skipped ?? []).includes(nudgeToken(gaps))) return null;
           return (
-            <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.45)", display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".75rem", justifyContent:"space-between" }}>
+            <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(var(--ff-accent-rgb), .1)", border:"1px solid rgba(var(--ff-accent-rgb), .45)", display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".75rem", justifyContent:"space-between" }}>
               <div style={{ flex:"1 1 260px" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".85rem", fontWeight:600, color:"#ea6b14", marginBottom:".3rem" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".85rem", fontWeight:600, color:"var(--ff-c10)", marginBottom:".3rem" }}>
                   <Ic name="alert-triangle" size={14} />Finish setting up your profile
                 </div>
                 <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5, marginBottom:".55rem" }}>
@@ -1876,14 +1876,14 @@ export default function ContractorDashboard() {
                 <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const }}>
                   {gaps.map(g => (
                     <button key={g.key} onClick={() => focusProfileGap(g.anchor)}
-                      style={{ padding:".3rem .65rem", borderRadius:"99px", border:"1px solid rgba(234,107,20,.45)", background:"rgba(234,107,20,.12)", color:"#ea6b14", fontFamily:"inherit", fontSize:".76rem", fontWeight:600, cursor:"pointer" }}>
+                      style={{ padding:".3rem .65rem", borderRadius:"99px", border:"1px solid rgba(var(--ff-accent-rgb), .45)", background:"rgba(var(--ff-accent-rgb), .12)", color:"var(--ff-c10)", fontFamily:"inherit", fontSize:".76rem", fontWeight:600, cursor:"pointer" }}>
                       {g.label} →
                     </button>
                   ))}
                 </div>
               </div>
               <div style={{ display:"flex", flexDirection:"column" as const, alignItems:"stretch", gap:".4rem" }}>
-                <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", whiteSpace:"nowrap" as const }} onClick={() => focusProfileGap(gaps[0].anchor)}>
+                <button style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none", whiteSpace:"nowrap" as const }} onClick={() => focusProfileGap(gaps[0].anchor)}>
                   Complete profile
                 </button>
                 <button onClick={() => skipSetupStep(nudgeToken(gaps))}
@@ -1903,9 +1903,9 @@ export default function ContractorDashboard() {
             A plain link (not SPA navigation) so a full page loads cleanly, and
             dismissible so it doesn't nag a pro who has already read it. */}
         {!guideSeen && (
-          <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.25)", display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".75rem", justifyContent:"space-between" }}>
+          <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(var(--ff-accent-rgb), .08)", border:"1px solid rgba(var(--ff-accent-rgb), .25)", display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".75rem", justifyContent:"space-between" }}>
             <div style={{ flex:"1 1 260px" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".85rem", fontWeight:600, color:"#ea6b14", marginBottom:".3rem" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".85rem", fontWeight:600, color:"var(--ff-c10)", marginBottom:".3rem" }}>
                 <Ic name="star" size={14} />Read this first — the contractor guide
               </div>
               <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
@@ -1914,7 +1914,7 @@ export default function ContractorDashboard() {
             </div>
             <div style={{ display:"flex", flexDirection:"column" as const, alignItems:"stretch", gap:".4rem" }}>
               <a href="/contractor-guide" onClick={dismissGuide}
-                style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", whiteSpace:"nowrap" as const, textAlign:"center" as const, textDecoration:"none" }}>
+                style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none", whiteSpace:"nowrap" as const, textAlign:"center" as const, textDecoration:"none" }}>
                 Read the guide
               </a>
               <button onClick={dismissGuide}
@@ -1938,7 +1938,7 @@ export default function ContractorDashboard() {
               onClick: () => { setActiveTab("jobs"); setJobFilter(f => f === "awaiting" ? null : "awaiting"); } },
             { key: "scheduled", label: "Scheduled", count: myJobs.filter(STAGE_MATCH.scheduled).length, color: "#8b5cf6",
               onClick: () => { setActiveTab("jobs"); setJobFilter(f => f === "scheduled" ? null : "scheduled"); } },
-            { key: "working", label: "In progress", count: myJobs.filter(STAGE_MATCH.working).length, color: "#ea6b14",
+            { key: "working", label: "In progress", count: myJobs.filter(STAGE_MATCH.working).length, color: "var(--ff-c10)",
               onClick: () => { setActiveTab("jobs"); setJobFilter(f => f === "working" ? null : "working"); } },
             { key: "payment", label: "Awaiting payment", count: myJobs.filter(STAGE_MATCH.payment).length, color: "#22c55e",
               onClick: () => { setActiveTab("jobs"); setJobFilter(f => f === "payment" ? null : "payment"); } },
@@ -1953,13 +1953,13 @@ export default function ContractorDashboard() {
                     onClick={st.onClick}
                     style={{
                       flex:"1 0 108px", minWidth:"108px", padding:".7rem .6rem", textAlign:"left" as const, cursor:"pointer", fontFamily:"inherit",
-                      borderRadius:"12px", background: on ? "rgba(234,107,20,.1)" : "rgba(var(--ff-fg), .045)",
-                      border: on ? "1px solid rgba(234,107,20,.5)" : "1px solid rgba(var(--ff-fg), .06)",
+                      borderRadius:"12px", background: on ? "rgba(var(--ff-accent-rgb), .1)" : "rgba(var(--ff-fg), .045)",
+                      border: on ? "1px solid rgba(var(--ff-accent-rgb), .5)" : "1px solid rgba(var(--ff-fg), .06)",
                       borderTop: "3px solid " + st.color,
                     }}
                   >
                     <div style={{ fontSize:"1.25rem", fontWeight:700, color: st.count > 0 ? "var(--ff-text)" : "rgba(var(--ff-muted), .35)", lineHeight:1.1 }}>{st.count}</div>
-                    <div style={{ fontSize:".68rem", color:"rgba(var(--ff-muted), .6)", marginTop:".2rem", lineHeight:1.25 }}>{st.label}</div>
+                    <div style={{ fontSize:".68rem", color:"rgba(var(--ff-muted), .6)", marginTop: "var(--ff-s1)", lineHeight:1.25 }}>{st.label}</div>
                   </button>
                 );
               })}
@@ -2044,7 +2044,7 @@ export default function ContractorDashboard() {
             {myJobs.length > 0 && shown.length === 0 && (
               <div style={{ textAlign:"center" as const, padding:"2.5rem 1.5rem", color:"rgba(var(--ff-muted), .5)", fontSize:".9rem" }}>
                 {tokens.length > 0
-                  ? <>No jobs match “{search}”. <button type="button" onClick={() => setSearch("")} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer", padding:0 }}>Clear search</button></>
+                  ? <>No jobs match “{search}”. <button type="button" onClick={() => setSearch("")} style={{ background:"none", border:"none", color:"var(--ff-c10)", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer", padding:0 }}>Clear search</button></>
                   : <>No jobs {jobFilter ? (STAGE_LABEL[jobFilter] ?? "in this stage") : "here"} right now.</>}
               </div>
             )}
@@ -2080,20 +2080,20 @@ export default function ContractorDashboard() {
                     <span style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .6)" }}>{settled} of {steps.length} done</span>
                   </div>
                   <div style={{ height:"6px", borderRadius:"99px", background:"rgba(var(--ff-fg), .07)", marginBottom:".6rem", overflow:"hidden" }}>
-                    <div style={{ height:"100%", width:(settled / steps.length) * 100 + "%", background:"#ea6b14", borderRadius:"99px", transition:"width .25s ease" }} />
+                    <div style={{ height:"100%", width:(settled / steps.length) * 100 + "%", background:"var(--ff-c10)", borderRadius:"99px", transition:"width .25s ease" }} />
                   </div>
                   {steps.map((step, i) => {
                     const isSkipped = step.skippable && skipped.includes(step.key);
                     return (
-                      <div key={step.key} style={{ display:"flex", gap:".7rem", alignItems:"flex-start", padding:".7rem .1rem", borderTop: i === 0 ? "none" : "1px solid rgba(var(--ff-fg), .06)", opacity: isSkipped && !step.done ? .55 : 1 }}>
-                        <div style={{ width:"22px", height:"22px", borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background: step.done ? "rgba(34,197,94,.15)" : "rgba(234,107,20,.12)", border:"1px solid " + (step.done ? "rgba(34,197,94,.4)" : "rgba(234,107,20,.35)"), color: step.done ? "#22c55e" : "#ea6b14", fontSize:".72rem", fontWeight:700 }}>{step.done ? <Ic name="check" size={12} color="#22c55e" /> : i + 1}</div>
+                      <div key={step.key} style={{ display:"flex", gap: "var(--ff-s3)", alignItems:"flex-start", padding:".7rem .1rem", borderTop: i === 0 ? "none" : "var(--ff-hair-w) solid rgba(var(--ff-fg), .06)", opacity: isSkipped && !step.done ? .55 : 1 }}>
+                        <div style={{ width:"22px", height:"22px", borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background: step.done ? "rgba(34,197,94,.15)" : "rgba(var(--ff-accent-rgb), .12)", border:"1px solid " + (step.done ? "rgba(34,197,94,.4)" : "rgba(var(--ff-accent-rgb), .35)"), color: step.done ? "#22c55e" : "var(--ff-c10)", fontSize:".72rem", fontWeight:700 }}>{step.done ? <Ic name="check" size={12} color="#22c55e" /> : i + 1}</div>
                         <div style={{ flex:1, minWidth:0 }}>
                           <div onClick={step.done || isSkipped ? undefined : step.onClick} style={{ fontSize:".88rem", fontWeight:500, color:"var(--ff-text)", cursor: step.done || isSkipped ? "default" : "pointer", textDecoration: isSkipped && !step.done ? "line-through" : "none" }}>{step.label}</div>
                           <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .55)", marginTop:".1rem" }}>{isSkipped && !step.done ? "Skipped — you can still do this any time from your Profile tab." : step.sub}</div>
                         </div>
                         {!step.done && !isSkipped && (
                           <div style={{ display:"flex", flexDirection:"column" as const, gap:".3rem", alignItems:"flex-end", flexShrink:0 }}>
-                            <button onClick={step.onClick} style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", padding:".35rem .8rem", fontSize:".76rem", whiteSpace:"nowrap" as const }}>Do it</button>
+                            <button onClick={step.onClick} style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none", padding:".35rem .8rem", fontSize:".76rem", whiteSpace:"nowrap" as const }}>Do it</button>
                             {step.skippable && (
                               <button onClick={() => skipSetupStep(step.key)} style={{ background:"none", border:"none", color:"rgba(var(--ff-muted), .45)", fontFamily:"inherit", fontSize:".7rem", cursor:"pointer", padding:0, whiteSpace:"nowrap" as const }}>I don't need this step</button>
                             )}
@@ -2107,9 +2107,9 @@ export default function ContractorDashboard() {
             })()}
             {myJobs.length === 0 ? (
               <div style={{ textAlign:"center" as const, padding:"2.5rem 1.5rem", color:"rgba(var(--ff-muted), .5)" }}>
-                <div style={{ marginBottom:".75rem" }}><Ic name="clipboard-list" size={40} color="#ea6b14" /></div>
+                <div style={{ marginBottom:".75rem" }}><Ic name="clipboard-list" size={40} color="var(--ff-c10)" /></div>
                 <div style={{ fontSize:".95rem", marginBottom:".3rem", color:"var(--ff-text)" }}>No jobs yet</div>
-                <div style={{ fontSize:".85rem" }}>Jobs you win show up here. Check <button onClick={() => setActiveTab("available")} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".85rem", fontWeight:600, cursor:"pointer", padding:0 }}>Available Jobs</button> for open work matching your trades.</div>
+                <div style={{ fontSize:".85rem" }}>Jobs you win show up here. Check <button onClick={() => setActiveTab("available")} style={{ background:"none", border:"none", color:"var(--ff-c10)", fontFamily:"inherit", fontSize:".85rem", fontWeight:600, cursor:"pointer", padding:0 }}>Available Jobs</button> for open work matching your trades.</div>
               </div>
             ) : shown.map(job => (
               <div key={job.id} id={"job-" + job.id} style={{ ...s.jobCard, scrollMarginTop: "5.5rem" }} onClick={() => openJob(job)}>
@@ -2121,14 +2121,14 @@ export default function ContractorDashboard() {
                     status/price column no longer shrinks to nothing. */}
                 <div style={{ display:"flex", gap:".75rem", justifyContent:"space-between", marginBottom:".75rem" }}>
                   <div style={{ minWidth:0, flex:"1 1 auto" }}>
-                    <div style={{ fontSize:"1rem", fontWeight:500, marginBottom:".2rem" }}>{job.request?.service_needed ?? "Job"}</div>
-                    <div style={{ fontSize:".72rem", fontFamily:"monospace", color:"#ea6b14", marginBottom:".3rem" }}>{jobCode(job.id)}</div>
-                    <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", marginBottom:".2rem" }}><Ic name="user" size={13} style={{ marginRight:4 }} />{job.client?.first_name || "Your client"}</div>
+                    <div style={{ fontSize:"1rem", fontWeight:500, marginBottom: "var(--ff-s1)" }}>{job.request?.service_needed ?? "Job"}</div>
+                    <div style={{ fontSize:".72rem", fontFamily:"monospace", color:"var(--ff-c10)", marginBottom:".3rem" }}>{jobCode(job.id)}</div>
+                    <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", marginBottom: "var(--ff-s1)" }}><Ic name="user" size={13} style={{ marginRight:4 }} />{job.client?.first_name || "Your client"}</div>
                     {jobDestination(job).text && (
                       <a href={mapsUrl(jobDestination(job).text)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
                         title={jobDestination(job).exact ? undefined : "Approximate area — the client confirms their full address when they pay the deposit."}
                         style={{ display:"inline-block", maxWidth:"100%", fontSize:".82rem", color:"rgba(var(--ff-muted), .65)", textDecoration:"underline", textUnderlineOffset:"3px" }}>
-                        <Ic name="map-pin" size={13} color="#ea6b14" style={{ marginRight:4 }} />{jobDestination(job).text}{jobDestination(job).exact ? "" : " (approx.)"}
+                        <Ic name="map-pin" size={13} color="var(--ff-c10)" style={{ marginRight:4 }} />{jobDestination(job).text}{jobDestination(job).exact ? "" : " (approx.)"}
                       </a>
                     )}
                   </div>
@@ -2136,12 +2136,12 @@ export default function ContractorDashboard() {
                     {/* A pill rather than "● scheduled". At a glance on a card
                         list, a tinted chip is what separates one job's state
                         from the next; a coloured bullet in body text does not. */}
-                    <span style={{ display:"inline-block", padding:".22rem .55rem", borderRadius:"99px", fontSize:".7rem", fontWeight:700, letterSpacing:".03em", textTransform:"uppercase" as const, whiteSpace:"nowrap" as const, color: STATUS_COLORS[job.status] ?? "#94a3b8", background:"rgba(var(--ff-fg), .07)", border:"1px solid rgba(var(--ff-fg), .12)" }}>{job.status.replace("_"," ")}</span>
+                    <span style={{ display:"inline-block", padding:".22rem .55rem", borderRadius:"99px", fontSize:".7rem", fontWeight:700, letterSpacing:".03em", textTransform:"uppercase" as const, whiteSpace:"nowrap" as const, color: STATUS_COLORS[job.status] ?? "#94a3b8", background:"rgba(var(--ff-fg), .07)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)" }}>{job.status.replace("_"," ")}</span>
                     {job.amount && <div style={{ fontSize:"1rem", fontWeight:600, color:"#22c55e", marginTop:".35rem" }}>${job.amount}</div>}
                   </div>
                 </div>
                 {activeJobId === job.id && (
-                  <div onClick={e => e.stopPropagation()} style={{ marginTop:"1rem", borderTop:"1px solid rgba(var(--ff-fg), .07)", paddingTop:"1rem" }}>
+                  <div onClick={e => e.stopPropagation()} style={{ marginTop:"1rem", borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .07)", paddingTop:"1rem" }}>
                     <RequestPhotoQuote requestId={job.request_id} photoPath={job.request?.photo_path} estimatedQuote={job.request?.estimated_quote} quoteNotes={job.request?.quote_notes} canQuote={["assigned","scheduled","in_progress"].includes(job.status)} />
 
                     {/* Every job needs a signed service agreement before the client can pay,
@@ -2186,10 +2186,10 @@ export default function ContractorDashboard() {
                             {d.service_date && <div>Date of service: {d.service_date}</div>}
                           </div>
                           {(d.photo_paths ?? []).length > 0 && (
-                            <div style={{ display:"flex", flexWrap:"wrap" as const, gap:".4rem", marginBottom:".7rem" }}>
+                            <div style={{ display:"flex", flexWrap:"wrap" as const, gap:".4rem", marginBottom: "var(--ff-s3)" }}>
                               {(d.photo_paths ?? []).map((p: string) => claimPhotos[p] ? (
                                 <a key={p} href={claimPhotos[p]} target="_blank" rel="noopener noreferrer">
-                                  <FadeImg src={claimPhotos[p]} alt="Claim photo" style={{ width:"68px", height:"68px", objectFit:"cover" as const, borderRadius:"8px", border:"1px solid rgba(var(--ff-fg), .12)" }} />
+                                  <FadeImg src={claimPhotos[p]} alt="Claim photo" style={{ width:"68px", height:"68px", objectFit:"cover" as const, borderRadius:"8px", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)" }} />
                                 </a>
                               ) : null)}
                             </div>
@@ -2200,7 +2200,7 @@ export default function ContractorDashboard() {
                                 <Ic name="clock" size={12} style={{ marginRight:4 }} />
                                 {overdue ? "Your response window has passed — you can still respond until our team decides." : `Please respond by ${deadline ? deadline.toLocaleDateString() : "the deadline"}.`}
                               </div>
-                              <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} onClick={() => setClaimToAnswer(d)}>Respond to claim</button>
+                              <button style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none" }} onClick={() => setClaimToAnswer(d)}>Respond to claim</button>
                             </>
                           )}
                           {responded && (
@@ -2213,10 +2213,10 @@ export default function ContractorDashboard() {
                       );
                     })()}
 
-                    <div style={{ display:"flex", flexDirection:"column", gap:".7rem", marginBottom:"1.25rem" }}>
+                    <div style={{ display:"flex", flexDirection:"column", gap: "var(--ff-s3)", marginBottom:"1.25rem" }}>
                       {job.request?.recurring && (
-                        <div style={{ display:"flex", gap:".55rem", alignItems:"flex-start", padding:".7rem .8rem", borderRadius:"10px", background:"rgba(234,107,20,.10)", border:"1px solid rgba(234,107,20,.28)", marginBottom:".3rem" }}>
-                          <Ic name="repeat" size={16} color="#ea6b14" style={{ marginTop:1, flexShrink:0 }} />
+                        <div style={{ display:"flex", gap:".55rem", alignItems:"flex-start", padding:".7rem .8rem", borderRadius:"10px", background:"rgba(var(--ff-accent-rgb), .10)", border:"1px solid rgba(var(--ff-accent-rgb), .28)", marginBottom:".3rem" }}>
+                          <Ic name="repeat" size={16} color="var(--ff-c10)" style={{ marginTop:1, flexShrink:0 }} />
                           <div style={{ fontSize:".8rem", color:"var(--ff-text)", lineHeight:1.5 }}>
                             <strong>Recurring job{job.request?.recurring_frequency ? " — " + freqLabel(job.request.recurring_frequency) : ""}.</strong> This client wants a regular pro. Taking it on means committing to show up at the agreed times each visit — reliable recurring work, but please only accept if you can keep the schedule.
                           </div>
@@ -2260,9 +2260,9 @@ export default function ContractorDashboard() {
                               <button style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none", fontWeight:600 }} disabled={busyJobId === job.id} onClick={() => completeWalkthrough(job)}>{busyJobId === job.id ? "…" : "✓ Walkthrough done"}</button>
                             </div>
                           ) : job.walkthrough_proposed_at ? (
-                            <div style={{ padding:".7rem .8rem", borderRadius:"10px", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.28)" }}>
+                            <div style={{ padding:".7rem .8rem", borderRadius:"10px", background:"rgba(var(--ff-accent-rgb), .08)", border:"1px solid rgba(var(--ff-accent-rgb), .28)" }}>
                               <div style={{ fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.5, marginBottom:".55rem" }}>
-                                <Ic name="clock" size={13} color="#ea6b14" style={{ marginRight:5 }} />
+                                <Ic name="clock" size={13} color="var(--ff-c10)" style={{ marginRight:5 }} />
                                 Waiting for the client to confirm your walkthrough on <strong>{job.walkthrough_at ? new Date(job.walkthrough_at).toLocaleString() : "the proposed time"}</strong>. Need to change it?
                               </div>
                               <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center" }}>
@@ -2275,7 +2275,7 @@ export default function ContractorDashboard() {
                               {!wtOpen ? (
                                 <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.5 }}>
                                   Hard to price without seeing it?{" "}
-                                  <button type="button" onClick={() => setWtOpen(true)} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".8rem", fontWeight:600, cursor:"pointer", padding:0, textDecoration:"underline" }}>Propose a free walkthrough first</button>
+                                  <button type="button" onClick={() => setWtOpen(true)} style={{ background:"none", border:"none", color:"var(--ff-c10)", fontFamily:"inherit", fontSize:".8rem", fontWeight:600, cursor:"pointer", padding:0, textDecoration:"underline" }}>Propose a free walkthrough first</button>
                                   {" "}— see the space, then send your estimate on the spot.
                                 </div>
                               ) : (
@@ -2285,7 +2285,7 @@ export default function ContractorDashboard() {
                                     <input type="datetime-local" value={wtForm.when} onChange={e => setWtForm(f => ({ ...f, when: e.target.value }))} style={{ ...ffInp, width:"auto", alignSelf:"flex-start" }} />
                                     <input placeholder="Note for the client (optional, e.g. takes about 20 minutes)" value={wtForm.note} onChange={e => setWtForm(f => ({ ...f, note: e.target.value }))} style={ffInp} />
                                     <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
-                                      <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyJobId === job.id} onClick={() => proposeWalkthrough(job)}>{busyJobId === job.id ? "Sending…" : "Propose walkthrough"}</button>
+                                      <button style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none" }} disabled={busyJobId === job.id} onClick={() => proposeWalkthrough(job)}>{busyJobId === job.id ? "Sending…" : "Propose walkthrough"}</button>
                                       <button style={s.btn} disabled={busyJobId === job.id} onClick={() => setWtOpen(false)}>Cancel</button>
                                     </div>
                                   </div>
@@ -2300,34 +2300,34 @@ export default function ContractorDashboard() {
                               can ring the WHOLE form rather than a single field. The wrapper
                               re-declares the parent's flex column and gap, so it changes
                               nothing visually — these were siblings of the gapped column. */}
-                          <div {...jobAnchor(A_PROPOSE, { display:"flex", flexDirection:"column" as const, gap:".7rem" })}>
+                          <div {...jobAnchor(A_PROPOSE, { display:"flex", flexDirection:"column" as const, gap: "var(--ff-s3)" })}>
                           <ScheduleField value={proposeForm.when} onChange={(v) => setProposeForm(f => ({ ...f, when: v }))} />
                           <div>
-                            <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".25rem" }}>Price ($)</div>
-                            <input type="number" min="0" value={proposeForm.amount} placeholder="e.g. 250" onChange={e => setProposeForm(f => ({ ...f, amount: e.target.value, used_base_price:false }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const }} />
+                            <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom: "var(--ff-s1)" }}>Price ($)</div>
+                            <input type="number" min="0" value={proposeForm.amount} placeholder="e.g. 250" onChange={e => setProposeForm(f => ({ ...f, amount: e.target.value, used_base_price:false }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const }} />
                           </div>
-                          <textarea value={proposeForm.notes} rows={2} placeholder="Notes for the client (optional)" onChange={e => setProposeForm(f => ({ ...f, notes: e.target.value }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const }} />
+                          <textarea value={proposeForm.notes} rows={2} placeholder="Notes for the client (optional)" onChange={e => setProposeForm(f => ({ ...f, notes: e.target.value }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const }} />
                           <QuoteBreakdown v={proposeForm} on={pp => setProposeForm(f => ({ ...f, ...pp }))} calloutHint={contractor?.min_callout ?? null} price={priceFor(job.request?.service_needed)} />
                           {/* Optional add-ons the client can tick when approving — great upsell for
                               "while I'm there" extras. Not part of the base price. */}
                           <div style={{ padding:".7rem .8rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .03)", border:"1px dashed rgba(var(--ff-fg), .14)" }}>
-                            <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .5)", fontWeight:700, marginBottom:".2rem" }}>Optional add-ons</div>
+                            <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .5)", fontWeight:700, marginBottom: "var(--ff-s1)" }}>Optional add-ons</div>
                             <div style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .55)", lineHeight:1.45, marginBottom: proposeForm.items.length ? ".55rem" : ".45rem" }}>
                               Offer extras the client can tick when approving (e.g. "Replace supply lines — $45"). They're added on top of your price only if the client picks them.
                             </div>
                             {proposeForm.items.map((it, idx) => (
-                              <div key={idx} style={{ display:"flex", gap:".45rem", alignItems:"center", marginBottom:".4rem" }}>
+                              <div key={idx} style={{ display:"flex", gap: "var(--ff-s2)", alignItems:"center", marginBottom:".4rem" }}>
                                 <input value={it.label} placeholder="Add-on description" onChange={e => setProposeForm(f => ({ ...f, items: f.items.map((x,i) => i === idx ? { ...x, label: e.target.value } : x) }))} style={{ ...ffInp, flex:"1 1 140px" }} />
                                 <input type="number" min="0" value={it.amount} placeholder="$" onChange={e => setProposeForm(f => ({ ...f, items: f.items.map((x,i) => i === idx ? { ...x, amount: e.target.value } : x) }))} style={{ ...ffInp, width:"86px", flex:"0 0 86px" }} />
                                 <button type="button" aria-label="Remove add-on" onClick={() => setProposeForm(f => ({ ...f, items: f.items.filter((_,i) => i !== idx) }))} style={{ background:"none", border:"none", color:"rgba(var(--ff-muted), .45)", fontFamily:"inherit", fontSize:"1rem", cursor:"pointer", padding:"0 .15rem", flexShrink:0 }}>×</button>
                               </div>
                             ))}
                             {proposeForm.items.length < 15 && (
-                              <button type="button" onClick={() => setProposeForm(f => ({ ...f, items: [...f.items, { label:"", amount:"" }] }))} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".8rem", fontWeight:600, cursor:"pointer", padding:0 }}>+ Add an optional item</button>
+                              <button type="button" onClick={() => setProposeForm(f => ({ ...f, items: [...f.items, { label:"", amount:"" }] }))} style={{ background:"none", border:"none", color:"var(--ff-c10)", fontFamily:"inherit", fontSize:".8rem", fontWeight:600, cursor:"pointer", padding:0 }}>+ Add an optional item</button>
                             )}
                           </div>
                           <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
-                            <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyJobId === job.id} onClick={() => proposeSchedule(job)}>{busyJobId === job.id ?"Sending…" : (job.schedule_proposed_at ? "Update proposal" : "Propose time & price")}</button>
+                            <button style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none" }} disabled={busyJobId === job.id} onClick={() => proposeSchedule(job)}>{busyJobId === job.id ?"Sending…" : (job.schedule_proposed_at ? "Update proposal" : "Propose time & price")}</button>
                             {canWithdraw(job) && <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJobId === job.id} onClick={() => withdrawJob(job)}>Withdraw</button>}
                           </div>
                           {/* A client can move the time on a job they've already paid for,
@@ -2374,8 +2374,8 @@ export default function ContractorDashboard() {
                                 the copy sounded definite — never thinks to ask. */}
                             {jobDestination(job).text && (
                               <a href={mapsUrl(jobDestination(job).text)} target="_blank" rel="noopener noreferrer"
-                                style={{ flex:"1 1 230px", minWidth:0, display:"flex", alignItems:"center", gap:".65rem", padding:".75rem .9rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .05)", border:"1px solid rgba(var(--ff-fg), .12)", textDecoration:"none" }}>
-                                <Ic name="map-pin" size={20} color="#ea6b14" style={{ flexShrink:0 }} />
+                                style={{ flex:"1 1 230px", minWidth:0, display:"flex", alignItems:"center", gap:".65rem", padding:".75rem .9rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .05)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", textDecoration:"none" }}>
+                                <Ic name="map-pin" size={20} color="var(--ff-c10)" style={{ flexShrink:0 }} />
                                 <div style={{ minWidth:0 }}>
                                   <div style={{ fontSize:".66rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .5)", marginBottom:".15rem" }}>{jobDestination(job).exact ? "Service address — tap for directions" : "Approximate area only — ask the client to confirm"}</div>
                                   <div style={{ fontSize:".86rem", fontWeight:600, color:"var(--ff-text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{jobDestination(job).text}</div>
@@ -2383,12 +2383,12 @@ export default function ContractorDashboard() {
                               </a>
                             )}
                             {job.on_my_way_at ? (
-                              <div style={{ flex:"1 1 190px", display:"flex", alignItems:"center", justifyContent:"center", gap:".45rem", padding:".75rem .9rem", borderRadius:"12px", background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.35)", fontSize:".84rem", color:"var(--ff-success)", fontWeight:600, textAlign:"center" as const }}>
+                              <div style={{ flex:"1 1 190px", display:"flex", alignItems:"center", justifyContent:"center", gap: "var(--ff-s2)", padding:".75rem .9rem", borderRadius:"12px", background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.35)", fontSize:".84rem", color:"var(--ff-success)", fontWeight:600, textAlign:"center" as const }}>
                                 <Ic name="check-circle" size={16} color="#22c55e" style={{ flexShrink:0 }} />Client knows you're on the way
                               </div>
                             ) : (
                               <button disabled={busyJobId === job.id} onClick={() => onMyWay(job)}
-                                style={{ flex:"1 1 190px", padding:".75rem 1.1rem", borderRadius:"12px", border:"none", background:"#ea6b14", color:"#fff", fontFamily:"inherit", fontSize:".95rem", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:".45rem" }}>
+                                style={{ flex:"1 1 190px", padding:".75rem 1.1rem", borderRadius:"12px", border:"none", background:"var(--ff-c10)", color:"#fff", fontFamily:"inherit", fontSize:".95rem", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap: "var(--ff-s2)" }}>
                                 <Ic name="map-pin" size={17} color="#fff" style={{ flexShrink:0 }} />{busyJobId === job.id ? "Sending…" : "I'm on my way"}
                               </button>
                             )}
@@ -2407,8 +2407,8 @@ export default function ContractorDashboard() {
                             {canWithdraw(job) && <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJobId === job.id} onClick={() => withdrawJob(job)}>Withdraw</button>}
                           </div>
                           {!job.is_milestone && photosMissing(job).length > 0 && (
-                            <div style={{ fontSize:".78rem", color:"#ea6b14", display:"flex", alignItems:"center", gap:".35rem" }}>
-                              <Ic name="camera" size={13} color="#ea6b14" style={{ flexShrink:0 }} />
+                            <div style={{ fontSize:".78rem", color:"var(--ff-c10)", display:"flex", alignItems:"center", gap:".35rem" }}>
+                              <Ic name="camera" size={13} color="var(--ff-c10)" style={{ flexShrink:0 }} />
                               Add {photosMissing(job).join(" and ")} to mark this job complete.
                             </div>
                           )}
@@ -2419,8 +2419,8 @@ export default function ContractorDashboard() {
                         <>
                           <div style={{ fontSize:".85rem", color:"var(--ff-warn)" }}><Ic name="clock" size={13} style={{ marginRight:4 }} />You marked this complete — waiting for the client to confirm.</div>
                           {awaitingBalance(job) && (
-                            <div {...jobAnchor(A_BALANCE, { background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.18)", borderRadius:"10px", padding:".7rem .8rem", fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.5 })}>
-                              <Ic name="dollar" size={13} color="#ea6b14" style={{ marginRight:4 }} />
+                            <div {...jobAnchor(A_BALANCE, { background:"rgba(var(--ff-accent-rgb), .08)", border:"1px solid rgba(var(--ff-accent-rgb), .18)", borderRadius:"10px", padding:".7rem .8rem", fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.5 })}>
+                              <Ic name="dollar" size={13} color="var(--ff-c10)" style={{ marginRight:4 }} />
                               <strong>{"The client still owes $" + jobBalanceDue(job).toFixed(2) + "."}</strong> They paid a deposit to book you and pay the rest now the work is done. They can't confirm — and your payout can't be released — until that balance is in. We've asked them for it; a friendly message from you usually speeds it up.
                             </div>
                           )}
@@ -2443,13 +2443,13 @@ export default function ContractorDashboard() {
 
                     <button
                       onClick={() => { setChatJob(job); if (unreadFor(job.id) > 0) void markConvRead(job.id); }}
-                      style={{ display:"flex", alignItems:"center", gap:".5rem", width:"100%", justifyContent:"center", padding:".7rem 1rem", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.3)", borderRadius:"10px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".88rem", fontWeight:500, cursor:"pointer" }}>
+                      style={{ display:"flex", alignItems:"center", gap:".5rem", width:"100%", justifyContent:"center", padding:".7rem 1rem", background:"rgba(var(--ff-accent-rgb), .1)", border:"1px solid rgba(var(--ff-accent-rgb), .3)", borderRadius:"10px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".88rem", fontWeight:500, cursor:"pointer" }}>
                       <Ic name="message-square" size={15} />
                       {job.status === "completed"
                         ? `View chat with ${job.client?.first_name || "your client"}`
                         : `Message ${job.client?.first_name || "your client"}`}
                       {unreadFor(job.id) > 0 && (
-                        <span style={{ minWidth:18, height:18, padding:"0 .3rem", borderRadius:999, background:"#ea6b14", color:"#fff", fontSize:".68rem", fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <span style={{ minWidth:18, height:18, padding:"0 .3rem", borderRadius:999, background:"var(--ff-c10)", color:"#fff", fontSize:".68rem", fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>
                           {unreadFor(job.id) > 9 ? "9+" : unreadFor(job.id)}
                         </span>
                       )}
@@ -2488,12 +2488,12 @@ export default function ContractorDashboard() {
           <div>
             {contractor?.status !== "active" ? (
               <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
-                <div style={{ marginBottom:"1rem" }}><Ic name="clock" size={48} color="#ea6b14" /></div>
+                <div style={{ marginBottom:"1rem" }}><Ic name="clock" size={48} color="var(--ff-c10)" /></div>
                 <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".03em", lineHeight:1.1, marginBottom:".5rem" }}>Your Profile Is Under Review</h2>
                 <p style={{ color:"rgba(var(--ff-muted), .55)", maxWidth:"420px", margin:"0 auto", lineHeight:1.6 }}>
                   Available jobs open up once our team approves your account. Make sure your profile and documents are complete so we can review you faster — you'll get an email the moment you're approved.
                 </p>
-                <button onClick={() => setActiveTab("profile")} style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", marginTop:"1.25rem" }}>Complete my profile</button>
+                <button onClick={() => setActiveTab("profile")} style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none", marginTop:"1.25rem" }}>Complete my profile</button>
               </div>
             ) : (
             <>
@@ -2508,30 +2508,30 @@ export default function ContractorDashboard() {
             )}
             {availableJobs.length > 0 && openHits.length === 0 ? (
               <div style={{ textAlign:"center" as const, padding:"2.5rem 1.5rem", color:"rgba(var(--ff-muted), .5)", fontSize:".9rem" }}>
-                No open jobs match “{search}”. <button type="button" onClick={() => setSearch("")} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer", padding:0 }}>Clear search</button>
+                No open jobs match “{search}”. <button type="button" onClick={() => setSearch("")} style={{ background:"none", border:"none", color:"var(--ff-c10)", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer", padding:0 }}>Clear search</button>
               </div>
             ) : availableJobs.length === 0 ? (
               <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
-                <div style={{ marginBottom:"1rem" }}><Ic name="clipboard-list" size={48} color="#ea6b14" /></div>
+                <div style={{ marginBottom:"1rem" }}><Ic name="clipboard-list" size={48} color="var(--ff-c10)" /></div>
                 <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".03em", lineHeight:1.1, marginBottom:".5rem" }}>No Open Jobs Right Now</h2>
                 <p style={{ color:"rgba(var(--ff-muted), .5)" }}>New jobs matching your specialties will show up here. Add more specialties in your profile to see more work.</p>
-                <button onClick={() => setActiveTab("profile")} style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", marginTop:"1.25rem" }}>Update your specialties</button>
+                <button onClick={() => setActiveTab("profile")} style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none", marginTop:"1.25rem" }}>Update your specialties</button>
               </div>
             ) : openHits.map(r => (
               <div key={r.id} style={s.jobCard}>
                 {r.my_amount == null && !r.my_walkthrough && (
-                  <div style={{ display:"inline-flex", alignItems:"center", gap:".3rem", padding:".22rem .55rem", borderRadius:"99px", background:"rgba(234,107,20,.16)", color:"#ea6b14", fontSize:".68rem", fontWeight:800, letterSpacing:".04em", textTransform:"uppercase" as const, marginBottom:".6rem", marginRight:".4rem" }}>
+                  <div style={{ display:"inline-flex", alignItems:"center", gap:".3rem", padding:".22rem .55rem", borderRadius:"99px", background:"rgba(var(--ff-accent-rgb), .16)", color:"var(--ff-c10)", fontSize:".68rem", fontWeight:800, letterSpacing:".04em", textTransform:"uppercase" as const, marginBottom:".6rem", marginRight:".4rem" }}>
                     <Ic name="star" size={11} />New
                   </div>
                 )}
                 {r.is_preferred && (
-                  <div style={{ display:"inline-flex", alignItems:"center", gap:".35rem", padding:".25rem .6rem", borderRadius:"99px", background:"rgba(234,107,20,.16)", color:"#ea6b14", fontSize:".72rem", fontWeight:700, marginBottom:".6rem" }}>
+                  <div style={{ display:"inline-flex", alignItems:"center", gap:".35rem", padding:".25rem .6rem", borderRadius:"99px", background:"rgba(var(--ff-accent-rgb), .16)", color:"var(--ff-c10)", fontSize:".72rem", fontWeight:700, marginBottom:".6rem" }}>
                     <Ic name="star" size={12} />This client requested you — reserved for 48h
                   </div>
                 )}
                 {r.is_recurring && (
-                  <div style={{ display:"flex", gap:".5rem", alignItems:"flex-start", padding:".6rem .7rem", borderRadius:"10px", background:"rgba(234,107,20,.10)", border:"1px solid rgba(234,107,20,.28)", marginBottom:".6rem" }}>
-                    <Ic name="repeat" size={15} color="#ea6b14" style={{ marginTop:1, flexShrink:0 }} />
+                  <div style={{ display:"flex", gap:".5rem", alignItems:"flex-start", padding:".6rem .7rem", borderRadius:"10px", background:"rgba(var(--ff-accent-rgb), .10)", border:"1px solid rgba(var(--ff-accent-rgb), .28)", marginBottom:".6rem" }}>
+                    <Ic name="repeat" size={15} color="var(--ff-c10)" style={{ marginTop:1, flexShrink:0 }} />
                     <div style={{ fontSize:".78rem", color:"var(--ff-text)", lineHeight:1.5 }}>
                       <strong>Recurring{r.recurring_frequency ? " · " + freqLabel(r.recurring_frequency) : ""}.</strong> Winning this makes you the client's go-to pro — you'll be expected to return at the agreed times each visit.
                     </div>
@@ -2548,7 +2548,7 @@ export default function ContractorDashboard() {
                     <div style={{ fontSize:"1rem", fontWeight:500 }}>{r.service_needed}</div>
                     {rangeText(priceFor(r.service_needed)) && <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .5)", marginTop:"2px" }}>Typical {rangeText(priceFor(r.service_needed))}</div>}
                   </div>
-                  <div style={{ fontSize:".78rem", color:"#ea6b14", flexShrink:0 }}><Ic name="timer" size={12} style={{ marginRight:4 }} />{r.preferred_schedule}</div>
+                  <div style={{ fontSize:".78rem", color:"var(--ff-c10)", flexShrink:0 }}><Ic name="timer" size={12} style={{ marginRight:4 }} />{r.preferred_schedule}</div>
                 </div>
                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .55)", marginBottom:".6rem" }}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{r.location}</div>
 
@@ -2605,10 +2605,10 @@ export default function ContractorDashboard() {
                     <div style={{
                       display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".5rem",
                       padding:".55rem .7rem", marginBottom:".6rem", borderRadius:"10px",
-                      background: lit ? "rgba(234,107,20,.08)" : "rgba(var(--ff-fg), .04)",
-                      border: lit ? "1px solid rgba(234,107,20,.24)" : "1px solid rgba(var(--ff-fg), .08)",
+                      background: lit ? "rgba(var(--ff-accent-rgb), .08)" : "rgba(var(--ff-fg), .04)",
+                      border: lit ? "1px solid rgba(var(--ff-accent-rgb), .24)" : "1px solid rgba(var(--ff-fg), .08)",
                     }}>
-                      <Ic name="dollar" size={14} color="#ea6b14" style={{ flexShrink:0 }} />
+                      <Ic name="dollar" size={14} color="var(--ff-c10)" style={{ flexShrink:0 }} />
                       {(bLo != null || hasBudget) ? (
                         <span style={{ fontSize:".85rem", color:"var(--ff-text)" }}>
                           {bLo != null && (<>
@@ -2638,7 +2638,7 @@ export default function ContractorDashboard() {
                       {target != null && (
                         <span style={{ fontSize:".82rem", color:"var(--ff-text)", flexBasis:"100%" }}>
                           <span style={{ color:"rgba(var(--ff-muted), .6)" }}>Suggested bid </span>
-                          <strong style={{ color:"#ea6b14" }}>{money(target)}</strong>
+                          <strong style={{ color:"var(--ff-c10)" }}>{money(target)}</strong>
                           <span style={{ color:"rgba(var(--ff-muted), .5)", display:"block", marginTop:"2px", fontSize:".74rem" }}>
                             {Math.round(TARGET_BID_DISCOUNT * 100)}% under the category average — a guide, not a limit. Bid what the job is worth to you.
                           </span>
@@ -2662,7 +2662,7 @@ export default function ContractorDashboard() {
                     lines with a measured Read more. */}
                 <JobDescription text={r.job_description} />
                 <RequestPhotoQuote requestId={r.id} photoPath={r.photo_path} estimatedQuote={r.estimated_quote} quoteNotes={r.quote_notes} />
-                <div style={{ margin:".75rem 0", padding:".75rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)" }}>
+                <div style={{ margin:".75rem 0", padding:".75rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .03)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:".5rem" }}>
                     <span style={{ fontSize:".75rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .5)" }}>Bids</span>
                     <span style={{ fontSize:".78rem", fontWeight:600, color: (r.bid_count ?? 0) >= 7 ? "#f59e0b" : "var(--ff-success)" }}>{r.bid_count ?? 0}/7</span>
@@ -2680,7 +2680,7 @@ export default function ContractorDashboard() {
                               ? (r.my_price_low != null && r.my_price_high != null ? ("Walkthrough first · $" + r.my_price_low + "–$" + r.my_price_high) : "Walkthrough-first offer")
                               : ("$" + r.my_amount)}</div>
                           </div>
-                          <button onClick={() => setBidOpen(pp => ({ ...pp, [r.id]: true }))} style={{ background:"none", border:"1px solid rgba(var(--ff-fg), .18)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".78rem", fontWeight:600, cursor:"pointer", padding:".35rem .7rem", flexShrink:0 }}>Edit bid</button>
+                          <button onClick={() => setBidOpen(pp => ({ ...pp, [r.id]: true }))} style={{ background:"none", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .18)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".78rem", fontWeight:600, cursor:"pointer", padding:".35rem .7rem", flexShrink:0 }}>Edit bid</button>
                         </div>
                       );
                     }
@@ -2695,8 +2695,8 @@ export default function ContractorDashboard() {
                     <button
                       onClick={() => setBidChat({ requestId: r.id, name: bid.byRequest[r.id].other_name ?? "Client", title: r.service_needed })}
                       style={{ ...s.btn, width:"100%", justifyContent:"center", marginTop:".5rem", position:"relative" as const,
-                        background: Number(bid.byRequest[r.id].unread ?? 0) > 0 ? "rgba(234,107,20,.12)" : undefined,
-                        border: Number(bid.byRequest[r.id].unread ?? 0) > 0 ? "1px solid rgba(234,107,20,.45)" : undefined }}
+                        background: Number(bid.byRequest[r.id].unread ?? 0) > 0 ? "rgba(var(--ff-accent-rgb), .12)" : undefined,
+                        border: Number(bid.byRequest[r.id].unread ?? 0) > 0 ? "1px solid rgba(var(--ff-accent-rgb), .45)" : undefined }}
                     >
                       <Ic name="message-square" size={13} style={{ marginRight:5 }} />
                       {Number(bid.byRequest[r.id].unread ?? 0) > 0
@@ -2714,14 +2714,14 @@ export default function ContractorDashboard() {
                     }
                     if (!hasBid && !isOpen) {
                       return (
-                        <button onClick={() => setBidOpen(pp => ({ ...pp, [r.id]: true }))} style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", width:"100%", justifyContent:"center" }}>Place a bid</button>
+                        <button onClick={() => setBidOpen(pp => ({ ...pp, [r.id]: true }))} style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none", width:"100%", justifyContent:"center" }}>Place a bid</button>
                       );
                     }
                     const wtOn = bidForm[r.id]?.walkthrough ?? !!r.my_walkthrough;
                     return (
                     <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center" }}>
-                      <label style={{ flexBasis:"100%", display:"flex", alignItems:"flex-start", gap:".5rem", cursor:"pointer", padding:".45rem .55rem", borderRadius:"8px", background: wtOn ? "rgba(234,107,20,.08)" : "transparent", border: wtOn ? "1px solid rgba(234,107,20,.3)" : "1px solid transparent" }}>
-                        <input type="checkbox" checked={wtOn} onChange={e => setBid(r.id, { walkthrough: e.target.checked })} style={{ marginTop:"2px", cursor:"pointer", accentColor:"#ea6b14" }} />
+                      <label style={{ flexBasis:"100%", display:"flex", alignItems:"flex-start", gap:".5rem", cursor:"pointer", padding:".45rem .55rem", borderRadius:"8px", background: wtOn ? "rgba(var(--ff-accent-rgb), .08)" : "transparent", border: wtOn ? "1px solid rgba(var(--ff-accent-rgb), .3)" : "1px solid transparent" }}>
+                        <input type="checkbox" checked={wtOn} onChange={e => setBid(r.id, { walkthrough: e.target.checked })} style={{ marginTop:"2px", cursor:"pointer", accentColor:"var(--ff-c10)" }} />
                         <span style={{ fontSize:".8rem", lineHeight:1.45, color:"var(--ff-text)" }}>
                           <strong>I'd like to see the space first.</strong> Bid with a ballpark range instead of a firm price — if the client picks you, you'll book a free walkthrough, then send your exact estimate. Great for bigger or hard-to-price jobs. A range is still required: it's the only number the client can compare you on.
                         </span>
@@ -2730,15 +2730,15 @@ export default function ContractorDashboard() {
                         <>
                           {/* flex-basis, not a fixed 170px each: two 170px inputs
                               exceed the ~276px content column on a phone. */}
-                          <input type="number" min="0" placeholder="Ballpark low $" value={bidForm[r.id]?.price_low ?? (r.my_price_low != null ? String(r.my_price_low) : "")} onChange={e => setBid(r.id, { price_low: e.target.value })} style={{ flex:"1 1 130px", minWidth:0, maxWidth:"170px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
-                          <input type="number" min="0" placeholder="Ballpark high $" value={bidForm[r.id]?.price_high ?? (r.my_price_high != null ? String(r.my_price_high) : "")} onChange={e => setBid(r.id, { price_high: e.target.value })} style={{ flex:"1 1 130px", minWidth:0, maxWidth:"170px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
+                          <input type="number" min="0" placeholder="Ballpark low $" value={bidForm[r.id]?.price_low ?? (r.my_price_low != null ? String(r.my_price_low) : "")} onChange={e => setBid(r.id, { price_low: e.target.value })} style={{ flex:"1 1 130px", minWidth:0, maxWidth:"170px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
+                          <input type="number" min="0" placeholder="Ballpark high $" value={bidForm[r.id]?.price_high ?? (r.my_price_high != null ? String(r.my_price_high) : "")} onChange={e => setBid(r.id, { price_high: e.target.value })} style={{ flex:"1 1 130px", minWidth:0, maxWidth:"170px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
                         </>
                       ) : (
                         // Was a flat width:100px. At the 16px minimum every
                         // touch field now carries (see main.tsx), "Price $"
                         // no longer fits in 100px and the caret sat on top of
                         // the placeholder. Matched to the walkthrough pair.
-                        <input type="number" min="0" placeholder="Price $" value={bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "")} onChange={e => setBid(r.id, { amount: e.target.value, message: bidForm[r.id]?.message ?? (r.my_message ?? ""), used_base_price:false })} style={{ flex:"1 1 130px", minWidth:0, maxWidth:"170px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
+                        <input type="number" min="0" placeholder="Price $" value={bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "")} onChange={e => setBid(r.id, { amount: e.target.value, message: bidForm[r.id]?.message ?? (r.my_message ?? ""), used_base_price:false })} style={{ flex:"1 1 130px", minWidth:0, maxWidth:"170px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
                       )}
                       <input placeholder="Short message (optional)" value={bidForm[r.id]?.message ?? (r.my_message ?? "")} onChange={e => setBid(r.id, { message: e.target.value, amount: bidForm[r.id]?.amount ?? (r.my_amount != null ? String(r.my_amount) : "") })} style={{ ...ffInp, flexBasis:"100%" }} />
                       {/* `target` is passed HERE and only here. The bench/floor
@@ -2761,13 +2761,13 @@ export default function ContractorDashboard() {
                           row wraps — the pro reached the orange button before
                           the two fields underneath it had been seen at all,
                           and bid without them. One primary action, last. */}
-                      <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", flexBasis:"100%", justifyContent:"center", fontWeight:600 }} disabled={busyBid === r.id} onClick={() => placeBid(r)}>{busyBid === r.id ? "…" : ((r.my_amount != null || r.my_walkthrough) ? "Update bid" : "Place bid")}</button>
+                      <button style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none", flexBasis:"100%", justifyContent:"center", fontWeight:600 }} disabled={busyBid === r.id} onClick={() => placeBid(r)}>{busyBid === r.id ? "…" : ((r.my_amount != null || r.my_walkthrough) ? "Update bid" : "Place bid")}</button>
                       <button type="button" onClick={() => setBidOpen(pp => ({ ...pp, [r.id]: false }))} style={{ background:"none", border:"none", color:"rgba(var(--ff-muted), .6)", fontFamily:"inherit", fontSize:".78rem", cursor:"pointer", padding:0, flexBasis:"100%", textAlign:"center" as const }}>Cancel</button>
                     </div>
                     );
                   })()}
                 </div>
-                <button onClick={() => hideJob(r)} disabled={hiding === r.id} style={{ background:"none", border:"none", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".78rem", cursor:"pointer", padding:0, marginTop:".25rem" }}>
+                <button onClick={() => hideJob(r)} disabled={hiding === r.id} style={{ background:"none", border:"none", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".78rem", cursor:"pointer", padding:0, marginTop: "var(--ff-s1)" }}>
                   {hiding === r.id ? "Hiding…" : "Not a fit — hide this job"}
                 </button>
               </div>
@@ -2788,9 +2788,9 @@ export default function ContractorDashboard() {
               // contractor with no way to change their photo or their area again.
               const done = missing.length === 0;
               return (
-                <div style={done ? s.card : { ...s.card, border:"1px solid rgba(234,107,20,.35)", background:"rgba(234,107,20,.06)" }}>
+                <div style={done ? s.card : { ...s.card, border:"1px solid rgba(var(--ff-accent-rgb), .35)", background:"rgba(var(--ff-accent-rgb), .06)" }}>
                   <div style={{ ...s.cardTitle, display:"flex", alignItems:"center", gap:".5rem" }}>
-                    <Ic name="info" size={18} color="#ea6b14" /> {done ? "Your profile details" : "Finish setting up your profile"}
+                    <Ic name="info" size={18} color="var(--ff-c10)" /> {done ? "Your profile details" : "Finish setting up your profile"}
                   </div>
                   <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.55, marginBottom:"1.25rem" }}>
                     {done
@@ -2860,7 +2860,7 @@ export default function ContractorDashboard() {
                   <input type="number" min="0" value={pricingForm.callout} placeholder="e.g. 120" onChange={e => setPricingForm(f => ({ ...f, callout: e.target.value }))} style={ffInp} />
                 </div>
               </div>
-              <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", marginTop:"1rem" }} disabled={busyPricing} onClick={savePricing}>{busyPricing ? "Saving…" : "Save pricing"}</button>
+              <button style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none", marginTop:"1rem" }} disabled={busyPricing} onClick={savePricing}>{busyPricing ? "Saving…" : "Save pricing"}</button>
             </div>
             </Group>
             <Group label="PORTFOLIO & REVIEWS">
@@ -2868,8 +2868,8 @@ export default function ContractorDashboard() {
               <div style={{ marginBottom:"1.25rem" }}>
                 <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".35rem" }}>Google reviews link</div>
                 <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
-                  <input value={googleUrl} placeholder="https://g.page/your-business/review" onChange={e => setGoogleUrl(e.target.value)} style={{ flex:"1 1 220px", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
-                  <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyPf} onClick={saveGoogleUrl}>Save link</button>
+                  <input value={googleUrl} placeholder="https://g.page/your-business/review" onChange={e => setGoogleUrl(e.target.value)} style={{ flex:"1 1 220px", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }} />
+                  <button style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none" }} disabled={busyPf} onClick={saveGoogleUrl}>Save link</button>
                 </div>
               </div>
               <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".35rem" }}>Past work photos</div>
@@ -2877,7 +2877,7 @@ export default function ContractorDashboard() {
               {portfolio.length > 0 && (
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(min(140px, 100%), 1fr))", gap:".75rem", marginBottom:"1rem" }}>
                   {portfolio.map(item => (
-                    <div key={item.id} style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"10px", overflow:"hidden" }}>
+                    <div key={item.id} style={{ background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"10px", overflow:"hidden" }}>
                       {item.photo_path && <FadeImg src={pfUrl(item.photo_path)} alt={item.title || "Past job"} style={{ width:"100%", height:"100px", objectFit:"cover" as const, display:"block" }} />}
                       <div style={{ padding:".5rem .6rem" }}>
                         {item.title && <div style={{ fontSize:".8rem", fontWeight:600, color:"var(--ff-text)" }}>{item.title}</div>}
@@ -2888,11 +2888,11 @@ export default function ContractorDashboard() {
                   ))}
                 </div>
               )}
-              <div style={{ display:"flex", flexDirection:"column", gap:".5rem", borderTop:"1px solid rgba(var(--ff-fg), .07)", paddingTop:".9rem" }}>
-                <input value={pfForm.title} placeholder="Title (e.g. Kitchen sink replacement)" onChange={e => setPfForm(f => ({ ...f, title: e.target.value }))} style={{ padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const }} />
-                <textarea value={pfForm.description} rows={2} placeholder="Short description (optional)" onChange={e => setPfForm(f => ({ ...f, description: e.target.value }))} style={{ padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const }} />
+              <div style={{ display:"flex", flexDirection:"column", gap:".5rem", borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .07)", paddingTop: "var(--ff-s4)" }}>
+                <input value={pfForm.title} placeholder="Title (e.g. Kitchen sink replacement)" onChange={e => setPfForm(f => ({ ...f, title: e.target.value }))} style={{ padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const }} />
+                <textarea value={pfForm.description} rows={2} placeholder="Short description (optional)" onChange={e => setPfForm(f => ({ ...f, description: e.target.value }))} style={{ padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const }} />
                 <input type="file" accept="image/*" onChange={e => { const nf = e.target.files?.[0]; if (!nf) return; setPfForm(f => ({ ...f, file: nf })); }} style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)" }} />
-                <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none", alignSelf:"flex-start" as const }} disabled={busyPf} onClick={addPortfolioItem}>{busyPf ? "Adding…" : "+ Add portfolio item"}</button>
+                <button style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none", alignSelf:"flex-start" as const }} disabled={busyPf} onClick={addPortfolioItem}>{busyPf ? "Adding…" : "+ Add portfolio item"}</button>
               </div>
             </div>
             </Group>
@@ -2910,13 +2910,13 @@ export default function ContractorDashboard() {
                 ];
                 const presetBtn = (selected: boolean) => ({
                   padding:".5rem .9rem", borderRadius:"99px", cursor:"pointer", fontFamily:"inherit", fontSize:".82rem", fontWeight:600,
-                  border: selected ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .14)",
-                  background: selected ? "#ea6b14" : "rgba(var(--ff-fg), .05)",
+                  border: selected ? "1px solid var(--ff-c10)" : "1px solid rgba(var(--ff-fg), .14)",
+                  background: selected ? "var(--ff-c10)" : "rgba(var(--ff-fg), .05)",
                   color: selected ? "#fff" : "var(--ff-text)",
                 });
                 const showChips = showCustomAvail || active === "custom";
                 const sel = {
-                  padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)",
+                  padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)",
                   borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer",
                 };
                 return (
@@ -2932,8 +2932,8 @@ export default function ContractorDashboard() {
                       </button>
                     </div>
                     {showChips && (
-                      <div style={{ marginTop:"1.1rem", paddingTop:"1.1rem", borderTop:"1px solid rgba(var(--ff-fg), .07)" }}>
-                        <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .55)", marginBottom:".7rem" }}>
+                      <div style={{ marginTop:"1.1rem", paddingTop:"1.1rem", borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .07)" }}>
+                        <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .55)", marginBottom: "var(--ff-s3)" }}>
                           Tap the days you usually work
                         </div>
                         <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
@@ -2942,9 +2942,9 @@ export default function ContractorDashboard() {
                             return (
                               <button key={day} onClick={() => toggleDay(day)} aria-label={day}
                                 style={{ display:"flex", alignItems:"center", gap:".35rem", padding:".5rem .85rem", borderRadius:"99px", cursor:"pointer", fontFamily:"inherit", fontSize:".82rem", fontWeight:600,
-                                  border: on ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .14)",
-                                  background: on ? "rgba(234,107,20,.16)" : "rgba(var(--ff-fg), .05)",
-                                  color: on ? "#ea6b14" : "rgba(var(--ff-muted), .6)" }}>
+                                  border: on ? "1px solid var(--ff-c10)" : "1px solid rgba(var(--ff-fg), .14)",
+                                  background: on ? "rgba(var(--ff-accent-rgb), .16)" : "rgba(var(--ff-fg), .05)",
+                                  color: on ? "var(--ff-c10)" : "rgba(var(--ff-muted), .6)" }}>
                                 {on && <span style={{ fontSize:".78rem" }}>✓</span>}{day.slice(0,3)}
                               </button>
                             );
@@ -2953,8 +2953,8 @@ export default function ContractorDashboard() {
                       </div>
                     )}
                     {avail.days.length > 0 && (
-                      <div style={{ marginTop:"1.1rem", paddingTop:"1.1rem", borderTop:"1px solid rgba(var(--ff-fg), .07)" }}>
-                        <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .55)", marginBottom:".7rem" }}>
+                      <div style={{ marginTop:"1.1rem", paddingTop:"1.1rem", borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .07)" }}>
+                        <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .55)", marginBottom: "var(--ff-s3)" }}>
                           Hours you're usually available
                         </div>
                         <div style={{ display:"flex", gap:".6rem", alignItems:"center", flexWrap:"wrap" as const }}>
@@ -2967,14 +2967,14 @@ export default function ContractorDashboard() {
                           </select>
                         </div>
                         {avail.end <= avail.start && (
-                          <p style={{ fontSize:".78rem", color:"var(--ff-warn)", marginTop:".7rem", marginBottom:0 }}>
+                          <p style={{ fontSize:".78rem", color:"var(--ff-warn)", marginTop: "var(--ff-s3)", marginBottom:0 }}>
                             End time should be after the start time.
                           </p>
                         )}
                       </div>
                     )}
                     {avail.days.length === 0 && !showChips && (
-                      <p style={{ fontSize:".78rem", color:"var(--ff-warn)", marginTop:".9rem", marginBottom:0 }}>
+                      <p style={{ fontSize:".78rem", color:"var(--ff-warn)", marginTop: "var(--ff-s4)", marginBottom:0 }}>
                         No availability set yet — pick a preset or Custom so clients know when to reach you.
                       </p>
                     )}
@@ -2996,14 +2996,14 @@ export default function ContractorDashboard() {
               const trend = Array.isArray(earn.trend) ? earn.trend : [];
               const peak = Math.max(1, ...trend.map((t: any) => Number(t.amount || 0)));
               return (
-                <div style={{ ...s.card, marginBottom:"1.5rem", background:"linear-gradient(135deg, rgba(234,107,20,.10), rgba(var(--ff-fg),.03))", borderColor:"rgba(234,107,20,.3)" }}>
+                <div style={{ ...s.card, marginBottom:"1.5rem", background:"linear-gradient(135deg, rgba(var(--ff-accent-rgb), .10), rgba(var(--ff-fg),.03))", borderColor:"rgba(var(--ff-accent-rgb), .3)" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:".75rem", flexWrap:"wrap" as const }}>
                     <div>
                       <div style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(var(--ff-muted), .5)" }}>This week</div>
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(2rem,8vw,2.6rem)", letterSpacing:".02em", color:"#ea6b14", lineHeight:1.05 }}>${week.toFixed(0)}</div>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(2rem,8vw,2.6rem)", letterSpacing:".02em", color:"var(--ff-c10)", lineHeight:1.05 }}>${week.toFixed(0)}</div>
                       <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)" }}>{earn.jobs_this_week || 0} job{(earn.jobs_this_week===1)?"":"s"} paid out this week</div>
                     </div>
-                    <button style={{ ...s.btn, display:"inline-flex", alignItems:"center", gap:".4rem", background:"rgba(234,107,20,.9)", color:"#fff", border:"none" }} onClick={() => setRewindOpen(true)}>
+                    <button style={{ ...s.btn, display:"inline-flex", alignItems:"center", gap:".4rem", background:"rgba(var(--ff-accent-rgb), .9)", color:"#fff", border:"none" }} onClick={() => setRewindOpen(true)}>
                       <Ic name="star" size={13} />My Rewind
                     </button>
                   </div>
@@ -3015,7 +3015,7 @@ export default function ContractorDashboard() {
                     </div>
                     {goal > 0 && (
                       <div style={{ height:"10px", borderRadius:"999px", background:"rgba(var(--ff-fg),.1)", overflow:"hidden" }}>
-                        <div style={{ width:`${pct}%`, height:"100%", background: pct>=100 ? "#22c55e" : "#ea6b14", borderRadius:"999px", transition:"width .4s" }} />
+                        <div style={{ width:`${pct}%`, height:"100%", background: pct>=100 ? "#22c55e" : "var(--ff-c10)", borderRadius:"999px", transition:"width .4s" }} />
                       </div>
                     )}
                     <div style={{ display:"flex", gap:".5rem", marginTop:".6rem", alignItems:"center" }}>
@@ -3032,8 +3032,8 @@ export default function ContractorDashboard() {
                           const h = Math.round((Number(t.amount || 0) / peak) * 100);
                           const isNow = i === trend.length - 1;
                           return (
-                            <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:".25rem" }} title={`${t.week}: $${Number(t.amount||0).toFixed(0)}`}>
-                              <div style={{ width:"100%", height:`${Math.max(3,h)}%`, minHeight:"3px", background: isNow ? "#ea6b14" : "rgba(234,107,20,.4)", borderRadius:"4px 4px 0 0" }} />
+                            <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap: "var(--ff-s1)" }} title={`${t.week}: $${Number(t.amount||0).toFixed(0)}`}>
+                              <div style={{ width:"100%", height:`${Math.max(3,h)}%`, minHeight:"3px", background: isNow ? "var(--ff-c10)" : "rgba(var(--ff-accent-rgb), .4)", borderRadius:"4px 4px 0 0" }} />
                               <div style={{ fontSize:".58rem", color:"rgba(var(--ff-muted), .4)", whiteSpace:"nowrap" }}>{String(t.week).split(" ")[1]}</div>
                             </div>
                           );
@@ -3052,7 +3052,7 @@ export default function ContractorDashboard() {
                         else if (prev > 0 && cur < prev) msg = "$" + (prev - cur).toFixed(0) + " behind last week — one more job closes the gap.";
                         else msg = "Your best week was $" + best.toFixed(0) + " — that's the bar to beat.";
                         return (
-                          <div style={{ marginTop:".65rem", display:"flex", alignItems:"center", gap:".4rem", fontSize:".8rem", color:"#ea6b14", fontWeight:500 }}>
+                          <div style={{ marginTop:".65rem", display:"flex", alignItems:"center", gap:".4rem", fontSize:".8rem", color:"var(--ff-c10)", fontWeight:500 }}>
                             <Ic name="star" size={12} />{msg}
                           </div>
                         );
@@ -3071,7 +3071,7 @@ export default function ContractorDashboard() {
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(min(130px, 100%), 1fr))", gap:"1rem", marginBottom:"1.5rem" }}>
               {[["$" + totalEarned.toFixed(2), "Total Earned"], [contractor?.total_jobs ?? 0, "Jobs Completed"], [myJobs.filter(j=>j.status==="assigned"||j.status==="in_progress").length, "Active Jobs"], [contractor?.rating ? `⭐ ${contractor.rating}` : "—", "Avg Rating"], [streak > 0 ? "🔥 " + streak : "—", "Reliability Streak"], [respMins != null ? "⚡ " + respShort(respMins) : "—", "Response Time"]].map(([v,l]) => (
                 <div key={String(l)} style={s.earnCard} title={l === "Reliability Streak" ? "Jobs in a row completed and confirmed with no claims — clients see pros they can count on." : l === "Response Time" ? "Your typical time from a job being posted to your bid (last 120 days). Clients see a 'usually responds in' badge on your bids — faster responses win more jobs." : undefined}>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(1.4rem,5vw,1.7rem)", letterSpacing:".04em", lineHeight:1.1, color:"#ea6b14", marginBottom:".25rem" }}>{v}</div>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(1.4rem,5vw,1.7rem)", letterSpacing:".04em", lineHeight:1.1, color:"var(--ff-c10)", marginBottom: "var(--ff-s1)" }}>{v}</div>
                   <div style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)" }}>{l}</div>
                 </div>
               ))}
@@ -3100,9 +3100,9 @@ export default function ContractorDashboard() {
               );
             })()}
             {awaitingTotal > 0 && (
-              <div style={{ ...s.card, marginBottom:"1.5rem", borderColor:"rgba(234,107,20,.35)", background:"rgba(234,107,20,.06)" }}>
+              <div style={{ ...s.card, marginBottom:"1.5rem", borderColor:"rgba(var(--ff-accent-rgb), .35)", background:"rgba(var(--ff-accent-rgb), .06)" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:".6rem" }}>
-                  <Ic name="key" size={16} color="#ea6b14" />
+                  <Ic name="key" size={16} color="var(--ff-c10)" />
                   <div>
                     <div style={{ fontSize:"1rem", fontWeight:600, color:"var(--ff-text)" }}>${awaitingTotal.toFixed(2)} coming your way</div>
                     {/* A job is collected in two charges now — a deposit to book you and
@@ -3122,15 +3122,15 @@ export default function ContractorDashboard() {
                 </div>
               ) : (
                 <div>
-                  <p style={{ color:"rgba(var(--ff-muted), .7)", fontSize:".88rem", marginBottom:".9rem", lineHeight:1.5 }}>
+                  <p style={{ color:"rgba(var(--ff-muted), .7)", fontSize:".88rem", marginBottom: "var(--ff-s4)", lineHeight:1.5 }}>
                     {contractor?.stripe_account_id
                       ? "Your payout account needs a few more details before you can be paid. Finish setup with Stripe below."
                       : "Connect a bank account through Stripe to get paid for completed jobs. Funds for each job are released to you after the client confirms the work is done."}
                   </p>
                   {needsFor(stripeNeeds.requirements).length > 0 && (
-                    <div style={{ margin:"0 0 .9rem", padding:".75rem .85rem", borderRadius:"10px", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.18)" }}>
-                      <div style={{ fontSize:".78rem", fontWeight:600, color:"#ea6b14", marginBottom:".45rem" }}>Stripe still needs:</div>
-                      <ul style={{ margin:0, padding:0, listStyle:"none", display:"flex", flexDirection:"column" as const, gap:".45rem" }}>
+                    <div style={{ margin:"0 0 .9rem", padding:".75rem .85rem", borderRadius:"10px", background:"rgba(var(--ff-accent-rgb), .08)", border:"1px solid rgba(var(--ff-accent-rgb), .18)" }}>
+                      <div style={{ fontSize:".78rem", fontWeight:600, color:"var(--ff-c10)", marginBottom: "var(--ff-s2)" }}>Stripe still needs:</div>
+                      <ul style={{ margin:0, padding:0, listStyle:"none", display:"flex", flexDirection:"column" as const, gap: "var(--ff-s2)" }}>
                         {needsFor(stripeNeeds.requirements).map((n, i) => (
                           <li key={i}>
                             <span style={{ display:"block", fontSize:".82rem", fontWeight:600, color:"var(--ff-text)" }}>{n.label}</span>
@@ -3141,12 +3141,12 @@ export default function ContractorDashboard() {
                     </div>
                   )}
                   {pendingText(stripeNeeds.pending) && (
-                    <p style={{ color:"rgba(var(--ff-muted), .7)", fontSize:".82rem", marginBottom:".9rem", lineHeight:1.5 }}>{pendingText(stripeNeeds.pending)}</p>
+                    <p style={{ color:"rgba(var(--ff-muted), .7)", fontSize:".82rem", marginBottom: "var(--ff-s4)", lineHeight:1.5 }}>{pendingText(stripeNeeds.pending)}</p>
                   )}
                   {disabledText(stripeNeeds.disabled_reason) && (
-                    <p style={{ color:"rgba(var(--ff-muted), .7)", fontSize:".82rem", marginBottom:".9rem", lineHeight:1.5 }}>{disabledText(stripeNeeds.disabled_reason)}</p>
+                    <p style={{ color:"rgba(var(--ff-muted), .7)", fontSize:".82rem", marginBottom: "var(--ff-s4)", lineHeight:1.5 }}>{disabledText(stripeNeeds.disabled_reason)}</p>
                   )}
-                  <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyStripe} onClick={setupPayouts}>
+                  <button style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none" }} disabled={busyStripe} onClick={setupPayouts}>
                     {busyStripe ? "Opening Stripe…" : (contractor?.stripe_account_id ? "Finish payout setup" : "Set up payouts")}
                   </button>
                 </div>
@@ -3200,7 +3200,7 @@ export default function ContractorDashboard() {
           <div>
             {myReviews.length === 0 ? (
               <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
-                <div style={{ marginBottom:"1rem" }}><Ic name="star" size={48} color="#ea6b14" /></div>
+                <div style={{ marginBottom:"1rem" }}><Ic name="star" size={48} color="var(--ff-c10)" /></div>
                 <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".03em", lineHeight:1.1, marginBottom:".5rem" }}>No Reviews Yet</h2>
                 <p style={{ color:"rgba(var(--ff-muted), .5)" }}>Reviews from clients appear here after jobs are completed.</p>
               </div>
@@ -3218,7 +3218,7 @@ export default function ContractorDashboard() {
                           never answered to light mode) and a value-blind one. The
                           tokens below each carry a light override and an
                           `.ff-on-dark` literal, so this now survives both themes. */}
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.7rem", lineHeight:1.1, color: (avg as number) >= 8 ? "var(--ff-success)" : (avg as number) >= 5 ? "var(--ff-text)" : "var(--ff-warn)", marginBottom:".25rem" }}>{(avg as number).toFixed(1)}<span style={{ fontSize:"1rem", color:"rgba(var(--ff-muted), .4)" }}>/10</span></div>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.7rem", lineHeight:1.1, color: (avg as number) >= 8 ? "var(--ff-success)" : (avg as number) >= 5 ? "var(--ff-text)" : "var(--ff-warn)", marginBottom: "var(--ff-s1)" }}>{(avg as number).toFixed(1)}<span style={{ fontSize:"1rem", color:"rgba(var(--ff-muted), .4)" }}>/10</span></div>
                       <div style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)" }}>{label}</div>
                     </div>
                   ))}

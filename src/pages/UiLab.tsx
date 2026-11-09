@@ -84,7 +84,7 @@ export default function UiLab() {
             gap: "var(--ff-s2)",
             padding: "var(--ff-s2)",
             background: "var(--ff-card-bg)",
-            border: "1px solid var(--ff-card-border)",
+            border: "var(--ff-hair-w) solid var(--ff-card-border)",
             borderRadius: "var(--ff-r2)",
             marginBottom: "var(--ff-s5)",
           }}

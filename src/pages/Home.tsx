@@ -407,7 +407,7 @@ export default function Home() {
         .ff-hero-glow {
           position: absolute; top: -30%; left: 50%; margin-left: -65%;
           width: 130%; height: 78%; pointer-events: none; z-index: 0;
-          background: radial-gradient(ellipse at center, rgba(234,107,20,0.30) 0%, rgba(234,107,20,0.09) 44%, transparent 70%);
+          background: radial-gradient(ellipse at center, rgba(var(--ff-accent-rgb), 0.30) 0%, rgba(var(--ff-accent-rgb), 0.09) 44%, transparent 70%);
           animation: ff-glow 22s ease-in-out infinite;
         }
         @keyframes ff-glow {
@@ -656,10 +656,10 @@ export default function Home() {
           padding: 1rem 1.5rem; border: none; border-radius: 14px; cursor: pointer;
           background: linear-gradient(180deg, var(--ff-accent-400) 0%, var(--ff-accent-500) 100%);
           color: #fff; font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 1.05rem; letter-spacing: 0.02em;
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 10px 30px rgba(234,107,20,0.28);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 10px 30px rgba(var(--ff-accent-rgb), 0.28);
           transition: transform 0.18s cubic-bezier(0.2,0.7,0.3,1), box-shadow 0.18s ease, filter 0.18s ease; }
         .ff-cta:hover { transform: translateY(-2px); filter: brightness(1.04);
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), 0 16px 40px rgba(234,107,20,0.38); }
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), 0 16px 40px rgba(var(--ff-accent-rgb), 0.38); }
         .ff-cta:active { transform: translateY(0) scale(0.994); }
         .ff-cta:focus-visible { outline: 2px solid var(--ff-accent-400); outline-offset: 3px; }
 
@@ -687,7 +687,7 @@ export default function Home() {
           width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 0.6rem;
           padding: clamp(0.55rem, 1.1vw, 0.68rem);
           background: rgba(var(--ff-fg), 0.045);
-          border: 1px solid rgba(var(--ff-fg), 0.12);
+          border: var(--ff-hair-w) solid rgba(var(--ff-fg), 0.12);
           border-radius: 18px;
           -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
           box-shadow: 0 24px 60px rgba(0,0,0,0.30);
@@ -741,7 +741,7 @@ export default function Home() {
           display: block; width: 100%; min-height: 6.4rem; text-align: left;
           padding: 0.85rem 0.95rem; resize: vertical;
           background: rgba(var(--ff-bg-rgb), 0.35);
-          border: 1px solid rgba(var(--ff-fg), 0.10);
+          border: var(--ff-hair-w) solid rgba(var(--ff-fg), 0.10);
           border-radius: 13px;
           font-family: 'DM Sans', sans-serif; font-weight: 400; font-size: 1rem; line-height: 1.5;
           color: var(--ff-ink-1);
@@ -768,7 +768,7 @@ export default function Home() {
           border: none; border-radius: 11px; cursor: pointer;
           background: linear-gradient(180deg, var(--ff-accent-400) 0%, var(--ff-accent-500) 100%);
           color: #fff; font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 0.88rem; letter-spacing: 0.02em;
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 6px 18px rgba(234,107,20,0.24);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 6px 18px rgba(var(--ff-accent-rgb), 0.24);
           transition: transform 0.18s cubic-bezier(0.2,0.7,0.3,1), filter 0.18s ease; }
         .ff-panel-next:hover { transform: translateY(-1px); filter: brightness(1.04); }
         .ff-panel-next:active { transform: translateY(0) scale(0.994); }
@@ -871,7 +871,7 @@ export default function Home() {
         .ff-services::before {
           content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
           background-image:
-            radial-gradient(ellipse 70% 30% at 50% 0%, rgba(234,107,20,0.10) 0%, transparent 65%),
+            radial-gradient(ellipse 70% 30% at 50% 0%, rgba(var(--ff-accent-rgb), 0.10) 0%, transparent 65%),
             repeating-linear-gradient(45deg, transparent 0 28px, rgba(var(--ff-fg), 0.02) 28px, rgba(var(--ff-fg), 0.02) 29px),
             repeating-linear-gradient(-45deg, transparent 0 28px, rgba(var(--ff-fg), 0.016) 28px, rgba(var(--ff-fg), 0.016) 29px);
         }
@@ -892,8 +892,8 @@ export default function Home() {
         /* Named properties, not the all keyword: :hover below changes exactly
            three things, and a blanket transition would also animate whatever a
            future edit adds. See CLAUDE.md, Brand tokens. */
-        .ff-service-card { background: rgba(var(--ff-fg), 0.04); border: 1px solid rgba(var(--ff-fg), 0.08); border-radius: 12px; padding: 1.5rem 1rem; text-align: center; transition: border-color 0.25s var(--ff-ease-out), transform 0.25s var(--ff-ease-out), box-shadow 0.25s var(--ff-ease-out); width: 100%; }
-        .ff-service-card:hover { border-color: rgba(234,107,20,0.4); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+        .ff-service-card { background: rgba(var(--ff-fg), 0.04); border: var(--ff-hair-w) solid rgba(var(--ff-fg), 0.08); border-radius: 12px; padding: 1.5rem 1rem; text-align: center; transition: border-color 0.25s var(--ff-ease-out), transform 0.25s var(--ff-ease-out), box-shadow 0.25s var(--ff-ease-out); width: 100%; }
+        .ff-service-card:hover { border-color: rgba(var(--ff-accent-rgb), 0.4); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
         .ff-service-icon { font-size: 2rem; margin-bottom: 0.75rem; }
         .ff-service-label { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.06em; color: var(--ff-text); margin-bottom: 0.4rem; }
         .ff-service-desc { font-size: 0.72rem; color: rgba(var(--ff-muted), 0.5); font-weight: 300; line-height: 1.5; }
@@ -910,30 +910,30 @@ export default function Home() {
         .ff-how-inner { max-width: 1000px; margin: 0 auto; padding: clamp(2.5rem, 7vw, 4rem) clamp(1rem, 4vw, 2rem); position: relative; z-index: 1; }
         .ff-how-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2rem; margin-top: 3rem; }
         @media (max-width: 700px) { .ff-how-grid { grid-template-columns: minmax(0, 1fr); } }
-        .ff-how-card { background: rgba(var(--ff-fg), 0.03); border: 1px solid rgba(var(--ff-fg), 0.07); border-radius: 14px; padding: 1.25rem 1.5rem; position: relative; }
-        .ff-how-step { font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem; letter-spacing: 0.06em; color: rgba(234,107,20,0.2); line-height: 1; margin-bottom: 0.5rem; }
+        .ff-how-card { background: rgba(var(--ff-fg), 0.03); border: var(--ff-hair-w) solid rgba(var(--ff-fg), 0.07); border-radius: 14px; padding: 1.25rem 1.5rem; position: relative; }
+        .ff-how-step { font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem; letter-spacing: 0.06em; color: rgba(var(--ff-accent-rgb), 0.2); line-height: 1; margin-bottom: 0.5rem; }
         .ff-how-icon { font-size: 1.6rem; margin-bottom: 0.5rem; }
         .ff-how-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 0.06em; color: var(--ff-text); margin-bottom: 0.75rem; }
         .ff-how-desc { font-size: 0.85rem; color: rgba(var(--ff-muted), 0.6); font-weight: 300; line-height: 1.7; }
         .ff-how-connector { display: none; }
-        @media (min-width: 700px) { .ff-how-connector { display: block; position: absolute; top: 2.5rem; right: -1rem; width: 2rem; height: 2px; background: linear-gradient(90deg, rgba(234,107,20,0.3), transparent); } }
+        @media (min-width: 700px) { .ff-how-connector { display: block; position: absolute; top: 2.5rem; right: -1rem; width: 2rem; height: 2px; background: linear-gradient(90deg, rgba(var(--ff-accent-rgb), 0.3), transparent); } }
 
         /* ── About ── */
         .ff-about { background: var(--ff-surface); position: relative; overflow: hidden; }
         .ff-about::before {
           content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.55;
           background-image:
-            radial-gradient(ellipse 60% 40% at 12% 0%, rgba(234,107,20,0.16) 0%, transparent 60%),
+            radial-gradient(ellipse 60% 40% at 12% 0%, rgba(var(--ff-accent-rgb), 0.16) 0%, transparent 60%),
             repeating-linear-gradient(45deg, transparent 0 28px, rgba(var(--ff-fg), 0.022) 28px, rgba(var(--ff-fg), 0.022) 29px),
             repeating-linear-gradient(-45deg, transparent 0 28px, rgba(var(--ff-fg), 0.018) 28px, rgba(var(--ff-fg), 0.018) 29px);
         }
         .ff-about-inner { max-width: 900px; margin: 0 auto; padding: clamp(3rem, 9vw, 6rem) clamp(1rem, 4vw, 2rem); position: relative; z-index: 1; }
-        .ff-about-eyebrow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.2em; color: #ea6b14; margin-bottom: 1.5rem; }
+        .ff-about-eyebrow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ff-c10); margin-bottom: 1.5rem; }
         /* The largest display type on the site (up to 5rem), so it is the site
            where under-tracking shows first — hence the full -0.028em rather
            than the -0.015em that was right for Fraunces. */
         .ff-about-headline { font-family: var(--ff-font-display); font-weight: var(--ff-display-wght); font-size: clamp(2.8rem, 7vw, 5rem); letter-spacing: -0.028em; line-height: 1.02; color: var(--ff-text); margin-bottom: 2rem; }
-        .ff-about-headline span { color: #ea6b14; }
+        .ff-about-headline span { color: var(--ff-c10); }
         .ff-about-body { font-size: 1.1rem; color: rgba(var(--ff-muted), 0.7); font-weight: 300; line-height: 1.8; max-width: 680px; margin-bottom: 3rem; }
         .ff-about-body strong { color: var(--ff-text); font-weight: 500; }
         /* A pull-quote, so weight stays 500 rather than --ff-display-wght for
@@ -942,11 +942,11 @@ export default function Home() {
            shout. letter-spacing comes off "normal" only slightly — a grotesque
            set loose at quote size looks accidental, set tight it looks like a
            heading, and this is neither. */
-        .ff-about-tagline { font-family: var(--ff-font-display); font-weight: 500; font-size: clamp(1.4rem, 4vw, 2rem); letter-spacing: -0.012em; color: rgba(234,107,20,0.85); border-left: 3px solid #ea6b14; padding-left: 1.25rem; line-height: 1.3; margin-bottom: 4rem; }
+        .ff-about-tagline { font-family: var(--ff-font-display); font-weight: 500; font-size: clamp(1.4rem, 4vw, 2rem); letter-spacing: -0.012em; color: rgba(var(--ff-accent-rgb), 0.85); border-left: 3px solid var(--ff-c10); padding-left: 1.25rem; line-height: 1.3; margin-bottom: 4rem; }
         .ff-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; }
         @media (max-width: 600px) { .ff-stats { grid-template-columns: minmax(0, 1fr); } }
-        .ff-stat { background: rgba(var(--ff-fg), 0.03); border: 1px solid rgba(var(--ff-fg), 0.07); border-radius: 12px; padding: 1.75rem; }
-        .ff-stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; letter-spacing: 0.06em; color: #ea6b14; line-height: 1; margin-bottom: 0.4rem; }
+        .ff-stat { background: rgba(var(--ff-fg), 0.03); border: var(--ff-hair-w) solid rgba(var(--ff-fg), 0.07); border-radius: 12px; padding: 1.75rem; }
+        .ff-stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; letter-spacing: 0.06em; color: var(--ff-c10); line-height: 1; margin-bottom: 0.4rem; }
         .ff-stat-label { font-size: 0.82rem; color: rgba(var(--ff-muted), 0.5); font-weight: 300; line-height: 1.4; }
 
         /* ── Video showcase ── */
@@ -963,22 +963,59 @@ export default function Home() {
            a 250ms transition is not a performance problem; a distorted radius
            is a visible one. */
         .ff-ba-dot { width: 7px; height: 7px; border-radius: 4px; background: rgba(var(--ff-fg), 0.18); transition: width 0.25s var(--ff-ease-out), background-color 0.25s var(--ff-ease-out); }
-        .ff-ba-dot-on { width: 20px; background: #ea6b14; }
-        .ff-ba-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; border: 1px solid rgba(var(--ff-fg), 0.08); cursor: grab; user-select: none; touch-action: none; box-shadow: 0 14px 44px rgba(0,0,0,0.4); background: var(--ff-surface-0e); }
+        .ff-ba-dot-on { width: 20px; background: var(--ff-c10); }
+        .ff-ba-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; border: var(--ff-hair-w) solid rgba(var(--ff-fg), 0.08); cursor: grab; user-select: none; touch-action: none; box-shadow: 0 14px 44px rgba(0,0,0,0.4); background: var(--ff-surface-0e); }
         .ff-ba-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; -webkit-user-drag: none; }
-        .ff-ba-label { position: absolute; top: 1rem; left: 50%; transform: translateX(-50%); font-family: 'Bebas Neue', sans-serif; font-size: 0.85rem; letter-spacing: 0.08em; color: var(--ff-text); background: rgba(var(--ff-bg-rgb), 0.7); backdrop-filter: blur(4px); border: 1px solid rgba(var(--ff-fg), 0.12); padding: 0.3rem 0.85rem; border-radius: 999px; pointer-events: none; white-space: nowrap; }
-        .ff-ba-badge { position: absolute; top: 1rem; font-family: 'Bebas Neue', sans-serif; font-size: 0.95rem; letter-spacing: 0.1em; color: var(--ff-text); background: rgba(var(--ff-bg-rgb), 0.7); backdrop-filter: blur(4px); border: 1px solid rgba(var(--ff-fg), 0.12); padding: 0.3rem 0.85rem; border-radius: 999px; pointer-events: none; transition: opacity 0.2s; }
+        .ff-ba-label { position: absolute; top: 1rem; left: 50%; transform: translateX(-50%); font-family: 'Bebas Neue', sans-serif; font-size: 0.85rem; letter-spacing: 0.08em; color: var(--ff-text); background: rgba(var(--ff-bg-rgb), 0.7); backdrop-filter: blur(4px); border: var(--ff-hair-w) solid rgba(var(--ff-fg), 0.12); padding: 0.3rem 0.85rem; border-radius: 999px; pointer-events: none; white-space: nowrap; }
+        .ff-ba-badge { position: absolute; top: 1rem; font-family: 'Bebas Neue', sans-serif; font-size: 0.95rem; letter-spacing: 0.1em; color: var(--ff-text); background: rgba(var(--ff-bg-rgb), 0.7); backdrop-filter: blur(4px); border: var(--ff-hair-w) solid rgba(var(--ff-fg), 0.12); padding: 0.3rem 0.85rem; border-radius: 999px; pointer-events: none; transition: opacity 0.2s; }
         .ff-ba-badge-before { left: 1rem; }
-        .ff-ba-badge-after { right: 1rem; color: #ea6b14; border-color: rgba(234,107,20,0.4); }
+        .ff-ba-badge-after { right: 1rem; color: var(--ff-c10); border-color: rgba(var(--ff-accent-rgb), 0.4); }
         .ff-ba-vhint { position: absolute; right: 0.85rem; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
-        .ff-ba-vbtn { width: 30px; height: 30px; border-radius: 50%; background: rgba(var(--ff-bg-rgb), 0.7); backdrop-filter: blur(4px); border: 1px solid rgba(var(--ff-fg), 0.14); color: var(--ff-text); display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0.75; transition: opacity 0.2s, background 0.2s; }
-        .ff-ba-vbtn:hover { opacity: 1; background: rgba(234,107,20,0.25); border-color: rgba(234,107,20,0.5); }
+        .ff-ba-vbtn { width: 30px; height: 30px; border-radius: 50%; background: rgba(var(--ff-bg-rgb), 0.7); backdrop-filter: blur(4px); border: var(--ff-hair-w) solid rgba(var(--ff-fg), 0.14); color: var(--ff-text); display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0.75; transition: opacity 0.2s, background 0.2s; }
+        .ff-ba-vbtn:hover { opacity: 1; background: rgba(var(--ff-accent-rgb), 0.25); border-color: rgba(var(--ff-accent-rgb), 0.5); }
         .ff-ba-handle { position: absolute; top: 0; bottom: 0; width: 3px; background: rgba(var(--ff-fg), 0.9); transform: translateX(-50%); pointer-events: none; box-shadow: 0 0 12px rgba(0,0,0,0.5); }
         .ff-ba-knob { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 44px; height: 44px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; gap: 1px; box-shadow: 0 2px 12px rgba(0,0,0,0.4); }
         .ff-ba-note { text-align: center; margin-top: 1.25rem; font-size: 0.8rem; color: rgba(var(--ff-muted), 0.45); font-weight: 300; letter-spacing: 0.02em; }
 
+        /* ── The two carousel arrows on touch (2026-11-08) ──
+           These are real buttons, and at 30px square they were well under the
+           44px floor. Worse, they were not merely small: the (pointer: coarse)
+           block in main.tsx sets min-height on every button, and min-height
+           beats height outright because they are DIFFERENT PROPERTIES, not
+           competing selectors — so height:30px never had a say and the live
+           touch target was a 30x48 pill. Same defect class as .ffu-iconbtn.
+
+           44, not 48, and the reason is the neighbour: .ff-ba-knob above is
+           already 44, so 48 here would make the arrows the largest circles in
+           a component whose primary control is the knob. Two stacked 48px
+           circles also eat ~53% of the image height on a 360px-wide phone,
+           where the image IS the content. min-height is restated on the class
+           so it outranks the element-level 48 from main.tsx (a class beats a
+           type selector), and the hint's gap opens with them so the two
+           targets do not share an edge. */
+        @media (pointer: coarse) {
+          .ff-ba-vbtn { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+          .ff-ba-vhint { gap: 0.75rem; }
+        }
+
+        /* ── The four hand-rolled frosted surfaces on this page (2026-11-08) ──
+           main.tsx kills every backdrop-filter on the site under Reduce
+           Transparency and Increase Contrast, and uiStyles.ts gives the four
+           ui/ primitives an opaque ground. These four are neither: they write
+           a LITERAL blur rather than --ff-glass-blur, and their grounds sit at
+           0.045–0.7 alpha, which was fine behind a blur and is a transparent
+           smear without one. The three pills and the arrow button sit directly
+           on top of a before/after PHOTO — the worst possible backdrop for a
+           translucent label, and the reason these cannot be left to the
+           blanket rule alone. Raised to .94 rather than 1 only because these
+           are overlays on an image and should still read as sitting on it. */
+        @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+          .ff-hero-panel { background: var(--ff-surface); }
+          .ff-ba-label, .ff-ba-badge, .ff-ba-vbtn { background: rgba(var(--ff-bg-rgb), 0.94); }
+        }
+
         /* ── Footer ── */
-        .ff-footer-bar { background: var(--ff-surface-2); border-top: 1px solid rgba(var(--ff-fg), 0.06); padding: 2rem 1.5rem; text-align: center; font-size: 0.75rem; color: rgba(var(--ff-muted), 0.25); letter-spacing: 0.05em; }
+        .ff-footer-bar { background: var(--ff-surface-2); border-top: var(--ff-hair-w) solid rgba(var(--ff-fg), 0.06); padding: 2rem 1.5rem; text-align: center; font-size: 0.75rem; color: rgba(var(--ff-muted), 0.25); letter-spacing: 0.05em; }
       `}</style>
 
       {/* ── Hero ──
@@ -1166,7 +1203,7 @@ export default function Home() {
       <div className="ff-mobile-reorder">
 
       {/* ── Trust proof bar ── */}
-      <div className="ff-trust-strip" style={{ background:"rgba(var(--ff-fg), .03)", borderTop:"1px solid rgba(var(--ff-fg), .07)", borderBottom:"1px solid rgba(var(--ff-fg), .07)", padding:"1.4rem 1rem" }}>
+      <div className="ff-trust-strip" style={{ background:"rgba(var(--ff-fg), .03)", borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .07)", borderBottom:"var(--ff-hair-w) solid rgba(var(--ff-fg), .07)", padding:"1.4rem 1rem" }}>
         <div style={{ maxWidth:"1000px", margin:"0 auto", display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(min(200px, 100%), 1fr))", gap:"1rem" }}>
           {[
             /* Same correction as the hero tick row: we cannot say every pro is
@@ -1179,7 +1216,7 @@ export default function Home() {
             { icon:"sparkles", label:"Free estimates, no signup" },
           ].map((t) => (
             <div key={t.label} style={{ display:"flex", alignItems:"center", gap:".55rem", justifyContent:"center", textAlign:"center" as const }}>
-              <Ic name={t.icon as any} size={19} color="#ea6b14" />
+              <Ic name={t.icon as any} size={19} color="var(--ff-c10)" />
               <span style={{ fontSize:".85rem", fontWeight:500, color:"rgba(var(--ff-fg), .82)" }}>{t.label}</span>
             </div>
           ))}
@@ -1252,19 +1289,36 @@ export default function Home() {
            detail bands. */}
       <div className="ff-on-dark" style={{ background:"var(--ff-bg)", padding:"6rem 2rem", position:"relative" as const, overflow:"hidden" as const }}>
         <div style={{ maxWidth:"960px", margin:"0 auto", position:"relative" as const, zIndex:1 }}>
-          <p style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" as const }}>Our Vetting Standard</p>
-          <h2 style={{ fontFamily:"var(--ff-font-display)", fontWeight:"var(--ff-display-wght)" as any, fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:"-0.028em", color:"var(--ff-text)", textAlign:"center" as const, marginBottom:"1rem" }}>The Freddy <span style={{ color:"#ea6b14" }}>Verified</span> Promise.</h2>
+          <p style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".2em", color:"var(--ff-c10)", marginBottom:"1.5rem", textAlign:"center" as const }}>Our Vetting Standard</p>
+          <h2 style={{ fontFamily:"var(--ff-font-display)", fontWeight:"var(--ff-display-wght)" as any, fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:"-0.028em", color:"var(--ff-text)", textAlign:"center" as const, marginBottom:"1rem" }}>The Freddy <span style={{ color:"var(--ff-c10)" }}>Verified</span> Promise.</h2>
           <p style={{ textAlign:"center" as const, fontSize:"1rem", color:"rgba(var(--ff-muted), .7)", fontWeight:300, maxWidth:"620px", margin:"0 auto 3rem", lineHeight:1.7 }}>
             Anyone can call themselves a handyman. Before a pro can take a single job on Freddy, they clear our verification checklist — and every job is payment-protected on top of it.
           </p>
           <div style={{ display:"flex", justifyContent:"center" as const, marginBottom:"3rem" }}>
-            <div style={{ display:"inline-flex", alignItems:"center", gap:".7rem", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.4)", borderRadius:"999px", padding:".7rem 1.4rem", boxShadow:"0 0 32px rgba(234,107,20,.18)" }}>
-              <svg width="30" height="30" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink:0 }}>
-                <polygon points="65.9,50.7 50.7,65.9 29.3,65.9 14.1,50.7 14.1,29.3 29.3,14.1 50.7,14.1 65.9,29.3" fill="rgba(234,107,20,0.08)" stroke="#ea6b14" strokeWidth="2"/>
-                <path d="M28 54 L28 38 L40 28 L52 38 L52 54 Z" stroke="var(--ff-text)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                <path d="M36 54 L36 43 L44 43 L44 54" stroke="#ea6b14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+            <div style={{ display:"inline-flex", alignItems:"center", gap: "var(--ff-s3)", background:"rgba(var(--ff-accent-rgb), .1)", border:"1px solid rgba(var(--ff-accent-rgb), .4)", borderRadius:"999px", padding:".7rem 1.4rem", boxShadow:"0 0 32px rgba(var(--ff-accent-rgb), .18)" }}>
+              {/* An INLINE COPY of the brand mark, and the reason it tokenises while
+                  components/ui/Mark.tsx deliberately does not: Mark is a fixed asset that
+                  must look identical on navy, on an off-white card and in an email, so its
+                  literals are intentional and permanent. This copy is not an asset — it is
+                  a 30px glyph inside a pill whose ground, border, glow and label all read
+                  --ff-accent-rgb / --ff-c10 already. And this band is NOT forced navy in
+                  light mode: .ff-on-dark's values are scoped to dark (main.tsx:314), and
+                  the .ff-anchor exception that once opted this exact band back in was
+                  removed. So under data-theme="light" the pill went to #d65f10 and the mark
+                  inside it stayed #ea6b14 — the same disagreement as the celebration tick.
+
+                  `color` on the <svg>, currentColor through the attributes. The two values
+                  that are NOT the accent go through the style object instead of the
+                  attribute (`fill` and `stroke` are real CSS properties on SVG elements):
+                  line 3's stroke can no longer say currentColor now that currentColor is
+                  orange, and it was the one site in src/ putting a var() straight into a
+                  presentation attribute — the shape the orange migration refuses. */}
+              <svg width="30" height="30" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink:0, color:"var(--ff-c10)" }}>
+                <polygon points="65.9,50.7 50.7,65.9 29.3,65.9 14.1,50.7 14.1,29.3 29.3,14.1 50.7,14.1 65.9,29.3" stroke="currentColor" strokeWidth="2" style={{ fill:"rgba(var(--ff-accent-rgb), 0.08)" }}/>
+                <path d="M28 54 L28 38 L40 28 L52 38 L52 54 Z" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" style={{ stroke:"var(--ff-text)" }}/>
+                <path d="M36 54 L36 43 L44 43 L44 54" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
               </svg>
-              <span style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"1.4rem", letterSpacing:".08em", color:"#ea6b14" }}>Freddy Verified</span>
+              <span style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"1.4rem", letterSpacing:".08em", color:"var(--ff-c10)" }}>Freddy Verified</span>
             </div>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(min(250px, 100%), 1fr))", gap:"1rem", maxWidth:"820px", margin:"0 auto" }}>
@@ -1276,10 +1330,10 @@ export default function Home() {
               { t:"Admin background review", d:"A real person on our team reviews and approves every contractor." },
               { t:"Payment held until you approve", d:"Your money stays protected and is only released once you're happy." },
             ].map((it) => (
-              <div key={it.t} style={{ display:"flex", gap:".85rem", alignItems:"flex-start" as const, background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.15rem 1.3rem" }}>
-                <span style={{ flexShrink:0, marginTop:"1px" }}><Ic name="check-circle" size={22} color="#ea6b14" /></span>
+              <div key={it.t} style={{ display:"flex", gap:".85rem", alignItems:"flex-start" as const, background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.15rem 1.3rem" }}>
+                <span style={{ flexShrink:0, marginTop:"1px" }}><Ic name="check-circle" size={22} color="var(--ff-c10)" /></span>
                 <div>
-                  <div style={{ fontSize:".96rem", fontWeight:500, color:"var(--ff-text)", marginBottom:".25rem" }}>{it.t}</div>
+                  <div style={{ fontSize:".96rem", fontWeight:500, color:"var(--ff-text)", marginBottom: "var(--ff-s1)" }}>{it.t}</div>
                   <div style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .65)", fontWeight:300, lineHeight:1.55 }}>{it.d}</div>
                 </div>
               </div>
@@ -1308,7 +1362,7 @@ export default function Home() {
                 <div style={{ display:"flex", alignItems:"baseline", gap:"0.75rem", marginBottom:"0.75rem" }}>
                   <div className="ff-how-step">{h.step}</div><div className="ff-how-title">{h.title}</div>
                 </div>
-                <div className="ff-how-icon" style={{ marginBottom:".5rem" }}><Ic name={h.iconName as any} size={22} color="#ea6b14" /></div>
+                <div className="ff-how-icon" style={{ marginBottom:".5rem" }}><Ic name={h.iconName as any} size={22} color="var(--ff-c10)" /></div>
                 <div className="ff-how-desc">{h.desc}</div>
                 {i < HOW_IT_WORKS.length - 1 && <div className="ff-how-connector" />}
               </motion.div>
@@ -1319,22 +1373,22 @@ export default function Home() {
 
       {/* ── FAQ ── */}
       <div style={{ background:"var(--ff-bg)", padding:"6rem 2rem" }}>
-        <style>{"details.ff-faq>summary::-webkit-details-marker{display:none}details.ff-faq>summary{list-style:none}details.ff-faq .ff-faq-icon{transition:transform .2s ease;display:inline-block}details.ff-faq[open] .ff-faq-icon{transform:rotate(45deg)}details.ff-faq[open]{border-color:rgba(234,107,20,.3)}"}</style>
+        <style>{"details.ff-faq>summary::-webkit-details-marker{display:none}details.ff-faq>summary{list-style:none}details.ff-faq .ff-faq-icon{transition:transform .2s ease;display:inline-block}details.ff-faq[open] .ff-faq-icon{transform:rotate(45deg)}details.ff-faq[open]{border-color:rgba(var(--ff-accent-rgb), .3)}"}</style>
         <div style={{ maxWidth:"800px", margin:"0 auto" }}>
-          <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" }}>Good to Know</p>
-          <h2 style={{ fontFamily:"var(--ff-font-display)", fontWeight:"var(--ff-display-wght)" as any, fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:"-0.028em", color:"var(--ff-text)", textAlign:"center", marginBottom:"3rem" }}>Frequently Asked <span style={{ color:"#ea6b14" }}>Questions.</span></h2>
+          <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"var(--ff-c10)", marginBottom:"1.5rem", textAlign:"center" }}>Good to Know</p>
+          <h2 style={{ fontFamily:"var(--ff-font-display)", fontWeight:"var(--ff-display-wght)" as any, fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:"-0.028em", color:"var(--ff-text)", textAlign:"center", marginBottom:"3rem" }}>Frequently Asked <span style={{ color:"var(--ff-c10)" }}>Questions.</span></h2>
           <div style={{ display:"flex", flexDirection:"column", gap:".75rem" }}>
             {FAQS.map((f, i) => (
-              <details key={i} className="ff-faq" style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.2rem 1.5rem" }}>
+              <details key={i} className="ff-faq" style={{ background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.2rem 1.5rem" }}>
                 <summary style={{ cursor:"pointer", fontSize:".98rem", fontWeight:500, color:"var(--ff-text)", display:"flex", justifyContent:"space-between", alignItems:"center", gap:"1rem" }}>
                   <span>{f.q}</span>
-                  <span className="ff-faq-icon" style={{ color:"#ea6b14", fontSize:"1.4rem", lineHeight:1, fontWeight:300 }}>+</span>
+                  <span className="ff-faq-icon" style={{ color:"var(--ff-c10)", fontSize:"1.4rem", lineHeight:1, fontWeight:300 }}>+</span>
                 </summary>
                 <p style={{ fontSize:".9rem", color:"rgba(var(--ff-muted), .75)", fontWeight:300, lineHeight:1.7, marginTop:"1rem", marginBottom:0 }}>{f.a}</p>
               </details>
             ))}
           </div>
-          <p style={{ textAlign:"center", marginTop:"2.5rem", fontSize:".9rem", color:"rgba(var(--ff-muted), .6)", fontWeight:300 }}>Still have questions? <a href="mailto:hello@freddyfixit.ca" style={{ color:"#ea6b14", textDecoration:"none" }}>Get in touch.</a></p>
+          <p style={{ textAlign:"center", marginTop:"2.5rem", fontSize:".9rem", color:"rgba(var(--ff-muted), .6)", fontWeight:300 }}>Still have questions? <a href="mailto:hello@freddyfixit.ca" style={{ color:"var(--ff-c10)", textDecoration:"none" }}>Get in touch.</a></p>
         </div>
       </div>
 
@@ -1349,7 +1403,7 @@ export default function Home() {
             {SERVICES.map((s, i) => (
               <motion.div key={s.label} className="ff-service-card" onClick={() => window.location.href="/client-onboarding?service=" + encodeURIComponent(s.label)} style={{ cursor:"pointer" }}
                 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.05 }}>
-                <div className="ff-service-icon"><Ic name={s.iconName as any} size={28} color="#ea6b14" /></div>
+                <div className="ff-service-icon"><Ic name={s.iconName as any} size={28} color="var(--ff-c10)" /></div>
                 <div className="ff-service-label">{s.label}</div>
                 <div className="ff-service-desc">{s.desc}</div>
               </motion.div>
@@ -1366,13 +1420,13 @@ export default function Home() {
            block — same slot in the band-rhythm stack, same background token. */}
       <div style={{ background:"var(--ff-bg)", padding:"6rem 2rem" }}>
         <div style={{ maxWidth:"900px", margin:"0 auto" }}>
-          <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"#ea6b14", marginBottom:"1.5rem", textAlign:"center" }}>See It In Action</p>
-          <h2 style={{ fontFamily:"var(--ff-font-display)", fontWeight:"var(--ff-display-wght)" as any, fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:"-0.028em", color:"var(--ff-text)", textAlign:"center", marginBottom:".9rem" }}>How Freddy <span style={{ color:"#ea6b14" }}>Works.</span></h2>
+          <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"var(--ff-c10)", marginBottom:"1.5rem", textAlign:"center" }}>See It In Action</p>
+          <h2 style={{ fontFamily:"var(--ff-font-display)", fontWeight:"var(--ff-display-wght)" as any, fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:"-0.028em", color:"var(--ff-text)", textAlign:"center", marginBottom: "var(--ff-s4)" }}>How Freddy <span style={{ color:"var(--ff-c10)" }}>Works.</span></h2>
           <p style={{ textAlign:"center", color:"rgba(var(--ff-muted), .6)", fontSize:".95rem", marginBottom:"3rem", maxWidth:"560px", marginLeft:"auto", marginRight:"auto" }}>Two short walkthroughs — one for homeowners booking a job, one for pros signing up to take them.</p>
 
           <div className="ff-video-grid">
-            <div style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"14px", padding:"1.75rem" }}>
-              <div style={{ marginBottom:"1rem" }}><Ic name="user-check" size={26} color="#ea6b14" /></div>
+            <div style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-accent-rgb), .2)", borderRadius:"14px", padding:"1.75rem" }}>
+              <div style={{ marginBottom:"1rem" }}><Ic name="user-check" size={26} color="var(--ff-c10)" /></div>
               <div style={{ fontSize:"1.05rem", fontWeight:600, color:"var(--ff-text)", marginBottom:".6rem" }}>For Homeowners</div>
               <p style={{ fontSize:".9rem", color:"rgba(var(--ff-muted), .75)", fontWeight:300, lineHeight:1.7, marginBottom:"1.25rem" }}>Post a job, compare estimates, and pay securely — see the whole flow in under 30 seconds.</p>
               <OnboardingVideo
@@ -1381,8 +1435,8 @@ export default function Home() {
                 seconds={25}
               />
             </div>
-            <div style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"1.75rem" }}>
-              <div style={{ marginBottom:"1rem" }}><Ic name="hammer" size={26} color="#ea6b14" /></div>
+            <div style={{ background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"1.75rem" }}>
+              <div style={{ marginBottom:"1rem" }}><Ic name="hammer" size={26} color="var(--ff-c10)" /></div>
               <div style={{ fontSize:"1.05rem", fontWeight:600, color:"var(--ff-text)", marginBottom:".6rem" }}>For Contractors</div>
               <p style={{ fontSize:".9rem", color:"rgba(var(--ff-muted), .75)", fontWeight:300, lineHeight:1.7, marginBottom:"1.25rem" }}>Sign up, get vetted, and start bidding on local jobs — here's what to expect.</p>
               <OnboardingVideo

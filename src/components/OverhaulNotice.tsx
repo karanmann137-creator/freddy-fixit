@@ -165,17 +165,38 @@ export default function OverhaulNotice() {
           align-items: center;
           gap: .6rem;
           padding: .6rem 4.5rem .6rem 1rem;
-          background: linear-gradient(90deg, rgba(234,107,20,.16), rgba(234,107,20,.08));
-          border-top: 1px solid rgba(234,107,20,.35);
+          background: linear-gradient(90deg, rgba(var(--ff-accent-rgb), .16), rgba(var(--ff-accent-rgb), .08));
+          border-top: 1px solid rgba(var(--ff-accent-rgb), .35);
           backdrop-filter: blur(6px);
           font-family: 'DM Sans', sans-serif;
           color: var(--ff-text);
         }
+        /* Reduce Transparency / Increase Contrast (2026-11-08). main.tsx kills
+           the blur above globally under both preferences; these two surfaces
+           need their grounds made opaque as well, and neither can use the
+           ui/ primitives' answer because this component is a bar plus a
+           full-inset panel rather than a card.
+
+           The gradient is KEPT and an opaque layer is painted UNDER it rather
+           than replacing it with a flat token — background accepts a list, so
+           "linear-gradient(...), var(--ff-bg)" is the same orange tint sitting
+           on the theme ground instead of on whatever page content happens to
+           be scrolled behind the bar. (No backticks in a comment inside a
+           template literal — one closes the whole stylesheet. CLAUDE.md,
+           Authoring.) Replacing it with a solid token would
+           have been less code and would have thrown away the one thing that
+           makes this read as a notice rather than as a toolbar. */
+        @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+          .ff-ovl {
+            background: linear-gradient(90deg, rgba(var(--ff-accent-rgb), .16), rgba(var(--ff-accent-rgb), .08)), var(--ff-bg);
+          }
+          .ff-ovlp-back { background: rgba(10,14,24,.94); }
+        }
         .ff-ovl-dot {
           flex: 0 0 auto;
           width: 8px; height: 8px; border-radius: 50%;
-          background: #ea6b14;
-          box-shadow: 0 0 0 0 rgba(234,107,20,.55);
+          background: var(--ff-c10);
+          box-shadow: 0 0 0 0 rgba(var(--ff-accent-rgb), .55);
           animation: ff-ovl-pulse 2.4s ease-out infinite;
         }
         .ff-ovl-text {
@@ -197,7 +218,7 @@ export default function OverhaulNotice() {
         .ff-ovl-btn:hover .ff-ovl-more,
         .ff-ovl-btn:focus-visible .ff-ovl-more { border-bottom-color: currentColor; }
         .ff-ovl-more {
-          color: #ea6b14;
+          color: var(--ff-c10);
           font-weight: 700;
           white-space: nowrap;
           border-bottom: 1px solid transparent;
@@ -211,9 +232,9 @@ export default function OverhaulNotice() {
           padding: 0 .2rem;
         }
         @keyframes ff-ovl-pulse {
-          0%   { box-shadow: 0 0 0 0 rgba(234,107,20,.55); }
-          70%  { box-shadow: 0 0 0 8px rgba(234,107,20,0); }
-          100% { box-shadow: 0 0 0 0 rgba(234,107,20,0); }
+          0%   { box-shadow: 0 0 0 0 rgba(var(--ff-accent-rgb), .55); }
+          70%  { box-shadow: 0 0 0 8px rgba(var(--ff-accent-rgb), 0); }
+          100% { box-shadow: 0 0 0 0 rgba(var(--ff-accent-rgb), 0); }
         }
 
         /* ── Detail panel ─────────────────────────────────────────────────── */
@@ -241,7 +262,7 @@ export default function OverhaulNotice() {
           max-height: calc(100vh - 2.5rem);
           overflow-y: auto;
           background: #151d2e;
-          border: 1px solid rgba(234,107,20,.3);
+          border: 1px solid rgba(var(--ff-accent-rgb), .3);
           border-radius: 18px;
           box-shadow: 0 24px 60px rgba(0,0,0,.5);
           font-family: 'DM Sans', sans-serif;
@@ -277,7 +298,7 @@ export default function OverhaulNotice() {
           font-size: 1.15rem;
           letter-spacing: .06em;
           text-transform: uppercase;
-          color: #ea6b14;
+          color: var(--ff-c10);
           margin: 1.4rem 0 .5rem;
         }
         .ff-ovlp-body p {
@@ -297,7 +318,7 @@ export default function OverhaulNotice() {
         .ff-ovlp-form {
           padding: 1.1rem 1.5rem 1.5rem;
           margin-top: .4rem;
-          border-top: 1px solid rgba(var(--ff-fg), .1);
+          border-top: var(--ff-hair-w) solid rgba(var(--ff-fg), .1);
         }
 
         @keyframes ff-ovlp-fade { from { opacity: 0; } to { opacity: 1; } }

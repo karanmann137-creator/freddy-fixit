@@ -1,11 +1,26 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { ensureUiStyles } from "./ui/uiStyles";
 
 // Self-service account deletion. Renders a "danger zone" card with a button
 // that opens a typed-confirmation modal, then calls the `delete-account`
 // edge function, signs the user out, and returns them home.
+//
+// ⚠️ THE DIALOG IS PORTALLED TO <body> AND THAT IS NOT OPTIONAL (2026-11-08).
+// This component is mounted INSIDE SettingsModal's dialog, and .ffu-modal sets
+// `backdrop-filter`, which per spec makes an element a containing block for its
+// fixed-position descendants — exactly like `filter` does. Rendered in place, a
+// `position: fixed; inset: 0` scrim would therefore resolve against the
+// Settings card's box rather than the viewport: on desktop a scrim covering
+// only the card it sits in, and on a phone a bottom sheet pinned to the bottom
+// of that card instead of the screen. Nothing throws; it just looks broken.
+//
+// The same trap applies to ANY dialog nested inside another .ffu-modal. Portal
+// it, or don't nest it.
 export default function DeleteAccount() {
+  ensureUiStyles();
   const [, setLocation] = useLocation();
   const [open, setOpen]               = useState(false);
   const [confirmText, setConfirmText] = useState("");
@@ -43,14 +58,12 @@ export default function DeleteAccount() {
     title:   { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", color:"#ef4444", marginBottom:".75rem" },
     desc:    { color:"rgba(var(--ff-muted), .6)", fontSize:".88rem", lineHeight:1.5, marginBottom:"1.1rem" },
     danger:  { padding:".6rem 1.1rem", background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.4)", borderRadius:"8px", color:"var(--ff-danger)", fontFamily:"inherit", fontSize:".85rem", fontWeight:500, cursor:"pointer" },
-    overlay: { position:"fixed" as const, inset:0, background:"rgba(10,14,24,.7)", display:"flex", alignItems:"center", justifyContent:"center", padding:"1.5rem", zIndex:1000 },
-    modal:   { background:"var(--ff-surface)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"16px", padding:"1.75rem", maxWidth:"440px", width:"100%", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
     mTitle:  { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".04em", marginBottom:"1rem" },
     mText:   { color:"rgba(var(--ff-muted), .75)", fontSize:".9rem", lineHeight:1.6, marginBottom:"1rem" },
-    input:   { width:"100%", boxSizing:"border-box" as const, padding:".7rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".95rem", letterSpacing:".05em", outline:"none", marginBottom:"1rem" },
+    input:   { width:"100%", boxSizing:"border-box" as const, padding:".7rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".95rem", letterSpacing:".05em", marginBottom:"1rem" },
     err:     { color:"var(--ff-danger)", fontSize:".82rem", marginBottom:"1rem" },
     row:     { display:"flex", gap:".75rem", justifyContent:"flex-end", flexWrap:"wrap" as const },
-    cancel:  { padding:".6rem 1.1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"rgba(var(--ff-muted), .8)", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer" },
+    cancel:  { padding:".6rem 1.1rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"rgba(var(--ff-muted), .8)", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer" },
     confirm: { padding:".6rem 1.1rem", background:"#ef4444", border:"none", borderRadius:"8px", color:"#fff", fontFamily:"inherit", fontSize:".85rem", fontWeight:600, cursor:"pointer" },
   };
 
@@ -65,9 +78,16 @@ export default function DeleteAccount() {
         <button style={s.danger} onClick={() => setOpen(true)}>Delete my account</button>
       </div>
 
-      {open && (
-        <div style={s.overlay} onClick={close}>
-          <div style={s.modal} onClick={e => e.stopPropagation()}>
+      {open && createPortal(
+        <div className="ffu-scrim" onClick={close}>
+          <div
+            className="ffu-modal"
+            role="dialog"
+            aria-modal="true"
+            onClick={e => e.stopPropagation()}
+            style={{ ["--ffu-modal-w" as any]: "440px" }}
+          >
+            <span className="ffu-grab" aria-hidden="true" />
             <div style={s.mTitle}>Delete your account?</div>
             <p style={s.mText}>
               This permanently removes your profile, your requests, your messages, and any
@@ -95,7 +115,8 @@ export default function DeleteAccount() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

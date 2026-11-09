@@ -659,19 +659,19 @@ export default function NewRequest() {
     }
   };
 
-  const inp = { width:"100%", padding:".75rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".95rem", outline:"none", boxSizing:"border-box" as const };
+  const inp = { width:"100%", padding:".75rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".95rem", boxSizing:"border-box" as const };
   const s = {
     wrap: { minHeight:"100vh", background:"var(--ff-bg)", padding:"3rem 1rem 4rem", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
     inner: { maxWidth:"580px", margin:"0 auto" },
-    card: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"2rem" },
+    card: { background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"2rem" },
     label: { display:"block", fontSize:".78rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .6)", marginBottom:".6rem" },
     err: { fontSize:".78rem", color:"var(--ff-danger)", marginTop:".35rem" },
-    svcBtn: { display:"flex", alignItems:"center", gap:".65rem", padding:".9rem 1rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"10px", color:"rgba(var(--ff-muted), .8)", fontFamily:"inherit", fontSize:".88rem", cursor:"pointer", textAlign:"left" as const, width:"100%" },
-    svcBtnSel: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.5)", color:"var(--ff-text)" },
-    schedBtn: { display:"flex", alignItems:"center", gap:"1rem", padding:"1rem 1.2rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"10px", color:"rgba(var(--ff-muted), .8)", fontFamily:"inherit", cursor:"pointer", textAlign:"left" as const, width:"100%", marginBottom:".75rem" },
-    schedBtnSel: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.5)", color:"var(--ff-text)" },
-    addrBtn: { display:"flex", alignItems:"center", gap:".6rem", padding:".85rem 1rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"10px", color:"rgba(var(--ff-muted), .85)", fontFamily:"inherit", fontSize:".9rem", cursor:"pointer", textAlign:"left" as const, width:"100%", marginBottom:".6rem" },
-    addrBtnSel: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.5)", color:"var(--ff-text)" },
+    svcBtn: { display:"flex", alignItems:"center", gap:".65rem", padding:".9rem 1rem", background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"10px", color:"rgba(var(--ff-muted), .8)", fontFamily:"inherit", fontSize:".88rem", cursor:"pointer", textAlign:"left" as const, width:"100%" },
+    svcBtnSel: { background:"rgba(var(--ff-accent-rgb), .12)", borderColor:"rgba(var(--ff-accent-rgb), .5)", color:"var(--ff-text)" },
+    schedBtn: { display:"flex", alignItems:"center", gap:"1rem", padding:"1rem 1.2rem", background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"10px", color:"rgba(var(--ff-muted), .8)", fontFamily:"inherit", cursor:"pointer", textAlign:"left" as const, width:"100%", marginBottom:".75rem" },
+    schedBtnSel: { background:"rgba(var(--ff-accent-rgb), .12)", borderColor:"rgba(var(--ff-accent-rgb), .5)", color:"var(--ff-text)" },
+    addrBtn: { display:"flex", alignItems:"center", gap:".6rem", padding:".85rem 1rem", background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"10px", color:"rgba(var(--ff-muted), .85)", fontFamily:"inherit", fontSize:".9rem", cursor:"pointer", textAlign:"left" as const, width:"100%", marginBottom:".6rem" },
+    addrBtnSel: { background:"rgba(var(--ff-accent-rgb), .12)", borderColor:"rgba(var(--ff-accent-rgb), .5)", color:"var(--ff-text)" },
     navBtn: { flex:1, padding:".85rem 1.5rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer", border:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:".4rem" },
   };
 
@@ -692,7 +692,7 @@ export default function NewRequest() {
   if (loadError) return (
     <div style={{ minHeight:"100vh", background:"var(--ff-bg)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"1rem", fontFamily:"'DM Sans', sans-serif", padding:"2rem", textAlign:"center" }}>
       <p style={{ margin:0, color:"var(--ff-text)", fontSize:"1rem" }}>We couldn&rsquo;t load your details. Check your connection and try again.</p>
-      <button onClick={() => { setLoading(true); setLoadTick(t => t + 1); }} style={{ padding:".7rem 1.6rem", borderRadius:"8px", border:"none", background:"#ea6b14", color:"#fff", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer" }}>Try again</button>
+      <button onClick={() => { setLoading(true); setLoadTick(t => t + 1); }} style={{ padding:".7rem 1.6rem", borderRadius:"8px", border:"none", background:"var(--ff-c10)", color:"#fff", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer" }}>Try again</button>
     </div>
   );
 
@@ -717,7 +717,7 @@ export default function NewRequest() {
         />
         <p style={{ textAlign:"center", fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.6, margin:"1.5rem auto 0", maxWidth:"460px" }}>
           Any job already in progress carries on as normal — you&rsquo;ll find it on your{" "}
-          <a href="/client-dashboard" style={{ color:"#ea6b14", textDecoration:"none", fontWeight:600 }}>dashboard</a>.
+          <a href="/client-dashboard" style={{ color:"var(--ff-c10)", textDecoration:"none", fontWeight:600 }}>dashboard</a>.
         </p>
       </div>
     </div>
@@ -731,9 +731,9 @@ export default function NewRequest() {
           keyframes have to be declared here. Copied deliberately rather than
           imported: an inline style attribute cannot express @keyframes, and the
           two forms are separate top-level screens. */}
-      <style>{"@keyframes ff-co-pulse{0%{box-shadow:0 0 0 0 rgba(234,107,20,.55)}70%{box-shadow:0 0 0 12px rgba(234,107,20,0)}100%{box-shadow:0 0 0 0 rgba(234,107,20,0)}}"
-        + " .ff-photo-pulse{outline:2px solid rgba(234,107,20,.75); outline-offset:6px; border-radius:12px; animation:ff-co-pulse 1.5s ease-out 3}"
-        + " @media (prefers-reduced-motion: reduce){.ff-photo-pulse{animation:none; background:rgba(234,107,20,.12)}}"}</style>
+      <style>{"@keyframes ff-co-pulse{0%{box-shadow:0 0 0 0 rgba(var(--ff-accent-rgb), .55)}70%{box-shadow:0 0 0 12px rgba(var(--ff-accent-rgb), 0)}100%{box-shadow:0 0 0 0 rgba(var(--ff-accent-rgb), 0)}}"
+        + " .ff-photo-pulse{outline:2px solid rgba(var(--ff-accent-rgb), .75); outline-offset:6px; border-radius:12px; animation:ff-co-pulse 1.5s ease-out 3}"
+        + " @media (prefers-reduced-motion: reduce){.ff-photo-pulse{animation:none; background:rgba(var(--ff-accent-rgb), .12)}}"}</style>
       <div style={s.inner}>
         <button onClick={back} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".82rem", textTransform:"uppercase", letterSpacing:".08em", padding:0, marginBottom:"2rem", display:"block" }}>
           {step === 1 ? "← Dashboard" : "← Back"}
@@ -756,8 +756,8 @@ export default function NewRequest() {
         <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:"2rem" }}>{STEP_TITLES[step-1]}</h1>
 
         {preferredPro && (
-          <div style={{ ...s.card, marginBottom:"1rem", padding:"1rem 1.25rem", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.07)", display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const }}>
-            <Ic name="star" size={16} color="#ea6b14" style={{ flexShrink:0 }} />
+          <div style={{ ...s.card, marginBottom:"1rem", padding:"1rem 1.25rem", borderColor:"rgba(var(--ff-accent-rgb), .4)", background:"rgba(var(--ff-accent-rgb), .07)", display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const }}>
+            <Ic name="star" size={16} color="var(--ff-c10)" style={{ flexShrink:0 }} />
             <div style={{ fontSize:".86rem", color:"var(--ff-text)", flex:"1 1 auto", minWidth:0 }}>
               {chosenPro
                 ? "This request goes to " + (chosenPro.company_name || chosenPro.name || "your pro") + " first — they'll be notified directly to send you an estimate."
@@ -777,13 +777,13 @@ export default function NewRequest() {
           {/* ---------- 1 · Describe it in your own words ---------- */}
           {step === 1 && (<>
             {/* Contact summary (read-only) */}
-            <div style={{ marginBottom:"1.75rem", paddingBottom:"1.25rem", borderBottom:"1px solid rgba(var(--ff-fg), .08)" }}>
+            <div style={{ marginBottom:"1.75rem", paddingBottom:"1.25rem", borderBottom:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)" }}>
               <div style={s.label}>Submitting as</div>
               <div style={{ fontSize:".95rem", fontWeight:500 }}>
                 {[profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Your account"}
                 {isBusiness && lastReq?.business_name ? <span style={{ color:"rgba(var(--ff-muted), .6)", fontWeight:400 }}> · {lastReq.business_name}</span> : null}
               </div>
-              <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .55)", marginTop:".2rem" }}>
+              <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .55)", marginTop: "var(--ff-s1)" }}>
                 {[profile?.email, profile?.phone].filter(Boolean).join(" · ")}
               </div>
               <p style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .4)", marginTop:".5rem" }}>Need to change your name or phone? Update it in your profile.</p>
@@ -799,14 +799,14 @@ export default function NewRequest() {
                 and offers the undo, and leaving the row on screen would invite a
                 second tap that changes nothing visible. */}
             {pros.length > 0 && !preferredPro && (
-              <div style={{ marginBottom:"1.75rem", paddingBottom:"1.25rem", borderBottom:"1px solid rgba(var(--ff-fg), .08)" }}>
+              <div style={{ marginBottom:"1.75rem", paddingBottom:"1.25rem", borderBottom:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)" }}>
                 <div style={s.label}>Used us before?</div>
                 <p style={{ margin:"0 0 .7rem", fontSize:".8rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.45 }}>
                   Send this straight to a pro you&rsquo;ve worked with. They get first refusal for 48 hours — no need to compare estimates again.
                 </p>
-                <div style={{ display:"flex", gap:".7rem", overflowX:"auto" as const, paddingBottom:".3rem" }}>
+                <div style={{ display:"flex", gap: "var(--ff-s3)", overflowX:"auto" as const, paddingBottom:".3rem" }}>
                   {pros.slice(0, 6).map(pro => (
-                    <div key={pro.contractor_id} style={{ minWidth:"178px", flex:"0 0 auto", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"12px", padding:".8rem", background:"rgba(var(--ff-fg), .03)" }}>
+                    <div key={pro.contractor_id} style={{ minWidth:"178px", flex:"0 0 auto", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", borderRadius:"12px", padding:".8rem", background:"rgba(var(--ff-fg), .03)" }}>
                       <div style={{ fontSize:".88rem", fontWeight:600, color:"var(--ff-text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>
                         {pro.company_name || pro.name || "Your pro"}
                       </div>
@@ -817,7 +817,7 @@ export default function NewRequest() {
                       {/* Sets state rather than navigating — we are already on the
                           form, so a trip through ?pro= would throw away everything
                           typed so far. */}
-                      <button type="button" onClick={() => setPreferredPro(pro.contractor_id)} style={{ width:"100%", marginTop:".6rem", padding:".45rem", fontSize:".8rem", fontFamily:"inherit", fontWeight:600, cursor:"pointer", borderRadius:"8px", border:"1px solid rgba(234,107,20,.4)", background:"rgba(234,107,20,.12)", color:"#ea6b14" }}>
+                      <button type="button" onClick={() => setPreferredPro(pro.contractor_id)} style={{ width:"100%", marginTop:".6rem", padding: "var(--ff-s2)", fontSize:".8rem", fontFamily:"inherit", fontWeight:600, cursor:"pointer", borderRadius:"8px", border:"1px solid rgba(var(--ff-accent-rgb), .4)", background:"rgba(var(--ff-accent-rgb), .12)", color:"var(--ff-c10)" }}>
                         Book again
                       </button>
                     </div>
@@ -848,7 +848,7 @@ export default function NewRequest() {
                     that really is optional on first sight is a lie, and people
                     learn fast to ignore an asterisk that means nothing. */}
                 {photoNudged.current && !photoFile
-                  ? <span aria-hidden="true" style={{ color:"#ea6b14", fontWeight:600 }}>*</span>
+                  ? <span aria-hidden="true" style={{ color:"var(--ff-c10)", fontWeight:600 }}>*</span>
                   : <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span>}
               </label>
               <p style={{ margin:"0 0 .5rem", fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.45 }}>A clear photo helps contractors give you a faster, more accurate estimate — and means fewer surprises on the day.</p>
@@ -869,10 +869,10 @@ export default function NewRequest() {
                   what draws the eye, the words are what answer "why does it
                   matter?", and those are two different jobs. */}
               {photoNudged.current && !photoFile && (
-                <div style={{ background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.28)", borderRadius:"8px", padding:".8rem 1rem", marginTop:".6rem", fontSize:".82rem", lineHeight:1.6, color:"rgba(var(--ff-muted), .85)" }}>
+                <div style={{ background:"rgba(var(--ff-accent-rgb), .08)", border:"1px solid rgba(var(--ff-accent-rgb), .28)", borderRadius:"8px", padding:".8rem 1rem", marginTop:".6rem", fontSize:".82rem", lineHeight:1.6, color:"rgba(var(--ff-muted), .85)" }}>
                   <strong style={{ color:"var(--ff-text)" }}>A photo gets you a real number, faster.</strong>{" "}
                   Pros price what they can see. With a photo you&rsquo;ll usually get firm estimates the same day; without one you&rsquo;re more likely to get a wide ballpark, questions before anyone will quote, or a pro who wants to come out and look first.
-                  <div style={{ marginTop:".45rem", opacity:.8 }}>It&rsquo;s still optional — press Next again to carry on without one, and you can add a photo from your dashboard any time after you post.</div>
+                  <div style={{ marginTop: "var(--ff-s2)", opacity:.8 }}>It&rsquo;s still optional — press Next again to carry on without one, and you can add a photo from your dashboard any time after you post.</div>
                 </div>
               )}
             </div>
@@ -885,9 +885,9 @@ export default function NewRequest() {
               <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginBottom:".6rem" }}>
                 {selectedServices.map(sv => (
                   <button key={sv} type="button" onClick={() => toggleService(sv)}
-                    style={{ display:"inline-flex", alignItems:"center", gap:".5rem", padding:".6rem 1rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer", background:"rgba(234,107,20,.15)", border:"1px solid #ea6b14", color:"var(--ff-text)" }}>
+                    style={{ display:"inline-flex", alignItems:"center", gap:".5rem", padding:".6rem 1rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer", background:"rgba(var(--ff-accent-rgb), .15)", border:"1px solid var(--ff-c10)", color:"var(--ff-text)" }}>
                     {sv}
-                    <span style={{ color:"#ea6b14", fontSize:"1.05rem", lineHeight:1 }}>×</span>
+                    <span style={{ color:"var(--ff-c10)", fontSize:"1.05rem", lineHeight:1 }}>×</span>
                   </button>
                 ))}
               </div>
@@ -906,10 +906,10 @@ export default function NewRequest() {
             {tags.length > 0 && (
               <div style={{ marginBottom:"1.5rem" }}>
                 <p style={s.label}>Details we spotted</p>
-                <div style={{ display:"flex", gap:".45rem", flexWrap:"wrap" as const }}>
+                <div style={{ display:"flex", gap: "var(--ff-s2)", flexWrap:"wrap" as const }}>
                   {tags.map(t => (
                     <button key={t} type="button" onClick={() => removeTag(t)}
-                      style={{ display:"inline-flex", alignItems:"center", gap:".4rem", padding:".4rem .75rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".8rem", cursor:"pointer", background:"rgba(var(--ff-fg), .05)", border:"1px solid rgba(var(--ff-fg), .14)", color:"rgba(var(--ff-muted), .85)" }}>
+                      style={{ display:"inline-flex", alignItems:"center", gap:".4rem", padding:".4rem .75rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".8rem", cursor:"pointer", background:"rgba(var(--ff-fg), .05)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .14)", color:"rgba(var(--ff-muted), .85)" }}>
                       {t}
                       <span style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".95rem", lineHeight:1 }}>×</span>
                     </button>
@@ -941,7 +941,7 @@ export default function NewRequest() {
             </p>
             {activeQuestions.map(q => (
               <div key={q.id} style={{ marginBottom:"1.75rem" }}>
-                <p style={{ fontSize:".95rem", fontWeight:500, color:"var(--ff-text)", marginBottom:".7rem", lineHeight:1.45 }}>
+                <p style={{ fontSize:".95rem", fontWeight:500, color:"var(--ff-text)", marginBottom: "var(--ff-s3)", lineHeight:1.45 }}>
                   {q.prompt}
                   {q.multi && <span style={{ fontWeight:400, color:"rgba(var(--ff-muted), .55)", fontSize:".82rem" }}> · pick any that apply</span>}
                 </p>
@@ -951,8 +951,8 @@ export default function NewRequest() {
                     return (
                       <button key={opt} type="button" onClick={() => setAnswer(q, opt)}
                         style={{ padding:".6rem 1rem", borderRadius:"10px", fontFamily:"inherit", fontSize:".88rem", fontWeight: on ? 500 : 400, cursor:"pointer",
-                          background: on ? "rgba(234,107,20,.15)" : "rgba(var(--ff-fg), .04)",
-                          border: on ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .12)",
+                          background: on ? "rgba(var(--ff-accent-rgb), .15)" : "rgba(var(--ff-fg), .04)",
+                          border: on ? "1px solid var(--ff-c10)" : "1px solid rgba(var(--ff-fg), .12)",
                           color: on ? "var(--ff-text)" : "rgba(var(--ff-muted), .8)" }}>
                         {opt}
                       </button>
@@ -969,14 +969,14 @@ export default function NewRequest() {
           <p style={s.label}>When do you need it?</p>
           {SCHEDULES.map(sc => (
             <button key={sc.label} style={{ ...s.schedBtn, ...(schedule === sc.label ? s.schedBtnSel : {}) }} onClick={() => { setSchedule(sc.label); setErrors(e => ({ ...e, schedule:"" })); }}>
-              <span style={{ fontSize:"1.5rem" }}><Ic name={sc.iconName as any} size={22} color="#ea6b14" /></span>
+              <span style={{ fontSize:"1.5rem" }}><Ic name={sc.iconName as any} size={22} color="var(--ff-c10)" /></span>
               <div><div style={{ fontSize:".95rem", fontWeight:500 }}>{sc.label}</div><div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .5)" }}>{sc.sub}</div></div>
             </button>
           ))}
           {errors.schedule && <p id="nr-err-schedule" style={s.err}>{errors.schedule}</p>}
 
           {schedule === "Recurring" && (
-            <div style={{ marginTop:".75rem", padding:"1rem", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"10px", display:"flex", flexDirection:"column" as const, gap:"1rem" }}>
+            <div style={{ marginTop:".75rem", padding:"1rem", background:"rgba(var(--ff-accent-rgb), .06)", border:"1px solid rgba(var(--ff-accent-rgb), .2)", borderRadius:"10px", display:"flex", flexDirection:"column" as const, gap:"1rem" }}>
               <div>
                 <p style={{ ...s.label, marginBottom:".6rem" }}>How often?</p>
                 {recurringFrequency !== "seasonal" && recurringFrequency !== "per_km" && (
@@ -984,18 +984,18 @@ export default function NewRequest() {
                     <input type="range" min={0} max={SLIDER_STOPS.length - 1} step={1}
                       value={sliderIdx} onChange={e => pickSlider(parseInt(e.target.value, 10))}
                       aria-label="How often"
-                      style={{ width:"100%", accentColor:"#ea6b14", cursor:"pointer" }} />
-                    <div style={{ display:"flex", justifyContent:"space-between", marginTop:".2rem" }}>
+                      style={{ width:"100%", accentColor:"var(--ff-c10)", cursor:"pointer" }} />
+                    <div style={{ display:"flex", justifyContent:"space-between", marginTop: "var(--ff-s1)" }}>
                       {SLIDER_STOPS.map((stop, i) => (
                         <span key={stop} onClick={() => pickSlider(i)}
                           style={{ fontSize:".68rem", cursor:"pointer", textAlign:"center" as const, flex:1,
-                            color: i === sliderIdx ? "#ea6b14" : "rgba(var(--ff-muted), .5)",
+                            color: i === sliderIdx ? "var(--ff-c10)" : "rgba(var(--ff-muted), .5)",
                             fontWeight: i === sliderIdx ? 600 : 400 }}>
                           {SLIDER_SHORT[stop]}
                         </span>
                       ))}
                     </div>
-                    <p style={{ fontSize:".85rem", color:"var(--ff-text)", marginTop:".45rem", fontWeight:500 }}>
+                    <p style={{ fontSize:".85rem", color:"var(--ff-text)", marginTop: "var(--ff-s2)", fontWeight:500 }}>
                       {freqLabel(SLIDER_STOPS[sliderIdx])}
                     </p>
                   </div>
@@ -1003,23 +1003,23 @@ export default function NewRequest() {
                 <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                   <button type="button" onClick={() => setRecurringFrequency("seasonal")}
                     style={{ padding:".55rem 1.05rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", border:"1px solid",
-                      background: recurringFrequency==="seasonal" ? "rgba(234,107,20,.2)" : "rgba(var(--ff-fg), .04)",
-                      borderColor: recurringFrequency==="seasonal" ? "#ea6b14" : "rgba(var(--ff-fg), .12)",
+                      background: recurringFrequency==="seasonal" ? "rgba(var(--ff-accent-rgb), .2)" : "rgba(var(--ff-fg), .04)",
+                      borderColor: recurringFrequency==="seasonal" ? "var(--ff-c10)" : "rgba(var(--ff-fg), .12)",
                       color: recurringFrequency==="seasonal" ? "var(--ff-text)" : "rgba(var(--ff-muted), .7)" }}>
                     Seasonal
                   </button>
                   {selectedServices.some(isPerKmService) && (
                     <button type="button" onClick={() => setRecurringFrequency("per_km")}
                       style={{ padding:".55rem 1.05rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", border:"1px solid",
-                        background: recurringFrequency==="per_km" ? "rgba(234,107,20,.2)" : "rgba(var(--ff-fg), .04)",
-                        borderColor: recurringFrequency==="per_km" ? "#ea6b14" : "rgba(var(--ff-fg), .12)",
+                        background: recurringFrequency==="per_km" ? "rgba(var(--ff-accent-rgb), .2)" : "rgba(var(--ff-fg), .04)",
+                        borderColor: recurringFrequency==="per_km" ? "var(--ff-c10)" : "rgba(var(--ff-fg), .12)",
                         color: recurringFrequency==="per_km" ? "var(--ff-text)" : "rgba(var(--ff-muted), .7)" }}>
                       Per distance (km)
                     </button>
                   )}
                   {(recurringFrequency==="seasonal" || recurringFrequency==="per_km") && (
                     <button type="button" onClick={() => pickSlider(sliderIdx)}
-                      style={{ padding:".55rem 1.05rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", border:"1px solid rgba(var(--ff-fg), .12)", background:"rgba(var(--ff-fg), .04)", color:"rgba(var(--ff-muted), .7)" }}>
+                      style={{ padding:".55rem 1.05rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", background:"rgba(var(--ff-fg), .04)", color:"rgba(var(--ff-muted), .7)" }}>
                       Use slider instead
                     </button>
                   )}
@@ -1043,8 +1043,8 @@ export default function NewRequest() {
                     <button key={n} type="button"
                       onClick={() => setPrepayPref(n)}
                       style={{ padding:".6rem 1.1rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", border:"1px solid",
-                        background: prepayPref===n ? "rgba(234,107,20,.2)" : "rgba(var(--ff-fg), .04)",
-                        borderColor: prepayPref===n ? "#ea6b14" : "rgba(var(--ff-fg), .12)",
+                        background: prepayPref===n ? "rgba(var(--ff-accent-rgb), .2)" : "rgba(var(--ff-fg), .04)",
+                        borderColor: prepayPref===n ? "var(--ff-c10)" : "rgba(var(--ff-fg), .12)",
                         color: prepayPref===n ? "var(--ff-text)" : "rgba(var(--ff-muted), .7)" }}>
                       {n === 0 ? "Pay each visit" : `Prepay ${n} visits`}
                     </button>
@@ -1060,7 +1060,7 @@ export default function NewRequest() {
                   <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
                     {SEASON_PRESETS.map(sp => (
                       <button key={sp.label} type="button" onClick={() => applySeason(sp)}
-                        style={{ padding:".5rem .9rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer", border:"1px solid rgba(var(--ff-fg), .15)", background:"rgba(var(--ff-fg), .05)", color:"rgba(var(--ff-muted), .8)" }}>
+                        style={{ padding:".5rem .9rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .15)", background:"rgba(var(--ff-fg), .05)", color:"rgba(var(--ff-muted), .8)" }}>
                         {sp.label}
                       </button>
                     ))}
@@ -1088,17 +1088,17 @@ export default function NewRequest() {
                   <input type="date" min={todayStr} value={newDate} onChange={e => setNewDate(e.target.value)}
                     style={{ ...inp, padding:".6rem .8rem", fontSize:".88rem", maxWidth:"180px", minWidth:0 }} />
                   <button type="button" onClick={addDate} disabled={!newDate}
-                    style={{ padding:".55rem 1rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor: newDate ? "pointer" : "default", border:"1px solid #ea6b14", background:"rgba(234,107,20,.15)", color:"var(--ff-text)", opacity: newDate ? 1 : .5 }}>
+                    style={{ padding:".55rem 1rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor: newDate ? "pointer" : "default", border:"1px solid var(--ff-c10)", background:"rgba(var(--ff-accent-rgb), .15)", color:"var(--ff-text)", opacity: newDate ? 1 : .5 }}>
                     + Add date
                   </button>
                 </div>
                 {recurringDates.length > 0 && (
                   <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginTop:".6rem" }}>
                     {recurringDates.map(d => (
-                      <span key={d} style={{ display:"inline-flex", alignItems:"center", gap:".4rem", padding:".35rem .6rem", borderRadius:"999px", fontSize:".8rem", background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.3)", color:"var(--ff-text)" }}>
+                      <span key={d} style={{ display:"inline-flex", alignItems:"center", gap:".4rem", padding:".35rem .6rem", borderRadius:"999px", fontSize:".8rem", background:"rgba(var(--ff-accent-rgb), .12)", border:"1px solid rgba(var(--ff-accent-rgb), .3)", color:"var(--ff-text)" }}>
                         {new Date(d + "T00:00:00").toLocaleDateString(undefined, { month:"short", day:"numeric", year:"numeric" })}
                         <button type="button" onClick={() => removeDate(d)} aria-label="Remove date"
-                          style={{ border:"none", background:"none", color:"#ea6b14", cursor:"pointer", fontSize:"1rem", lineHeight:1, padding:0 }}>×</button>
+                          style={{ border:"none", background:"none", color:"var(--ff-c10)", cursor:"pointer", fontSize:"1rem", lineHeight:1, padding:0 }}>×</button>
                       </span>
                     ))}
                   </div>
@@ -1131,13 +1131,13 @@ export default function NewRequest() {
           <p style={{ ...s.label, marginTop:"1.75rem" }}>Where is this job? <span style={{ color:"rgba(var(--ff-muted), .4)", textTransform:"none", letterSpacing:0 }}>(postal code &mdash; we'll ask for the address once you've picked a pro)</span></p>
           {prevApprox.text && (
             <button style={{ ...s.addrBtn, ...(locChoice === "last" ? s.addrBtnSel : {}) }} onClick={() => { setLocChoice("last"); setErrors(e => ({ ...e, location:"" })); }}>
-              <span><Ic name={locChoice === "last" ? "radio-on" : "radio-off"} size={16} color="#ea6b14" /></span>
+              <span><Ic name={locChoice === "last" ? "radio-on" : "radio-off"} size={16} color="var(--ff-c10)" /></span>
               <span>Same as last time — <span style={{ color:"rgba(var(--ff-muted), .6)" }}>{prevApprox.text}</span></span>
             </button>
           )}
           {prevApprox.text && (
             <button style={{ ...s.addrBtn, ...(locChoice === "new" ? s.addrBtnSel : {}) }} onClick={() => { setLocChoice("new"); setErrors(e => ({ ...e, location:"" })); }}>
-              <span><Ic name={locChoice === "new" ? "radio-on" : "radio-off"} size={16} color="#ea6b14" /></span>
+              <span><Ic name={locChoice === "new" ? "radio-on" : "radio-off"} size={16} color="var(--ff-c10)" /></span>
               <span>Somewhere else</span>
             </button>
           )}
@@ -1156,7 +1156,7 @@ export default function NewRequest() {
               {!showAreaChips && derivedArea && (
                 <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const, marginTop:".6rem" }}>
                   <span style={{ display:"inline-flex", alignItems:"center", gap:".35rem", padding:".4rem .75rem", borderRadius:"999px", fontSize:".82rem", fontWeight:500,
-                    background:"rgba(234,107,20,.13)", border:"1px solid rgba(234,107,20,.45)", color:"var(--ff-text)" }}>
+                    background:"rgba(var(--ff-accent-rgb), .13)", border:"1px solid rgba(var(--ff-accent-rgb), .45)", color:"var(--ff-text)" }}>
                     {areaToken(derivedArea) || derivedArea}
                   </span>
                   <button type="button" onClick={() => setAreaOverride(true)}
@@ -1179,8 +1179,8 @@ export default function NewRequest() {
                       return (
                         <button key={a} type="button" onClick={() => { setArea(on ? "" : a); setErrors(e => ({ ...e, location:"" })); }}
                           style={{ padding:".55rem .9rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".85rem", fontWeight: on ? 500 : 400, cursor:"pointer",
-                            background: on ? "rgba(234,107,20,.15)" : "rgba(var(--ff-fg), .04)",
-                            border: on ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .12)",
+                            background: on ? "rgba(var(--ff-accent-rgb), .15)" : "rgba(var(--ff-fg), .04)",
+                            border: on ? "1px solid var(--ff-c10)" : "1px solid rgba(var(--ff-fg), .12)",
                             color: on ? "var(--ff-text)" : "rgba(var(--ff-muted), .8)" }}>
                           {a}
                         </button>
@@ -1204,13 +1204,13 @@ export default function NewRequest() {
                 const label = [v.year, v.make, v.model].filter(Boolean).join(" ") || "Saved vehicle";
                 return (
                   <button key={v.id} style={{ ...s.addrBtn, ...(vehChoice === v.id ? s.addrBtnSel : {}) }} onClick={() => setVehChoice(v.id)}>
-                    <span><Ic name={vehChoice === v.id ? "radio-on" : "radio-off"} size={16} color="#ea6b14" /></span>
+                    <span><Ic name={vehChoice === v.id ? "radio-on" : "radio-off"} size={16} color="var(--ff-c10)" /></span>
                     <span>{label}</span>
                   </button>
                 );
               })}
               <button style={{ ...s.addrBtn, ...(vehChoice === "new" ? s.addrBtnSel : {}) }} onClick={() => setVehChoice("new")}>
-                <span><Ic name={vehChoice === "new" ? "radio-on" : "radio-off"} size={16} color="#ea6b14" /></span>
+                <span><Ic name={vehChoice === "new" ? "radio-on" : "radio-off"} size={16} color="var(--ff-c10)" /></span>
                 <span>{savedVehicles.length ? "A different vehicle" : "Add your vehicle"}</span>
               </button>
               {vehChoice === "new" && (
@@ -1221,7 +1221,7 @@ export default function NewRequest() {
                     <input style={{ ...inp, flex:"1 1 110px", minWidth:0 }} placeholder="Model" value={vehModel} onChange={e => setVehModel(e.target.value)} />
                   </div>
                   <label style={{ display:"flex", alignItems:"center", gap:".5rem", cursor:"pointer", fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginTop:".5rem" }}>
-                    <input type="checkbox" checked={saveNewVehicle} onChange={e => setSaveNewVehicle(e.target.checked)} style={{ width:"15px", height:"15px", accentColor:"#ea6b14" }} />
+                    <input type="checkbox" checked={saveNewVehicle} onChange={e => setSaveNewVehicle(e.target.checked)} style={{ width:"15px", height:"15px", accentColor:"var(--ff-c10)" }} />
                     Save this vehicle for next time
                   </label>
                 </>
@@ -1231,7 +1231,7 @@ export default function NewRequest() {
 
           {isBusiness && (
             <label style={{ display:"flex", alignItems:"center", gap:".5rem", cursor:"pointer", fontSize:".88rem", color:"rgba(var(--ff-fg), .85)", marginTop:"1rem" }}>
-              <input type="checkbox" checked={recurring} onChange={e => setRecurring(e.target.checked)} style={{ width:"16px", height:"16px", accentColor:"#ea6b14" }} />
+              <input type="checkbox" checked={recurring} onChange={e => setRecurring(e.target.checked)} style={{ width:"16px", height:"16px", accentColor:"var(--ff-c10)" }} />
               This is recurring / scheduled maintenance
             </label>
           )}
@@ -1239,19 +1239,19 @@ export default function NewRequest() {
           {/* What this usually costs — read-only. The client names no number. */}
           <BudgetPicker services={selectedServices} pricing={pricing} />
 
-          <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", marginTop:"1.5rem", padding:"1rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
+          <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", marginTop:"1.5rem", padding:"1rem", background:"rgba(var(--ff-fg), .03)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
             <input
               type="checkbox"
               id="nr-agree-terms"
               checked={agreedToTerms}
               onChange={e => { setAgreedToTerms(e.target.checked); if (e.target.checked) setSubmitError(""); }}
-              style={{ marginTop:"2px", accentColor:"#ea6b14", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }}
+              style={{ marginTop:"2px", accentColor:"var(--ff-c10)", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }}
             />
             <label htmlFor="nr-agree-terms" style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.6, cursor:"pointer", fontWeight:300 }}>
               I agree to Freddy Fix It&rsquo;s{" "}
-              <a href="/user-agreement" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>User Agreement</a>
+              <a href="/user-agreement" target="_blank" rel="noopener noreferrer" style={{ color:"var(--ff-c10)", textDecoration:"none" }}>User Agreement</a>
               {" "}and{" "}
-              <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>Privacy Policy</a>.
+              <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color:"var(--ff-c10)", textDecoration:"none" }}>Privacy Policy</a>.
             </label>
           </div>
           </>)}
@@ -1262,10 +1262,10 @@ export default function NewRequest() {
         </div>
 
         <div style={{ display:"flex", gap:".75rem", marginTop:"2rem" }}>
-          <button style={{ ...s.navBtn, background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"1px solid rgba(var(--ff-fg), .1)" }} onClick={back}>{step === 1 ? "← Dashboard" : "← Back"}</button>
+          <button style={{ ...s.navBtn, background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)" }} onClick={back}>{step === 1 ? "← Dashboard" : "← Back"}</button>
           {step < TOTAL
-            ? <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff" }} onClick={next}>Next →</button>
-            : <button style={{ ...s.navBtn, background:"linear-gradient(135deg,#ea6b14,#f09020)", color:"#fff", opacity: submitting ? .6 : 1 }} onClick={submit} disabled={submitting}>
+            ? <button style={{ ...s.navBtn, background:"var(--ff-c10)", color:"#fff" }} onClick={next}>Next →</button>
+            : <button style={{ ...s.navBtn, background:"linear-gradient(135deg,var(--ff-c10),#f09020)", color:"#fff", opacity: submitting ? .6 : 1 }} onClick={submit} disabled={submitting}>
                 {submitting ? <><span className="ff-btn-spin" aria-hidden="true" />Submitting…</> : "Submit Request →"}
               </button>
           }

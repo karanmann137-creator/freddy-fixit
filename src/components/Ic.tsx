@@ -101,18 +101,49 @@ const ICONS: Record<IconName, React.ReactNode> = {
   "chevron-up": <path d="m18 15-6-6-6 6" />,
 };
 
-export function Ic({ name, size = 18, color = "currentColor", style }: IcProps) {
+// `color` RIDES CSS, NOT THE PRESENTATION ATTRIBUTE (2026-11-08), and that one
+// line is what makes a token safe to pass here.
+//
+// This component used to render `stroke={color}` directly. A presentation
+// attribute is not a CSS declaration, and `var()` support in one is uneven
+// enough that `color="var(--ff-c10)"` could draw an INVISIBLE icon — which is
+// why CLAUDE.md carried a standing rule never to hand a token to this prop.
+// The consequence was that every orange icon on the site had to spell `#ea6b14`
+// by hand: 68 of the 100 remaining raw-orange literals were THIS prop, and each
+// one renders the DARK-mode orange in light mode, where `--ff-c10` is #d65f10.
+//
+// So the rule is now enforced by construction instead of by memory. `stroke` is
+// the constant string `currentColor` — universally supported in a presentation
+// attribute, and the one value that defers to CSS — and the caller's `color`
+// becomes a real CSS `color` declaration in the inline style, where `var()` has
+// always worked. The icon then paints with its own computed colour.
+//
+// Two consequences worth knowing:
+//   * `...style` is spread AFTER, so a caller who sets `style={{ color }}`
+//     still wins over the prop. That ordering is deliberate: the style
+//     attribute is the more specific statement of intent.
+//   * `color` is now UNDEFINED by default rather than the literal
+//     "currentColor", so nothing is declared and the icon inherits its
+//     parent's colour — the same end state as before, reached by inheritance
+//     rather than by a redundant declaration. The one glyph with an internal
+//     `fill="currentColor"` (`key`) now follows the prop too, where it used to
+//     follow the inherited text colour. That is the more obviously correct
+//     behaviour, and it is the only glyph affected.
+export function Ic({ name, size = 18, color, style }: IcProps) {
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
       fill="none"
-      stroke={color}
+      stroke="currentColor"
       strokeWidth="1.75"
       strokeLinecap="round"
       strokeLinejoin="round"
-      style={{ display: "inline-block", verticalAlign: "middle", flexShrink: 0, ...style }}
+      style={{
+        display: "inline-block", verticalAlign: "middle", flexShrink: 0,
+        ...(color ? { color } : null), ...style,
+      }}
     >
       {ICONS[name]}
     </svg>

@@ -128,6 +128,54 @@ export default function TopNav() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, [onSidebarDash]);
+
+  // ── PUBLISH THE BAR'S MEASURED HEIGHT AS --ff-topnav-h ────────────────────
+  // Anything that has to sit directly under this fixed bar needs its height,
+  // and until now nothing could get it. Three different numbers for "how tall
+  // is the nav" were already in the tree and none of them was the nav: the
+  // dashboards render a 3.75rem spacer, Home pads 4.5rem, and main.tsx carried
+  // a --ff-h-nav: 42px that nothing read at all. A fourth hardcoded guess is
+  // the wrong fix, because the real height moves for reasons a constant cannot
+  // follow — the @media (max-width: 560px) block in this file shrinks the
+  // padding AND the brand AND the buttons, so the bar is ~4.25rem on desktop
+  // and ~3.2rem on a phone, and a future link or a taller control moves it
+  // again with nothing to tell you.
+  //
+  // So measure the element and publish the answer. getBoundingClientRect is
+  // exact, ResizeObserver fires on the breakpoint flip and on a font-size
+  // change, and a CSS variable means the consumer is a plain
+  // `top: var(--ff-topnav-h)` with no prop drilling and no second measurement.
+  //
+  // Written in PX deliberately, not rem: the measurement is already resolved
+  // through --ff-font-scale, and re-expressing it in rem would scale it twice.
+  // The static fallback in main.tsx is in rem precisely because it is NOT
+  // measured.
+  //
+  // NOT cleaned up on unmount. TopNav mounts once in App.tsx for the life of
+  // the document, and clearing the property on a hot-reload teardown would
+  // leave consumers reading the coarse fallback until the next resize.
+  const barRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+    const publish = () => {
+      const h = el.getBoundingClientRect().height;
+      // A 0 means the bar is display:none or not laid out yet. Publishing it
+      // would park a consumer underneath the real bar, so keep the previous
+      // value (or the fallback) instead — the same rule as "a failed read is
+      // not an empty result".
+      if (h > 0) document.documentElement.style.setProperty("--ff-topnav-h", h + "px");
+    };
+    publish();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", publish);
+      return () => window.removeEventListener("resize", publish);
+    }
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -192,7 +240,7 @@ export default function TopNav() {
     // var(--ff-bg), matching the page ground). Kept on the wrapper anyway so
     // dark mode's cascade is untouched and nothing has to change here.
     <>
-    <div className={`ff-nav-wrap ff-on-dark${lifted ? " ff-nav-lifted" : ""}${navHidden ? " ff-nav-hidden" : ""}`} style={wrap}>
+    <div ref={barRef} className={`ff-nav-wrap ff-on-dark${lifted ? " ff-nav-lifted" : ""}${navHidden ? " ff-nav-hidden" : ""}`} style={wrap}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
         .ff-nav-wrap { pointer-events: none; }
@@ -220,7 +268,7 @@ export default function TopNav() {
         .ff-peek { animation: ff-peek-in .22s ease-out both; }
         .ff-peek-main:hover .ff-peek-link { text-decoration: underline; }
         .ff-peek-x:hover { background: rgba(var(--ff-fg), .1); }
-        .ff-peek-target { border-color: rgba(234,107,20,.55) !important; color: #ea6b14 !important; }
+        .ff-peek-target { border-color: rgba(var(--ff-accent-rgb), .55) !important; color: var(--ff-c10) !important; }
         @keyframes ff-peek-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
         @media (prefers-reduced-motion: reduce) { .ff-peek { animation: none; } }
       `}</style>
@@ -295,7 +343,7 @@ export default function TopNav() {
                     Report a bug
                   </button>
                 )}
-                <button onClick={logOut} className="ff-menu-item" style={{ ...menuItem, color: "#ea6b14" }}>
+                <button onClick={logOut} className="ff-menu-item" style={{ ...menuItem, color: "var(--ff-c10)" }}>
                   Log out
                 </button>
               </div>
@@ -310,7 +358,7 @@ export default function TopNav() {
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen(o => !o)}
               className="ff-nav-btn ff-nav-btn-accent"
-              style={{ ...btn, ...accentBtn, display: "inline-flex", alignItems: "center", gap: ".45rem" }}
+              style={{ ...btn, ...accentBtn, display: "inline-flex", alignItems: "center", gap: "var(--ff-s2)" }}
             >
               <Ic name="menu" size={16} />
               Menu
@@ -359,7 +407,7 @@ export default function TopNav() {
                 <button
                   onClick={logOut}
                   className="ff-menu-item"
-                  style={{ ...menuItem, color: "#ea6b14" }}
+                  style={{ ...menuItem, color: "var(--ff-c10)" }}
                 >
                   Log out
                 </button>
@@ -415,18 +463,18 @@ const wrap: React.CSSProperties = {
 };
 const brand: React.CSSProperties = {
   fontFamily: "'Bebas Neue', sans-serif", fontSize: "1.75rem", letterSpacing: ".04em",
-  color: "#ea6b14", cursor: "pointer", lineHeight: 1, userSelect: "none",
+  color: "var(--ff-c10)", cursor: "pointer", lineHeight: 1, userSelect: "none",
 };
 const right: React.CSSProperties = { display: "flex", gap: ".6rem", alignItems: "center" };
 const btn: React.CSSProperties = {
   padding: ".55rem 1.1rem", borderRadius: "999px", fontSize: ".85rem",
   fontWeight: 500, cursor: "pointer", border: "1px solid", fontFamily: "'DM Sans', sans-serif",
 };
-const accentBtn: React.CSSProperties = { background: "#ea6b14", color: "#fff", borderColor: "#ea6b14" };
+const accentBtn: React.CSSProperties = { background: "var(--ff-c10)", color: "#fff", borderColor: "var(--ff-c10)" };
 const ghostBtn: React.CSSProperties = { background: "rgba(var(--ff-fg), .05)", color: "rgba(var(--ff-fg), .8)", borderColor: "rgba(var(--ff-fg), .12)" };
 const menuPanel: React.CSSProperties = {
   position: "absolute", top: "calc(100% + .5rem)", right: 0, minWidth: "200px",
-  background: "var(--ff-surface)", border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: "14px",
+  background: "var(--ff-surface)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius: "14px",
   padding: ".4rem", boxShadow: "0 14px 40px rgba(0,0,0,.45)", zIndex: 200,
   display: "flex", flexDirection: "column", gap: ".15rem",
 };
@@ -436,15 +484,15 @@ const menuPanel: React.CSSProperties = {
 const peekCard: React.CSSProperties = {
   position: "absolute", top: "calc(100% + .65rem)", right: 0,
   width: "min(260px, calc(100vw - 2rem))",
-  background: "var(--ff-surface)", border: "1px solid rgba(234,107,20,.3)",
+  background: "var(--ff-surface)", border: "1px solid rgba(var(--ff-accent-rgb), .3)",
   borderRadius: "14px", padding: ".85rem .9rem .8rem",
   boxShadow: "0 16px 44px rgba(0,0,0,.28)", zIndex: 200,
   display: "flex", alignItems: "flex-start", gap: ".4rem",
 };
 const peekCaret: React.CSSProperties = {
   position: "absolute", top: "-5px", right: "14px", width: "9px", height: "9px",
-  background: "var(--ff-surface)", borderLeft: "1px solid rgba(234,107,20,.3)",
-  borderTop: "1px solid rgba(234,107,20,.3)", transform: "rotate(45deg)",
+  background: "var(--ff-surface)", borderLeft: "1px solid rgba(var(--ff-accent-rgb), .3)",
+  borderTop: "1px solid rgba(var(--ff-accent-rgb), .3)", transform: "rotate(45deg)",
 };
 const peekMain: React.CSSProperties = {
   display: "flex", flexDirection: "column", gap: ".3rem", flex: 1, minWidth: 0,
@@ -458,7 +506,7 @@ const peekBody: React.CSSProperties = {
   fontSize: ".8rem", lineHeight: 1.5, color: "rgba(var(--ff-muted), .9)", fontWeight: 300,
 };
 const peekLink: React.CSSProperties = {
-  fontSize: ".8rem", fontWeight: 600, color: "#ea6b14", marginTop: ".1rem",
+  fontSize: ".8rem", fontWeight: 600, color: "var(--ff-c10)", marginTop: ".1rem",
 };
 const peekX: React.CSSProperties = {
   flex: "0 0 auto", width: "24px", height: "24px", borderRadius: "7px",

@@ -17,6 +17,22 @@ import React from "react";
  * The colours are literals, not tokens, for the same reason the Google "G" is:
  * a logo is a fixed asset. It must look identical on the navy pass, on an
  * off-white light-mode card, and in an email.
+ *
+ * ⚠️ SO THE THREE ORANGE LITERALS BELOW ARE A PERMANENT, INTENTIONAL EXCEPTION TO
+ * THE ORANGE RATCHET (tools/check_ux.py), NOT A MISS. They are three of the ~20
+ * that remain, and `tools/migrate_orange.py` will keep printing them every run.
+ * Leave them. Two independent reasons, either one sufficient:
+ *   * A mark whose accent shifts with the theme is a different logo in light mode.
+ *     --ff-c10 is #ea6b14 dark but #d65f10 light, which is exactly the swap every
+ *     other site wants and this one must not have.
+ *   * `fill="#1a2236"` and `stroke="#f0f4ff"` here are literals too and have no
+ *     token to become — navy and ink are the mark's own colours, not the page's.
+ *     Tokenising only the orange would leave the mark half-themed, which is worse
+ *     than either state: in light mode you would get a #d65f10 octagon on a navy
+ *     tile that stayed navy.
+ * The nearly-identical inline copy in Home.tsx's "Freddy Verified" pill DID
+ * tokenise, and the distinction is the point: that one is a 30px glyph inside a
+ * fully-tokenised pill, not an asset. See the comment there.
  */
 export function Mark({ size = 34, style }: { size?: number; style?: React.CSSProperties }) {
   return (

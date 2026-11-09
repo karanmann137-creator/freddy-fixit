@@ -92,12 +92,12 @@ export default function UpdatePassword() {
   );
 }
 
-const inp: React.CSSProperties = { width: "100%", padding: ".75rem 1rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .1)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".95rem", outline: "none", boxSizing: "border-box" };
+const inp: React.CSSProperties = { width: "100%", padding: ".75rem 1rem", background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".95rem", boxSizing: "border-box" };
 const s: Record<string, React.CSSProperties> = {
-  wrap: { minHeight: "100vh", background: "var(--ff-bg)", backgroundImage: "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(234,107,20,0.15) 0%, transparent 70%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem 1rem", fontFamily: "'DM Sans',sans-serif", color: "var(--ff-text)" },
-  logo: { fontFamily: "'Bebas Neue',sans-serif", fontSize: "2.2rem", letterSpacing: ".1em", textAlign: "center", marginBottom: "2rem", color: "#ea6b14" },
-  card: { background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: "14px", padding: "2rem" },
-  heading: { fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.8rem", letterSpacing: ".06em", marginBottom: ".25rem" },
+  wrap: { minHeight: "100vh", background: "var(--ff-bg)", backgroundImage: "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(var(--ff-accent-rgb), 0.15) 0%, transparent 70%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem 1rem", fontFamily: "'DM Sans',sans-serif", color: "var(--ff-text)" },
+  logo: { fontFamily: "'Bebas Neue',sans-serif", fontSize: "2.2rem", letterSpacing: ".1em", textAlign: "center", marginBottom: "2rem", color: "var(--ff-c10)" },
+  card: { background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: "14px", padding: "2rem" },
+  heading: { fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.8rem", letterSpacing: ".06em", marginBottom: "var(--ff-s1)" },
   err: { background: "rgba(239,68,68,.1)", border: "1px solid rgba(239,68,68,.25)", borderRadius: "8px", padding: ".75rem 1rem", fontSize: ".83rem", color: "var(--ff-danger)", marginBottom: "1rem" },
-  btn: { width: "100%", padding: ".9rem", background: "#ea6b14", color: "#fff", border: "none", borderRadius: "8px", fontFamily: "inherit", fontSize: ".95rem", fontWeight: 500, cursor: "pointer", boxSizing: "border-box" },
+  btn: { width: "100%", padding: "var(--ff-s4)", background: "var(--ff-c10)", color: "#fff", border: "none", borderRadius: "8px", fontFamily: "inherit", fontSize: ".95rem", fontWeight: 500, cursor: "pointer", boxSizing: "border-box" },
 };

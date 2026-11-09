@@ -250,7 +250,7 @@ export default function BidChat({
             </div>
             {title && <div style={{ fontSize: ".74rem", color: "rgba(240,244,255,.5)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title} · before you book</div>}
           </div>
-          <button onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", color: "rgba(240,244,255,.6)", cursor: "pointer", padding: ".2rem" }}>
+          <button onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", color: "rgba(240,244,255,.6)", cursor: "pointer", padding: "var(--ff-s1)" }}>
             <Ic name="x-circle" size={18} />
           </button>
         </div>
@@ -292,8 +292,8 @@ export default function BidChat({
                       padding: m.attachment_path && !m.content ? ".35rem" : ".55rem .75rem",
                       borderRadius: "12px", fontSize: ".86rem", lineHeight: 1.45,
                       whiteSpace: "pre-wrap", wordBreak: "break-word",
-                      background: mine ? "rgba(234,107,20,.18)" : "rgba(240,244,255,.07)",
-                      border: "1px solid " + (mine ? "rgba(234,107,20,.35)" : "rgba(240,244,255,.1)"),
+                      background: mine ? "rgba(var(--ff-accent-rgb), .18)" : "rgba(240,244,255,.07)",
+                      border: "1px solid " + (mine ? "rgba(var(--ff-accent-rgb), .35)" : "rgba(240,244,255,.1)"),
                       color: "#f0f4ff",
                       textDecoration: m.blocked ? "line-through" : "none",
                       opacity: m.blocked ? .55 : 1,
@@ -318,11 +318,11 @@ export default function BidChat({
                       )}
                       {m.content}
                     </div>
-                    <div style={{ fontSize: ".68rem", color: "rgba(240,244,255,.4)", marginTop: ".2rem", textAlign: mine ? "right" : "left" }}>
+                    <div style={{ fontSize: ".68rem", color: "rgba(240,244,255,.4)", marginTop: "var(--ff-s1)", textAlign: mine ? "right" : "left" }}>
                       {m.blocked ? "Only you can see this message" : messageTime(m.created_at)}
                     </div>
                     {m.blocked && (
-                      <div style={{ fontSize: ".72rem", color: "var(--ff-warn)", marginTop: ".2rem", lineHeight: 1.4, textAlign: mine ? "right" : "left" }}>
+                      <div style={{ fontSize: ".72rem", color: "var(--ff-warn)", marginTop: "var(--ff-s1)", lineHeight: 1.4, textAlign: mine ? "right" : "left" }}>
                         {reason || BLOCKED_HELP}
                       </div>
                     )}
@@ -384,7 +384,7 @@ export default function BidChat({
               onClick={send}
               disabled={sending || (!text.trim() && !pending)}
               style={{
-                background: "#ea6b14", color: "#fff", border: "none", borderRadius: "10px",
+                background: "var(--ff-c10)", color: "#fff", border: "none", borderRadius: "10px",
                 padding: ".55rem 1rem", fontFamily: "inherit", fontSize: ".85rem", fontWeight: 700,
                 cursor: sending || (!text.trim() && !pending) ? "default" : "pointer",
                 opacity: sending || (!text.trim() && !pending) ? .5 : 1,

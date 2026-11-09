@@ -186,7 +186,7 @@ export default function NotificationBell({ userId, dashboardPath }: { userId: st
         aria-label="Notifications"
         style={{
           position: "relative", width: 40, height: 40, borderRadius: "999px",
-          background: "rgba(var(--ff-fg), .05)", border: "1px solid rgba(var(--ff-fg), .12)",
+          background: "rgba(var(--ff-fg), .05)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .12)",
           cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
         }}
       >
@@ -197,7 +197,7 @@ export default function NotificationBell({ userId, dashboardPath }: { userId: st
         {unread > 0 && (
           <span style={{
             position: "absolute", top: -2, right: -2, minWidth: 18, height: 18, padding: "0 4px",
-            borderRadius: "999px", background: "#ea6b14", color: "#fff", fontSize: ".68rem",
+            borderRadius: "999px", background: "var(--ff-c10)", color: "#fff", fontSize: ".68rem",
             fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
             boxShadow: "0 0 0 2px var(--ff-bg)",
           }}>{unread > 9 ? "9+" : unread}</span>
@@ -211,14 +211,14 @@ export default function NotificationBell({ userId, dashboardPath }: { userId: st
           // measured left edge and the painted width can't disagree.
           width: pos.width,
           maxHeight: pos.maxHeight, overflowY: "auto",
-          background: "var(--ff-surface)", border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: 14,
+          background: "var(--ff-surface)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius: 14,
           // Above the mobile drawer (900/901). At 200 a panel opened from the
           // icon rail before the drawer opened was buried underneath it.
           boxShadow: "0 18px 50px rgba(0,0,0,.5)", zIndex: 950, fontFamily: "'DM Sans', sans-serif",
         }}>
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: ".8rem 1rem", borderBottom: "1px solid rgba(var(--ff-fg), .08)",
+            padding: ".8rem 1rem", borderBottom: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)",
           }}>
             <span style={{ color: "var(--ff-text)", fontWeight: 600, fontSize: ".92rem" }}>Notifications</span>
             {/* Padded to a real tap target — it was ~15px tall, which is under
@@ -226,7 +226,7 @@ export default function NotificationBell({ userId, dashboardPath }: { userId: st
                 margin keeps the header's visual height unchanged. */}
             {unread > 0 && (
               <button onClick={markAllRead} style={{
-                background: "none", border: "none", color: "#ea6b14", cursor: "pointer",
+                background: "none", border: "none", color: "var(--ff-c10)", cursor: "pointer",
                 fontSize: ".78rem", fontWeight: 600, fontFamily: "'DM Sans', sans-serif",
                 padding: ".55rem .6rem", margin: "-.55rem -.6rem", minHeight: 44,
               }}>Mark all read</button>
@@ -244,17 +244,17 @@ export default function NotificationBell({ userId, dashboardPath }: { userId: st
                 onClick={() => openNote(n)}
                 style={{
                   display: "block", width: "100%", textAlign: "left", cursor: "pointer",
-                  padding: ".75rem 1rem", border: "none", borderBottom: "1px solid rgba(var(--ff-fg), .05)",
-                  background: n.read_at ? "transparent" : "rgba(234,107,20,.08)",
+                  padding: ".75rem 1rem", border: "none", borderBottom: "var(--ff-hair-w) solid rgba(var(--ff-fg), .05)",
+                  background: n.read_at ? "transparent" : "rgba(var(--ff-accent-rgb), .08)",
                   fontFamily: "'DM Sans', sans-serif",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: ".5rem" }}>
-                  {!n.read_at && <span style={{ width: 7, height: 7, borderRadius: "999px", background: "#ea6b14", flexShrink: 0 }} />}
+                  {!n.read_at && <span style={{ width: 7, height: 7, borderRadius: "999px", background: "var(--ff-c10)", flexShrink: 0 }} />}
                   <span style={{ color: "var(--ff-text)", fontWeight: 600, fontSize: ".85rem", flex: 1 }}>{n.title ?? "Update"}</span>
                   <span style={{ color: "rgba(var(--ff-fg), .4)", fontSize: ".7rem", flexShrink: 0 }}>{timeAgo(n.created_at)}</span>
                 </div>
-                {n.body && <div style={{ color: "rgba(var(--ff-fg), .65)", fontSize: ".8rem", marginTop: ".25rem", lineHeight: 1.4 }}>{n.body}</div>}
+                {n.body && <div style={{ color: "rgba(var(--ff-fg), .65)", fontSize: ".8rem", marginTop: "var(--ff-s1)", lineHeight: 1.4 }}>{n.body}</div>}
               </button>
             ))
           )}

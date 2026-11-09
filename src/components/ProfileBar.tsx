@@ -99,24 +99,24 @@ export default function ProfileBar({ role, onSaved }: { role: Role; onSaved?: ()
     }
   };
 
-  const wrap: React.CSSProperties = { background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: "12px", padding: "1rem 1.25rem", marginBottom: "1.5rem" };
-  const inp: React.CSSProperties = { width: "100%", padding: ".6rem .8rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .1)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".9rem", outline: "none", boxSizing: "border-box" };
+  const wrap: React.CSSProperties = { background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: "12px", padding: "1rem 1.25rem", marginBottom: "1.5rem" };
+  const inp: React.CSSProperties = { width: "100%", padding: ".6rem .8rem", background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".9rem", boxSizing: "border-box" };
   const lbl: React.CSSProperties = { display: "block", fontSize: ".7rem", textTransform: "uppercase", letterSpacing: ".1em", color: "rgba(var(--ff-muted), .5)", marginBottom: ".35rem" };
-  const ghostBtn: React.CSSProperties = { padding: ".55rem 1.1rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: "8px", color: "rgba(var(--ff-muted), .8)", fontFamily: "inherit", fontSize: ".83rem", cursor: "pointer" };
-  const primaryBtn: React.CSSProperties = { padding: ".55rem 1.3rem", background: "#ea6b14", border: "none", borderRadius: "8px", color: "#fff", fontFamily: "inherit", fontSize: ".83rem", fontWeight: 500, cursor: "pointer" };
+  const ghostBtn: React.CSSProperties = { padding: ".55rem 1.1rem", background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius: "8px", color: "rgba(var(--ff-muted), .8)", fontFamily: "inherit", fontSize: ".83rem", cursor: "pointer" };
+  const primaryBtn: React.CSSProperties = { padding: ".55rem 1.3rem", background: "var(--ff-c10)", border: "none", borderRadius: "8px", color: "#fff", fontFamily: "inherit", fontSize: ".83rem", fontWeight: 500, cursor: "pointer" };
 
   if (loading) return null;
 
   return (
     <div style={wrap}>
-      <div style={{ display: "flex", alignItems: "center", gap: ".9rem", flexWrap: "wrap" }}>
-        <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "rgba(234,107,20,.15)", border: "1px solid rgba(234,107,20,.35)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <Ic name="user" size={18} color="#ea6b14" />
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--ff-s4)", flexWrap: "wrap" }}>
+        <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "rgba(var(--ff-accent-rgb), .15)", border: "1px solid rgba(var(--ff-accent-rgb), .35)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <Ic name="user" size={18} color="var(--ff-c10)" />
         </div>
         <div style={{ flex: 1, minWidth: "160px" }}>
           <div style={{ fontSize: ".95rem", fontWeight: 500, color: "var(--ff-text)" }}>
             {displayName}
-            <span style={{ fontSize: ".62rem", textTransform: "uppercase", letterSpacing: ".08em", background: "rgba(234,107,20,.15)", color: "#ea6b14", borderRadius: "4px", padding: ".12rem .4rem", marginLeft: ".5rem", verticalAlign: "middle" }}>{roleLabel}</span>
+            <span style={{ fontSize: ".62rem", textTransform: "uppercase", letterSpacing: ".08em", background: "rgba(var(--ff-accent-rgb), .15)", color: "var(--ff-c10)", borderRadius: "4px", padding: ".12rem .4rem", marginLeft: ".5rem", verticalAlign: "middle" }}>{roleLabel}</span>
           </div>
           <div style={{ fontSize: ".8rem", color: "rgba(var(--ff-muted), .5)" }}>{email}{form.phone ? " · " + form.phone : ""}</div>
         </div>
@@ -126,8 +126,8 @@ export default function ProfileBar({ role, onSaved }: { role: Role; onSaved?: ()
       </div>
 
       {open && (
-        <div style={{ marginTop: "1.1rem", borderTop: "1px solid rgba(var(--ff-fg), .07)", paddingTop: "1.1rem" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: ".9rem" }}>
+        <div style={{ marginTop: "1.1rem", borderTop: "var(--ff-hair-w) solid rgba(var(--ff-fg), .07)", paddingTop: "1.1rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "var(--ff-s4)" }}>
             <div>
               <label style={lbl}>First name</label>
               <input style={inp} value={form.firstName} onChange={e => setF("firstName", e.target.value)} placeholder="First name" />

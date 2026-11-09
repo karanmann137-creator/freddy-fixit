@@ -72,8 +72,8 @@ export default function PhotoPicker({
         padding: "1.9rem 1.25rem",
         borderRadius: "14px",
         cursor: "pointer",
-        border: "2px dashed " + (picked ? "rgba(234,107,20,.55)" : "rgba(var(--ff-fg), .16)"),
-        background: picked ? "rgba(234,107,20,.06)" : "rgba(var(--ff-fg), .02)",
+        border: "2px dashed " + (picked ? "rgba(var(--ff-accent-rgb), .55)" : "rgba(var(--ff-fg), .16)"),
+        background: picked ? "rgba(var(--ff-accent-rgb), .06)" : "rgba(var(--ff-fg), .02)",
         transition: "border-color .2s, background .2s",
       }}
     >
@@ -92,11 +92,11 @@ export default function PhotoPicker({
           height: "76px",
           borderRadius: "999px",
           flexShrink: 0,
-          background: "rgba(234,107,20,.12)",
-          border: "1px solid rgba(234,107,20,.35)",
+          background: "rgba(var(--ff-accent-rgb), .12)",
+          border: "1px solid rgba(var(--ff-accent-rgb), .35)",
         }}
       >
-        <Ic name="camera" size={36} color="#ea6b14" />
+        <Ic name="camera" size={36} color="var(--ff-c10)" />
       </span>
       <span style={{ display: "block", maxWidth: "100%" }}>
         <span
@@ -106,7 +106,7 @@ export default function PhotoPicker({
             fontWeight: 500,
             lineHeight: 1.4,
             wordBreak: "break-word",
-            color: picked ? "#ea6b14" : "var(--ff-text)",
+            color: picked ? "var(--ff-c10)" : "var(--ff-text)",
           }}
         >
           {picked ? file!.name : "Tap to add a photo"}

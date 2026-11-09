@@ -47,7 +47,7 @@ export default function MessagesInbox({
 }) {
   const card: React.CSSProperties = {
     background: "var(--ff-card-bg)",
-    border: "1px solid var(--ff-card-border)",
+    border: "var(--ff-hair-w) solid var(--ff-card-border)",
     borderRadius: "12px",
     padding: "clamp(1rem, 4vw, 1.5rem)",
   };
@@ -71,8 +71,8 @@ export default function MessagesInbox({
           <button
             onClick={onRetry}
             style={{
-              marginTop: ".7rem", padding: ".5rem .9rem", borderRadius: "8px", cursor: "pointer",
-              background: "rgba(234,107,20,.14)", border: "1px solid rgba(234,107,20,.4)",
+              marginTop: "var(--ff-s3)", padding: ".5rem .9rem", borderRadius: "8px", cursor: "pointer",
+              background: "rgba(var(--ff-accent-rgb), .14)", border: "1px solid rgba(var(--ff-accent-rgb), .4)",
               color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".85rem",
             }}
           >Try again</button>
@@ -118,16 +118,16 @@ export default function MessagesInbox({
               display: "flex", alignItems: "flex-start", gap: ".75rem", width: "100%",
               textAlign: "left", cursor: "pointer", fontFamily: "inherit",
               padding: "clamp(.7rem, 3vw, .9rem)", borderRadius: "12px",
-              background: unread ? "rgba(234,107,20,.08)" : "var(--ff-card-bg)",
-              border: unread ? "1px solid rgba(234,107,20,.18)" : "1px solid var(--ff-card-border)",
+              background: unread ? "rgba(var(--ff-accent-rgb), .08)" : "var(--ff-card-bg)",
+              border: unread ? "1px solid rgba(var(--ff-accent-rgb), .18)" : "1px solid var(--ff-card-border)",
             }}
           >
             <div style={{
               width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
-              background: "rgba(234,107,20,.16)", border: "1px solid rgba(234,107,20,.3)",
+              background: "rgba(var(--ff-accent-rgb), .16)", border: "1px solid rgba(var(--ff-accent-rgb), .3)",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontFamily: "'Bebas Neue', sans-serif", fontSize: "1rem", letterSpacing: ".04em",
-              color: "#ea6b14",
+              color: "var(--ff-c10)",
             }}>{initials(name)}</div>
 
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -158,21 +158,21 @@ export default function MessagesInbox({
                 {c.kind === "bid" && (
                   <span style={{
                     padding: ".14rem .45rem", borderRadius: 999, flexShrink: 0,
-                    background: "rgba(234,107,20,.12)", border: "1px solid rgba(234,107,20,.28)",
-                    color: "#ea6b14", fontWeight: 600, whiteSpace: "nowrap",
+                    background: "rgba(var(--ff-accent-rgb), .12)", border: "1px solid rgba(var(--ff-accent-rgb), .28)",
+                    color: "var(--ff-c10)", fontWeight: 600, whiteSpace: "nowrap",
                   }}>Before hiring</span>
                 )}
                 {c.service_needed && (
                   <span style={{
                     padding: ".14rem .45rem", borderRadius: 999,
-                    background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .08)",
+                    background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)",
                     maxWidth: "min(200px, 60%)", overflow: "hidden",
                     textOverflow: "ellipsis", whiteSpace: "nowrap",
                   }}>{c.service_needed}</span>
                 )}
                 {c.location && (
                   <span style={{
-                    display: "inline-flex", alignItems: "center", gap: ".2rem",
+                    display: "inline-flex", alignItems: "center", gap: "var(--ff-s1)",
                     minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                   }}>
                     <Ic name="map-pin" size={11} />{c.location}
@@ -184,7 +184,7 @@ export default function MessagesInbox({
             {unread && (
               <span style={{
                 flexShrink: 0, minWidth: 20, height: 20, padding: "0 .35rem",
-                borderRadius: 999, background: "#ea6b14", color: "#fff",
+                borderRadius: 999, background: "var(--ff-c10)", color: "#fff",
                 fontSize: ".7rem", fontWeight: 700,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>{c.unread > 9 ? "9+" : c.unread}</span>

@@ -17,9 +17,9 @@ export default function OnboardingProgress({ step, total }: { step: number; tota
               width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
               display: "flex", alignItems: "center", justifyContent: "center",
               fontFamily: "'Bebas Neue', sans-serif", fontSize: "0.92rem", letterSpacing: ".02em",
-              background: filled ? "#ea6b14" : "rgba(var(--ff-fg), .08)",
+              background: filled ? "var(--ff-c10)" : "rgba(var(--ff-fg), .08)",
               color: filled ? "#fff" : "rgba(var(--ff-muted), .55)",
-              boxShadow: active ? "0 0 0 3px rgba(234,107,20,.18)" : "none",
+              boxShadow: active ? "0 0 0 3px rgba(var(--ff-accent-rgb), .18)" : "none",
               transition: "background .2s ease, box-shadow .2s ease",
             }}>
               {n}
@@ -27,7 +27,7 @@ export default function OnboardingProgress({ step, total }: { step: number; tota
             {n < total && (
               <div style={{
                 flex: 1, height: "3px", margin: "0 6px", borderRadius: "99px",
-                background: n < step ? "rgba(234,107,20,.45)" : "rgba(var(--ff-fg), .1)",
+                background: n < step ? "rgba(var(--ff-accent-rgb), .45)" : "rgba(var(--ff-fg), .1)",
                 transition: "background .2s ease",
               }} />
             )}

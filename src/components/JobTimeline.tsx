@@ -114,7 +114,7 @@ export default function JobTimeline({ job }: { job: any }) {
             footnote rather than as an unexplained orphan line below the box.
             Amber, matching the `review` dot the dispute just painted. */}
         {disputed && (
-          <div style={{ padding: "var(--ff-s3) var(--ff-s4)", borderTop: "1px solid var(--ff-hair)", fontSize: ".78rem", color: "var(--ff-warn)" }}>
+          <div style={{ padding: "var(--ff-s3) var(--ff-s4)", borderTop: "var(--ff-hair-w) solid var(--ff-hair)", fontSize: ".78rem", color: "var(--ff-warn)" }}>
             <Ic name="alert-triangle" size={12} style={{ marginRight: 4 }} />Paused — a problem was reported and is under review.
           </div>
         )}

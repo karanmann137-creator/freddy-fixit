@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
+import { ensureUiStyles } from "./ui/uiStyles";
 
 // Shows ONCE per browser if a user still has unfinished profile info.
 // Contractors: payouts (Stripe), licence & insurance, company name.
@@ -16,6 +17,7 @@ export default function ProfileCompletionModal({
   contractor?: any;
   onSetupPayouts?: () => void;
 }) {
+  ensureUiStyles();
   const [, setLocation] = useLocation();
   const [open, setOpen] = useState(false);
 
@@ -75,8 +77,15 @@ export default function ProfileCompletionModal({
     : "Your money is safe: you pay a deposit to book, the rest when the work is finished, and we hold both securely — nothing reaches the contractor until the job is done and you've confirmed it.";
 
   return (
-    <div onClick={close} style={{ position:"fixed", inset:0, zIndex:9999, background:"rgba(8,12,22,.72)", backdropFilter:"blur(3px)", display:"flex", alignItems:"center", justifyContent:"center", padding:"1.2rem" }}>
-      <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:"440px", background:"var(--ff-bg)", border:"1px solid rgba(234,107,20,.35)", borderRadius:"16px", padding:"1.7rem 1.5rem 1.4rem", boxShadow:"0 24px 70px rgba(0,0,0,.55)", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)", position:"relative", maxHeight:"90vh", overflowY:"auto" }}>
+    <div onClick={close} className="ffu-scrim">
+      <div
+        onClick={e => e.stopPropagation()}
+        className="ffu-modal"
+        role="dialog"
+        aria-modal="true"
+        style={{ ["--ffu-modal-w" as any]: "440px" }}
+      >
+        <span className="ffu-grab" aria-hidden="true" />
         <button onClick={close} aria-label="Close" style={{ position:"absolute", top:".7rem", right:".9rem", background:"none", border:"none", color:"rgba(var(--ff-muted), .6)", fontSize:"1.4rem", lineHeight:1, cursor:"pointer", fontFamily:"inherit" }}>×</button>
 
         <h3 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.7rem", letterSpacing:".02em", margin:"0 0 .35rem", color:"var(--ff-text)" }}>Finish setting up your profile</h3>
@@ -88,8 +97,8 @@ export default function ProfileCompletionModal({
 
         <div style={{ display:"flex", flexDirection:"column", gap:".6rem", marginBottom:"1.1rem" }}>
           {items.map(it => (
-            <div key={it.key} style={{ display:"flex", gap:".7rem", alignItems:"flex-start", padding:".75rem .85rem", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.3)", borderRadius:"12px" }}>
-              <span style={{ flexShrink:0, width:"22px", height:"22px", borderRadius:"50%", background:"#ea6b14", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:".8rem", fontWeight:700, marginTop:"1px" }}>!</span>
+            <div key={it.key} style={{ display:"flex", gap: "var(--ff-s3)", alignItems:"flex-start", padding:".75rem .85rem", background:"rgba(var(--ff-accent-rgb), .08)", border:"1px solid rgba(var(--ff-accent-rgb), .3)", borderRadius:"12px" }}>
+              <span style={{ flexShrink:0, width:"22px", height:"22px", borderRadius:"50%", background:"var(--ff-c10)", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:".8rem", fontWeight:700, marginTop:"1px" }}>!</span>
               <div>
                 <div style={{ fontWeight:600, fontSize:".95rem", color:"var(--ff-text)", marginBottom:".15rem" }}>{it.label}</div>
                 <div style={{ fontSize:".82rem", lineHeight:1.45, color:"rgba(var(--ff-muted), .78)" }}>{it.detail}</div>
@@ -103,8 +112,8 @@ export default function ProfileCompletionModal({
           <div style={{ fontSize:".84rem", lineHeight:1.5, color:"var(--ff-text)" }}>{escrow}</div>
         </div>
 
-        <button onClick={primary} style={{ width:"100%", padding:".85rem 1rem", background:"#ea6b14", color:"#fff", border:"none", borderRadius:"10px", fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:".95rem", cursor:"pointer", marginBottom:".55rem" }}>{primaryLabel}</button>
-        <button onClick={close} style={{ width:"100%", padding:".6rem", background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"9px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer" }}>I'll do it later</button>
+        <button onClick={primary} style={{ width:"100%", padding:".85rem 1rem", background:"var(--ff-c10)", color:"#fff", border:"none", borderRadius:"10px", fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:".95rem", cursor:"pointer", marginBottom:".55rem" }}>{primaryLabel}</button>
+        <button onClick={close} style={{ width:"100%", padding:".6rem", background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"9px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer" }}>I'll do it later</button>
       </div>
     </div>
   );

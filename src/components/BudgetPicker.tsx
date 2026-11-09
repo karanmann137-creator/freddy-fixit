@@ -98,9 +98,9 @@ export default function BudgetPicker({
       <div style={{
         display: "flex", alignItems: "flex-start", gap: ".5rem",
         padding: ".7rem .8rem", borderRadius: "10px",
-        background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.22)",
+        background: "rgba(var(--ff-accent-rgb), .08)", border: "1px solid rgba(var(--ff-accent-rgb), .22)",
       }}>
-        <Ic name="dollar" size={14} color="#ea6b14" style={{ marginTop: 3, flexShrink: 0 }} />
+        <Ic name="dollar" size={14} color="var(--ff-c10)" style={{ marginTop: 3, flexShrink: 0 }} />
         <div style={{ fontSize: ".85rem", lineHeight: 1.5, color: "var(--ff-text)" }}>
           {services.length > 1 ? "Jobs like these come in around " : "Jobs like this come in around "}
           <strong>{money(Math.round(bm.benchmark))}</strong>

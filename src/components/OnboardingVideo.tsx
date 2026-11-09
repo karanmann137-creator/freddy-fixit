@@ -53,9 +53,9 @@ import { Ic } from "@/components/Ic";
  */
 
 const CSS =
-  ".ff-onbvid{margin:0 0 1.5rem;border:1px solid rgba(var(--ff-fg), .1);background:rgba(var(--ff-fg), .04);border-radius:12px;padding:.85rem 1rem;}"
+  ".ff-onbvid{margin:0 0 1.5rem;border:var(--ff-hair-w) solid rgba(var(--ff-fg), .1);background:rgba(var(--ff-fg), .04);border-radius:12px;padding:.85rem 1rem;}"
   + ".ff-onbvid-btn{display:flex;align-items:center;gap:.7rem;width:100%;background:none;border:none;padding:0;cursor:pointer;font-family:inherit;color:var(--ff-text);text-align:left;}"
-  + ".ff-onbvid-play{flex-shrink:0;display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:#ea6b14;}"
+  + ".ff-onbvid-play{flex-shrink:0;display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:var(--ff-c10);}"
   + ".ff-onbvid-ttl{font-size:.92rem;font-weight:500;line-height:1.3;}"
   + ".ff-onbvid-sub{font-size:.76rem;color:rgba(var(--ff-muted), .65);margin-top:.15rem;}"
   + ".ff-onbvid-vid{width:100%;display:block;border-radius:8px;margin-top:.85rem;background:#000;}"
@@ -76,7 +76,7 @@ const CSS =
   // .55 rather than the house .72 — he asked for the page darkened but still
   // visible, and at .72 with a blur the form behind reads as switched off.
   + ".ff-onbvid-ovl{display:flex;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:1.2rem;background:rgba(8,12,22,.55);}"
-  + ".ff-onbvid-panel{display:block;width:55vw;max-width:1200px;background:var(--ff-bg);border:1px solid rgba(var(--ff-fg), .12);border-radius:14px;padding:1.1rem 1.2rem 1rem;box-shadow:0 24px 60px rgba(0,0,0,.45);}"
+  + ".ff-onbvid-panel{display:block;width:55vw;max-width:1200px;background:var(--ff-bg);border:var(--ff-hair-w) solid rgba(var(--ff-fg), .12);border-radius:14px;padding:1.1rem 1.2rem 1rem;box-shadow:0 24px 60px rgba(0,0,0,.45);}"
   + ".ff-onbvid-on .ff-onbvid-btn{display:flex;}"
   // A tall portrait clip would otherwise push the hide button off-screen; the
   // cap is on the video, not the panel, so the button always stays reachable.

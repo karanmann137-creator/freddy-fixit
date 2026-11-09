@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Ic } from "@/components/Ic";
 import { mfaReason } from "@/lib/mfa";
+import { ensureUiStyles } from "./ui/uiStyles";
 
 // Re-verify a lapsed two-step window, in place.
 //
@@ -31,6 +32,7 @@ type Props = {
 };
 
 export default function VerifyCodeModal({ onDone, onCancel, what }: Props) {
+  ensureUiStyles();
   const [code, setCode]         = useState("");
   const [busy, setBusy]         = useState(false);
   const [err, setErr]           = useState("");
@@ -81,19 +83,13 @@ export default function VerifyCodeModal({ onDone, onCancel, what }: Props) {
 
   const ready = recovery ? code.trim().length > 0 : code.length === 6;
 
-  const overlay: React.CSSProperties = {
-    position: "fixed", inset: 0, zIndex: 9000,
-    background: "rgba(10,14,24,.72)", backdropFilter: "blur(2px)",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    padding: "clamp(1rem, 4vw, 1.5rem)",
-  };
-  const card: React.CSSProperties = {
-    width: "100%", maxWidth: "420px", boxSizing: "border-box",
-    background: "var(--ff-surface)", border: "1px solid rgba(var(--ff-fg), .12)",
-    borderRadius: "14px", padding: "1.4rem 1.35rem",
-    fontFamily: "'DM Sans',sans-serif", color: "var(--ff-text)",
-    boxShadow: "0 24px 60px rgba(0,0,0,.45)",
-  };
+  // ⚠️ THE SCRIM HAS NO onClick, AND THAT IS THE POINT. Every other converted
+  // dialog closes on a scrim tap; this one is the second factor, so a stray tap
+  // outside the card must not dismiss it — the only ways out are a correct
+  // code, a recovery code, or the explicit Cancel. The .ffu-scrim class is
+  // purely the layout/backdrop here. If someone later adds the usual
+  // `onClick={onCancel}` "for consistency", they have made the gate
+  // dismissible by accident.
   const title: React.CSSProperties = {
     fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.6rem", letterSpacing: ".04em",
     margin: "0 0 .5rem", display: "flex", alignItems: "center", gap: ".5rem", lineHeight: 1.1,
@@ -103,28 +99,38 @@ export default function VerifyCodeModal({ onDone, onCancel, what }: Props) {
   };
   const codeInput: React.CSSProperties = {
     width: "100%", padding: ".75rem .9rem", borderRadius: "10px",
-    background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .16)",
+    background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .16)",
     color: "var(--ff-text)", fontFamily: "'SFMono-Regular',Menlo,Consolas,monospace",
     fontSize: "1.25rem", letterSpacing: recovery ? ".12em" : ".35em", textAlign: "center",
-    boxSizing: "border-box", marginBottom: ".8rem", outline: "none", minHeight: "44px",
+    boxSizing: "border-box", marginBottom: ".8rem", minHeight: "44px",
   };
   const btn = (kind: "primary" | "quiet"): React.CSSProperties => ({
     flex: 1, padding: ".75rem 1rem", borderRadius: "10px", minHeight: "44px",
-    background: kind === "primary" ? "#ea6b14" : "rgba(var(--ff-fg), .06)",
+    background: kind === "primary" ? "var(--ff-c10)" : "rgba(var(--ff-fg), .06)",
     color: kind === "primary" ? "#fff" : "rgb(var(--ff-muted))",
-    border: kind === "primary" ? "none" : "1px solid rgba(var(--ff-fg), .14)",
+    border: kind === "primary" ? "none" : "var(--ff-hair-w) solid rgba(var(--ff-fg), .14)",
     fontFamily: "'Bebas Neue',sans-serif", letterSpacing: ".06em", fontSize: "1rem",
     cursor: busy ? "default" : "pointer",
   });
   const linkBtn: React.CSSProperties = {
     background: "none", border: "none", padding: ".4rem 0", marginTop: ".6rem",
-    color: "#ea6b14", fontFamily: "inherit", fontSize: ".9rem", cursor: "pointer",
+    color: "var(--ff-c10)", fontFamily: "inherit", fontSize: ".9rem", cursor: "pointer",
     textDecoration: "underline", textUnderlineOffset: "3px",
   };
 
   return (
-    <div style={overlay} role="dialog" aria-modal="true" aria-label="Verify your sign-in code">
-      <div style={card}>
+    <div className="ffu-scrim">
+      <div
+        className="ffu-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Verify your sign-in code"
+        style={{ ["--ffu-modal-w" as any]: "420px" }}
+      >
+        {/* No <span className="ffu-grab"/> here, deliberately. The grabber is
+            the signal "this panel is dismissible, and the dismiss is the scrim
+            tap" (see uiStyles.ts). This panel is not, so the grabber would be
+            promising a gesture that does nothing. */}
         <p style={title}><Ic name="key" size={18} /> Verify it&rsquo;s you</p>
 
         <p style={body}>

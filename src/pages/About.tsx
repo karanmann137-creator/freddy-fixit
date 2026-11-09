@@ -103,14 +103,14 @@ export default function About() {
   return (
     <div style={{ fontFamily: "'DM Sans',sans-serif", background: "var(--ff-bg)", color: "var(--ff-text)", minHeight: "100vh" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-      <style>{".ab-h{font-family:'Bebas Neue',sans-serif;letter-spacing:.05em} h1.ab-h,h2.ab-h{font-family:var(--ff-font-display);font-weight:var(--ff-display-wght);letter-spacing:-.015em} .ab-p{line-height:1.85;color:rgba(var(--ff-muted), .85);font-weight:300} .ab-cta{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;background:#ea6b14;color:#fff;border:none;font-family:'Bebas Neue',sans-serif;letter-spacing:.06em;font-size:1.15rem;padding:.85rem 2.1rem;border-radius:10px;cursor:pointer;transition:transform .15s,box-shadow .15s;box-shadow:0 8px 26px rgba(234,107,20,.28)} .ab-cta:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(234,107,20,.4)} .ab-cta2{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;background:rgba(var(--ff-fg), .05);color:var(--ff-text);border:1px solid rgba(var(--ff-fg), .16);font-family:'Bebas Neue',sans-serif;letter-spacing:.06em;font-size:1.15rem;padding:.85rem 2.1rem;border-radius:10px;cursor:pointer;transition:background .15s} .ab-cta2:hover{background:rgba(var(--ff-fg), .1)} .ab-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px, 100%), 1fr));gap:1rem} .ab-card{background:rgba(var(--ff-fg), .04);border:1px solid rgba(var(--ff-fg), .08);border-radius:14px;padding:1.6rem 1.5rem} .ab-rule{width:44px;height:3px;background:#ea6b14;border-radius:2px;margin:0 auto 1.4rem} .ab-btns{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap}"}</style>
+      <style>{".ab-h{font-family:'Bebas Neue',sans-serif;letter-spacing:.05em} h1.ab-h,h2.ab-h{font-family:var(--ff-font-display);font-weight:var(--ff-display-wght);letter-spacing:-.015em} .ab-p{line-height:1.85;color:rgba(var(--ff-muted), .85);font-weight:300} .ab-cta{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;background:var(--ff-c10);color:#fff;border:none;font-family:'Bebas Neue',sans-serif;letter-spacing:.06em;font-size:1.15rem;padding:.85rem 2.1rem;border-radius:10px;cursor:pointer;transition:transform .15s,box-shadow .15s;box-shadow:0 8px 26px rgba(var(--ff-accent-rgb), .28)} .ab-cta:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(var(--ff-accent-rgb), .4)} .ab-cta2{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;background:rgba(var(--ff-fg), .05);color:var(--ff-text);border:var(--ff-hair-w) solid rgba(var(--ff-fg), .16);font-family:'Bebas Neue',sans-serif;letter-spacing:.06em;font-size:1.15rem;padding:.85rem 2.1rem;border-radius:10px;cursor:pointer;transition:background .15s} .ab-cta2:hover{background:rgba(var(--ff-fg), .1)} .ab-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px, 100%), 1fr));gap:1rem} .ab-card{background:rgba(var(--ff-fg), .04);border:var(--ff-hair-w) solid rgba(var(--ff-fg), .08);border-radius:14px;padding:1.6rem 1.5rem} .ab-rule{width:44px;height:3px;background:var(--ff-c10);border-radius:2px;margin:0 auto 1.4rem} .ab-btns{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap}"}</style>
 
       <section style={{ maxWidth: "760px", margin: "0 auto", padding: "6rem clamp(1rem, 4vw, 1.5rem) 2.5rem", textAlign: "center" }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: ".45rem", fontSize: ".8rem", fontWeight: 500, letterSpacing: ".08em", textTransform: "uppercase", color: "#ea6b14", marginBottom: "1rem" }}>
-          <Ic name="home" size={15} color="#ea6b14" />About Freddy Fix It
+        <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--ff-s2)", fontSize: ".8rem", fontWeight: 500, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--ff-c10)", marginBottom: "1rem" }}>
+          <Ic name="home" size={15} color="var(--ff-c10)" />About Freddy Fix It
         </span>
         <h1 className="ab-h" style={{ fontSize: "clamp(2.4rem,6.5vw,3.9rem)", lineHeight: 1.02, color: "var(--ff-text)", marginBottom: "1.1rem" }}>
-          Fixing your home shouldn't<br /><span style={{ color: "#ea6b14" }}>feel like a gamble.</span>
+          Fixing your home shouldn't<br /><span style={{ color: "var(--ff-c10)" }}>feel like a gamble.</span>
         </h1>
         <p className="ab-p" style={{ fontSize: "1.12rem", maxWidth: "600px", margin: "0 auto" }}>
           We're a Calgary company building the thing we kept wishing existed — one place to say what's broken, see real prices from local tradespeople, and know exactly who's coming and what you're paying for.
@@ -118,7 +118,7 @@ export default function About() {
       </section>
 
       <section style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem clamp(1rem, 4vw, 1.5rem) 2.5rem" }}>
-        <h2 className="ab-h" style={{ fontSize: "1.9rem", color: "var(--ff-text)", marginBottom: ".9rem", textAlign: "center" }}>Why we started</h2>
+        <h2 className="ab-h" style={{ fontSize: "1.9rem", color: "var(--ff-text)", marginBottom: "var(--ff-s4)", textAlign: "center" }}>Why we started</h2>
         <div className="ab-rule" />
         <p className="ab-p" style={{ fontSize: "1rem", marginBottom: "1.1rem" }}>
           Everyone in this city has a version of the same story. Something gives out on a Sunday. You call five numbers off a search page. Two call back. One turns up a week later, says a figure out loud with nothing written down, and you have no idea whether it's fair — because you've got nothing to compare it to.
@@ -132,12 +132,12 @@ export default function About() {
       </section>
 
       <section style={{ maxWidth: "980px", margin: "0 auto", padding: "1.5rem clamp(1rem, 4vw, 1.5rem) 2.5rem" }}>
-        <h2 className="ab-h" style={{ fontSize: "1.9rem", color: "var(--ff-text)", marginBottom: ".9rem", textAlign: "center" }}>What we hold ourselves to</h2>
+        <h2 className="ab-h" style={{ fontSize: "1.9rem", color: "var(--ff-text)", marginBottom: "var(--ff-s4)", textAlign: "center" }}>What we hold ourselves to</h2>
         <div className="ab-rule" />
         <div className="ab-grid">
           {PRINCIPLES.map((p) => (
             <div key={p.title} className="ab-card">
-              <Ic name={p.icon as any} size={26} color="#ea6b14" />
+              <Ic name={p.icon as any} size={26} color="var(--ff-c10)" />
               <h3 className="ab-h" style={{ color: "var(--ff-text)", fontSize: "1.2rem", margin: ".75rem 0 .5rem" }}>{p.title}</h3>
               <p className="ab-p" style={{ fontSize: ".94rem" }}>{p.body}</p>
             </div>
@@ -146,8 +146,8 @@ export default function About() {
       </section>
 
       <section style={{ maxWidth: "980px", margin: "0 auto", padding: "1.5rem clamp(1rem, 4vw, 1.5rem) 2.5rem" }}>
-        <div style={{ background: "rgba(234,107,20,.07)", border: "1px solid rgba(234,107,20,.28)", borderRadius: "16px", padding: "2rem 1.75rem", textAlign: "center" }}>
-          <Ic name="wrench" size={26} color="#ea6b14" />
+        <div style={{ background: "rgba(var(--ff-accent-rgb), .07)", border: "1px solid rgba(var(--ff-accent-rgb), .28)", borderRadius: "16px", padding: "2rem 1.75rem", textAlign: "center" }}>
+          <Ic name="wrench" size={26} color="var(--ff-c10)" />
           <h2 className="ab-h" style={{ fontSize: "1.7rem", color: "var(--ff-text)", margin: ".6rem 0 .7rem" }}>We're not in the lead-selling business</h2>
           <p className="ab-p" style={{ fontSize: "1rem", maxWidth: "620px", margin: "0 auto" }}>
             Contractors join for free and never pay for a lead, a listing, or a job they didn't win. The only time we earn anything is on work that actually got done and the client was happy with — which means the only way we grow is if the trades on here do good work. We wanted our incentives pointing the same direction as yours, not the other way around.
@@ -161,7 +161,7 @@ export default function About() {
           is not. The claims here are about HOW we work, which is the one
           thing we can promise on the platform's worst day too. */}
       <section style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem clamp(1rem, 4vw, 1.5rem) 2.5rem" }}>
-        <h2 className="ab-h" style={{ fontSize: "1.9rem", color: "var(--ff-text)", marginBottom: ".9rem", textAlign: "center" }}>We're never quite finished</h2>
+        <h2 className="ab-h" style={{ fontSize: "1.9rem", color: "var(--ff-text)", marginBottom: "var(--ff-s4)", textAlign: "center" }}>We're never quite finished</h2>
         <div className="ab-rule" />
         <p className="ab-p" style={{ fontSize: "1rem", marginBottom: "1.1rem" }}>
           Freddy Fix It is homegrown. It's built here, by a small team who use it, rather than bought off a shelf or handed down from a head office three provinces away. The upside of that is simple: when something on here is clumsy, there's nobody to escalate it to and no quarterly roadmap to wait for. We just fix it. Most weeks something changes — a step taken out of a form, a plainer explanation when a payment doesn't go through, a photo that finally uploads properly from an old phone.
@@ -175,7 +175,7 @@ export default function About() {
       </section>
 
       <section style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem clamp(1rem, 4vw, 1.5rem) 2.5rem" }}>
-        <h2 className="ab-h" style={{ fontSize: "1.9rem", color: "var(--ff-text)", marginBottom: ".9rem", textAlign: "center" }}>Who you're dealing with</h2>
+        <h2 className="ab-h" style={{ fontSize: "1.9rem", color: "var(--ff-text)", marginBottom: "var(--ff-s4)", textAlign: "center" }}>Who you're dealing with</h2>
         <div className="ab-rule" />
         <p className="ab-p" style={{ fontSize: "1rem", marginBottom: "1.1rem" }}>
           Freddy Fix It is run by Freddy FixIt Contractors Inc., based in Calgary. Not a franchise, not a call centre in another province. We work across Calgary, Airdrie, Cochrane, Chestermere, Okotoks and Strathmore, and the pros you'll meet here live in those places too.
@@ -195,7 +195,7 @@ export default function About() {
           <button className="ab-cta2" onClick={() => setLocation("/for-contractors")}>I'm a tradesperson</button>
         </div>
         <p style={{ fontSize: ".82rem", color: "rgba(var(--ff-muted), .55)", marginTop: "1.1rem" }}>
-          Questions first? Email <a href="mailto:hello@freddyfixit.ca" style={{ color: "#ea6b14" }}>hello@freddyfixit.ca</a> — no signup needed.
+          Questions first? Email <a href="mailto:hello@freddyfixit.ca" style={{ color: "var(--ff-c10)" }}>hello@freddyfixit.ca</a> — no signup needed.
         </p>
       </section>
     </div>

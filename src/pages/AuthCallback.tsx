@@ -137,12 +137,12 @@ export default function AuthCallback() {
   };
 
   const s: Record<string, React.CSSProperties> = {
-    wrap: { minHeight: "100vh", background: "var(--ff-bg)", backgroundImage: "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(234,107,20,0.15) 0%, transparent 70%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem 1rem", fontFamily: "'DM Sans',sans-serif", color: "var(--ff-text)" },
-    card: { maxWidth: "440px", width: "100%", background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: "14px", padding: "2rem", textAlign: "center" },
+    wrap: { minHeight: "100vh", background: "var(--ff-bg)", backgroundImage: "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(var(--ff-accent-rgb), 0.15) 0%, transparent 70%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem 1rem", fontFamily: "'DM Sans',sans-serif", color: "var(--ff-text)" },
+    card: { maxWidth: "440px", width: "100%", background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: "14px", padding: "2rem", textAlign: "center" },
     h: { fontFamily: "'Bebas Neue',sans-serif", fontSize: "2rem", letterSpacing: ".05em", marginBottom: ".4rem" },
     sub: { fontSize: ".88rem", color: "rgba(var(--ff-muted), .6)", fontWeight: 300, marginBottom: "1.75rem", lineHeight: 1.6 },
-    opt: { width: "100%", padding: "1.1rem 1.25rem", borderRadius: "10px", border: "1px solid rgba(var(--ff-fg), .12)", background: "rgba(var(--ff-fg), .04)", color: "var(--ff-text)", cursor: "pointer", fontFamily: "inherit", textAlign: "left", marginBottom: ".75rem", transition: "all .2s" },
-    optTitle: { fontSize: "1rem", fontWeight: 500, marginBottom: ".2rem" },
+    opt: { width: "100%", padding: "1.1rem 1.25rem", borderRadius: "10px", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", background: "rgba(var(--ff-fg), .04)", color: "var(--ff-text)", cursor: "pointer", fontFamily: "inherit", textAlign: "left", marginBottom: ".75rem", transition: "all .2s" },
+    optTitle: { fontSize: "1rem", fontWeight: 500, marginBottom: "var(--ff-s1)" },
     optSub: { fontSize: ".8rem", color: "rgba(var(--ff-muted), .55)", fontWeight: 300 },
   };
 
@@ -170,7 +170,7 @@ export default function AuthCallback() {
             rectangle if the modal is dismissed by the browser. */}
         {(phase === "loading" || phase === "verify") && (
           <>
-            <div style={{ width: 36, height: 36, margin: "0 auto 1.25rem", border: "3px solid rgba(234,107,20,0.2)", borderTopColor: "#ea6b14", borderRadius: "50%", animation: "ff-spin .8s linear infinite" }} />
+            <div style={{ width: 36, height: 36, margin: "0 auto 1.25rem", border: "3px solid rgba(var(--ff-accent-rgb), 0.2)", borderTopColor: "var(--ff-c10)", borderRadius: "50%", animation: "ff-spin .8s linear infinite" }} />
             <p style={{ color: "rgba(var(--ff-muted), .7)", fontWeight: 300 }}>
               {phase === "verify" ? "Waiting on your sign-in code…" : msg}
             </p>
@@ -195,7 +195,7 @@ export default function AuthCallback() {
           <>
             <div style={s.h}>Sign-in didn't finish</div>
             <p style={s.sub}>Something interrupted the sign-in. Please try again.</p>
-            <button style={{ ...s.opt, textAlign: "center", background: "#ea6b14", borderColor: "#ea6b14", fontWeight: 500 }} onClick={() => setLocation("/login")}>
+            <button style={{ ...s.opt, textAlign: "center", background: "var(--ff-c10)", borderColor: "var(--ff-c10)", fontWeight: 500 }} onClick={() => setLocation("/login")}>
               Back to sign in
             </button>
           </>

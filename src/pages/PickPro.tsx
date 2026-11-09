@@ -136,18 +136,18 @@ export default function PickPro() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&display=swap');
         .ff-pick { min-height: 100vh; background: var(--ff-bg);
-          background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(234,107,20,0.15) 0%, transparent 70%);
+          background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(var(--ff-accent-rgb), 0.15) 0%, transparent 70%);
           padding: 2.5rem 1rem 4rem; font-family: 'DM Sans', sans-serif; color: var(--ff-text); }
         .ff-pk-wrap { max-width: 620px; margin: 0 auto; }
         .ff-pk-h1 { font-family: 'Bebas Neue', sans-serif; font-size: clamp(2rem, 7vw, 2.9rem);
           letter-spacing: .05em; line-height: 1; margin: 0 0 .5rem; text-align: center; }
-        .ff-pk-h1 span { color: #ea6b14; }
+        .ff-pk-h1 span { color: var(--ff-c10); }
         .ff-pk-sub { text-align: center; color: rgba(var(--ff-muted), .7); font-size: .95rem; margin: 0 0 1.75rem; line-height: 1.5; }
-        .ff-pk-job { background: rgba(var(--ff-fg), .04); border: 1px solid rgba(var(--ff-fg), .08);
+        .ff-pk-job { background: rgba(var(--ff-fg), .04); border: var(--ff-hair-w) solid rgba(var(--ff-fg), .08);
           border-radius: 14px; padding: 1rem 1.15rem; margin-bottom: 1.5rem; }
-        .ff-pk-card { background: var(--ff-card-bg); border: 1px solid var(--ff-card-border);
+        .ff-pk-card { background: var(--ff-card-bg); border: var(--ff-hair-w) solid var(--ff-card-border);
           border-radius: 14px; padding: 1.1rem; margin-bottom: .9rem; transition: border-color .15s, transform .12s; }
-        .ff-pk-card:hover { border-color: rgba(234,107,20,.35); }
+        .ff-pk-card:hover { border-color: rgba(var(--ff-accent-rgb), .35); }
         @media (hover: hover) and (pointer: fine) {
           .ff-pk-card:hover { transform: translateY(-2px); }
         }
@@ -158,7 +158,7 @@ export default function PickPro() {
         .ff-pk-btn:active:not(:disabled) { transform: translateY(1px); }
         .ff-pk-btn:disabled { opacity: .55; cursor: default; }
         .ff-pk-avatar { width: 48px; height: 48px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
-          background: rgba(234,107,20,.14); border: 1px solid rgba(var(--ff-fg), .1);
+          background: rgba(var(--ff-accent-rgb), .14); border: var(--ff-hair-w) solid rgba(var(--ff-fg), .1);
           display: flex; align-items: center; justify-content: center; }
         .ff-pk-chip { display: inline-flex; align-items: center; gap: .3rem; padding: .18rem .5rem;
           border-radius: 999px; font-size: .7rem; font-weight: 700; }
@@ -166,7 +166,7 @@ export default function PickPro() {
         .ff-pk-mid { text-align: center; padding: 3rem 1rem; }
         .ff-pk-mid h2 { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; letter-spacing: .05em; margin: 1rem 0 .5rem; }
         .ff-pk-mid p { color: rgba(var(--ff-muted), .7); font-size: .92rem; line-height: 1.6; margin: 0 auto; max-width: 400px; }
-        .ff-pk-link { background: none; border: none; color: #ea6b14; font-family: inherit; font-size: .9rem;
+        .ff-pk-link { background: none; border: none; color: var(--ff-c10); font-family: inherit; font-size: .9rem;
           font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0; margin-top: 1.25rem; }
       `}</style>
 
@@ -246,7 +246,7 @@ export default function PickPro() {
               <div style={{ fontSize: ".72rem", textTransform: "uppercase", letterSpacing: ".1em", color: "rgba(var(--ff-muted), .5)", marginBottom: ".3rem" }}>Your request</div>
               <div style={{ fontSize: "1rem", fontWeight: 700 }}>{data.service}</div>
               {data.description && (
-                <div style={{ fontSize: ".85rem", color: "rgba(var(--ff-muted), .7)", marginTop: ".25rem", lineHeight: 1.5 }}>{data.description}</div>
+                <div style={{ fontSize: ".85rem", color: "rgba(var(--ff-muted), .7)", marginTop: "var(--ff-s1)", lineHeight: 1.5 }}>{data.description}</div>
               )}
             </div>
 
@@ -258,7 +258,7 @@ export default function PickPro() {
 
             {(data.bids?.length ?? 0) === 0 && (
               <div className="ff-pk-mid">
-                <Ic name="clock" size={38} color="#ea6b14" />
+                <Ic name="clock" size={38} color="var(--ff-c10)" />
                 <h2>Estimates are on their way</h2>
                 <p>Pros are reviewing your job now. We'll email you the moment the first estimate lands — keep this link, it'll show them here.</p>
               </div>
@@ -273,26 +273,26 @@ export default function PickPro() {
                 key={b.bid_id}
                 id={"ff-pk-" + b.bid_id}
                 style={focusBid && focusBid === String(b.bid_id)
-                  ? { borderColor: "#ea6b14", boxShadow: "0 0 0 3px rgba(234,107,20,.18)", scrollMarginTop: "2rem" }
+                  ? { borderColor: "var(--ff-c10)", boxShadow: "0 0 0 3px rgba(var(--ff-accent-rgb), .18)", scrollMarginTop: "2rem" }
                   : { scrollMarginTop: "2rem" }}
               >
                 <div style={{ display: "flex", gap: ".8rem", alignItems: "flex-start" }}>
                   <div className="ff-pk-avatar">
                     {b.photo_url
                       ? <FadeImg src={b.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      : <span style={{ fontSize: ".9rem", fontWeight: 700, color: "#ea6b14" }}>
+                      : <span style={{ fontSize: ".9rem", fontWeight: 700, color: "var(--ff-c10)" }}>
                           {who(b).split(/\s+/).map((w: string) => w[0] ?? "").join("").slice(0, 2).toUpperCase()}
                         </span>}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: ".6rem", flexWrap: "wrap" }}>
                       <span style={{ fontSize: "1rem", fontWeight: 700 }}>{who(b)}</span>
-                      <span style={{ fontSize: "1.05rem", fontWeight: 700, color: "#ea6b14", whiteSpace: "nowrap" }}>{priceLine(b)}</span>
+                      <span style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--ff-c10)", whiteSpace: "nowrap" }}>{priceLine(b)}</span>
                     </div>
 
                     <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap", marginTop: ".4rem" }}>
                       {b.rating != null && Number(b.rating_count) > 0 && (
-                        <span className="ff-pk-chip" style={{ background: "rgba(234,107,20,.12)", color: "#ea6b14" }}>
+                        <span className="ff-pk-chip" style={{ background: "rgba(var(--ff-accent-rgb), .12)", color: "var(--ff-c10)" }}>
                           <Ic name="star" size={10} />{Number(b.rating).toFixed(1)}/10 ({b.rating_count})
                         </span>
                       )}

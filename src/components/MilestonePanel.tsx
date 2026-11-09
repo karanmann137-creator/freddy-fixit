@@ -119,8 +119,8 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
   if (total <= 2000 && !job?.is_milestone) return null;
 
   // Styles used by the early returns below as well as the main render.
-  const wrap: React.CSSProperties = { margin: "1rem 0 1.25rem", padding: "1rem 1.1rem", borderRadius: "12px", background: "rgba(234,107,20,.05)", border: "1px solid rgba(234,107,20,.25)" };
-  const head: React.CSSProperties = { fontSize: ".72rem", textTransform: "uppercase", letterSpacing: ".1em", color: "#ea6b14", marginBottom: ".75rem", fontWeight: 700, display: "flex", alignItems: "center", gap: 6 };
+  const wrap: React.CSSProperties = { margin: "1rem 0 1.25rem", padding: "1rem 1.1rem", borderRadius: "12px", background: "rgba(var(--ff-accent-rgb), .05)", border: "1px solid rgba(var(--ff-accent-rgb), .25)" };
+  const head: React.CSSProperties = { fontSize: ".72rem", textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ff-c10)", marginBottom: ".75rem", fontWeight: 700, display: "flex", alignItems: "center", gap: 6 };
 
   // This panel gates real money, so a silent nothing is the worst outcome —
   // say we're loading, and say plainly when the read failed.
@@ -296,9 +296,9 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
     await load(); onUpdated?.();
   });
 
-  const inp: React.CSSProperties ={ padding: ".45rem .6rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .14)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".85rem", boxSizing: "border-box" };
-  const btn: React.CSSProperties = { padding: ".5rem .85rem", borderRadius: "8px", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600, cursor: "pointer", border: "1px solid rgba(var(--ff-fg), .18)", background: "rgba(var(--ff-fg), .05)", color: "var(--ff-text)" };
-  const btnPrimary: React.CSSProperties = { ...btn, background: "#ea6b14", color: "#fff", border: "none" };
+  const inp: React.CSSProperties ={ padding: ".45rem .6rem", background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .14)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".85rem", boxSizing: "border-box" };
+  const btn: React.CSSProperties = { padding: ".5rem .85rem", borderRadius: "8px", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600, cursor: "pointer", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .18)", background: "rgba(var(--ff-fg), .05)", color: "var(--ff-text)" };
+  const btnPrimary: React.CSSProperties = { ...btn, background: "var(--ff-c10)", color: "#fff", border: "none" };
   const btnGreen: React.CSSProperties = { ...btn, background: "#22c55e", color: "#06210f", border: "none" };
 
   const Banner = () => (
@@ -377,7 +377,7 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
       <Banner />
 
       {role === "client" && schedStatus === "proposed" && (
-        <div style={{ marginBottom: ".9rem", padding: ".7rem .8rem", borderRadius: "10px", background: "rgba(var(--ff-fg), .04)" }}>
+        <div style={{ marginBottom: "var(--ff-s4)", padding: ".7rem .8rem", borderRadius: "10px", background: "rgba(var(--ff-fg), .04)" }}>
           <div style={{ fontSize: ".82rem", color: "rgba(var(--ff-muted), .85)", lineHeight: 1.5, marginBottom: ".6rem" }}>
             Your contractor proposed this plan. You only pay each stage right before it starts — nothing is charged until you approve and fund the first stage.
           </div>
@@ -386,7 +386,7 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
       )}
 
       {anyDisputed && (
-        <div style={{ fontSize: ".8rem", color: "#ef4444", marginBottom: ".7rem", lineHeight: 1.5 }}>
+        <div style={{ fontSize: ".8rem", color: "#ef4444", marginBottom: "var(--ff-s3)", lineHeight: 1.5 }}>
           <Ic name="alert-triangle" size={13} style={{ marginRight: 4 }} />A stage is under dispute. The rest of the plan is paused until our team resolves it.
         </div>
       )}
@@ -396,7 +396,7 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
           const meta = STATUS_META[m.status];
           const isNextToFund = m.id === firstPendingId && earlierAllReleased(m.seq) && !anyDisputed;
           return (
-            <div key={m.id} style={{ padding: ".7rem .8rem", borderRadius: "10px", background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)" }}>
+            <div key={m.id} style={{ padding: ".7rem .8rem", borderRadius: "10px", background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: ".5rem" }}>
                 <div style={{ fontWeight: 600, fontSize: ".9rem" }}>{m.seq}. {m.title}</div>
                 <div style={{ fontWeight: 600, fontSize: ".9rem", color: "#22c55e" }}>{money(m.amount)}</div>
@@ -456,7 +456,7 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
                 <>
                   {m.status === "funded" && (
                     <div style={{ marginTop: ".5rem", display: "flex", flexDirection: "column", gap: ".4rem" }}>
-                      <div style={{ fontSize: ".76rem", fontWeight: 700, color: "#ea6b14" }}>
+                      <div style={{ fontSize: ".76rem", fontWeight: 700, color: "var(--ff-c10)" }}>
                         Photo of this stage's finished work — required
                       </div>
                       <input type="file" accept="image/*" onChange={e => pickStagePhoto(m.id, e)} style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .7)" }} />

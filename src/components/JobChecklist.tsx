@@ -50,16 +50,16 @@ export default function JobChecklist({ job, role, onError }: {
 
   const doneCount = items.filter(i => i.done).length;
   const readOnly = role === "client";
-  const inp = { flex: 1, padding: ".45rem .6rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".82rem", boxSizing: "border-box" as const };
+  const inp = { flex: 1, padding: ".45rem .6rem", background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".82rem", boxSizing: "border-box" as const };
 
   // Client with no checklist: show nothing at all.
   if (readOnly && items.length === 0) return null;
 
   return (
-    <div style={{ padding: ".85rem .95rem", borderRadius: "12px", background: "rgba(var(--ff-fg), .03)", border: "1px solid rgba(var(--ff-fg), .08)" }}>
+    <div style={{ padding: ".85rem .95rem", borderRadius: "12px", background: "rgba(var(--ff-fg), .03)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: ".6rem", flexWrap: "wrap" as const }}>
-        <div style={{ display: "flex", alignItems: "center", gap: ".45rem", fontSize: ".72rem", textTransform: "uppercase" as const, letterSpacing: ".1em", color: "rgba(var(--ff-muted), .5)", fontWeight: 700 }}>
-          <Ic name="clipboard-list" size={14} color="#ea6b14" />On-site checklist
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--ff-s2)", fontSize: ".72rem", textTransform: "uppercase" as const, letterSpacing: ".1em", color: "rgba(var(--ff-muted), .5)", fontWeight: 700 }}>
+          <Ic name="clipboard-list" size={14} color="var(--ff-c10)" />On-site checklist
           {items.length > 0 && (
             <span style={{ fontSize: ".72rem", fontWeight: 600, letterSpacing: 0, textTransform: "none" as const, color: doneCount === items.length ? "#22c55e" : "rgba(var(--ff-muted), .65)" }}>
               — {doneCount}/{items.length} done
@@ -67,7 +67,7 @@ export default function JobChecklist({ job, role, onError }: {
           )}
         </div>
         {items.length > 0 && (
-          <button onClick={() => setOpen(o => !o)} style={{ background: "none", border: "none", color: "#ea6b14", fontFamily: "inherit", fontSize: ".76rem", fontWeight: 600, cursor: "pointer", padding: 0 }}>
+          <button onClick={() => setOpen(o => !o)} style={{ background: "none", border: "none", color: "var(--ff-c10)", fontFamily: "inherit", fontSize: ".76rem", fontWeight: 600, cursor: "pointer", padding: 0 }}>
             {open ? "Hide" : "Show"}
           </button>
         )}
@@ -76,7 +76,7 @@ export default function JobChecklist({ job, role, onError }: {
       {/* Progress bar */}
       {items.length > 0 && (
         <div style={{ height: "5px", borderRadius: "99px", background: "rgba(var(--ff-fg), .07)", margin: ".55rem 0", overflow: "hidden" }}>
-          <div style={{ height: "100%", width: (items.length ? (doneCount / items.length) * 100 : 0) + "%", background: doneCount === items.length ? "#22c55e" : "#ea6b14", borderRadius: "99px", transition: "width .25s ease" }} />
+          <div style={{ height: "100%", width: (items.length ? (doneCount / items.length) * 100 : 0) + "%", background: doneCount === items.length ? "#22c55e" : "var(--ff-c10)", borderRadius: "99px", transition: "width .25s ease" }} />
         </div>
       )}
 
@@ -85,20 +85,20 @@ export default function JobChecklist({ job, role, onError }: {
           <div style={{ fontSize: ".78rem", color: "rgba(var(--ff-muted), .55)", lineHeight: 1.5, marginBottom: ".55rem" }}>
             Work through a checklist on site so nothing gets missed — fewer callbacks, fewer disputes. Start from a list curated for your trade, then make it yours.
           </div>
-          <button onClick={loadSuggested} style={{ padding: ".45rem .85rem", background: "rgba(234,107,20,.12)", border: "1px solid rgba(234,107,20,.4)", borderRadius: "8px", color: "#ea6b14", fontFamily: "inherit", fontSize: ".8rem", fontWeight: 600, cursor: "pointer" }}>
+          <button onClick={loadSuggested} style={{ padding: ".45rem .85rem", background: "rgba(var(--ff-accent-rgb), .12)", border: "1px solid rgba(var(--ff-accent-rgb), .4)", borderRadius: "8px", color: "var(--ff-c10)", fontFamily: "inherit", fontSize: ".8rem", fontWeight: 600, cursor: "pointer" }}>
             <Ic name="sparkles" size={13} style={{ marginRight: 5 }} />Load suggested checklist
           </button>
         </div>
       )}
 
       {open && items.map((it, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: ".55rem", padding: ".4rem 0", borderTop: i === 0 ? "none" : "1px solid rgba(var(--ff-fg), .05)" }}>
+        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: ".55rem", padding: ".4rem 0", borderTop: i === 0 ? "none" : "var(--ff-hair-w) solid rgba(var(--ff-fg), .05)" }}>
           {readOnly ? (
             <span style={{ width: "16px", height: "16px", flexShrink: 0, marginTop: "1px", borderRadius: "5px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: it.done ? "rgba(34,197,94,.18)" : "rgba(var(--ff-fg), .07)", border: "1px solid " + (it.done ? "rgba(34,197,94,.5)" : "rgba(var(--ff-fg), .14)") }}>
               {it.done && <Ic name="check" size={10} color="#22c55e" />}
             </span>
           ) : (
-            <input type="checkbox" checked={it.done} onChange={() => toggle(i)} style={{ marginTop: "2px", cursor: "pointer", accentColor: "#ea6b14" }} />
+            <input type="checkbox" checked={it.done} onChange={() => toggle(i)} style={{ marginTop: "2px", cursor: "pointer", accentColor: "var(--ff-c10)" }} />
           )}
           <span style={{ flex: 1, fontSize: ".84rem", lineHeight: 1.45, color: it.done ? "rgba(var(--ff-muted), .5)" : "var(--ff-text)", textDecoration: it.done ? "line-through" : "none" }}>{it.text}</span>
           {!readOnly && (
@@ -110,7 +110,7 @@ export default function JobChecklist({ job, role, onError }: {
       {open && !readOnly && (
         <div style={{ display: "flex", gap: ".5rem", marginTop: ".55rem" }}>
           <input value={newText} placeholder="Add an item…" onChange={e => setNewText(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addItem(); }} style={inp} />
-          <button onClick={addItem} style={{ padding: ".45rem .8rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".8rem", cursor: "pointer", flexShrink: 0 }}>+ Add</button>
+          <button onClick={addItem} style={{ padding: ".45rem .8rem", background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".8rem", cursor: "pointer", flexShrink: 0 }}>+ Add</button>
         </div>
       )}
     </div>

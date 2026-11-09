@@ -7,7 +7,7 @@ import { supabase } from "../lib/supabase";
 
 export type JobExpense = { id: string; job_id: string; label: string; amount: number; created_at: string };
 
-const inp = { padding: ".45rem .6rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".82rem", boxSizing: "border-box" as const };
+const inp = { padding: ".45rem .6rem", background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".82rem", boxSizing: "border-box" as const };
 
 export default function JobExpenses({ jobId, items, jobAmount, onAdd, onDelete, onError }: {
   jobId: string;
@@ -65,7 +65,7 @@ export default function JobExpenses({ jobId, items, jobAmount, onAdd, onDelete, 
         Private to you — the client never sees this. Log materials, rentals and other costs to track your real profit.
       </div>
       {items.map(e => (
-        <div key={e.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: ".5rem", padding: ".3rem 0", borderBottom: "1px solid rgba(var(--ff-fg), .06)", fontSize: ".8rem" }}>
+        <div key={e.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: ".5rem", padding: ".3rem 0", borderBottom: "var(--ff-hair-w) solid rgba(var(--ff-fg), .06)", fontSize: ".8rem" }}>
           <span style={{ color: "var(--ff-text)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.label}</span>
           <span style={{ color: "rgba(var(--ff-muted), .75)" }}>{"$" + Number(e.amount).toFixed(2)}</span>
           <button type="button" onClick={() => remove(e.id)} title="Remove"
@@ -76,7 +76,7 @@ export default function JobExpenses({ jobId, items, jobAmount, onAdd, onDelete, 
         <input value={label} onChange={e => setLabel(e.target.value)} placeholder="What was it? (e.g. Paint + supplies)" maxLength={120} style={{ ...inp, flex: "2 1 150px", minWidth: 0 }} />
         <input value={amount} onChange={e => setAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="$" inputMode="decimal" style={{ ...inp, flex: "1 1 70px", minWidth: 0, maxWidth: "110px" }} />
         <button type="button" disabled={busy} onClick={add}
-          style={{ padding: ".45rem .8rem", borderRadius: "8px", border: "none", background: "#ea6b14", color: "#fff", fontFamily: "inherit", fontSize: ".8rem", fontWeight: 600, cursor: "pointer", opacity: busy ? 0.6 : 1 }}>
+          style={{ padding: ".45rem .8rem", borderRadius: "8px", border: "none", background: "var(--ff-c10)", color: "#fff", fontFamily: "inherit", fontSize: ".8rem", fontWeight: 600, cursor: "pointer", opacity: busy ? 0.6 : 1 }}>
           {busy ? "…" : "Add"}
         </button>
       </div>

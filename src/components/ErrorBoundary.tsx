@@ -95,7 +95,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             textAlign: "center",
             padding: "2rem 1.6rem 1.75rem",
             borderRadius: 18,
-            border: "1px solid rgba(234,107,20,0.35)",
+            border: "1px solid rgba(var(--ff-accent-rgb), 0.35)",
             background: "#1a2236",
             boxShadow: "0 18px 48px rgba(0,0,0,0.35)",
             color: "#f0f4ff",
@@ -110,11 +110,15 @@ export default class ErrorBoundary extends Component<Props, State> {
               width: 52,
               height: 52,
               borderRadius: "50%",
-              background: "rgba(234,107,20,0.14)",
+              background: "rgba(var(--ff-accent-rgb), 0.14)",
               marginBottom: "1rem",
             }}
           >
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ea6b14" strokeWidth="2" strokeLinecap="round">
+            {/* The colour rides CSS and the attribute says currentColor — the same
+                move Ic makes internally. A token written straight into `stroke`
+                would be a var() in a presentation attribute, which is the one
+                shape the orange migration still refuses. */}
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: "var(--ff-c10)" }}>
               <path d="M12 7v6" />
               <path d="M12 17h.01" />
               <circle cx="12" cy="12" r="9" />
@@ -139,7 +143,7 @@ export default class ErrorBoundary extends Component<Props, State> {
               padding: "0.8rem 1.25rem",
               borderRadius: 12,
               border: "none",
-              background: "#ea6b14",
+              background: "var(--ff-c10)",
               color: "#fff",
               fontSize: "1rem",
               fontWeight: 700,

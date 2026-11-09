@@ -77,7 +77,7 @@ export default function CookieConsent() {
           align-items: center;
           gap: .6rem;
           background: var(--ff-surface);
-          border: 1px solid var(--ff-hair);
+          border: var(--ff-hair-w) solid var(--ff-hair);
           border-radius: 12px;
           padding: .5rem .55rem .5rem .8rem;
           box-shadow: var(--ff-lift-3);

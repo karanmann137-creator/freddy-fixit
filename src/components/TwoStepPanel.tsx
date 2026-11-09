@@ -125,7 +125,7 @@ export default function TwoStepPanel() {
   }
 
   const card: React.CSSProperties = {
-    background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .1)",
+    background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)",
     borderRadius: "12px", padding: "1rem 1.05rem", marginBottom: "1.1rem",
   };
   const sectionTitle: React.CSSProperties = {
@@ -137,19 +137,18 @@ export default function TwoStepPanel() {
   };
   const btn = (kind: "primary" | "quiet"): React.CSSProperties => ({
     width: "100%", padding: ".75rem 1rem", borderRadius: "10px",
-    background: kind === "primary" ? "#ea6b14" : "rgba(var(--ff-fg), .06)",
+    background: kind === "primary" ? "var(--ff-c10)" : "rgba(var(--ff-fg), .06)",
     color: kind === "primary" ? "#fff" : "rgb(var(--ff-muted))",
-    border: kind === "primary" ? "none" : "1px solid rgba(var(--ff-fg), .14)",
+    border: kind === "primary" ? "none" : "var(--ff-hair-w) solid rgba(var(--ff-fg), .14)",
     fontFamily: "inherit", fontWeight: 700, fontSize: ".9rem",
     cursor: busy ? "default" : "pointer", opacity: busy ? .7 : 1,
   });
   const codeInput: React.CSSProperties = {
     width: "100%", padding: ".7rem .9rem", borderRadius: "10px",
-    background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .14)",
+    background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .14)",
     color: "var(--ff-text)", fontFamily: "'SFMono-Regular',Menlo,Consolas,monospace",
     fontSize: "1.25rem", letterSpacing: ".35em", textAlign: "center",
-    boxSizing: "border-box", marginBottom: ".7rem", outline: "none",
-  };
+    boxSizing: "border-box", marginBottom: "var(--ff-s3)", };
   const pill = (on: boolean): React.CSSProperties => ({
     display: "inline-block", padding: ".18rem .55rem", borderRadius: "999px",
     fontSize: ".7rem", fontWeight: 700, letterSpacing: ".04em",
@@ -199,7 +198,7 @@ export default function TwoStepPanel() {
           </p>
           <div style={{
             display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: ".4rem",
-            background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .14)",
+            background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .14)",
             borderRadius: "10px", padding: ".8rem", marginBottom: ".8rem",
           }}>
             {recovery.map(c => (
@@ -209,7 +208,7 @@ export default function TwoStepPanel() {
               }}>{c}</span>
             ))}
           </div>
-          <div style={{ display: "flex", gap: ".5rem", marginBottom: ".7rem" }}>
+          <div style={{ display: "flex", gap: ".5rem", marginBottom: "var(--ff-s3)" }}>
             <button onClick={downloadCodes} style={{ ...btn("quiet"), display: "flex", alignItems: "center", justifyContent: "center", gap: ".4rem" }}>
               <Ic name="download" size={15} /> Download
             </button>
@@ -270,7 +269,7 @@ export default function TwoStepPanel() {
             When you sign in, we'll email you a 6-digit code. Someone who learns your password
             still can't get in without your email.
           </p>
-          <p style={{ ...body, marginBottom: ".9rem" }}>
+          <p style={{ ...body, marginBottom: "var(--ff-s4)" }}>
             <strong style={{ color: "var(--ff-text)" }}>{st.recovery_left}</strong> of your recovery
             codes are unused.
             {st.recovery_left <= 2 && " Turn two-step off and on again to get a fresh set."}
@@ -285,10 +284,10 @@ export default function TwoStepPanel() {
             Add a second step at sign-in: after your password, we email you a 6-digit code.
             It means a stolen password on its own isn't enough to get into your account.
           </p>
-          <p style={{ ...body, marginBottom: ".9rem" }}>
+          <p style={{ ...body, marginBottom: "var(--ff-s4)" }}>
             You'll get 10 single-use recovery codes to save, so losing access to your email
             doesn't lock you out. If you lose those too, email{" "}
-            <a href="mailto:hello@freddyfixit.ca" style={{ color: "#ea6b14" }}>hello@freddyfixit.ca</a>{" "}
+            <a href="mailto:hello@freddyfixit.ca" style={{ color: "var(--ff-c10)" }}>hello@freddyfixit.ca</a>{" "}
             and we can switch it off for you.
           </p>
           <button onClick={() => requestCode("enroll")} disabled={busy} style={btn("primary")}>

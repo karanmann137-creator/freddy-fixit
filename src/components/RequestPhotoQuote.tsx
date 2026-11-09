@@ -88,12 +88,12 @@ export default function RequestPhotoQuote({ requestId, photoPath, estimatedQuote
 
   const s: Record<string, React.CSSProperties> = {
     wrap: { marginTop: "1rem", display: "flex", flexDirection: "column", gap: ".75rem" },
-    photo: { width: "100%", maxWidth: "320px", borderRadius: "10px", display: "block", border: "1px solid rgba(var(--ff-fg), .08)" },
-    quoteBox: { background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .08)", borderRadius: "8px", padding: ".85rem 1rem" },
+    photo: { width: "100%", maxWidth: "320px", borderRadius: "10px", display: "block", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)" },
+    quoteBox: { background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: "8px", padding: ".85rem 1rem" },
     label: { fontSize: ".7rem", textTransform: "uppercase" as const, letterSpacing: ".1em", color: "rgba(var(--ff-muted), .4)", marginBottom: ".3rem" },
     amount: { fontSize: "1.2rem", fontWeight: 600, color: "var(--ff-text)" },
     noteText: { fontSize: ".82rem", color: "rgba(var(--ff-muted), .65)", marginTop: ".35rem", lineHeight: 1.5 },
-    input: { width: "100%", padding: ".55rem .75rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: "7px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".88rem", boxSizing: "border-box" as const },
+    input: { width: "100%", padding: ".55rem .75rem", background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius: "7px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".88rem", boxSizing: "border-box" as const },
     btn: { padding: ".45rem .9rem", borderRadius: "6px", border: "none", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 500, cursor: "pointer" },
   };
 
@@ -113,17 +113,17 @@ export default function RequestPhotoQuote({ requestId, photoPath, estimatedQuote
               firm number rather than a ballpark. Same promise in both places, or
               one of them is teaching the wrong lesson. */}
           {!photoUrl && (
-            <div style={{ background: "rgba(234,107,20,.08)", border: "1px solid rgba(234,107,20,.28)", borderRadius: "8px", padding: ".8rem 1rem", marginBottom: ".65rem", fontSize: ".82rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .85)" }}>
+            <div style={{ background: "rgba(var(--ff-accent-rgb), .08)", border: "1px solid rgba(var(--ff-accent-rgb), .28)", borderRadius: "8px", padding: ".8rem 1rem", marginBottom: ".65rem", fontSize: ".82rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .85)" }}>
               <strong style={{ color: "var(--ff-text)" }}>Add a photo to get firmer estimates.</strong>{" "}
               Pros price what they can see. Without one you're more likely to get a wide ballpark, or a pro who wants to visit before quoting. It only takes a second and you can add it now.
             </div>
           )}
-          <label style={{ ...s.btn, display: "inline-block", background: photoUrl ? "rgba(var(--ff-fg), .07)" : "#ea6b14", color: photoUrl ? "rgba(var(--ff-muted), .8)" : "#fff", border: photoUrl ? "1px solid rgba(var(--ff-fg), .1)" : "none", cursor: uploading ? "default" : "pointer" }}>
+          <label style={{ ...s.btn, display: "inline-block", background: photoUrl ? "rgba(var(--ff-fg), .07)" : "var(--ff-c10)", color: photoUrl ? "rgba(var(--ff-muted), .8)" : "#fff", border: photoUrl ? "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)" : "none", cursor: uploading ? "default" : "pointer" }}>
             {uploading ? "Uploading…" : photoUrl ? "Replace photo" : "Upload a photo"}
             <input type="file" accept="image/*" disabled={uploading} style={{ display: "none" }}
               onChange={e => { const f = e.target.files?.[0]; if (!f) return; uploadPhoto(f); e.target.value = ""; }} />
           </label>
-          {uploadErr && <div style={{ fontSize: ".8rem", color: "var(--ff-danger)", marginTop: ".45rem", lineHeight: 1.5 }}>{uploadErr}</div>}
+          {uploadErr && <div style={{ fontSize: ".8rem", color: "var(--ff-danger)", marginTop: "var(--ff-s2)", lineHeight: 1.5 }}>{uploadErr}</div>}
         </div>
       )}
 
@@ -140,7 +140,7 @@ export default function RequestPhotoQuote({ requestId, photoPath, estimatedQuote
               {currentNotes && <div style={s.noteText}>{currentNotes}</div>}
               {saved && <div style={{ fontSize: ".78rem", color: "#22c55e", marginTop: ".4rem" }}>✓ Estimate saved</div>}
               {canQuote && (
-                <button style={{ ...s.btn, marginTop: ".65rem", background: "rgba(var(--ff-fg), .07)", color: "rgba(var(--ff-muted), .8)", border: "1px solid rgba(var(--ff-fg), .1)" }}
+                <button style={{ ...s.btn, marginTop: ".65rem", background: "rgba(var(--ff-fg), .07)", color: "rgba(var(--ff-muted), .8)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)" }}
                   onClick={() => { setAmount(currentQuote?.toString() ?? ""); setNotes(currentNotes ?? ""); setEditing(true); }}>
                   {currentQuote ? "Edit estimate" : "Add estimate"}
                 </button>
@@ -160,10 +160,10 @@ export default function RequestPhotoQuote({ requestId, photoPath, estimatedQuote
                   style={{ ...s.input, resize: "vertical" as const }} />
               </div>
               <div style={{ display: "flex", gap: ".5rem" }}>
-                <button style={{ ...s.btn, background: "#ea6b14", color: "#fff" }} disabled={busy} onClick={saveQuote}>
+                <button style={{ ...s.btn, background: "var(--ff-c10)", color: "#fff" }} disabled={busy} onClick={saveQuote}>
                   {busy ? "Saving…" : "Save estimate"}
                 </button>
-                <button style={{ ...s.btn, background: "rgba(var(--ff-fg), .06)", color: "rgba(var(--ff-muted), .7)", border: "1px solid rgba(var(--ff-fg), .1)" }}
+                <button style={{ ...s.btn, background: "rgba(var(--ff-fg), .06)", color: "rgba(var(--ff-muted), .7)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)" }}
                   disabled={busy} onClick={() => setEditing(false)}>Cancel</button>
               </div>
             </div>

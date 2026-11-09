@@ -29,7 +29,7 @@ export default function DashSearch({
         display: "flex", alignItems: "center", gap: ".55rem",
         padding: ".55rem .75rem", borderRadius: "12px",
         background: "rgba(var(--ff-fg), .05)",
-        border: "1px solid rgba(var(--ff-fg), .12)",
+        border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .12)",
       }}>
         <span style={{ color: "rgb(var(--ff-muted))", display: "flex", flexShrink: 0 }}>
           <Ic name="search" size={15} />
@@ -40,8 +40,7 @@ export default function DashSearch({
           placeholder={placeholder}
           aria-label={placeholder}
           style={{
-            flex: 1, minWidth: 0, background: "none", border: "none", outline: "none",
-            color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".95rem",
+            flex: 1, minWidth: 0, background: "none", border: "none", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".95rem",
           }}
         />
         {value !== "" && (

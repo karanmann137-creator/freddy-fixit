@@ -63,7 +63,7 @@ export default function JobsCalendar({ jobs, statusColors, onOpen }: {
   const selDate = new Date(selected + "T12:00:00");
   const selLabel = isNaN(selDate.getTime()) ? "" : selDate.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
-  const navBtn: React.CSSProperties = { padding: ".4rem .8rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .1)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".82rem", cursor: "pointer" };
+  const navBtn: React.CSSProperties = { padding: ".4rem .8rem", background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".82rem", cursor: "pointer" };
 
   return (
     <div>
@@ -89,14 +89,14 @@ export default function JobsCalendar({ jobs, statusColors, onOpen }: {
           grid item is never allowed to shrink below its content's min width; the
           nowrap job chips below then pushed all 7 columns wider than the screen
           and the whole calendar hung off the right edge on a phone. */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: "4px", marginBottom: "4px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: "var(--ff-s1)", marginBottom: "var(--ff-s1)" }}>
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (
           <div key={d} style={{ minWidth: 0, overflow: "hidden", textAlign: "center" as const, fontSize: "clamp(.58rem, 2.2vw, .68rem)", textTransform: "uppercase" as const, letterSpacing: ".06em", color: "rgba(var(--ff-muted), .45)", padding: ".25rem 0" }}>{d}</div>
         ))}
       </div>
 
       {/* Month grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: "4px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: "var(--ff-s1)" }}>
         {cells.map((d, i) => {
           if (!d) return <div key={"e" + i} style={{ minWidth: 0, minHeight: "68px", borderRadius: "10px", background: "rgba(var(--ff-fg), .015)" }} />;
           const k = dayKey(d);
@@ -108,13 +108,13 @@ export default function JobsCalendar({ jobs, statusColors, onOpen }: {
               key={k}
               onClick={() => setSelected(k)}
               style={{
-                minWidth: 0, minHeight: "68px", padding: "4px", textAlign: "left" as const, display: "flex", flexDirection: "column" as const, gap: "2px",
+                minWidth: 0, minHeight: "68px", padding: "var(--ff-s1)", textAlign: "left" as const, display: "flex", flexDirection: "column" as const, gap: "2px",
                 borderRadius: "10px", cursor: "pointer", fontFamily: "inherit", overflow: "hidden",
-                background: isSel ? "rgba(234,107,20,.1)" : "rgba(var(--ff-fg), .035)",
-                border: isToday ? "1px solid #ea6b14" : isSel ? "1px solid rgba(234,107,20,.5)" : "1px solid rgba(var(--ff-fg), .05)",
+                background: isSel ? "rgba(var(--ff-accent-rgb), .1)" : "rgba(var(--ff-fg), .035)",
+                border: isToday ? "1px solid var(--ff-c10)" : isSel ? "1px solid rgba(var(--ff-accent-rgb), .5)" : "1px solid rgba(var(--ff-fg), .05)",
               }}
             >
-              <span style={{ fontSize: ".72rem", fontWeight: isToday ? 700 : 500, color: isToday ? "#ea6b14" : "rgba(var(--ff-muted), .6)" }}>{d.getDate()}</span>
+              <span style={{ fontSize: ".72rem", fontWeight: isToday ? 700 : 500, color: isToday ? "var(--ff-c10)" : "rgba(var(--ff-muted), .6)" }}>{d.getDate()}</span>
               {dj.slice(0, 2).map((j: any) => (
                 <span key={j.id} style={{ fontSize: ".62rem", lineHeight: 1.3, padding: "1px 4px", borderRadius: "4px", whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%", background: "rgba(var(--ff-fg), .06)", color: "var(--ff-text)", borderLeft: "3px solid " + color(j) }}>
                   {j.request?.service_needed ?? "Job"}
@@ -128,7 +128,7 @@ export default function JobsCalendar({ jobs, statusColors, onOpen }: {
 
       {/* Legend — only statuses visible this month */}
       {monthStatuses.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap" as const, gap: ".8rem", marginTop: ".7rem" }}>
+        <div style={{ display: "flex", flexWrap: "wrap" as const, gap: ".8rem", marginTop: "var(--ff-s3)" }}>
           {monthStatuses.map(st => (
             <span key={st} style={{ display: "inline-flex", alignItems: "center", gap: ".3rem", fontSize: ".7rem", color: "rgba(var(--ff-muted), .6)" }}>
               <span style={{ width: "9px", height: "9px", borderRadius: "3px", background: statusColors[st] ?? "#94a3b8", display: "inline-block" }} />
@@ -139,14 +139,14 @@ export default function JobsCalendar({ jobs, statusColors, onOpen }: {
       )}
 
       {/* Selected day detail */}
-      <div style={{ marginTop: "1.25rem", background: "var(--ff-card-bg)", border: "1px solid var(--ff-card-border)", borderRadius: "14px", padding: "1.25rem" }}>
-        <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.1rem", letterSpacing: ".05em", lineHeight: 1.1, color: "#ea6b14", marginBottom: ".8rem" }}>
+      <div style={{ marginTop: "1.25rem", background: "var(--ff-card-bg)", border: "var(--ff-hair-w) solid var(--ff-card-border)", borderRadius: "14px", padding: "1.25rem" }}>
+        <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.1rem", letterSpacing: ".05em", lineHeight: 1.1, color: "var(--ff-c10)", marginBottom: ".8rem" }}>
           <Ic name="calendar" size={15} style={{ marginRight: 6 }} />{selLabel}
         </div>
         {selJobs.length === 0 ? (
           <div style={{ fontSize: ".85rem", color: "rgba(var(--ff-muted), .5)" }}>Nothing booked this day.</div>
         ) : selJobs.map((j: any) => (
-          <div key={j.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: ".75rem", flexWrap: "wrap" as const, padding: ".65rem 0", borderTop: "1px solid rgba(var(--ff-fg), .06)" }}>
+          <div key={j.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: ".75rem", flexWrap: "wrap" as const, padding: ".65rem 0", borderTop: "var(--ff-hair-w) solid rgba(var(--ff-fg), .06)" }}>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: ".88rem", fontWeight: 500 }}>
                 <span style={{ color: color(j), marginRight: 6 }}>●</span>
@@ -160,7 +160,7 @@ export default function JobsCalendar({ jobs, statusColors, onOpen }: {
             </div>
             <button
               onClick={() => onOpen(j)}
-              style={{ padding: ".45rem .9rem", background: "#ea6b14", color: "#fff", border: "none", borderRadius: "8px", fontFamily: "inherit", fontSize: ".8rem", fontWeight: 500, cursor: "pointer", flexShrink: 0 }}
+              style={{ padding: ".45rem .9rem", background: "var(--ff-c10)", color: "#fff", border: "none", borderRadius: "8px", fontFamily: "inherit", fontSize: ".8rem", fontWeight: 500, cursor: "pointer", flexShrink: 0 }}
             >
               Open job
             </button>

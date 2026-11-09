@@ -89,7 +89,7 @@ export default function WaitlistForm({
 
   const card: React.CSSProperties = {
     background: bare ? "transparent" : "rgba(var(--ff-fg), .04)",
-    border: bare ? "none" : "1px solid rgba(234,107,20,.3)",
+    border: bare ? "none" : "1px solid rgba(var(--ff-accent-rgb), .3)",
     borderRadius: bare ? 0 : "16px",
     padding: bare ? 0 : (compact ? "1.2rem 1.1rem" : "1.6rem 1.5rem"),
     fontFamily: "'DM Sans', sans-serif",
@@ -103,10 +103,10 @@ export default function WaitlistForm({
   };
   const input: React.CSSProperties = {
     width: "100%", padding: ".7rem .8rem", borderRadius: "10px",
-    border: "1px solid rgba(var(--ff-fg), .16)", background: "rgba(var(--ff-fg), .04)",
+    border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .16)", background: "rgba(var(--ff-fg), .04)",
     color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".92rem",
   };
-  const field: React.CSSProperties = { marginBottom: ".9rem" };
+  const field: React.CSSProperties = { marginBottom: "var(--ff-s4)" };
 
   if (done) {
     return (
@@ -169,7 +169,7 @@ export default function WaitlistForm({
         type="submit"
         disabled={busy}
         style={{
-          width: "100%", padding: ".85rem 1rem", background: "#ea6b14", color: "#fff",
+          width: "100%", padding: ".85rem 1rem", background: "var(--ff-c10)", color: "#fff",
           border: "none", borderRadius: "10px", fontFamily: "inherit", fontWeight: 700,
           fontSize: ".95rem", cursor: busy ? "default" : "pointer", opacity: busy ? .7 : 1,
         }}

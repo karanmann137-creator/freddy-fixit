@@ -121,7 +121,7 @@ function QuoteBreakdownView({ row, assumptionsKey = "assumptions" }: { row: any;
   const hasRange = row?.price_low != null && row?.price_high != null;
   if (present.length === 0 && !assumptions && !row?.subject_to_inspection && !hasRange) return null;
   return (
-    <div style={{ marginTop:".5rem", padding:".55rem .7rem", borderRadius:"8px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)" }}>
+    <div style={{ marginTop:".5rem", padding:".55rem .7rem", borderRadius:"8px", background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)" }}>
       {present.length > 0 && (
         <div style={{ fontSize:".68rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .45)", marginBottom:".3rem" }}>Price breakdown</div>
       )}
@@ -190,7 +190,7 @@ function QuoteBreakdownView({ row, assumptionsKey = "assumptions" }: { row: any;
 const STATUS_META: Record<string, { icon: string; label: string; color: string; tone: PillTone; rowTone: RowTone }> = {
   pending:     { icon: "clock", label: "Pending Review",     color: "#f59e0b", tone: "warn",    rowTone: "warn" },
   matched:     { icon: "link", label: "Contractor Matched", color: "#3b82f6", tone: "neutral", rowTone: "neutral" },
-  in_progress: { icon: "wrench", label: "Work In Progress",   color: "#ea6b14", tone: "neutral", rowTone: "neutral" },
+  in_progress: { icon: "wrench", label: "Work In Progress",   color: "var(--ff-c10)", tone: "neutral", rowTone: "neutral" },
   completed:   { icon: "check-circle", label: "Completed",          color: "#22c55e", tone: "good",    rowTone: "good" },
   cancelled:   { icon: "x-circle", label: "Cancelled",          color: "#ef4444", tone: "danger",  rowTone: "neutral" },
 };
@@ -1115,7 +1115,7 @@ export default function ClientDashboard() {
   function depositSplit(j: any) { return jobTotal(j) - jobDueNow(j) > 0.005; }
   // Small "$X now / $Y when it's done" breakdown shown above the deposit button.
   const PaySplit = ({ job }: { job: any }) => (
-    <div style={{ display:"grid", gap:".3rem", marginBottom:".6rem", padding:".65rem .75rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .09)" }}>
+    <div style={{ display:"grid", gap:".3rem", marginBottom:".6rem", padding:".65rem .75rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .09)" }}>
       <div style={{ display:"flex", justifyContent:"space-between", gap:".75rem", fontSize:".82rem" }}>
         <span style={{ color:"rgba(var(--ff-muted), .8)" }}>Due now ({Math.round(jobDepositRate(job) * 100)}% deposit + service fee)</span>
         <strong>${jobDueNow(job).toFixed(2)}</strong>
@@ -1124,7 +1124,7 @@ export default function ClientDashboard() {
         <span style={{ color:"rgba(var(--ff-muted), .8)" }}>Due when the work is done</span>
         <strong>${r2(jobTotal(job) - jobDueNow(job)).toFixed(2)}</strong>
       </div>
-      <div style={{ display:"flex", justifyContent:"space-between", gap:".75rem", fontSize:".82rem", paddingTop:".3rem", borderTop:"1px solid rgba(var(--ff-fg), .09)" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", gap:".75rem", fontSize:".82rem", paddingTop:".3rem", borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .09)" }}>
         <span style={{ color:"rgba(var(--ff-muted), .8)" }}>Total</span>
         <strong>${jobTotal(job).toFixed(2)}</strong>
       </div>
@@ -1615,7 +1615,7 @@ export default function ClientDashboard() {
   };
 
   const s = {
-    wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
+    wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(var(--ff-accent-rgb), 0.16) 0%, transparent 70%), radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
     // `header` and `logo` were removed on 2026-10-30. `header` styled the
     // "Welcome, <name>" bar the pass replaced; `logo` had already been dead for
     // some time (the global TopNav carries the wordmark). Neither had a single
@@ -1638,15 +1638,15 @@ export default function ClientDashboard() {
     // (brightness on hover, scale(0.97) on press, .55 opacity disabled) and
     // apply to every <button> on the page. An inline style beats the injected
     // sheet, so adding `opacity` here would override the disabled state.
-    card: { background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"var(--ff-r3)", padding:"clamp(1rem, 4vw, 1.5rem)", marginBottom:"var(--ff-s6)" },
+    card: { background:"var(--ff-card-bg)", border:"var(--ff-hair-w) solid var(--ff-card-border)", borderRadius:"var(--ff-r3)", padding:"clamp(1rem, 4vw, 1.5rem)", marginBottom:"var(--ff-s6)" },
     cardTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", lineHeight:1.1, color:"var(--ff-accent-500)", marginBottom:"var(--ff-s5)" },
     // Bebas on buttons is the brand rule, not a preference — CLAUDE.md puts all
     // buttons, chips, labels and numerals on it. Tracking matters at this size:
     // Bebas without the .09em reads as a solid block.
-    btn: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s4)", background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", color:"var(--ff-text)", fontFamily:"'Bebas Neue',sans-serif", fontSize:".88rem", letterSpacing:".09em", cursor:"pointer" },
+    btn: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s4)", background:"var(--ff-card-bg)", border:"var(--ff-hair-w) solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", color:"var(--ff-text)", fontFamily:"'Bebas Neue',sans-serif", fontSize:".88rem", letterSpacing:".09em", cursor:"pointer" },
     primaryBtn: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s5)", background:"var(--ff-accent-500)", color:"#fff", border:"none", borderRadius:"var(--ff-r2)", boxShadow:"var(--ff-lift-2)", fontFamily:"'Bebas Neue',sans-serif", fontSize:".95rem", letterSpacing:".09em", cursor:"pointer" },
     tabs: { display:"flex", gap:"var(--ff-s2)", marginBottom:"var(--ff-s6)", flexWrap:"wrap" as const },
-    tab: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s4)", background:"transparent", border:"1px solid var(--ff-hair)", borderRadius:"var(--ff-r2)", color:"rgba(var(--ff-muted), .7)", cursor:"pointer", fontFamily:"'Bebas Neue',sans-serif", fontSize:".85rem", letterSpacing:".09em" },
+    tab: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s4)", background:"transparent", border:"var(--ff-hair-w) solid var(--ff-hair)", borderRadius:"var(--ff-r2)", color:"rgba(var(--ff-muted), .7)", cursor:"pointer", fontFamily:"'Bebas Neue',sans-serif", fontSize:".85rem", letterSpacing:".09em" },
     activeTab: { background:"var(--ff-accent-soft)", borderColor:"var(--ff-accent-line)", color:"var(--ff-text)" },
   };
 
@@ -1692,7 +1692,7 @@ export default function ClientDashboard() {
     <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       <div style={{ textAlign:"center", maxWidth:"380px", padding:"1.5rem" }}>
-        <div style={{ width:56, height:56, borderRadius:"50%", margin:"0 auto 1rem", background:"linear-gradient(135deg,#ea6b14,#f59e42)", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.9rem" }}>F</div>
+        <div style={{ width:56, height:56, borderRadius:"50%", margin:"0 auto 1rem", background:"linear-gradient(135deg,var(--ff-c10),#f59e42)", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.9rem" }}>F</div>
         <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.7rem", letterSpacing:".04em", lineHeight:1.1, color:"var(--ff-text)", marginBottom:".5rem" }}>You're almost there</div>
         <div style={{ fontSize:".92rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.55, marginBottom:"1.25rem" }}>
           Your login is set up, but we need a couple more details before you can post a request and get estimates. It takes about two minutes.
@@ -1989,9 +1989,9 @@ export default function ClientDashboard() {
   return (
     <div style={s.wrap} className="ffdash">
       <style>{".ffdash button{transition:filter .16s var(--ff-ease-out), transform .16s var(--ff-ease-out), opacity .16s var(--ff-ease-out)} .ffdash button:hover:not(:disabled){filter:brightness(1.09)} .ffdash button:active:not(:disabled){transform:scale(0.97); transition-duration:.1s} .ffdash button:disabled{opacity:.55; cursor:not-allowed}"
-        + " @keyframes ff-pulse-ring{0%{box-shadow:0 0 0 0 rgba(234,107,20,.55); background:rgba(234,107,20,.14)}70%{box-shadow:0 0 0 12px rgba(234,107,20,0); background:rgba(234,107,20,.05)}100%{box-shadow:0 0 0 0 rgba(234,107,20,0); background:rgba(234,107,20,0)}}"
-        + " .ffdash .ff-pulse{outline:2px solid rgba(234,107,20,.75); outline-offset:6px; border-radius:12px; animation:ff-pulse-ring 1.5s ease-out 3}"
-        + " @media (prefers-reduced-motion: reduce){.ffdash .ff-pulse{animation:none; background:rgba(234,107,20,.12)}}"}</style>
+        + " @keyframes ff-pulse-ring{0%{box-shadow:0 0 0 0 rgba(var(--ff-accent-rgb), .55); background:rgba(var(--ff-accent-rgb), .14)}70%{box-shadow:0 0 0 12px rgba(var(--ff-accent-rgb), 0); background:rgba(var(--ff-accent-rgb), .05)}100%{box-shadow:0 0 0 0 rgba(var(--ff-accent-rgb), 0); background:rgba(var(--ff-accent-rgb), 0)}}"
+        + " .ffdash .ff-pulse{outline:2px solid rgba(var(--ff-accent-rgb), .75); outline-offset:6px; border-radius:12px; animation:ff-pulse-ring 1.5s ease-out 3}"
+        + " @media (prefers-reduced-motion: reduce){.ffdash .ff-pulse{animation:none; background:rgba(var(--ff-accent-rgb), .12)}}"}</style>
       {toast && (
         <div onClick={() => setToast(null)} className="ff-toast-in" style={{ position:"fixed", left:"50%", bottom:"calc(1.5rem + var(--ff-fsb-h, 0px))", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
       )}
@@ -2100,9 +2100,9 @@ export default function ClientDashboard() {
           const key = "profile_banner:client:" + gaps.slice().sort().join(",");
           if (dismissed.has(key)) return null;
           return (
-            <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.45)", display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".75rem", justifyContent:"space-between" }}>
+            <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(var(--ff-accent-rgb), .1)", border:"1px solid rgba(var(--ff-accent-rgb), .45)", display:"flex", flexWrap:"wrap" as const, alignItems:"center", gap:".75rem", justifyContent:"space-between" }}>
               <div style={{ flex:"1 1 260px" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".85rem", fontWeight:600, color:"#ea6b14", marginBottom:".3rem" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:".4rem", fontSize:".85rem", fontWeight:600, color:"var(--ff-c10)", marginBottom:".3rem" }}>
                   <Ic name="alert-triangle" size={14} />Complete your profile
                 </div>
                 <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
@@ -2129,7 +2129,7 @@ export default function ClientDashboard() {
           <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.45)", display:"flex", alignItems:"flex-start", gap:".6rem" }}>
             <Ic name="check" size={16} color="#22c55e" style={{ marginTop:2, flexShrink:0 }} />
             <div style={{ flex:"1 1 auto", minWidth:0 }}>
-              <div style={{ fontSize:".88rem", fontWeight:700, color:"#22c55e", marginBottom:".25rem" }}>Payment received</div>
+              <div style={{ fontSize:".88rem", fontWeight:700, color:"#22c55e", marginBottom: "var(--ff-s1)" }}>Payment received</div>
               <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
                 Your money is <strong>held safely</strong> and only released to your contractor once you confirm the work is done. It can take a few seconds to show below.
               </div>
@@ -2138,10 +2138,10 @@ export default function ClientDashboard() {
           </div>
         )}
         {payReturn === "cancelled" && (
-          <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.45)", display:"flex", alignItems:"flex-start", gap:".6rem" }}>
-            <Ic name="alert-triangle" size={16} color="#ea6b14" style={{ marginTop:2, flexShrink:0 }} />
+          <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(var(--ff-accent-rgb), .1)", border:"1px solid rgba(var(--ff-accent-rgb), .45)", display:"flex", alignItems:"flex-start", gap:".6rem" }}>
+            <Ic name="alert-triangle" size={16} color="var(--ff-c10)" style={{ marginTop:2, flexShrink:0 }} />
             <div style={{ flex:"1 1 auto", minWidth:0 }}>
-              <div style={{ fontSize:".88rem", fontWeight:700, color:"#ea6b14", marginBottom:".25rem" }}>Payment not completed</div>
+              <div style={{ fontSize:".88rem", fontWeight:700, color:"var(--ff-c10)", marginBottom: "var(--ff-s1)" }}>Payment not completed</div>
               <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
                 You weren't charged. Your job is still here — use the payment button on it whenever you're ready.
               </div>
@@ -2296,7 +2296,7 @@ export default function ClientDashboard() {
           </Group>
         ) : (
           <div style={{ textAlign:"center", padding:"3.5rem 2rem" }}>
-            <div style={{ marginBottom:"1rem" }}><Ic name="user-check" size={44} color="#ea6b14" /></div>
+            <div style={{ marginBottom:"1rem" }}><Ic name="user-check" size={44} color="var(--ff-c10)" /></div>
             <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".03em", lineHeight:1.1, marginBottom:".4rem" }}>No pros yet</h2>
             <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".9rem" }}>Once you've worked with a contractor, they'll show up here so you can rebook them in one tap.</p>
           </div>
@@ -2384,7 +2384,7 @@ export default function ClientDashboard() {
                         line up with the row's text column above them, and a
                         hairline above it so it reads as the row's footer
                         rather than as a second, unexplained row. */}
-                    <div style={{ display:"flex", gap:"var(--ff-s2)", flexWrap:"wrap" as const, padding:"var(--ff-s3) var(--ff-s4)", borderTop:"1px solid var(--ff-hair)" }}>
+                    <div style={{ display:"flex", gap:"var(--ff-s2)", flexWrap:"wrap" as const, padding:"var(--ff-s3) var(--ff-s4)", borderTop:"var(--ff-hair-w) solid var(--ff-hair)" }}>
                       {!hasPool && !paused && [2,3].map(n => (
                         <Button key={n} variant="primary" loading={busyPlan===pl.request_id} onClick={() => prepayPlan(pl, n)}>
                           Prepay {n} visits
@@ -2401,7 +2401,7 @@ export default function ClientDashboard() {
           </Group>
         ) : (
           <div style={{ textAlign:"center", padding:"3.5rem 2rem" }}>
-            <div style={{ marginBottom:"1rem" }}><Ic name="repeat" size={44} color="#ea6b14" /></div>
+            <div style={{ marginBottom:"1rem" }}><Ic name="repeat" size={44} color="var(--ff-c10)" /></div>
             <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".03em", lineHeight:1.1, marginBottom:".4rem" }}>No recurring plans</h2>
             <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".9rem" }}>Book a job as recurring and we'll line up each visit automatically — you can manage and prepay them here.</p>
           </div>
@@ -2492,44 +2492,44 @@ export default function ClientDashboard() {
                 attention row still calls focusAnchor("ffc-bids"), and so does the
                 deep link from the bid email. */}
             {activeReq && activeReq.status === "pending" && clientBids.length > 0 && (
-              <div {...anchor("ffc-bids")} style={{ ...anchorPad, marginBottom:"1.25rem", padding:"1.25rem", borderRadius:"12px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)" }}>
-                <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:".75rem", flexWrap:"wrap" as const, marginBottom:".2rem" }}>
+              <div {...anchor("ffc-bids")} style={{ ...anchorPad, marginBottom:"1.25rem", padding:"1.25rem", borderRadius:"12px", background:"rgba(var(--ff-accent-rgb), .06)", border:"1px solid rgba(var(--ff-accent-rgb), .2)" }}>
+                <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:".75rem", flexWrap:"wrap" as const, marginBottom: "var(--ff-s1)" }}>
                   <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.35rem", letterSpacing:".03em", lineHeight:1.1, color:"var(--ff-text)" }}>Your estimates</div>
                   {/* Deliberately a bare count, not "N of 5". The bid cap is 7 and the
                       marketing under-promise is 5, so a denominator here would either
                       render "6 of 5" or promise a number we don't control. */}
-                  <div style={{ fontSize:".78rem", fontWeight:700, color:"#ea6b14" }}>{clientBids.length} estimate{clientBids.length === 1 ? "" : "s"}</div>
+                  <div style={{ fontSize:".78rem", fontWeight:700, color:"var(--ff-c10)" }}>{clientBids.length} estimate{clientBids.length === 1 ? "" : "s"}</div>
                 </div>
                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", marginBottom:".75rem", lineHeight:1.5 }}>
                   For <strong style={{ color:"var(--ff-text)", fontWeight:600 }}>{activeReq.service_needed}</strong>. Pick the pro you want — nothing is charged until you approve their price and sign the agreement.
                 </div>
                 {Object.keys(bidMatch).length > 0 && (
                   <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .55)", marginBottom:".6rem", display:"flex", alignItems:"center", gap:".35rem" }}>
-                    <Ic name="sparkles" size={12} color="#ea6b14" />Ranked by match quality — rating, jobs done, response speed and area fit.
+                    <Ic name="sparkles" size={12} color="var(--ff-c10)" />Ranked by match quality — rating, jobs done, response speed and area fit.
                   </div>
                 )}
                 {[...clientBids].sort((a, b) => (Number(bidMatch[b.contractor_id]?.score ?? -1)) - (Number(bidMatch[a.contractor_id]?.score ?? -1)) || (Number(a.amount ?? Infinity)) - (Number(b.amount ?? Infinity))).map((b, bi) => (
-                  <div key={b.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", padding:".6rem .7rem", marginBottom:".5rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px", flexWrap:"wrap" as const }}>
+                  <div key={b.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", padding:".6rem .7rem", marginBottom:".5rem", background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"8px", flexWrap:"wrap" as const }}>
                     {/* Who you'd be letting into your home. Falls back to initials
                         rather than a broken image when the pro hasn't added a photo. */}
                     <div style={{ width:44, height:44, borderRadius:"50%", overflow:"hidden", flex:"0 0 auto", alignSelf:"flex-start",
-                      background:"rgba(234,107,20,.14)", border:"1px solid rgba(var(--ff-fg), .1)",
+                      background:"rgba(var(--ff-accent-rgb), .14)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)",
                       display:"flex", alignItems:"center", justifyContent:"center" }}>
                       {bidPhoto[b.contractor_id]
                         ? <FadeImg src={bidPhoto[b.contractor_id]} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" as const }} />
-                        : <span style={{ fontSize:".85rem", fontWeight:700, color:"#ea6b14" }}>
+                        : <span style={{ fontSize:".85rem", fontWeight:700, color:"var(--ff-c10)" }}>
                             {(bidNames[b.contractor_id] ?? "Contractor").split(/\s+/).map((w: string) => w[0] ?? "").join("").slice(0,2).toUpperCase()}
                           </span>}
                     </div>
                     <div style={{ flex:"1 1 160px", minWidth:0 }}>
-                      <div style={{ fontSize:".88rem", color:"var(--ff-text)", display:"flex", alignItems:"center", gap:".45rem", flexWrap:"wrap" as const }}>
+                      <div style={{ fontSize:".88rem", color:"var(--ff-text)", display:"flex", alignItems:"center", gap: "var(--ff-s2)", flexWrap:"wrap" as const }}>
                         {/* A walkthrough bid has no b.amount, so without the range fallback the
                             headline showed a name and no number at all — nothing to compare. */}
                         {bidNames[b.contractor_id] ?? "Contractor"}{b.amount != null
                           ? " — $" + b.amount
                           : (b.price_low != null && b.price_high != null ? " — $" + b.price_low + "–$" + b.price_high : "")}
                         {bi === 0 && clientBids.length > 1 && bidMatch[b.contractor_id] != null && (
-                          <span style={{ padding:".14rem .5rem", borderRadius:"999px", fontSize:".66rem", fontWeight:700, background:"rgba(234,107,20,.14)", border:"1px solid rgba(234,107,20,.4)", color:"#ea6b14" }}>Best match</span>
+                          <span style={{ padding:".14rem .5rem", borderRadius:"999px", fontSize:".66rem", fontWeight:700, background:"rgba(var(--ff-accent-rgb), .14)", border:"1px solid rgba(var(--ff-accent-rgb), .4)", color:"var(--ff-c10)" }}>Best match</span>
                         )}
                         {/* How this pro's prices sit against the category average. Price only — quality is the star rating. */}
                         <PriceGrade grade={bidGrade[b.contractor_id] as Grade} kind="pro" size="sm" />
@@ -2540,21 +2540,21 @@ export default function ClientDashboard() {
                         if (Number(m.total_jobs) > 0) bits.push(m.total_jobs + " job" + (Number(m.total_jobs) === 1 ? "" : "s") + " done");
                         if (m.area_match) bits.push("works your area");
                         if (!bits.length) return null;
-                        return <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .6)", marginTop:".2rem" }}>{bits.join(" \u00b7 ")}</div>;
+                        return <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .6)", marginTop: "var(--ff-s1)" }}>{bits.join(" \u00b7 ")}</div>;
                       })()}
                       {bidResp[b.contractor_id] != null && (
-                        <div style={{ display:"inline-block", marginTop:".25rem", padding:".15rem .5rem", borderRadius:"999px", fontSize:".68rem", fontWeight:600, background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.3)", color:"#22c55e" }}>
+                        <div style={{ display:"inline-block", marginTop: "var(--ff-s1)", padding:".15rem .5rem", borderRadius:"999px", fontSize:".68rem", fontWeight:600, background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.3)", color:"#22c55e" }}>
                           ⚡ Usually responds in {respText(bidResp[b.contractor_id])}
                         </div>
                       )}
                       <VerifiedMarks flags={bidVerif[b.contractor_id]} size="sm" style={{ marginTop:".3rem" }} />
                       {b.walkthrough_requested && (
-                        <div style={{ display:"inline-flex", alignItems:"center", gap:".35rem", padding:".22rem .55rem", borderRadius:"99px", background:"rgba(234,107,20,.14)", color:"#ea6b14", fontSize:".72rem", fontWeight:700, marginTop:".3rem" }}>
+                        <div style={{ display:"inline-flex", alignItems:"center", gap:".35rem", padding:".22rem .55rem", borderRadius:"99px", background:"rgba(var(--ff-accent-rgb), .14)", color:"var(--ff-c10)", fontSize:".72rem", fontWeight:700, marginTop:".3rem" }}>
                           <Ic name="search" size={11} />Wants a free walkthrough first
                         </div>
                       )}
                       {b.walkthrough_requested && (
-                        <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .65)", marginTop:".25rem", lineHeight:1.45 }}>
+                        <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .65)", marginTop: "var(--ff-s1)", lineHeight:1.45 }}>
                           This pro prefers to see the space before giving a firm price{b.price_low != null && b.price_high != null ? " — ballpark $" + b.price_low + "–$" + b.price_high : ""}. If you choose them, they'll propose a quick free visit, then send your estimate.
                         </div>
                       )}
@@ -2571,7 +2571,7 @@ export default function ClientDashboard() {
                       >
                         <Ic name="message-square" size={12} style={{ marginRight:4 }} />Ask a question
                         {bid.unreadFor(activeReq.id, b.contractor_id) > 0 && (
-                          <span style={{ position:"absolute", top:-6, right:-6, minWidth:16, height:16, padding:"0 4px", borderRadius:999, background:"#ea6b14", color:"#fff", fontSize:".62rem", fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          <span style={{ position:"absolute", top:-6, right:-6, minWidth:16, height:16, padding:"0 4px", borderRadius:999, background:"var(--ff-c10)", color:"#fff", fontSize:".62rem", fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>
                             {bid.unreadFor(activeReq.id, b.contractor_id) > 9 ? "9+" : bid.unreadFor(activeReq.id, b.contractor_id)}
                           </span>
                         )}
@@ -2601,7 +2601,7 @@ export default function ClientDashboard() {
                 still are on the My Pros tab, so nothing is unreachable. */}
             {requests.length === 0 ? (
               <div style={{ textAlign:"center", padding:"3rem 2rem" }}>
-                <div style={{ marginBottom:"1rem" }}><Ic name="home" size={44} color="#ea6b14" /></div>
+                <div style={{ marginBottom:"1rem" }}><Ic name="home" size={44} color="var(--ff-c10)" /></div>
                 <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".03em", lineHeight:1.1, marginBottom:".5rem" }}>What needs fixing?</h2>
                 <p style={{ color:"rgba(var(--ff-muted), .5)", marginBottom:"1.25rem", maxWidth:"380px", marginLeft:"auto", marginRight:"auto", lineHeight:1.55 }}>Describe the job, get free estimates from vetted Calgary pros, and pick the one you like. Your payment is held securely until the work is done.</p>
                 <button style={s.primaryBtn} onClick={() => setLocation("/client-onboarding")}>Post your first request →</button>
@@ -2631,15 +2631,15 @@ export default function ClientDashboard() {
                         </Pill>
                       </div>
                       <div style={{ display:"flex", alignItems:"center", gap:".75rem", flexShrink:0 }}>
-                        {activeJob?.id && <div style={{ fontSize:".72rem", fontFamily:"monospace", color:"#ea6b14" }} title="Quote this Job ID when filing a claim">{jobCode(activeJob.id)}</div>}
+                        {activeJob?.id && <div style={{ fontSize:".72rem", fontFamily:"monospace", color:"var(--ff-c10)" }} title="Quote this Job ID when filing a claim">{jobCode(activeJob.id)}</div>}
                         {bidsOnScreen && (
                           <button
                             onClick={() => setReqDetailOpen(v => !v)}
                             aria-expanded={reqDetailOpen}
-                            style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".8rem", fontWeight:600, cursor:"pointer", padding:0, display:"inline-flex", alignItems:"center", gap:".3rem" }}
+                            style={{ background:"none", border:"none", color:"var(--ff-c10)", fontFamily:"inherit", fontSize:".8rem", fontWeight:600, cursor:"pointer", padding:0, display:"inline-flex", alignItems:"center", gap:".3rem" }}
                           >
                             {reqDetailOpen ? "Hide details" : "Details"}
-                            <Ic name={reqDetailOpen ? "chevron-up" : "chevron-down"} size={13} color="#ea6b14" />
+                            <Ic name={reqDetailOpen ? "chevron-up" : "chevron-down"} size={13} color="var(--ff-c10)" />
                           </button>
                         )}
                       </div>
@@ -2660,7 +2660,7 @@ export default function ClientDashboard() {
                         </div>
                       ))}
                     </div>
-                    <div style={{ background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .06)", borderRadius:"8px", padding:"1rem", marginBottom:"1rem" }}>
+                    <div style={{ background:"rgba(var(--ff-fg), .03)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .06)", borderRadius:"8px", padding:"1rem", marginBottom:"1rem" }}>
                       <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".4rem" }}>Job Description</div>
                       {/* Same tidy + clamp the contractor sees on the feed, so
                           the client is reading exactly what the pros price off. */}
@@ -2696,7 +2696,7 @@ export default function ClientDashboard() {
                     )}
 
                     {activeJob && activeJob.payment_status !== "disputed" && (
-                      <div style={{ marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)" }}>
+                      <div style={{ marginTop:"1rem", padding:"1rem", borderRadius:"12px", background:"rgba(var(--ff-accent-rgb), .06)", border:"1px solid rgba(var(--ff-accent-rgb), .2)" }}>
                         {/* THE PENDING PRICE CHANGE. Rebuilt 2026-11-07. The old version
                             compressed the whole thing into one line -- "Current: $X ->
                             New: $Y" plus a parenthetical delta -- and showed NO
@@ -2726,7 +2726,7 @@ export default function ClientDashboard() {
                             <div style={{
                               display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:"1rem",
                               padding:".5rem 0",
-                              ...(opts?.top ? { marginTop:".35rem", paddingTop:".7rem", borderTop:"1px solid rgba(var(--ff-fg), .14)" } : null),
+                              ...(opts?.top ? { marginTop:".35rem", paddingTop: "var(--ff-s3)", borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .14)" } : null),
                             }}>
                               <span style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.45 }}>{labelText}</span>
                               <span style={{
@@ -2745,34 +2745,34 @@ export default function ClientDashboard() {
                                   <div style={{ fontSize:"1rem", fontWeight:700, color:"var(--ff-text)", lineHeight:1.3 }}>
                                     {pc.isIncrease ? "Your pro proposed a higher price" : pc.isReduction ? "Your pro proposed a lower price" : "Your pro updated the price breakdown"}
                                   </div>
-                                  <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.55, marginTop:".25rem" }}>
+                                  <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.55, marginTop: "var(--ff-s1)" }}>
                                     Nothing is charged at the new price until you approve it.
                                   </div>
                                 </div>
                               </div>
 
                               {pcReason && (
-                                <div style={{ margin:"1.1rem 0 0", padding:".8rem .9rem", borderRadius:"10px", background:"rgba(234,107,20,.06)", borderLeft:"3px solid #ea6b14" }}>
+                                <div style={{ margin:"1.1rem 0 0", padding:".8rem .9rem", borderRadius:"10px", background:"rgba(var(--ff-accent-rgb), .06)", borderLeft:"3px solid var(--ff-c10)" }}>
                                   <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".09em", fontWeight:700, color:"rgba(var(--ff-muted), .55)", marginBottom:".4rem" }}>Their reason</div>
                                   <div style={{ fontSize:".86rem", color:"var(--ff-text)", lineHeight:1.6 }}>{"\u201c" + pcReason + "\u201d"}</div>
                                 </div>
                               )}
 
-                              <div style={{ marginTop:"1.1rem", padding:".4rem .95rem .65rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .035)", border:"1px solid rgba(var(--ff-fg), .09)" }}>
+                              <div style={{ marginTop:"1.1rem", padding:".4rem .95rem .65rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .035)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .09)" }}>
                                 {pcRow("Price you agreed to", pcMoney(pc.oldPrice))}
                                 {(pc.isIncrease || pc.isReduction) && pcRow(
                                   pc.isIncrease ? "Increase" : "Reduction",
                                   (pc.isIncrease ? "+" : "\u2212") + pcMoney(Math.abs(pc.delta)),
-                                  { color: pc.isIncrease ? "#ea6b14" : "var(--ff-success)" },
+                                  { color: pc.isIncrease ? "var(--ff-c10)" : "var(--ff-success)" },
                                 )}
                                 {pcRow("New job price", pcMoney(pc.newPrice))}
                                 {pc.rate > 0
                                   ? pcRow("Service fee (" + pcRateLabel(pc.rate) + " of the job price)", pcMoney(pc.newFee))
                                   : pcRow("Service fee", "Waived", { color:"var(--ff-success)" })}
-                                {pcRow("New total", pcMoney(pc.newTotal), { strong:true, color:"#ea6b14", top:true })}
+                                {pcRow("New total", pcMoney(pc.newTotal), { strong:true, color:"var(--ff-c10)", top:true })}
                               </div>
 
-                              <div style={{ marginTop:"1.1rem", padding:".9rem 1rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .035)", border:"1px solid rgba(var(--ff-fg), .09)" }}>
+                              <div style={{ marginTop:"1.1rem", padding:".9rem 1rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .035)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .09)" }}>
                                 <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".09em", fontWeight:700, color:"rgba(var(--ff-muted), .55)", marginBottom:".55rem" }}>
                                   <Ic name="dollar" size={13} style={{ marginRight:5 }} />What this means for your payment
                                 </div>
@@ -2799,7 +2799,7 @@ export default function ClientDashboard() {
                                   </>)}
                                 </div>
                                 {activeJob.price_change_pending.subject === true && (
-                                  <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.6, marginTop:".7rem", paddingTop:".7rem", borderTop:"1px solid rgba(var(--ff-fg), .09)" }}>
+                                  <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.6, marginTop: "var(--ff-s3)", paddingTop: "var(--ff-s3)", borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .09)" }}>
                                     Your pro marked this as subject to a closer look on site, so it could still move once they are into the work.
                                   </div>
                                 )}
@@ -2846,7 +2846,7 @@ export default function ClientDashboard() {
                                 <div style={{
                                   display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:"1rem",
                                   padding:".45rem 0",
-                                  ...(opts?.top ? { marginTop:".3rem", paddingTop:".65rem", borderTop:"1px solid rgba(var(--ff-fg), .14)" } : null),
+                                  ...(opts?.top ? { marginTop:".3rem", paddingTop:".65rem", borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .14)" } : null),
                                 }}>
                                   <span style={{ fontSize:".83rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.45 }}>{labelText}</span>
                                   <span style={{ fontSize: opts?.strong ? ".96rem" : ".87rem", fontWeight: opts?.strong ? 700 : 600, color: opts?.color ?? "var(--ff-text)", whiteSpace:"nowrap" as const }}>{value}</span>
@@ -2858,7 +2858,7 @@ export default function ClientDashboard() {
                                     <Ic name="alert-triangle" size={16} color="#ef4444" style={{ marginTop:3, flexShrink:0 }} />
                                     <div>
                                       <div style={{ fontSize:"1rem", fontWeight:700, color:"#ef4444", lineHeight:1.3 }}>Your pro raised the price</div>
-                                      <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.55, marginTop:".25rem" }}>
+                                      <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.55, marginTop: "var(--ff-s1)" }}>
                                         This is more than the estimate you picked them on. Nothing has been charged.
                                       </div>
                                     </div>
@@ -2871,7 +2871,7 @@ export default function ClientDashboard() {
                                     </div>
                                   )}
 
-                                  <div style={{ marginTop:"1.1rem", padding:".4rem .95rem .65rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .035)", border:"1px solid rgba(var(--ff-fg), .09)" }}>
+                                  <div style={{ marginTop:"1.1rem", padding:".4rem .95rem .65rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .035)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .09)" }}>
                                     {hkRow("The estimate you picked", pcMoney(hk.oldPrice))}
                                     {hkRow("Increase", "+" + pcMoney(hk.delta), { color:"#ef4444" })}
                                     {hkRow("New job price", pcMoney(hk.newPrice))}
@@ -2898,21 +2898,21 @@ export default function ClientDashboard() {
                               const baseAmt = Number(activeJob.amount ?? 0) - activeJob.quote_items.reduce((t: number, i: any) => t + (i.accepted ? Number(i.amount) || 0 : 0), 0);
                               const addonSum = selAddons.reduce((t, idx) => t + (Number(activeJob.quote_items[idx]?.amount) || 0), 0);
                               return (
-                                <div style={{ margin:".6rem 0 .25rem", padding:".7rem .8rem", borderRadius:"10px", background:"rgba(234,107,20,.05)", border:"1px dashed rgba(234,107,20,.35)" }}>
-                                  <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .55)", fontWeight:700, marginBottom:".45rem" }}>
-                                    <Ic name="sparkles" size={12} color="#ea6b14" style={{ marginRight:4 }} />Optional add-ons
+                                <div style={{ margin:".6rem 0 .25rem", padding:".7rem .8rem", borderRadius:"10px", background:"rgba(var(--ff-accent-rgb), .05)", border:"1px dashed rgba(var(--ff-accent-rgb), .35)" }}>
+                                  <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".08em", color:"rgba(var(--ff-muted), .55)", fontWeight:700, marginBottom: "var(--ff-s2)" }}>
+                                    <Ic name="sparkles" size={12} color="var(--ff-c10)" style={{ marginRight:4 }} />Optional add-ons
                                   </div>
                                   <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .65)", lineHeight:1.45, marginBottom:".5rem" }}>Your pro offered these extras. Tick any you'd like — they're added to the price. Totally optional.</div>
                                   {activeJob.quote_items.map((it: any, idx: number) => (
                                     <label key={idx} style={{ display:"flex", alignItems:"flex-start", gap:".55rem", padding:".35rem 0", cursor:"pointer" }}>
-                                      <input type="checkbox" checked={selAddons.includes(idx)} onChange={() => setSelAddons(prev => prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx])} style={{ marginTop:"2px", cursor:"pointer", accentColor:"#ea6b14" }} />
+                                      <input type="checkbox" checked={selAddons.includes(idx)} onChange={() => setSelAddons(prev => prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx])} style={{ marginTop:"2px", cursor:"pointer", accentColor:"var(--ff-c10)" }} />
                                       <span style={{ flex:1, fontSize:".84rem", lineHeight:1.45, color:"var(--ff-text)" }}>{it.label}</span>
-                                      <span style={{ fontSize:".84rem", fontWeight:600, color: selAddons.includes(idx) ? "#ea6b14" : "rgba(var(--ff-muted), .7)" }}>{"+$" + Number(it.amount).toFixed(2)}</span>
+                                      <span style={{ fontSize:".84rem", fontWeight:600, color: selAddons.includes(idx) ? "var(--ff-c10)" : "rgba(var(--ff-muted), .7)" }}>{"+$" + Number(it.amount).toFixed(2)}</span>
                                     </label>
                                   ))}
-                                  <div style={{ marginTop:".5rem", paddingTop:".5rem", borderTop:"1px solid rgba(234,107,20,.2)", display:"flex", justifyContent:"space-between", fontSize:".88rem", fontWeight:700 }}>
+                                  <div style={{ marginTop:".5rem", paddingTop:".5rem", borderTop:"1px solid rgba(var(--ff-accent-rgb), .2)", display:"flex", justifyContent:"space-between", fontSize:".88rem", fontWeight:700 }}>
                                     <span>Total if approved</span>
-                                    <span style={{ color:"#ea6b14" }}>{"$" + (Math.round((baseAmt + addonSum) * 100) / 100).toFixed(2)}</span>
+                                    <span style={{ color:"var(--ff-c10)" }}>{"$" + (Math.round((baseAmt + addonSum) * 100) / 100).toFixed(2)}</span>
                                   </div>
                                 </div>
                               );
@@ -2925,9 +2925,9 @@ export default function ClientDashboard() {
                               <button style={s.btn} disabled={busyReq} onClick={requestReschedule}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Request a different time</button>
                             </div>
                             {showResched && (
-                              <div style={{ marginTop:".7rem", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .1)" }}>
+                              <div style={{ marginTop: "var(--ff-s3)", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)" }}>
                                 <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5, marginBottom:".5rem" }}>Suggest a different day/time. Your contractor gets it as a message and proposes a new time.</div>
-                                <textarea value={reschedNote} onChange={e => setReschedNote(e.target.value)} rows={3} placeholder="e.g. Any weekday after 4pm, or this Saturday morning" style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const, marginBottom:".55rem" }} />
+                                <textarea value={reschedNote} onChange={e => setReschedNote(e.target.value)} rows={3} placeholder="e.g. Any weekday after 4pm, or this Saturday morning" style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const, marginBottom:".55rem" }} />
                                 <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                                   <button style={s.primaryBtn} disabled={busyReq || !reschedNote.trim()} onClick={submitReschedule}>{busyReq ? "…" : "Send suggestion"}</button>
                                   <button style={s.btn} disabled={busyReq} onClick={() => setShowResched(false)}>Cancel</button>
@@ -2979,7 +2979,7 @@ export default function ClientDashboard() {
                                 from the job's own date rather than by reading the
                                 server's wording back, so the two can't disagree. */}
                             {canRepost ? (
-                              <div style={{ marginTop:".7rem", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(234,107,20,.07)", border:"1px solid rgba(234,107,20,.3)" }}>
+                              <div style={{ marginTop: "var(--ff-s3)", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(var(--ff-accent-rgb), .07)", border:"1px solid rgba(var(--ff-accent-rgb), .3)" }}>
                                 <div style={{ fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.55 }}>
                                   <strong>Heard nothing from your pro?</strong> It's been over a week since you chose them and there's still no time or price agreed. You can put your job back on the board as a fresh post and let other pros bid. Nothing has been charged.
                                 </div>
@@ -3005,7 +3005,7 @@ export default function ClientDashboard() {
                               <div style={{ fontSize:".85rem", color:"var(--ff-success)", marginBottom: (activeJob.payment_status === "held" || activeJob.payment_status === "released") ? 0 : ".75rem" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Scheduled for {activeJob.scheduled_at ? new Date(activeJob.scheduled_at).toLocaleString() : "the agreed time"}{activeJob.amount ? " · $" + activeJob.amount : ""}.</div>
                             )}
                             {activeJob.status === "scheduled" && (
-                            <div style={{ margin:".25rem 0 .9rem", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .1)" }}>
+                            <div style={{ margin:".25rem 0 .9rem", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)" }}>
                               {/* Inside 24h on a signed job the time is fixed here — the pro
                                   has set the day aside. It is a lock, not a dead end: chat
                                   stays open and `chat_agree_time` still writes a new time
@@ -3013,11 +3013,11 @@ export default function ClientDashboard() {
                                   there rather than just refusing. */}
                               {visitLocked ? (
                                 <div style={{ fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.55 }}>
-                                  <Ic name="clock" size={13} color="#ea6b14" style={{ marginRight:4 }} />
+                                  <Ic name="clock" size={13} color="var(--ff-c10)" style={{ marginRight:4 }} />
                                   <strong>Your visit is less than 24 hours away.</strong> The time is locked in now — your pro has set the day aside for you. If something has come up, message them in the job chat and agree a new time together; it updates automatically once you both do.
                                 </div>
                               ) : activeJob.client_confirmed_visit_at ? (
-                                <div style={{ fontSize:".82rem", color:"var(--ff-success)", lineHeight:1.5 }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />You confirmed this visit. Need to change it? <button onClick={() => setShowChangeTime(v => !v)} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer", padding:0, textDecoration:"underline" }}>Change the time</button></div>
+                                <div style={{ fontSize:".82rem", color:"var(--ff-success)", lineHeight:1.5 }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />You confirmed this visit. Need to change it? <button onClick={() => setShowChangeTime(v => !v)} style={{ background:"none", border:"none", color:"var(--ff-c10)", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer", padding:0, textDecoration:"underline" }}>Change the time</button></div>
                               ) : (
                                 <>
                                   <div style={{ fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.5, marginBottom:".6rem" }}>Is this time still good? Confirm it, or pick a new day/time. Changes close 24 hours before the visit.</div>
@@ -3031,17 +3031,17 @@ export default function ClientDashboard() {
                                   while the clock runs into the 24h window — without it the
                                   client keeps a Send button that the RPC will now refuse. */}
                               {showChangeTime && !visitLocked && (
-                                <div style={{ marginTop:".7rem" }}>
+                                <div style={{ marginTop: "var(--ff-s3)" }}>
                                   <div style={{ fontSize:".78rem", color:"var(--ff-warn)", lineHeight:1.5, marginBottom:".5rem" }}><Ic name="alert-triangle" size={12} style={{ marginRight:4 }} />Your pro already blocked off the current time. If you change it, they have to accept the new time and may decline if they're not free — they'll then suggest another time.</div>
-                                  <input type="datetime-local" value={newVisitTime} onChange={e => setNewVisitTime(e.target.value)} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, marginBottom:".55rem" }} />
+                                  <input type="datetime-local" value={newVisitTime} onChange={e => setNewVisitTime(e.target.value)} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, marginBottom:".55rem" }} />
                                   <button style={{ ...s.primaryBtn }} disabled={busyReq || !newVisitTime} onClick={changeVisitTime}>{busyReq ? "…" : "Send new time to my pro"}</button>
                                 </div>
                               )}
                             </div>
                             )}
                             {Array.isArray(activeJob.quote_items) && activeJob.quote_items.some((i: any) => i.accepted) && (
-                              <div style={{ margin:".25rem 0 .9rem", padding:".6rem .8rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .1)", fontSize:".8rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.5 }}>
-                                <Ic name="sparkles" size={12} color="#ea6b14" style={{ marginRight:4 }} />Add-ons included: {activeJob.quote_items.filter((i: any) => i.accepted).map((i: any) => i.label + " (+$" + Number(i.amount).toFixed(2) + ")").join(", ")}
+                              <div style={{ margin:".25rem 0 .9rem", padding:".6rem .8rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", fontSize:".8rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.5 }}>
+                                <Ic name="sparkles" size={12} color="var(--ff-c10)" style={{ marginRight:4 }} />Add-ons included: {activeJob.quote_items.filter((i: any) => i.accepted).map((i: any) => i.label + " (+$" + Number(i.amount).toFixed(2) + ")").join(", ")}
                               </div>
                             )}
                             <div style={{ display:"grid", gap:".6rem", margin:".25rem 0 .9rem" }}>
@@ -3052,7 +3052,7 @@ export default function ClientDashboard() {
                             {(activeJob.payment_status === "held" || activeJob.payment_status === "released") ? (
                               <>
                                 {activeJob.payment_status === "held" && !jobFullyFunded(activeJob) ? (
-                                  <div style={{ marginBottom:".7rem", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.18)" }}>
+                                  <div style={{ marginBottom: "var(--ff-s3)", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(var(--ff-accent-rgb), .08)", border:"1px solid rgba(var(--ff-accent-rgb), .18)" }}>
                                     <div style={{ fontSize:".82rem", color:"var(--ff-success)", marginBottom:".4rem", lineHeight:1.5 }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Deposit of ${jobFunded(activeJob).toFixed(2)} paid — your pro is booked in.</div>
                                     <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", marginBottom:".6rem", lineHeight:1.5 }}>The remaining <strong>${jobBalance(activeJob).toFixed(2)}</strong> is due once the work is finished — you can pay it now or wait until then. It's <strong>held safely</strong> with your deposit, and everything is released to your contractor only after you confirm the job is done.</div>
                                     {autopayNote(activeJob, "once your pro marks the job complete")}
@@ -3085,8 +3085,8 @@ export default function ClientDashboard() {
                                   <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".6rem", lineHeight:1.5 }}>Pay now to secure the job. Your money is <strong>held safely</strong> and only released to the contractor after you confirm the work is done. {feeText(activeJob)}</div>
                                 )}
                                 {depositSplit(activeJob) && <PaySplit job={activeJob} />}
-                                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".6rem", lineHeight:1.5, padding:".6rem .75rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .09)" }}>
-                                  <Ic name="info" size={13} color="#ea6b14" style={{ marginRight:5 }} /><strong>Your pro isn't dispatched until the deposit is paid.</strong> Paying is what books them in and sends them the job — until then the visit isn't locked. Nothing to worry about: we <strong>hold your money</strong> the whole time and only release it to the contractor once you've confirmed the work is done.
+                                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", marginBottom:".6rem", lineHeight:1.5, padding:".6rem .75rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .09)" }}>
+                                  <Ic name="info" size={13} color="var(--ff-c10)" style={{ marginRight:5 }} /><strong>Your pro isn't dispatched until the deposit is paid.</strong> Paying is what books them in and sends them the job — until then the visit isn't locked. Nothing to worry about: we <strong>hold your money</strong> the whole time and only release it to the contractor once you've confirmed the work is done.
                                 </div>
                                 {contractBlocked && (
                                   <div style={{ fontSize:".82rem", color:"var(--ff-warn)", marginBottom:".6rem", lineHeight:1.5 }}>
@@ -3114,7 +3114,7 @@ export default function ClientDashboard() {
                                     statement about the WORK, and confirm_job_completion raises when
                                     the job isn't fully funded — so the button is disabled to match. */}
                                 {activeJob.payment_status === "held" && !jobFullyFunded(activeJob) ? (
-                                  <div style={{ marginBottom:".75rem", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.18)" }}>
+                                  <div style={{ marginBottom:".75rem", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(var(--ff-accent-rgb), .08)", border:"1px solid rgba(var(--ff-accent-rgb), .18)" }}>
                                     <div style={{ fontSize:".82rem", color:"var(--ff-success)", marginBottom:".4rem", lineHeight:1.5 }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Deposit of ${jobFunded(activeJob).toFixed(2)} already paid.</div>
                                     <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", marginBottom:".6rem", lineHeight:1.5 }}>Your pro has finished, so the remaining <strong>${jobBalance(activeJob).toFixed(2)}</strong> is now due. It's <strong>held safely</strong> alongside your deposit — nothing reaches your contractor until you confirm the work below.</div>
                                     {autopayNote(activeJob, "shortly")}
@@ -3195,14 +3195,14 @@ export default function ClientDashboard() {
                               <div style={{ fontSize:".9rem", fontWeight:600, marginBottom:".5rem" }}>Rate your contractor (out of 10)</div>
                               {(["price","experience","result"] as const).map(k => (
                                 <div key={k} style={{ marginBottom:".55rem" }}>
-                                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", marginBottom:".2rem" }}>
+                                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", marginBottom: "var(--ff-s1)" }}>
                                     <span style={{ textTransform:"capitalize" as const }}>{k === "result" ? "End result" : k}</span>
-                                    <span style={{ color:"#ea6b14", fontWeight:600 }}>{ratingForm[k]}/10</span>
+                                    <span style={{ color:"var(--ff-c10)", fontWeight:600 }}>{ratingForm[k]}/10</span>
                                   </div>
-                                  <input type="range" min={1} max={10} value={ratingForm[k]} onChange={e => setRatingForm(f => ({ ...f, [k]: Number(e.target.value) }))} style={{ width:"100%", accentColor:"#ea6b14" }} />
+                                  <input type="range" min={1} max={10} value={ratingForm[k]} onChange={e => setRatingForm(f => ({ ...f, [k]: Number(e.target.value) }))} style={{ width:"100%", accentColor:"var(--ff-c10)" }} />
                                 </div>
                               ))}
-                              <textarea value={ratingForm.comment} rows={2} placeholder="Optional comment" onChange={e => setRatingForm(f => ({ ...f, comment: e.target.value }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const, margin:".25rem 0 .6rem" }} />
+                              <textarea value={ratingForm.comment} rows={2} placeholder="Optional comment" onChange={e => setRatingForm(f => ({ ...f, comment: e.target.value }))} style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", boxSizing:"border-box" as const, resize:"vertical" as const, margin:".25rem 0 .6rem" }} />
                               <button style={s.primaryBtn} disabled={busyReq} onClick={submitReview}>{busyReq ? "…" : "Submit rating"}</button>
                             </div>
                           )
@@ -3211,18 +3211,18 @@ export default function ClientDashboard() {
                     )}
 
                     {editingId === activeReq.id ? (
-                      <div style={{ marginTop:"1rem", borderTop:"1px solid rgba(var(--ff-fg), .07)", paddingTop:"1rem", display:"flex", flexDirection:"column", gap:".6rem" }}>
+                      <div style={{ marginTop:"1rem", borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .07)", paddingTop:"1rem", display:"flex", flexDirection:"column", gap:".6rem" }}>
                         {([["Service","service"],["Schedule","schedule"],["Location","location"]] as const).map(([label,key]) => (
                           <div key={key}>
-                            <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".25rem" }}>{label}</div>
+                            <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom: "var(--ff-s1)" }}>{label}</div>
                             <input value={(editForm as any)[key]} onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
-                              style={{ width:"100%", padding:".6rem .8rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".88rem", boxSizing:"border-box" as const }} />
+                              style={{ width:"100%", padding:".6rem .8rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".88rem", boxSizing:"border-box" as const }} />
                           </div>
                         ))}
                         <div>
-                          <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".25rem" }}>Job Description</div>
+                          <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom: "var(--ff-s1)" }}>Job Description</div>
                           <textarea value={editForm.description} rows={3} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
-                            style={{ width:"100%", padding:".6rem .8rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".88rem", boxSizing:"border-box" as const, resize:"vertical" as const }} />
+                            style={{ width:"100%", padding:".6rem .8rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".88rem", boxSizing:"border-box" as const, resize:"vertical" as const }} />
                         </div>
                         <div style={{ display:"flex", gap:".6rem" }}>
                           <button style={s.primaryBtn} disabled={busyReq} onClick={() => saveEdit(activeReq.id)}>{busyReq ? "Saving…" : "Save changes"}</button>
@@ -3243,7 +3243,7 @@ export default function ClientDashboard() {
                   <div style={s.card}>
                     <div style={s.cardTitle}>Your Contractor</div>
                     <div style={{ display:"flex", alignItems:"center", gap:"1rem", flexWrap:"wrap" as const }}>
-                      <div style={{ width:"48px", height:"48px", borderRadius:"50%", background:"rgba(234,107,20,.2)", border:"2px solid rgba(234,107,20,.4)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.1rem", color:"#ea6b14", flexShrink:0 }}>
+                      <div style={{ width:"48px", height:"48px", borderRadius:"50%", background:"rgba(var(--ff-accent-rgb), .2)", border:"2px solid rgba(var(--ff-accent-rgb), .4)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.1rem", color:"var(--ff-c10)", flexShrink:0 }}>
                         {contractor.first_name?.[0]}{contractor.last_name?.[0]}
                       </div>
                       <div>
@@ -3251,14 +3251,14 @@ export default function ClientDashboard() {
                         <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .5)" }}>{contractor.specialties?.[0] ?? "Your contractor"}</div>
                       </div>
                       {activeJob && (
-                        <button style={{ ...s.btn, marginLeft:"auto", color:"var(--ff-text)", borderColor:"rgba(234,107,20,.35)", background:"rgba(234,107,20,.12)", display:"flex", alignItems:"center", gap:".4rem" }} onClick={() => { setChatJob(activeJob); if (unreadFor(activeJob.id) > 0) void markConvRead(activeJob.id); }}>
+                        <button style={{ ...s.btn, marginLeft:"auto", color:"var(--ff-text)", borderColor:"rgba(var(--ff-accent-rgb), .35)", background:"rgba(var(--ff-accent-rgb), .12)", display:"flex", alignItems:"center", gap:".4rem" }} onClick={() => { setChatJob(activeJob); if (unreadFor(activeJob.id) > 0) void markConvRead(activeJob.id); }}>
                           <Ic name="message-square" size={14} />
                           {/* `viewer: "client"` is explicit so the contractor-only
                               payout lock can never leak to this side — a client
                               is never punished for their pro's Stripe setup. */}
                           {chatReadOnly(activeJob, CHAT_AS_CLIENT) ? "View chat" : "Message " + contractor.first_name}
                           {unreadFor(activeJob.id) > 0 && (
-                            <span style={{ minWidth:18, height:18, padding:"0 .3rem", borderRadius:999, background:"#ea6b14", color:"#fff", fontSize:".68rem", fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                            <span style={{ minWidth:18, height:18, padding:"0 .3rem", borderRadius:999, background:"var(--ff-c10)", color:"#fff", fontSize:".68rem", fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>
                               {unreadFor(activeJob.id) > 9 ? "9+" : unreadFor(activeJob.id)}
                             </span>
                           )}

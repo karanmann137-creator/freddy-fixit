@@ -96,15 +96,15 @@ export default function JobTimer({ job, role, hourlyRate, onBill, onError }: {
   const btn = (bg: string, color: string, border = "none") => ({ padding: ".45rem .9rem", background: bg, color, border, borderRadius: "8px", fontFamily: "inherit", fontSize: ".8rem", fontWeight: 600, cursor: "pointer" });
 
   return (
-    <div style={{ padding: ".85rem .95rem", borderRadius: "12px", background: "rgba(var(--ff-fg), .03)", border: "1px solid " + (running ? "rgba(234,107,20,.4)" : "rgba(var(--ff-fg), .08)") }}>
+    <div style={{ padding: ".85rem .95rem", borderRadius: "12px", background: "rgba(var(--ff-fg), .03)", border: "1px solid " + (running ? "rgba(var(--ff-accent-rgb), .4)" : "rgba(var(--ff-fg), .08)") }}>
       <div style={{ display: "flex", alignItems: "center", gap: ".6rem", flexWrap: "wrap" as const }}>
-        <div style={{ display: "flex", alignItems: "center", gap: ".45rem", fontSize: ".72rem", textTransform: "uppercase" as const, letterSpacing: ".1em", color: "rgba(var(--ff-muted), .5)", fontWeight: 700 }}>
-          <Ic name="timer" size={14} color="#ea6b14" />Time on site
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--ff-s2)", fontSize: ".72rem", textTransform: "uppercase" as const, letterSpacing: ".1em", color: "rgba(var(--ff-muted), .5)", fontWeight: 700 }}>
+          <Ic name="timer" size={14} color="var(--ff-c10)" />Time on site
         </div>
-        <div style={{ fontSize: ".95rem", fontWeight: 700, color: running ? "#ea6b14" : "var(--ff-text)" }}>
+        <div style={{ fontSize: ".95rem", fontWeight: 700, color: running ? "var(--ff-c10)" : "var(--ff-text)" }}>
           {loadFailed ? <span style={{ fontSize: ".78rem", fontWeight: 600, color: "rgba(var(--ff-muted), .7)" }}>Couldn't load your tracked time</span>
             : totalMs > 0 || running ? fmt(totalMs) : "0m"}
-          {running && <span style={{ fontSize: ".7rem", fontWeight: 600, marginLeft: ".45rem", color: "#ea6b14" }}>● tracking…</span>}
+          {running && <span style={{ fontSize: ".7rem", fontWeight: 600, marginLeft: "var(--ff-s2)", color: "var(--ff-c10)" }}>● tracking…</span>}
         </div>
         {role === "contractor" && !loadFailed && (
           <div style={{ marginLeft: "auto", display: "flex", gap: ".5rem", flexWrap: "wrap" as const }}>
@@ -133,7 +133,7 @@ export default function JobTimer({ job, role, hourlyRate, onBill, onError }: {
           claim (disputed) — propose_price_change rejects both, so offering the
           button would only produce an error the pro can't act on. */}
       {role === "contractor" && !loadFailed && !running && totalMs > 60000 && onBill && job.payment_status !== "released" && job.payment_status !== "disputed" && !job.is_milestone && (
-        <button onClick={bill} style={{ ...btn("rgba(234,107,20,.12)", "#ea6b14", "1px solid rgba(234,107,20,.4)"), marginTop: ".6rem" }}>
+        <button onClick={bill} style={{ ...btn("rgba(var(--ff-accent-rgb), .12)", "var(--ff-c10)", "1px solid rgba(var(--ff-accent-rgb), .4)"), marginTop: ".6rem" }}>
           <Ic name="dollar" size={13} style={{ marginRight: 4 }} />Bill for tracked time{hourlyRate != null ? " (" + hoursText() + " × $" + hourlyRate + "/h)" : ""}
         </button>
       )}

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Ic } from "@/components/Ic";
 import { Sk } from "@/components/Skeleton";
+import { ensureUiStyles } from "./ui/uiStyles";
 
 // Admin compose box for emailing one or many contractors a custom message.
 // Sends through the admin-message edge fn (admin-gated; looks up recipient
@@ -14,6 +15,7 @@ export default function AdminMessageModal({ recipients, onClose, onSent }: {
   onClose: () => void;
   onSent?: (r: any) => void;
 }) {
+  ensureUiStyles();
   const [subject, setSubject] = useState("");
   const [body, setBody]       = useState("");
   const [sending, setSending] = useState(false);
@@ -54,46 +56,54 @@ export default function AdminMessageModal({ recipients, onClose, onSent }: {
     } finally { setSending(false); }
   };
 
-  const overlay = {
-    position: "fixed" as const, inset: 0, background: "rgba(0,0,0,.55)", zIndex: 1000,
-    display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "3rem 1rem", overflowY: "auto" as const,
-  };
-  const card = {
-    background: "#1a2236", color: "#f0f4ff", border: "1px solid rgba(240,244,255,.12)", borderRadius: 14,
-    width: "min(560px, 100%)", padding: "1.5rem", fontFamily: "'DM Sans',sans-serif", boxShadow: "0 20px 60px rgba(0,0,0,.4)",
-  };
-  const label = { fontSize: ".78rem", color: "#9aa4bf", marginBottom: ".3rem", display: "block" };
+  // The card and overlay objects are GONE — .ffu-scrim/.ffu-modal carry both.
+  // The child literals went with them: this card was `background:"#1a2236"`
+  // with `#f0f4ff` text, i.e. the dark palette written out by hand, and
+  // AdminDashboard follows the theme (`--ff-bg`/`--ff-text`). So in light mode
+  // it was already a navy card on an off-white page — and converting it to
+  // .ffu-modal, whose background is the THEME's `--ff-glass`, would have put
+  // near-white text on near-white glass. The conversion was only safe once the
+  // six literals became tokens, which is the Von Restorff/light-mode rule in
+  // CLAUDE.md reached from the other direction.
+  const label = { fontSize: ".78rem", color: "rgb(var(--ff-muted))", marginBottom: ".3rem", display: "block" };
   const inp = {
-    width: "100%", padding: ".6rem .8rem", background: "rgba(240,244,255,.06)", border: "1px solid rgba(240,244,255,.14)",
-    borderRadius: 8, color: "#f0f4ff", fontFamily: "inherit", fontSize: ".9rem", boxSizing: "border-box" as const,
+    width: "100%", padding: ".6rem .8rem", background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .14)",
+    borderRadius: 8, color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".9rem", boxSizing: "border-box" as const,
   };
   const btn = {
-    padding: ".6rem 1.1rem", background: "#ea6b14", color: "#fff", border: "none", borderRadius: 8,
+    padding: ".6rem 1.1rem", background: "var(--ff-c10)", color: "#fff", border: "none", borderRadius: 8,
     fontFamily: "inherit", fontSize: ".88rem", fontWeight: 600, cursor: "pointer",
   };
   const ghost = {
-    padding: ".6rem 1.1rem", background: "rgba(240,244,255,.06)", color: "#c7cfe6", border: "1px solid rgba(240,244,255,.14)",
+    padding: ".6rem 1.1rem", background: "rgba(var(--ff-fg), .06)", color: "var(--ff-text)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .14)",
     borderRadius: 8, fontFamily: "inherit", fontSize: ".88rem", cursor: "pointer",
   };
   const chip = {
-    fontSize: ".74rem", padding: ".2rem .55rem", background: "rgba(234,107,20,.12)", border: "1px solid rgba(234,107,20,.3)",
-    borderRadius: 99, color: "#f0d3b8",
+    fontSize: ".74rem", padding: ".2rem .55rem", background: "rgba(var(--ff-accent-rgb), .12)", border: "1px solid rgba(var(--ff-accent-rgb), .3)",
+    borderRadius: 99, color: "var(--ff-c10)",
   };
 
   return (
-    <div style={overlay} onClick={onClose}>
-      <div style={card} onClick={e => e.stopPropagation()}>
+    <div onClick={onClose} className="ffu-scrim">
+      <div
+        onClick={e => e.stopPropagation()}
+        className="ffu-modal"
+        role="dialog"
+        aria-modal="true"
+        style={{ ["--ffu-modal-w" as any]: "560px" }}
+      >
+        <span className="ffu-grab" aria-hidden="true" />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.5rem", letterSpacing: ".04em", color: "#ea6b14" }}>
+          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.5rem", letterSpacing: ".04em", color: "var(--ff-c10)" }}>
             Email {withEmail.length === 1 ? withEmail[0].name || "contractor" : `${withEmail.length} contractors`}
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#9aa4bf", fontSize: "1.3rem", cursor: "pointer", lineHeight: 1 }}>×</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "rgb(var(--ff-muted))", fontSize: "1.3rem", cursor: "pointer", lineHeight: 1 }}>×</button>
         </div>
 
         {result ? (
           <div>
             <div style={{ padding: ".9rem 1rem", background: "rgba(34,197,94,.1)", border: "1px solid rgba(34,197,94,.35)", borderRadius: 10, marginBottom: "1rem" }}>
-              <div style={{ fontWeight: 600, marginBottom: ".2rem" }}>✓ Sent to {result.sent} contractor{result.sent === 1 ? "" : "s"}.</div>
+              <div style={{ fontWeight: 600, marginBottom: "var(--ff-s1)" }}>✓ Sent to {result.sent} contractor{result.sent === 1 ? "" : "s"}.</div>
               {result.failed > 0 && (
                 <div style={{ fontSize: ".82rem", color: "#f0b8b8" }}>{result.failed} couldn't be sent (no email on file or a delivery error).</div>
               )}
@@ -104,7 +114,7 @@ export default function AdminMessageModal({ recipients, onClose, onSent }: {
           </div>
         ) : (
           <>
-            <div style={{ marginBottom: ".9rem" }}>
+            <div style={{ marginBottom: "var(--ff-s4)" }}>
               <span style={label}>To</span>
               <div style={{ display: "flex", gap: ".3rem", flexWrap: "wrap" }}>
                 {withEmail.slice(0, 12).map(r => (
@@ -119,7 +129,7 @@ export default function AdminMessageModal({ recipients, onClose, onSent }: {
               )}
             </div>
 
-            <div style={{ marginBottom: ".9rem" }}>
+            <div style={{ marginBottom: "var(--ff-s4)" }}>
               <span style={label}>Subject</span>
               <input value={subject} onChange={e => setSubject(e.target.value)} maxLength={200}
                 placeholder="e.g. A new job just posted in your area" style={inp} />
@@ -132,12 +142,12 @@ export default function AdminMessageModal({ recipients, onClose, onSent }: {
                 style={{ ...inp, resize: "vertical" as const, lineHeight: 1.5 }} />
             </div>
 
-            <div style={{ fontSize: ".74rem", color: "#9aa4bf", marginBottom: ".9rem" }}>
+            <div style={{ fontSize: ".74rem", color: "rgb(var(--ff-muted))", marginBottom: "var(--ff-s4)" }}>
               Sent from noreply@freddyfixit.ca — replies go to hello@freddyfixit.ca.
             </div>
 
             {err && (
-              <div style={{ padding: ".6rem .8rem", background: "rgba(239,68,68,.12)", border: "1px solid rgba(239,68,68,.4)", borderRadius: 8, color: "#f0b8b8", fontSize: ".82rem", marginBottom: ".9rem" }}>
+              <div style={{ padding: ".6rem .8rem", background: "rgba(239,68,68,.12)", border: "1px solid rgba(239,68,68,.4)", borderRadius: 8, color: "#f0b8b8", fontSize: ".82rem", marginBottom: "var(--ff-s4)" }}>
                 {err}
               </div>
             )}
@@ -155,21 +165,21 @@ export default function AdminMessageModal({ recipients, onClose, onSent }: {
             </div>
 
             {showLog && (
-              <div style={{ marginTop: "1rem", borderTop: "1px solid rgba(240,244,255,.1)", paddingTop: ".9rem", maxHeight: 260, overflowY: "auto" }}>
+              <div style={{ marginTop: "1rem", borderTop: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", paddingTop: "var(--ff-s4)", maxHeight: 260, overflowY: "auto" }}>
                 {log === null && (
-                  <div className="ff-on-dark" aria-busy="true" style={{ display: "grid", gap: ".7rem", padding: ".3rem 0" }}>
+                  <div className="ff-on-dark" aria-busy="true" style={{ display: "grid", gap: "var(--ff-s3)", padding: ".3rem 0" }}>
                     <span className="ff-sr-only">Loading the send history</span>
                     <Sk h={26} /><Sk h={26} /><Sk h={26} />
                   </div>
                 )}
-                {log !== null && log.length === 0 && <div style={{ fontSize: ".8rem", color: "#9aa4bf" }}>No messages sent yet.</div>}
+                {log !== null && log.length === 0 && <div style={{ fontSize: ".8rem", color: "rgb(var(--ff-muted))" }}>No messages sent yet.</div>}
                 {log !== null && log.map((m: any) => (
-                  <div key={m.id} style={{ padding: ".55rem 0", borderBottom: "1px solid rgba(240,244,255,.06)" }}>
+                  <div key={m.id} style={{ padding: ".55rem 0", borderBottom: "var(--ff-hair-w) solid rgba(var(--ff-fg), .06)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: ".5rem" }}>
                       <span style={{ fontSize: ".82rem", fontWeight: 500 }}>{m.subject}</span>
                       <span style={{ fontSize: ".72rem", color: m.status === "sent" ? "#8fd6a3" : "#f0b8b8" }}>{m.status}</span>
                     </div>
-                    <div style={{ fontSize: ".74rem", color: "#9aa4bf" }}>
+                    <div style={{ fontSize: ".74rem", color: "rgb(var(--ff-muted))" }}>
                       to {m.recipient_name || m.recipient_email} · {new Date(m.created_at).toLocaleString()}
                     </div>
                   </div>

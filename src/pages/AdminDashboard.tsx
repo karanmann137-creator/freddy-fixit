@@ -900,18 +900,18 @@ export default function AdminDashboard() {
   // `.ffdash button` below carries all three for every button on the page; an
   // inline `opacity` here would beat it and freeze the disabled state.
   const s = {
-    wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(234,107,20,0.16) 0%, transparent 70%), radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
-    header: { background:"var(--ff-card-bg)", borderBottom:"1px solid var(--ff-hair)", padding:"var(--ff-s4) var(--ff-s6)", display:"flex", justifyContent:"space-between", alignItems:"center" },
+    wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(var(--ff-accent-rgb), 0.16) 0%, transparent 70%), radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
+    header: { background:"var(--ff-card-bg)", borderBottom:"var(--ff-hair-w) solid var(--ff-hair)", padding:"var(--ff-s4) var(--ff-s6)", display:"flex", justifyContent:"space-between", alignItems:"center" },
     logo: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.4rem", letterSpacing:".1em" },
     content: { maxWidth:"1000px", margin:"0 auto", padding:"clamp(1rem, 4vw, 2rem) clamp(.75rem, 3vw, 1.5rem)" },
     tabs: { display:"flex", gap:"var(--ff-s2)", marginBottom:"var(--ff-s6)", flexWrap:"wrap" as const },
-    tab: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s4)", background:"transparent", border:"1px solid var(--ff-hair)", borderRadius:"var(--ff-r2)", color:"rgba(var(--ff-muted), .7)", cursor:"pointer", fontFamily:"'Bebas Neue',sans-serif", fontSize:".85rem", letterSpacing:".09em" },
+    tab: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s4)", background:"transparent", border:"var(--ff-hair-w) solid var(--ff-hair)", borderRadius:"var(--ff-r2)", color:"rgba(var(--ff-muted), .7)", cursor:"pointer", fontFamily:"'Bebas Neue',sans-serif", fontSize:".85rem", letterSpacing:".09em" },
     activeTab: { background:"var(--ff-accent-soft)", borderColor:"var(--ff-accent-line)", color:"var(--ff-text)" },
-    card: { background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", padding:"var(--ff-s5)", marginBottom:"var(--ff-s4)" },
+    card: { background:"var(--ff-card-bg)", border:"var(--ff-hair-w) solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", padding:"var(--ff-s5)", marginBottom:"var(--ff-s4)" },
     title: { fontSize:".95rem", fontWeight:500, color:"var(--ff-text)", marginBottom:".35rem" },
-    meta: { fontSize:".78rem", color:"rgba(var(--ff-muted), .5)", marginBottom:".2rem" },
+    meta: { fontSize:".78rem", color:"rgba(var(--ff-muted), .5)", marginBottom: "var(--ff-s1)" },
     badge: { fontSize:".75rem", fontWeight:500, color:"var(--ff-accent-500)" },
-    btn: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s4)", background:"var(--ff-card-bg)", border:"1px solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", color:"var(--ff-text)", fontFamily:"'Bebas Neue',sans-serif", fontSize:".88rem", letterSpacing:".09em", cursor:"pointer" },
+    btn: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s4)", background:"var(--ff-card-bg)", border:"var(--ff-hair-w) solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", color:"var(--ff-text)", fontFamily:"'Bebas Neue',sans-serif", fontSize:".88rem", letterSpacing:".09em", cursor:"pointer" },
   };
 
   // Shaped like the admin chrome: header bar, tab strip, then the 1000px
@@ -933,7 +933,7 @@ export default function AdminDashboard() {
 
   const roleChip = (role?: string) => {
     const r = role || "—";
-    const col = r === "admin" ? "#ea6b14" : r === "contractor" ? "var(--ff-info)" : r === "client" ? "var(--ff-success)" : "rgba(var(--ff-muted), .5)";
+    const col = r === "admin" ? "var(--ff-c10)" : r === "contractor" ? "var(--ff-info)" : r === "client" ? "var(--ff-success)" : "rgba(var(--ff-muted), .5)";
     return <span style={{ fontSize:".72rem", fontWeight:600, color: col, textTransform:"capitalize" as const }}>● {r}</span>;
   };
 
@@ -1021,9 +1021,9 @@ export default function AdminDashboard() {
       <div style={s.header}>
         <div>
           <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.7rem", letterSpacing:".02em", margin:0, lineHeight:1.1 }}>
-            Welcome{me?.first_name ? ", " + me.first_name : ""} <span style={{ fontSize:".6rem", background:"#ea6b14", color:"#fff", borderRadius:"4px", padding:".15rem .45rem", verticalAlign:"middle", letterSpacing:".05em" }}>ADMIN</span>
+            Welcome{me?.first_name ? ", " + me.first_name : ""} <span style={{ fontSize:".6rem", background:"var(--ff-c10)", color:"#fff", borderRadius:"4px", padding:".15rem .45rem", verticalAlign:"middle", letterSpacing:".05em" }}>ADMIN</span>
           </h1>
-          <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .6)", marginTop:".2rem" }}>Manage requests, jobs, accounts and disputes.</div>
+          <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .6)", marginTop: "var(--ff-s1)" }}>Manage requests, jobs, accounts and disputes.</div>
         </div>
       </div>
 
@@ -1061,7 +1061,7 @@ export default function AdminDashboard() {
             {requests.length > 0 && shown.length === 0 && (
               <p style={{ color:"rgba(var(--ff-muted), .45)", fontSize:".9rem" }}>
                 Nothing on this page matches “{search}”. Try the next page, or{" "}
-                <button type="button" onClick={() => setSearch("")} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer", padding:0 }}>clear the search</button>.
+                <button type="button" onClick={() => setSearch("")} style={{ background:"none", border:"none", color:"var(--ff-c10)", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer", padding:0 }}>clear the search</button>.
               </p>
             )}
             {shown.map(r => (
@@ -1119,7 +1119,7 @@ export default function AdminDashboard() {
                   {/* Only for requests still taking bids — dispatch-job refuses anything
                       else, so offering the button there would be a dead control. */}
                   {r.status === "pending" && (
-                    <button style={{ ...s.btn, color:"#ea6b14", borderColor:"rgba(234,107,20,.35)", background:"rgba(234,107,20,.08)" }}
+                    <button style={{ ...s.btn, color:"var(--ff-c10)", borderColor:"rgba(var(--ff-accent-rgb), .35)", background:"rgba(var(--ff-accent-rgb), .08)" }}
                       disabled={busyRefire === r.id} onClick={() => refireRequest(r)}>
                       <Ic name="mail" size={13} style={{ marginRight:4 }} />
                       {busyRefire === r.id ? "Sending…" : "Re-send to contractors"}
@@ -1160,32 +1160,32 @@ export default function AdminDashboard() {
                 </button>
               ))}
             </div>
-            <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const, marginBottom:"1rem", padding:".7rem .85rem", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"8px" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const, marginBottom:"1rem", padding:".7rem .85rem", background:"rgba(var(--ff-accent-rgb), .06)", border:"1px solid rgba(var(--ff-accent-rgb), .2)", borderRadius:"8px" }}>
               <span style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)", flex:1 }}>
                 Email accounts a custom message{selectedIds.size > 0 ? ` · ${selectedIds.size} selected` : ""}.
               </span>
               {selectedIds.size > 0 && (
                 <button style={s.btn} onClick={() => setSelectedIds(new Set())}>Clear</button>
               )}
-              <button style={{ ...s.btn, color:"#ea6b14", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.1)" }}
+              <button style={{ ...s.btn, color:"var(--ff-c10)", borderColor:"rgba(var(--ff-accent-rgb), .4)", background:"rgba(var(--ff-accent-rgb), .1)" }}
                 disabled={selectedIds.size === 0} onClick={() => setMsgRecipients(selectedRecipients())}>
                 <Ic name="mail" size={13} style={{ marginRight:4 }} />Email selected{selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
               </button>
-              <button style={{ ...s.btn, color:"#ea6b14", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.1)" }}
+              <button style={{ ...s.btn, color:"var(--ff-c10)", borderColor:"rgba(var(--ff-accent-rgb), .4)", background:"rgba(var(--ff-accent-rgb), .1)" }}
                 disabled={contractorAccts.length === 0} onClick={() => setMsgRecipients(contractorAccts.map(toRecipient))}>
                 <Ic name="mail" size={13} style={{ marginRight:4 }} />Email all contractors ({contractorAccts.length})
               </button>
-              <button style={{ ...s.btn, color:"#ea6b14", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.1)" }}
+              <button style={{ ...s.btn, color:"var(--ff-c10)", borderColor:"rgba(var(--ff-accent-rgb), .4)", background:"rgba(var(--ff-accent-rgb), .1)" }}
                 disabled={clientAccts.length === 0} onClick={() => setMsgRecipients(clientAccts.map(toRecipient))}>
                 <Ic name="mail" size={13} style={{ marginRight:4 }} />Email all clients ({clientAccts.length})
               </button>
             </div>
             {accounts.some(a => a.orphaned) && !hiddenNow.has("orphans") && (
-              <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const, marginBottom:"1rem", padding:".7rem .85rem", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"8px" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const, marginBottom:"1rem", padding:".7rem .85rem", background:"rgba(var(--ff-accent-rgb), .06)", border:"1px solid rgba(var(--ff-accent-rgb), .2)", borderRadius:"8px" }}>
                 <span style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)", flex:1 }}>
                   {accounts.filter(a => a.orphaned).length} account{accounts.filter(a => a.orphaned).length>1?"s":""} signed in but never finished onboarding.
                 </span>
-                <button style={{ ...s.btn, color:"#ea6b14", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.1)" }}
+                <button style={{ ...s.btn, color:"var(--ff-c10)", borderColor:"rgba(var(--ff-accent-rgb), .4)", background:"rgba(var(--ff-accent-rgb), .1)" }}
                   disabled={busyNudge} onClick={nudgeIncomplete}>
                   <Ic name="mail" size={13} style={{ marginRight:4 }} />{busyNudge ? "Sending…" : "Email a finish-signup reminder"}
                 </button>
@@ -1206,7 +1206,7 @@ export default function AdminDashboard() {
                     <div style={{ display:"flex", alignItems:"center", gap:".55rem" }}>
                       {a.email && (
                         <input type="checkbox" checked={selectedIds.has(a.id)} onChange={() => toggleSelect(a.id)}
-                          title="Select for bulk email" style={{ width:16, height:16, accentColor:"#ea6b14", cursor:"pointer" }} />
+                          title="Select for bulk email" style={{ width:16, height:16, accentColor:"var(--ff-c10)", cursor:"pointer" }} />
                       )}
                       <div style={s.title}>{nm}{a.company_name && a.company_name !== nm ? ` · ${a.company_name}` : ""}</div>
                     </div>
@@ -1223,7 +1223,7 @@ export default function AdminDashboard() {
                   {editEmailId === a.id ? (
                     <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, alignItems:"center", margin:".3rem 0 .45rem" }}>
                       <input value={editEmailVal} onChange={e => setEditEmailVal(e.target.value)} type="email" placeholder="new@email.com" autoComplete="off"
-                        style={{ padding:".4rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .18)", borderRadius:"7px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".82rem", flex:"1 1 210px", minWidth:0 }} />
+                        style={{ padding:".4rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .18)", borderRadius:"7px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".82rem", flex:"1 1 210px", minWidth:0 }} />
                       <button style={{ ...s.btn, color:"var(--ff-success)", borderColor:"rgba(34,197,94,.35)" }} disabled={busyEmailEdit === a.id} onClick={() => saveEmail(a)}>
                         {busyEmailEdit === a.id ? "Saving…" : "Save"}
                       </button>
@@ -1244,7 +1244,7 @@ export default function AdminDashboard() {
                   </div>
                   <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .45)" }}>{a.request_count ?? 0} request{(a.request_count ?? 0) === 1 ? "" : "s"} · {a.job_count ?? 0} job{(a.job_count ?? 0) === 1 ? "" : "s"}</div>
                   {isContractor && (
-                    <div style={{ marginTop:".5rem", padding:".6rem .8rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .07)", borderRadius:"8px" }}>
+                    <div style={{ marginTop:".5rem", padding:".6rem .8rem", background:"rgba(var(--ff-fg), .03)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .07)", borderRadius:"8px" }}>
                       <div style={s.meta}>Specialties: {(a.specialties ?? []).join(", ") || "—"}</div>
                       <div style={s.meta}>Area: {(a.service_area ?? []).join(", ") || "—"}</div>
                       <div style={s.meta}>
@@ -1274,17 +1274,17 @@ export default function AdminDashboard() {
                         return (
                           <div style={{ marginTop:".35rem" }}>
                             {!chk ? (
-                              <button style={{ ...s.btn, fontSize:".72rem", padding:".25rem .6rem", color:"#ea6b14", borderColor:"rgba(234,107,20,.35)", background:"rgba(234,107,20,.08)" }}
+                              <button style={{ ...s.btn, fontSize:".72rem", padding:".25rem .6rem", color:"var(--ff-c10)", borderColor:"rgba(var(--ff-accent-rgb), .35)", background:"rgba(var(--ff-accent-rgb), .08)" }}
                                 disabled={busyPayoutCheck === a.id} onClick={() => checkPayout(a.id)}>
                                 {busyPayoutCheck === a.id ? "Checking Stripe…" : "What's blocking their payouts?"}
                               </button>
                             ) : chk.error ? (
                               <div style={{ ...s.meta, color:"#ef4444" }}>Couldn't check Stripe: {chk.error}</div>
                             ) : (
-                              <div style={{ padding:".55rem .7rem", borderRadius:"8px", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.18)" }}>
+                              <div style={{ padding:".55rem .7rem", borderRadius:"8px", background:"rgba(var(--ff-accent-rgb), .06)", border:"1px solid rgba(var(--ff-accent-rgb), .18)" }}>
                                 {steps.length > 0 ? (
                                   <>
-                                    <div style={{ fontSize:".74rem", fontWeight:600, color:"#ea6b14", marginBottom:".25rem" }}>Stripe is still waiting on:</div>
+                                    <div style={{ fontSize:".74rem", fontWeight:600, color:"var(--ff-c10)", marginBottom: "var(--ff-s1)" }}>Stripe is still waiting on:</div>
                                     <ul style={{ margin:0, paddingLeft:"1.1rem", fontSize:".76rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.5 }}>
                                       {steps.map((n, i) => <li key={i}>{n.label}</li>)}
                                     </ul>
@@ -1309,7 +1309,7 @@ export default function AdminDashboard() {
                       ) : null}
                       {a.work_references ? <div style={s.meta}>References: {a.work_references}</div> : null}
                       {a.google_reviews_url ? (
-                        <div style={s.meta}><a href={a.google_reviews_url} target="_blank" rel="noreferrer" style={{ color:"#ea6b14" }}>Google reviews page ↗</a></div>
+                        <div style={s.meta}><a href={a.google_reviews_url} target="_blank" rel="noreferrer" style={{ color:"var(--ff-c10)" }}>Google reviews page ↗</a></div>
                       ) : null}
                       {a.review_status && a.review_status !== "pending" ? (
                         <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .5)" }}>
@@ -1329,7 +1329,7 @@ export default function AdminDashboard() {
                             {docKeys.length > 0 && (
                               <>
                                 <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .6)", fontWeight:500 }}>Documents</div>
-                                <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginTop:".25rem" }}>
+                                <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginTop: "var(--ff-s1)" }}>
                                   {docKeys.map(k => (
                                     <button key={k} style={{ ...s.btn, fontSize:".76rem", padding:".35rem .7rem" }} onClick={() => openDoc(docs[k])}>
                                       <Ic name="file" size={12} style={{ marginRight:4 }} />{DOC_LABELS[k] || k} ↗
@@ -1341,16 +1341,16 @@ export default function AdminDashboard() {
                             {(a.photo_url || portfolio.length > 0) && (
                               <>
                                 <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .6)", fontWeight:500, marginTop:".5rem" }}>Photos</div>
-                                <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginTop:".25rem" }}>
+                                <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginTop: "var(--ff-s1)" }}>
                                   {a.photo_url && (
                                     <FadeImg src={a.photo_url} alt="Profile" onClick={() => window.open(a.photo_url, "_blank")}
-                                      style={{ width:60, height:60, objectFit:"cover", borderRadius:8, cursor:"pointer", border:"1px solid rgba(var(--ff-fg), .12)" }} />
+                                      style={{ width:60, height:60, objectFit:"cover", borderRadius:8, cursor:"pointer", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)" }} />
                                   )}
                                   {portfolio.map((p:any, i:number) => {
                                     const url = pubUrl("portfolio-photos", p.path);
                                     return (
                                       <FadeImg key={i} src={url} alt={p.title || "Portfolio"} title={p.title || ""} onClick={() => window.open(url, "_blank")}
-                                        style={{ width:60, height:60, objectFit:"cover", borderRadius:8, cursor:"pointer", border:"1px solid rgba(var(--ff-fg), .12)" }} />
+                                        style={{ width:60, height:60, objectFit:"cover", borderRadius:8, cursor:"pointer", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)" }} />
                                     );
                                   })}
                                 </div>
@@ -1367,7 +1367,7 @@ export default function AdminDashboard() {
                       <button style={s.btn} onClick={() => window.open("/contractors/" + a.id, "_blank")}>View Profile ↗</button>
                     )}
                     {a.email && (
-                      <button style={{ ...s.btn, color:"#ea6b14", borderColor:"rgba(234,107,20,.4)", background:"rgba(234,107,20,.1)" }}
+                      <button style={{ ...s.btn, color:"var(--ff-c10)", borderColor:"rgba(var(--ff-accent-rgb), .4)", background:"rgba(var(--ff-accent-rgb), .1)" }}
                         onClick={() => setMsgRecipients([toRecipient(a)])}>
                         <Ic name="mail" size={13} style={{ marginRight:4 }} />Email
                       </button>
@@ -1418,13 +1418,13 @@ export default function AdminDashboard() {
             {jobs.length > 0 && shown.length === 0 && (
               <p style={{ color:"rgba(var(--ff-muted), .45)", fontSize:".9rem" }}>
                 Nothing on this page matches “{search}”. Try the next page, or{" "}
-                <button type="button" onClick={() => setSearch("")} style={{ background:"none", border:"none", color:"#ea6b14", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer", padding:0 }}>clear the search</button>.
+                <button type="button" onClick={() => setSearch("")} style={{ background:"none", border:"none", color:"var(--ff-c10)", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer", padding:0 }}>clear the search</button>.
               </p>
             )}
             {shown.map(j => (
               <div key={j.id} style={s.card}>
                 <div style={s.title}>
-                  {j.request?.service_needed || "Job"} <span style={{ fontFamily:"monospace", color:"#ea6b14", fontSize:".8em" }}>{jobCode(j.id)}</span>
+                  {j.request?.service_needed || "Job"} <span style={{ fontFamily:"monospace", color:"var(--ff-c10)", fontSize:".8em" }}>{jobCode(j.id)}</span>
                 </div>
                 <div style={s.meta}>
                   <Ic name="user" size={13} style={{ marginRight:4 }} />{pname(j.client, "Client")}
@@ -1455,14 +1455,14 @@ export default function AdminDashboard() {
             {picks.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No picks yet. This fills in as clients choose contractors.</p>}
             {picks.map((p: any) => {
               const how = p.how === "client_pick" ? { label:"Client picked", color:"#22c55e" }
-                        : p.how === "rehire"      ? { label:"Rehired their pro", color:"#ea6b14" }
+                        : p.how === "rehire"      ? { label:"Rehired their pro", color:"var(--ff-c10)" }
                         :                            { label:"Assigned by admin", color:"rgba(var(--ff-muted), .6)" };
               const price = p.winning_amount ?? p.amount;
               return (
                 <div key={p.job_id} style={s.card}>
                   <div style={{ display:"flex", alignItems:"baseline", gap:".5rem", flexWrap:"wrap" as const }}>
                     <div style={s.title}>{p.service || "Job"}</div>
-                    <span style={{ fontFamily:"monospace", color:"#ea6b14", fontSize:".75rem" }}>{jobCode(p.job_id)}</span>
+                    <span style={{ fontFamily:"monospace", color:"var(--ff-c10)", fontSize:".75rem" }}>{jobCode(p.job_id)}</span>
                     <span style={{ fontSize:".65rem", color:how.color, border:"1px solid currentColor", borderRadius:"4px", padding:".1rem .4rem", letterSpacing:".04em", opacity:.9 }}>{how.label}</span>
                   </div>
                   <div style={s.meta}>
@@ -1497,7 +1497,7 @@ export default function AdminDashboard() {
                 <div style={{ display:"flex", justifyContent:"space-between", gap:".75rem", flexWrap:"wrap", alignItems:"baseline" }}>
                   <div style={{ fontWeight:600, color:"var(--ff-text)" }}>
                     {f.sender_name || "Someone"}
-                    <span style={{ fontSize:".72rem", fontWeight:600, color:"rgba(var(--ff-muted), .55)", marginLeft:".45rem", textTransform:"capitalize" as const }}>
+                    <span style={{ fontSize:".72rem", fontWeight:600, color:"rgba(var(--ff-muted), .55)", marginLeft: "var(--ff-s2)", textTransform:"capitalize" as const }}>
                       {f.sender_role || "user"}
                     </span>
                   </div>
@@ -1581,20 +1581,20 @@ export default function AdminDashboard() {
                   <div style={s.meta}>Job {String(d.job_id).slice(0,8)} · Charged ${charged.toFixed(2)} · Contractor payout ${payout.toFixed(2)}</div>
                   <div style={s.meta}>Reported {new Date(d.created_at).toLocaleString("en-CA", { dateStyle:"medium", timeStyle:"short" })}</div>
                   {d.description && (
-                    <div style={{ marginTop:".5rem", padding:".6rem .8rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .06)", borderRadius:"8px", fontSize:".85rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>{d.description}</div>
+                    <div style={{ marginTop:".5rem", padding:".6rem .8rem", background:"rgba(var(--ff-fg), .03)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .06)", borderRadius:"8px", fontSize:".85rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>{d.description}</div>
                   )}
                   {(disputePhotos[d.id]?.length ?? 0) > 0 && (
                     <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginTop:".6rem" }}>
                       {disputePhotos[d.id].map((url, i) => (
                         <a key={i} href={url} target="_blank" rel="noreferrer">
-                          <FadeImg src={url} alt={"Evidence " + (i+1)} style={{ width:"110px", height:"110px", objectFit:"cover", borderRadius:"8px", border:"1px solid rgba(var(--ff-fg), .12)" }} />
+                          <FadeImg src={url} alt={"Evidence " + (i+1)} style={{ width:"110px", height:"110px", objectFit:"cover", borderRadius:"8px", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)" }} />
                         </a>
                       ))}
                     </div>
                   )}
 
                   {(d.agreed_scope || d.requested_remedy || d.service_date || d.amount_in_dispute != null || d.declarant_name) && (
-                    <div style={{ marginTop:".6rem", padding:".6rem .8rem", background:"rgba(var(--ff-fg), .02)", border:"1px solid rgba(var(--ff-fg), .06)", borderRadius:"8px", fontSize:".8rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.6 }}>
+                    <div style={{ marginTop:".6rem", padding:".6rem .8rem", background:"rgba(var(--ff-fg), .02)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .06)", borderRadius:"8px", fontSize:".8rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.6 }}>
                       {d.service_date && <div>Date of service: <strong style={{ color:"rgba(var(--ff-fg), .9)" }}>{d.service_date}</strong></div>}
                       {d.agreed_scope && <div>What was agreed: {d.agreed_scope}</div>}
                       {d.requested_remedy && <div>Requested outcome: <strong style={{ color:"rgba(var(--ff-fg), .9)" }}>{d.requested_remedy}</strong></div>}
@@ -1612,7 +1612,7 @@ export default function AdminDashboard() {
                           <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginTop:".5rem" }}>
                             {disputeRespPhotos[d.id].map((url, i) => (
                               <a key={i} href={url} target="_blank" rel="noreferrer">
-                                <FadeImg src={url} alt={"Response " + (i+1)} style={{ width:"90px", height:"90px", objectFit:"cover" as const, borderRadius:"8px", border:"1px solid rgba(var(--ff-fg), .12)" }} />
+                                <FadeImg src={url} alt={"Response " + (i+1)} style={{ width:"90px", height:"90px", objectFit:"cover" as const, borderRadius:"8px", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)" }} />
                               </a>
                             ))}
                           </div>
@@ -1626,10 +1626,10 @@ export default function AdminDashboard() {
                   </div>
 
                   {d.status === "open" ? (
-                    <div style={{ marginTop:".9rem", borderTop:"1px solid rgba(var(--ff-fg), .07)", paddingTop:".9rem" }}>
+                    <div style={{ marginTop: "var(--ff-s4)", borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .07)", paddingTop: "var(--ff-s4)" }}>
                       <textarea value={resolveNote[d.id] ?? ""} rows={2} placeholder="Resolution note (optional, shared internally)"
                         onChange={e => setResolveNote(p => ({ ...p, [d.id]: e.target.value }))}
-                        style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".82rem", boxSizing:"border-box" as const, resize:"vertical" as const, marginBottom:".7rem" }} />
+                        style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".82rem", boxSizing:"border-box" as const, resize:"vertical" as const, marginBottom: "var(--ff-s3)" }} />
                       <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center" }}>
                         <button style={{ ...s.btn, background:"#ef4444", color:"#fff", border:"none" }} disabled={busyResolve === d.id} onClick={() => resolveDispute(d, "refund_full")}>{busyResolve === d.id ? "…" : "Refund client in full"}</button>
                         <button style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none" }} disabled={busyResolve === d.id} onClick={() => resolveDispute(d, "release")}>Release to contractor</button>
@@ -1637,8 +1637,8 @@ export default function AdminDashboard() {
                       <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center", marginTop:".6rem" }}>
                         <input type="number" min={0} max={charged} step="0.01" value={partialAmt[d.id] ?? ""} placeholder="Partial $"
                           onChange={e => setPartialAmt(p => ({ ...p, [d.id]: e.target.value }))}
-                          style={{ width:"110px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"6px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".82rem" }} />
-                        <button style={{ ...s.btn, background:"#ea6b14", color:"#fff", border:"none" }} disabled={busyResolve === d.id} onClick={() => resolveDispute(d, "refund_partial")}>Partial refund + pay contractor</button>
+                          style={{ width:"110px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"6px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".82rem" }} />
+                        <button style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none" }} disabled={busyResolve === d.id} onClick={() => resolveDispute(d, "refund_partial")}>Partial refund + pay contractor</button>
                       </div>
                       <div style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .45)", marginTop:".55rem", lineHeight:1.45 }}>Full refund returns the whole charge to the client and pays nothing out. Partial refund returns part to the client and still pays the contractor their payout. Release pays the contractor and keeps the charge.</div>
                     </div>
@@ -1662,20 +1662,20 @@ export default function AdminDashboard() {
             </p>
             {leads.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No estimate leads yet.</p>}
             {leads.map(l => (
-              <div key={l.id} style={{ ...s.card, ...(l.status === "new" ? { borderColor:"rgba(234,107,20,.4)" } : {}) }}>
+              <div key={l.id} style={{ ...s.card, ...(l.status === "new" ? { borderColor:"rgba(var(--ff-accent-rgb), .4)" } : {}) }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const, gap:".5rem" }}>
                   <div style={s.title}>{l.service_needed || "General enquiry"}</div>
-                  <div style={{ fontSize:".78rem", fontWeight:500, color: l.status === "new" ? "#ea6b14" : "var(--ff-success)" }}>● {l.status === "new" ? "New" : "Contacted"}</div>
+                  <div style={{ fontSize:".78rem", fontWeight:500, color: l.status === "new" ? "var(--ff-c10)" : "var(--ff-success)" }}>● {l.status === "new" ? "New" : "Contacted"}</div>
                 </div>
                 <div style={s.meta}><Ic name="user" size={13} style={{ marginRight:4 }} />{l.name || "—"}</div>
                 <div style={s.meta}>
-                  {l.email ? <a href={"mailto:" + l.email} style={{ color:"#ea6b14", textDecoration:"none" }}>{l.email}</a> : null}
+                  {l.email ? <a href={"mailto:" + l.email} style={{ color:"var(--ff-c10)", textDecoration:"none" }}>{l.email}</a> : null}
                   {l.email && l.phone ? " · " : ""}
-                  {l.phone ? <a href={"tel:" + l.phone} style={{ color:"#ea6b14", textDecoration:"none" }}>{l.phone}</a> : null}
+                  {l.phone ? <a href={"tel:" + l.phone} style={{ color:"var(--ff-c10)", textDecoration:"none" }}>{l.phone}</a> : null}
                 </div>
                 {l.location && <div style={s.meta}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{l.location}</div>}
                 {l.details && (
-                  <div style={{ marginTop:".5rem", padding:".6rem .8rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .06)", borderRadius:"8px", fontSize:".85rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>{l.details}</div>
+                  <div style={{ marginTop:".5rem", padding:".6rem .8rem", background:"rgba(var(--ff-fg), .03)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .06)", borderRadius:"8px", fontSize:".85rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>{l.details}</div>
                 )}
                 <div style={{ ...s.meta, marginTop:".4rem", color:"rgba(var(--ff-muted), .45)" }}>Received {new Date(l.created_at).toLocaleString("en-CA", { dateStyle:"medium", timeStyle:"short" })}</div>
                 {l.status === "new" && (
@@ -1731,7 +1731,7 @@ export default function AdminDashboard() {
               )}
               {!actionsFailed && (
                 <>
-                  <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center", marginBottom:".9rem" }}>
+                  <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center", marginBottom: "var(--ff-s4)" }}>
                     {(["pending","all"] as const).map(f => (
                       <button key={f} onClick={() => setAgentFilter(f)}
                         style={{ ...s.tab, padding:".4rem .9rem", ...(agentFilter === f ? s.activeTab : {}) }}>
@@ -1764,7 +1764,7 @@ export default function AdminDashboard() {
                       && ["pending","approved","sent"].includes(String(a.status))
                       && !!a.payload?.client;
                     return (
-                      <div key={a.id} style={{ ...s.card, borderColor: isOpen && !expired ? "rgba(234,107,20,.3)" : "rgba(var(--ff-fg), .08)" }}>
+                      <div key={a.id} style={{ ...s.card, borderColor: isOpen && !expired ? "rgba(var(--ff-accent-rgb), .3)" : "rgba(var(--ff-fg), .08)" }}>
                         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", flexWrap:"wrap" as const, gap:".5rem" }}>
                           <div style={s.title}>
                             {String(a.kind || "action").replace(/_/g, " ")}
@@ -1793,7 +1793,7 @@ export default function AdminDashboard() {
                           </div>
                         )}
                         {Array.isArray(a.transcript) && a.transcript.length > 0 && (
-                          <div style={{ marginTop:".5rem", padding:".55rem .75rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .06)", borderRadius:"8px", fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.6, maxHeight:"11rem", overflowY:"auto" as const }}>
+                          <div style={{ marginTop:".5rem", padding:".55rem .75rem", background:"rgba(var(--ff-fg), .03)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .06)", borderRadius:"8px", fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.6, maxHeight:"11rem", overflowY:"auto" as const }}>
                             {a.transcript.map((m:any, i:number) => (
                               <div key={i} style={{ marginBottom:".3rem" }}>
                                 <strong style={{ color:"rgba(var(--ff-muted), .55)" }}>{m.d === "out" ? "us" : "them"}:</strong> {String(m.b ?? "")}
@@ -1809,7 +1809,7 @@ export default function AdminDashboard() {
                             summary still shows its JSON — this adds a surface, it does
                             not replace one. */}
                         {a.payload?.summary && (
-                          <div style={{ marginTop:".7rem", padding:".65rem .8rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
+                          <div style={{ marginTop: "var(--ff-s3)", padding:".65rem .8rem", background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
                             <div style={{ fontSize:".92rem", color:"var(--ff-text)", lineHeight:1.5 }}>
                               {String(a.payload.summary)}
                             </div>
@@ -1825,7 +1825,7 @@ export default function AdminDashboard() {
                             )}
                             {a.payload.link && String(a.payload.link).startsWith("http") && (
                               <a href={String(a.payload.link)} target="_blank" rel="noreferrer"
-                                 style={{ display:"inline-block", marginTop:".5rem", fontSize:".82rem", color:"#ea6b14", fontWeight:600 }}>
+                                 style={{ display:"inline-block", marginTop:".5rem", fontSize:".82rem", color:"var(--ff-c10)", fontWeight:600 }}>
                                 {String(a.payload.action || "Open")} →
                               </a>
                             )}
@@ -1849,9 +1849,9 @@ export default function AdminDashboard() {
                             payload), because a control that can never succeed is worse
                             than no control. */}
                         {canDraft && (
-                          <div style={{ marginTop:".7rem" }}>
+                          <div style={{ marginTop: "var(--ff-s3)" }}>
                             <button
-                              style={{ ...s.btn, ...(d ? {} : { background:"#ea6b14", color:"#1a2236", border:"none" }) }}
+                              style={{ ...s.btn, ...(d ? {} : { background:"var(--ff-c10)", color:"#1a2236", border:"none" }) }}
                               disabled={busyDraft === a.id}
                               onClick={() => draftLead(a)}>
                               {busyDraft === a.id ? "Writing…" : d ? "Rewrite the message" : "Draft a message"}
@@ -1869,7 +1869,7 @@ export default function AdminDashboard() {
                             {d && (
                               <div style={{ marginTop:".65rem", display:"grid", gap:".6rem" }}>
                                 {d.text && (
-                                  <div style={{ padding:".6rem .75rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
+                                  <div style={{ padding:".6rem .75rem", background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
                                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", marginBottom:".35rem" }}>
                                       <span style={{ fontSize:".74rem", letterSpacing:".04em", color:"rgba(var(--ff-muted), .5)", fontFamily:"'Bebas Neue',sans-serif" }}>TEXT MESSAGE</span>
                                       <button style={{ ...s.btn, padding:".25rem .6rem", fontSize:".74rem" }}
@@ -1881,7 +1881,7 @@ export default function AdminDashboard() {
                                   </div>
                                 )}
                                 {d.email_body && (
-                                  <div style={{ padding:".6rem .75rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
+                                  <div style={{ padding:".6rem .75rem", background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
                                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", marginBottom:".35rem" }}>
                                       <span style={{ fontSize:".74rem", letterSpacing:".04em", color:"rgba(var(--ff-muted), .5)", fontFamily:"'Bebas Neue',sans-serif" }}>EMAIL</span>
                                       <button style={{ ...s.btn, padding:".25rem .6rem", fontSize:".74rem" }}
@@ -1913,7 +1913,7 @@ export default function AdminDashboard() {
                           readOnly={!isOpen}
                           onChange={(e) => setActionEdit(prev => ({ ...prev, [a.id]: e.target.value }))}
                           spellCheck={false}
-                          style={{ width:"100%", minHeight:"7rem", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", boxSizing:"border-box" as const, fontFamily:"ui-monospace, SFMono-Regular, Menlo, monospace", fontSize:".82rem", lineHeight:1.5, resize:"vertical" as const, opacity: isOpen ? 1 : .7 }}
+                          style={{ width:"100%", minHeight:"7rem", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", boxSizing:"border-box" as const, fontFamily:"ui-monospace, SFMono-Regular, Menlo, monospace", fontSize:".82rem", lineHeight:1.5, resize:"vertical" as const, opacity: isOpen ? 1 : .7 }}
                         />
 
                         {isOpen && (
@@ -1973,7 +1973,7 @@ export default function AdminDashboard() {
               <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.1rem", letterSpacing:".04em", marginTop:"2rem", marginBottom:".3rem" }}>
                 The team
               </div>
-              <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".8rem", marginBottom:".9rem", lineHeight:1.5 }}>
+              <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".8rem", marginBottom: "var(--ff-s4)", lineHeight:1.5 }}>
                 Every agent that is supposed to exist, whether or not it has ever run. An agent only shows as
                 overdue once it is switched on and has missed its own schedule.
               </p>
@@ -2119,7 +2119,7 @@ export default function AdminDashboard() {
                     </div>
                   )}
                   {pairs.length > 0 && (
-                    <div style={{ marginTop:".5rem", padding:".55rem .75rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .06)", borderRadius:"8px", fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.6, wordBreak:"break-word" as const }}>
+                    <div style={{ marginTop:".5rem", padding:".55rem .75rem", background:"rgba(var(--ff-fg), .03)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .06)", borderRadius:"8px", fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.6, wordBreak:"break-word" as const }}>
                       {pairs.map(([k, v]) => (
                         <div key={k}>{k.replace(/_/g, " ")}: {typeof v === "object" ? JSON.stringify(v) : String(v)}</div>
                       ))}
@@ -2154,7 +2154,7 @@ export default function AdminDashboard() {
                 <>
                   <div style={{ display:"flex", gap:".75rem", flexWrap:"wrap" as const, marginBottom:"1.25rem" }}>
                     <div style={{ ...s.card, flex:"1 1 180px", margin:0, textAlign:"center" as const }}>
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"#ea6b14", lineHeight:1 }}>{health.new_leads_count ?? 0}</div>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"var(--ff-c10)", lineHeight:1 }}>{health.new_leads_count ?? 0}</div>
                       <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", marginTop:".35rem" }}>New estimate leads</div>
                     </div>
                     <div style={{ ...s.card, flex:"1 1 180px", margin:0, textAlign:"center" as const }}>
@@ -2197,7 +2197,7 @@ export default function AdminDashboard() {
             {([
               { key:"open"     as PlatformMode, label:"Open",     tone:"var(--ff-success)",
                 desc:"Normal. New client requests go straight out to matching contractors." },
-              { key:"waitlist" as PlatformMode, label:"Waitlist", tone:"#ea6b14",
+              { key:"waitlist" as PlatformMode, label:"Waitlist", tone:"var(--ff-c10)",
                 desc:"Clients can still describe their job and leave their details, but nothing is sent to contractors. You release the jobs by hand when you're ready." },
               { key:"paused"   as PlatformMode, label:"Paused",   tone:"var(--ff-warn)",
                 desc:"New client requests stop completely. The overhaul notice shows across the site." },
@@ -2213,8 +2213,8 @@ export default function AdminDashboard() {
                     display:"flex", alignItems:"flex-start", gap:".75rem", width:"100%",
                     textAlign:"left" as const, cursor: busyPlatform ? "default" : "pointer",
                     fontFamily:"inherit", color:"var(--ff-text)",
-                    background: on ? "rgba(234,107,20,.08)" : "rgba(var(--ff-fg), .04)",
-                    borderColor: on ? "rgba(234,107,20,.4)" : "rgba(var(--ff-fg), .08)",
+                    background: on ? "rgba(var(--ff-accent-rgb), .08)" : "rgba(var(--ff-fg), .04)",
+                    borderColor: on ? "rgba(var(--ff-accent-rgb), .4)" : "rgba(var(--ff-fg), .08)",
                   }}
                 >
                   <Ic name={on ? "radio-on" : "radio-off"} size={20} style={{ color: on ? m.tone : "rgba(var(--ff-muted), .4)", flexShrink:0, marginTop:2 }} />
@@ -2222,7 +2222,7 @@ export default function AdminDashboard() {
                     <span style={{ display:"block", fontSize:".95rem", fontWeight:600, color: on ? m.tone : "var(--ff-text)" }}>
                       {m.label}{on ? " — currently on" : ""}
                     </span>
-                    <span style={{ display:"block", fontSize:".8rem", color:"rgba(var(--ff-muted), .6)", marginTop:".25rem" }}>{m.desc}</span>
+                    <span style={{ display:"block", fontSize:".8rem", color:"rgba(var(--ff-muted), .6)", marginTop: "var(--ff-s1)" }}>{m.desc}</span>
                   </span>
                 </button>
               );
@@ -2230,8 +2230,8 @@ export default function AdminDashboard() {
 
             {/* ── Notice wording ──────────────────────────────────────────── */}
             <div style={{ ...s.card, marginTop:"1.5rem" }}>
-              <div style={{ ...s.title, marginBottom:".2rem" }}>What clients see while you're paused</div>
-              <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginBottom:".9rem" }}>
+              <div style={{ ...s.title, marginBottom: "var(--ff-s1)" }}>What clients see while you're paused</div>
+              <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginBottom: "var(--ff-s4)" }}>
                 Used on the site-wide banner and on the waitlist form. Editing this takes effect on the next page load — no deploy needed.
               </div>
               {([
@@ -2244,22 +2244,22 @@ export default function AdminDashboard() {
                     value={noticeDraft[f.key]}
                     onChange={e => setNoticeDraft(d => ({ ...d, [f.key]: e.target.value }))}
                     placeholder={f.ph}
-                    style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .05)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"6px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }}
+                    style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .05)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"6px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem" }}
                   />
                 </label>
               ))}
-              <label style={{ display:"block", marginBottom:".9rem" }}>
+              <label style={{ display:"block", marginBottom: "var(--ff-s4)" }}>
                 <span style={{ display:"block", fontSize:".76rem", color:"rgba(var(--ff-muted), .6)", marginBottom:".3rem" }}>Message</span>
                 <textarea
                   value={noticeDraft.body}
                   onChange={e => setNoticeDraft(d => ({ ...d, body: e.target.value }))}
                   rows={3}
-                  style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .05)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"6px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", resize:"vertical" as const }}
+                  style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .05)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"6px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".85rem", resize:"vertical" as const }}
                 />
               </label>
 
               {/* ── "Why are you paused?" panel ───────────────────────────── */}
-              <label style={{ display:"block", marginBottom:".9rem" }}>
+              <label style={{ display:"block", marginBottom: "var(--ff-s4)" }}>
                 <span style={{ display:"block", fontSize:".76rem", color:"rgba(var(--ff-muted), .6)", marginBottom:".3rem" }}>
                   The &ldquo;why?&rdquo; panel — what people see when they press the banner
                 </span>
@@ -2273,14 +2273,14 @@ export default function AdminDashboard() {
                   onChange={e => setNoticeDraft(d => ({ ...d, details: e.target.value }))}
                   rows={12}
                   placeholder={"## Why we're paused\nWe'd rather fix things before you feel them.\n\n## What we're improving\n- **Your money, held safely.** Released only when you confirm the work is done."}
-                  style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .05)", border:"1px solid rgba(var(--ff-fg), .12)", borderRadius:"6px", color:"var(--ff-text)", fontFamily:"ui-monospace, SFMono-Regular, Menlo, monospace", fontSize:".78rem", lineHeight:1.6, resize:"vertical" as const }}
+                  style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .05)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"6px", color:"var(--ff-text)", fontFamily:"ui-monospace, SFMono-Regular, Menlo, monospace", fontSize:".78rem", lineHeight:1.6, resize:"vertical" as const }}
                 />
               </label>
 
               <button
                 onClick={saveNotice}
                 disabled={busyPlatform}
-                style={{ ...s.btn, background:"rgba(234,107,20,.15)", borderColor:"rgba(234,107,20,.4)", color:"var(--ff-text)" }}
+                style={{ ...s.btn, background:"rgba(var(--ff-accent-rgb), .15)", borderColor:"rgba(var(--ff-accent-rgb), .4)", color:"var(--ff-text)" }}
               >
                 {busyPlatform ? "Saving…" : "Save wording"}
               </button>
@@ -2290,7 +2290,7 @@ export default function AdminDashboard() {
             <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".05em", marginTop:"2rem", marginBottom:".3rem" }}>
               Jobs held by the pause ({heldReqs.length})
             </h2>
-            <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", marginBottom:".9rem", maxWidth:"58ch" }}>
+            <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", marginBottom: "var(--ff-s4)", maxWidth:"58ch" }}>
               Real job requests from signed-in clients that were captured instead of sent out. Releasing one emails every matching contractor immediately.
             </p>
             {heldReqs.length === 0 ? (
@@ -2299,7 +2299,7 @@ export default function AdminDashboard() {
               </div>
             ) : (
               <>
-                <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginBottom:".9rem", alignItems:"center" }}>
+                <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginBottom: "var(--ff-s4)", alignItems:"center" }}>
                   <button
                     onClick={() => setHeldSel(prev => prev.size === heldReqs.length ? new Set() : new Set(heldReqs.map(r => r.id)))}
                     style={s.btn}
@@ -2310,8 +2310,8 @@ export default function AdminDashboard() {
                     onClick={() => releaseHeld(Array.from(heldSel))}
                     disabled={busyRelease || heldSel.size === 0}
                     style={{ ...s.btn,
-                      background: heldSel.size ? "rgba(234,107,20,.15)" : "rgba(var(--ff-fg), .06)",
-                      borderColor: heldSel.size ? "rgba(234,107,20,.4)" : "rgba(var(--ff-fg), .1)",
+                      background: heldSel.size ? "rgba(var(--ff-accent-rgb), .15)" : "rgba(var(--ff-fg), .06)",
+                      borderColor: heldSel.size ? "rgba(var(--ff-accent-rgb), .4)" : "rgba(var(--ff-fg), .1)",
                       color: heldSel.size ? "var(--ff-text)" : "rgba(var(--ff-muted), .5)" }}
                   >
                     {busyRelease ? "Releasing…" : `Release selected (${heldSel.size})`}
@@ -2320,14 +2320,14 @@ export default function AdminDashboard() {
                 {heldReqs.map(r => {
                   const picked = heldSel.has(r.id);
                   return (
-                    <div key={r.id} style={{ ...s.card, borderColor: picked ? "rgba(234,107,20,.4)" : "rgba(var(--ff-fg), .08)" }}>
-                      <div style={{ display:"flex", gap:".7rem", alignItems:"flex-start" }}>
+                    <div key={r.id} style={{ ...s.card, borderColor: picked ? "rgba(var(--ff-accent-rgb), .4)" : "rgba(var(--ff-fg), .08)" }}>
+                      <div style={{ display:"flex", gap: "var(--ff-s3)", alignItems:"flex-start" }}>
                         <input
                           type="checkbox"
                           checked={picked}
                           onChange={() => setHeldSel(prev => { const n = new Set(prev); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n; })}
                           aria-label={`Select ${r.service_needed || "request"}`}
-                          style={{ marginTop:4, flexShrink:0, accentColor:"#ea6b14" }}
+                          style={{ marginTop:4, flexShrink:0, accentColor:"var(--ff-c10)" }}
                         />
                         <div style={{ minWidth:0, flex:1 }}>
                           <div style={s.title}>{r.service_needed || "Job request"}</div>
@@ -2345,7 +2345,7 @@ export default function AdminDashboard() {
                           <button
                             onClick={() => releaseHeld([r.id])}
                             disabled={busyRelease}
-                            style={{ ...s.btn, marginTop:".7rem" }}
+                            style={{ ...s.btn, marginTop: "var(--ff-s3)" }}
                           >
                             {busyRelease ? "Working…" : "Release just this one"}
                           </button>
@@ -2361,7 +2361,7 @@ export default function AdminDashboard() {
             <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".05em", marginTop:"2rem", marginBottom:".3rem" }}>
               Waitlist signups ({waitlistRows.length})
             </h2>
-            <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", marginBottom:".9rem", maxWidth:"58ch" }}>
+            <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", marginBottom: "var(--ff-s4)", maxWidth:"58ch" }}>
               People who left their details while the site was paused. Nobody here has an account or a job request yet — email them when you reopen.
             </p>
             {waitlistRows.length === 0 ? (

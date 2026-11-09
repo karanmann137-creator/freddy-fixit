@@ -82,6 +82,26 @@ style.textContent = `
     --ff-accent-400: #f78b3d;
     --ff-accent-soft: rgba(234,107,20,0.12);
     --ff-accent-line: rgba(234,107,20,0.32);
+    /* The accent as an RGB TRIPLE, for the same reason --ff-bg-rgb exists
+       (2026-11-08). -soft and -line cover the two tinted uses the ramp was
+       designed around, but the tree had FOUR HUNDRED AND FIFTY-ONE
+       rgba(234,107,20,A) literals at fifteen distinct alphas — glows, pulse
+       keyframes, gradient stops, 2px selected borders, radial washes. Folding
+       all of those onto two fixed alphas would have been a visual redesign
+       dressed up as a token migration, and the alphas are load-bearing in
+       places (the photo-pulse keyframe animates from .55 to 0).
+
+       So: keep the alpha, tokenise the colour. rgba(var(--ff-accent-rgb), A)
+       renders byte-identically in dark mode and picks up #d65f10's triple in
+       light, which is the actual bug those 451 literals were — every one of
+       them painted the DARK orange on the off-white ground.
+
+       Reach for -soft / -line first; this is for the alpha the ramp has no
+       name for. And note that a var() inside a custom-property DECLARATION is
+       substituted where it is declared, so -soft and -line above stay spelled
+       out — writing them as rgba(var(--ff-accent-rgb), …) would be the
+       .ff-on-dark alias trap. tools/check_tokens.py enforces that. */
+    --ff-accent-rgb: 234,107,20;
     /* Ink ramp — four steps instead of ad-hoc rgba(var(--ff-muted), .N).
        Hierarchy is the point: a page should use at most three of these. */
     --ff-ink-1: var(--ff-text);
@@ -105,6 +125,66 @@ style.textContent = `
     --ff-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
     --ff-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
     --ff-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+    /* The fourth member, added 2026-11-08. It is NOT a fourth ease — it is
+       the only way to get an OVERSHOOT in pure CSS, because its y control
+       points exceed 1. The three above all land exactly on their target and
+       stop, which is what makes a release read as mushy: the finger comes
+       off, the element returns to 1.0 and nothing settles.
+
+       Why it has to be CSS and not a spring: src/components/ui/ is forbidden
+       Framer Motion (only Home / ClientSuccess / ContractorSuccess import it),
+       and the press lives in that folder. A '{ type: "spring", duration,
+       bounce }' here would mean either importing Framer into the primitives
+       or re-implementing the press per page — which is the exact drift the
+       folder exists to end.
+
+       Use it ONLY on the way back UP from a press. On the way down an
+       overshoot would push the element past the pressed size and read as a
+       bounce under the thumb. The asymmetry is the whole feel. */
+    --ff-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    /* ── Apple material language ────────────────────────────────────────
+       Added 2026-11-08 at the owner's request ("more appleish buttons/flow,
+       better usability esp on mobile"). Three materials, three tokens, and
+       the point of tokenising them is the same as every other scale here:
+       a frosted nav and a frosted sheet must blur by the SAME amount or the
+       two read as different materials, and "nav blur" written inline in two
+       files is two numbers that will diverge.
+
+       --ff-glass is theme-DEPENDENT and therefore carries a literal inside
+       .ff-on-dark, like the seven colour aliases. It is deliberately not
+       rgba(var(--ff-bg-rgb), …): a translucent ground that resolves through
+       an alias would freeze to the light value where it is declared, which
+       is the documented failure the literals exist to prevent.
+
+       --ff-glass-blur is a filter value, not a colour, so it stays at :root
+       and is NOT duplicated. 'saturate(180%)' before the blur is what makes
+       this read as Apple's material rather than as a grey wash — a plain
+       blur desaturates whatever is behind it, and the orange accent showing
+       through a sheet is the thing you most want to survive.
+
+       ⚠️ backdrop-filter MUST be paired with the -webkit- prefix: iOS Safari
+       16 and earlier support only the prefixed form, and iOS is the platform
+       this whole pass is for. A frosted surface that falls back to fully
+       transparent is unreadable, so --ff-glass is an OPAQUE-ENOUGH colour on
+       its own (0.72-0.78, not 0.2) and the blur is pure enhancement. That is
+       the one rule here: the surface must be legible with the blur removed. */
+    --ff-glass: rgba(26,34,54,0.72);
+    --ff-glass-blur: saturate(180%) blur(20px);
+    /* A true hairline. 1px on a 3× screen is three device pixels, which is
+       why our borders look heavier than iOS's. 0.5px is honoured on retina
+       and rounded up to 1px everywhere else, so it degrades to exactly what
+       we have today. Geometry, not colour — :root only. */
+    --ff-hair-w: 0.5px;
+    /* Layered shadow. Apple stacks a tight contact shadow under a wide soft
+       one; a single large blur reads as a glow rather than as height. This is
+       a THIRD scale beside --ff-lift-* rather than a replacement, because the
+       existing three are load-bearing in ~80 places and re-pointing them
+       would change every card on the site in one unreviewable diff. Reach for
+       these on things that FLOAT — sheets, popovers, the primary button. */
+    --ff-mat-1: 0 1px 1px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.18);
+    --ff-mat-2: 0 1px 2px rgba(0,0,0,0.20), 0 8px 24px rgba(0,0,0,0.26);
+    --ff-mat-3: 0 1px 3px rgba(0,0,0,0.24), 0 12px 32px rgba(0,0,0,0.34), 0 32px 64px rgba(0,0,0,0.30);
 
     /* ── One spacing / radius / height scale ───────────────────────────
        Added 2026-10-30 alongside src/components/ui/. These are geometry,
@@ -137,13 +217,47 @@ style.textContent = `
     --ff-r2: 14px;
     --ff-r3: 18px;
     --ff-r4: 26px;
-    /* 48px row / 44px control: 44 is the thumb-target floor enforced in the
-       (pointer: coarse) block further down, so a control shorter than this
-       would be silently grown on a phone and agree with nothing beside it. */
+    /* 48px row / 44px control. 44 is the published MINIMUM thumb target and
+       is what a control measures on a mouse-driven desktop; the (pointer:
+       coarse) block further down raises the floor to 48 so that on a phone a
+       control and a row are the same height. The two numbers disagreeing on
+       desktop is deliberate — a 48px button under a mouse reads as oversized,
+       and nothing on desktop is being hit with a thumb.
+
+       ⚠️ Don't "fix" this by setting --ff-h-ctl to 48: that would grow every
+       desktop control too, and the floor is a min-height, so anything already
+       taller is untouched either way. */
     --ff-h-row: 48px;
     --ff-h-ctl: 44px;
-    --ff-h-nav: 42px;
     --ff-gut: 40px;
+    /* ⚠️ A FALLBACK, NOT THE VALUE. TopNav measures its own rendered height
+       with a ResizeObserver and overwrites this on :root in px — see the long
+       note in TopNav.tsx. Anything that needs to sit directly under the fixed
+       bar (PageTitle's compact header, today's only caller) reads this.
+
+       It is declared here at all so that a first paint before the observer
+       fires, or a document where TopNav is not mounted, gets a sane number
+       instead of 0 and an overlap. 4.25rem is the desktop bar: 1rem padding
+       top and bottom plus a ~2.2rem tallest child (the pill buttons). Under
+       560px the real bar is nearer 3.2rem, which is why the measured value
+       matters and this one is only a floor-of-last-resort — the compact header
+       does not mount until the page has been scrolled, by which point the
+       measurement is long since published.
+
+       There WAS a --ff-h-nav: 42px here, declared 2026-10-30 and read by
+       nothing in src/ — grep returned exactly one hit, its own declaration.
+       It is deleted rather than left, because --ff-h-nav and --ff-topnav-h are
+       one transposition apart and a dead token that close to a live one is the
+       setup for silently reading the wrong number later. Its intent was
+       probably "height of a sidebar nav item"; if that port needs a token it
+       can have --ff-h-navitem, which cannot be confused with this.
+
+       ⚠️ No backticks anywhere in this comment, and that is not a style
+       preference — this whole stylesheet is a backtick template literal, so a
+       backtick here CLOSES it. It did, for exactly one run: five TS1005s at
+       this line and the two after it, from a comment. The repo rule is in
+       CLAUDE.md under Authoring; this is the site that proves it still bites. */
+    --ff-topnav-h: 4.25rem;
   }
   :root[data-theme="light"] {
     --ff-fg: 55,96,153;           /* slate ink replaces white */
@@ -165,6 +279,7 @@ style.textContent = `
     --ff-accent-400: #ea6b14;
     --ff-accent-soft: rgba(214,95,16,0.10);
     --ff-accent-line: rgba(214,95,16,0.28);
+    --ff-accent-rgb: 214,95,16;
     --ff-c10: #d65f10;
     --ff-ink-2: rgba(var(--ff-fg), 0.86);
     --ff-ink-3: rgba(var(--ff-muted), 0.78);
@@ -175,6 +290,14 @@ style.textContent = `
     --ff-lift-1: 0 1px 2px rgba(15,23,42,0.06);
     --ff-lift-2: 0 8px 28px rgba(15,23,42,0.10);
     --ff-lift-3: 0 22px 60px rgba(15,23,42,0.16);
+    /* Material counterparts. --ff-glass-blur and --ff-hair-w are absent here
+       on purpose: a filter value and a px width have nothing theme-dependent
+       to get wrong, which is the same reason the easing and spacing scales
+       aren't duplicated either. */
+    --ff-glass: rgba(233,238,248,0.76);
+    --ff-mat-1: 0 1px 1px rgba(15,23,42,0.04), 0 2px 8px rgba(15,23,42,0.05);
+    --ff-mat-2: 0 1px 2px rgba(15,23,42,0.05), 0 8px 24px rgba(15,23,42,0.08);
+    --ff-mat-3: 0 1px 3px rgba(15,23,42,0.06), 0 12px 32px rgba(15,23,42,0.11), 0 32px 64px rgba(15,23,42,0.09);
   }
 
   /* ── Navy in dark mode; off-white in light mode ─────────────────────
@@ -191,16 +314,25 @@ style.textContent = `
      Verified band all fall through to the ordinary light-mode tokens
      (off-white ground) when data-theme="light".
 
-     The .ff-anchor modifier below (opt back into forced navy under light
-     mode) briefly existed as a one-off exception for the Freddy Verified
-     band specifically, then was removed the same day once the owner
-     confirmed the preference is truly "everywhere" and not "everywhere
-     except this one band" — see Home.tsx. Nothing currently applies
-     .ff-anchor, so that half of the selector is dormant. It's left in
-     place rather than deleted in case a future band genuinely needs a
-     forced-navy exception; deleting it costs nothing today but re-adding
-     it correctly (typo-free selector, byte-identical dark values) later
-     is easy to get subtly wrong under time pressure.
+     The .ff-anchor modifier below opts a subtree back into forced navy
+     under light mode. It briefly existed as a one-off exception for the
+     Freddy Verified band specifically, then was removed the same day once
+     the owner confirmed the preference is truly "everywhere" and not
+     "everywhere except this one band" — see Home.tsx.
+
+     ⚠️ This comment said "nothing currently applies .ff-anchor, so that
+     half of the selector is dormant" until 2026-11-08, and by then it was
+     FALSE in two places: ui/Pass.tsx applies it (via its forceNavy prop,
+     default true) and components/FreddyRewind.tsx applies it. Both are the case
+     the modifier was kept for and both are correct; the comment was just
+     never revisited. Read it as live, and grep before claiming otherwise.
+
+     What it is FOR, stated positively so the next use can be judged: a
+     subtree whose contents are painted light-on-dark with literals rather
+     than tokens. Those literals cannot follow the theme, so the ground
+     must not either — one class instead of re-tinting a dozen values. It
+     is NOT a way to get navy because navy looks nicer here; that decision
+     was made site-wide in 2026-08-24 and went the other way.
 
      This is still a scope class rather than a rewrite because every
      component already reads its colour from these variables: custom
@@ -245,6 +377,7 @@ style.textContent = `
     --ff-accent-400: #f78b3d;
     --ff-accent-soft: rgba(234,107,20,0.12);
     --ff-accent-line: rgba(234,107,20,0.32);
+    --ff-accent-rgb: 234,107,20;
     --ff-ink-2: rgba(255,255,255,0.82);
     --ff-ink-3: rgba(190,205,235,0.68);
     --ff-ink-4: rgba(190,205,235,0.45);
@@ -254,6 +387,16 @@ style.textContent = `
     --ff-lift-1: 0 1px 2px rgba(0,0,0,0.18);
     --ff-lift-2: 0 8px 28px rgba(0,0,0,0.28);
     --ff-lift-3: 0 22px 60px rgba(0,0,0,0.42);
+    /* Material counterparts, byte-identical to the :root (dark) values above.
+       --ff-glass is a translucent GROUND, so it is exactly the alias trap the
+       note above describes: writing rgba(var(--ff-bg-rgb), 0.72) here would
+       substitute --ff-bg-rgb where it is DECLARED, freezing a navy sheet to
+       the light ground. Hence the literal. --ff-glass-blur and --ff-hair-w
+       are absent because neither is theme-dependent. */
+    --ff-glass: rgba(26,34,54,0.72);
+    --ff-mat-1: 0 1px 1px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.18);
+    --ff-mat-2: 0 1px 2px rgba(0,0,0,0.20), 0 8px 24px rgba(0,0,0,0.26);
+    --ff-mat-3: 0 1px 3px rgba(0,0,0,0.24), 0 12px 32px rgba(0,0,0,0.34), 0 32px 64px rgba(0,0,0,0.30);
     color: var(--ff-text);
   }
   /* The fixed nav paints its own ground with var(--ff-bg) directly (not
@@ -262,14 +405,44 @@ style.textContent = `
      text can never scroll illegibly under it. It starts transparent over the
      hero (Home adds the :not() rule) and fades in on scroll, which is what
      stops it cutting a hard seam across the hero's radial glow. */
+  /* --ff-hair-w, and this is the ONE "solid transparent" border on the site
+     that moved off 1px (2026-11-08). migrate_hairlines.py refuses a
+     transparent border on principle, because a transparent border is usually
+     RESERVING layout for a border that appears in another state, and changing
+     its width changes the layout of the state that has no visible border at
+     all. Here the two states are the SAME declaration -- only border-COLOR is
+     overridden below -- so the width moves for both arms together and nothing
+     can shift. Worth the exception precisely because this is the heaviest line
+     on the site: at 1px it was three device pixels on a 3x phone, drawn across
+     the full width of every page. */
   .ff-nav-wrap {
     background-color: var(--ff-bg);
-    border-bottom: 1px solid transparent;
+    border-bottom: var(--ff-hair-w) solid transparent;
     transition: background-color .25s var(--ff-ease-out), border-color .25s var(--ff-ease-out), box-shadow .25s var(--ff-ease-out), transform .25s var(--ff-ease-out);
   }
   .ff-nav-wrap.ff-nav-lifted {
     border-bottom-color: var(--ff-hair);
     box-shadow: 0 8px 24px rgba(9,13,22,0.28);
+  }
+  /* ⚠️ A STACK OF CHROME GETS ONE SEPARATOR, AT ITS BOTTOM EDGE (2026-11-08).
+     PageTitle's compact bar is fixed at "top: var(--ff-topnav-h)", i.e. flush
+     under this nav, and it is the same frosted material. With both showing,
+     the page had TWO hairlines 44px apart plus the nav's drop shadow falling
+     onto the bar directly beneath it -- the nav reading as if it floated above
+     the title bar when the two are a single band of chrome. Apple's stacked
+     bars separate the stack from the CONTENT, never the layers from each other.
+
+     So when a title bar is stuck, the nav gives up its own bottom edge and its
+     shadow, and the title bar's border-bottom becomes the single separator for
+     the pair. The class comes from PageTitle (it owns the stuck state and is
+     the only thing that knows); the rule lives here, beside the other two,
+     because every decision about this nav's bottom border belongs in one
+     place. Note it is scoped to ".ff-nav-lifted" -- unlifted, there is no
+     border or shadow to suppress, and scoping it keeps the selector from
+     claiming to do something it does not. */
+  html.ff-ptitle-stuck .ff-nav-wrap.ff-nav-lifted {
+    border-bottom-color: transparent;
+    box-shadow: none;
   }
   /* Dashboards only (TopNav gates this via onSidebarDash) — slides the bar
      out of view on scroll-down, back in on scroll-up. The 3.75rem spacer
@@ -311,6 +484,48 @@ style.textContent = `
   img, video, canvas { max-width: 100%; }
   input, select, textarea { max-width: 100%; }
 
+  /* ── Field focus, and why it is HERE rather than per page (2026-11-08) ──────
+     Until today fourteen files carried 'outline: "none"' inline on their field
+     style objects — ChatWidget, DashSearch, DeleteAccount, Footer, JobChat,
+     NewRequest, ProfileBar, TwoStepPanel, VerifyCodeModal, Login,
+     UpdatePassword, GetQuote and both onboarding pages. Not one of them had a
+     :focus-visible rule beside it. That is the accessibility bug in its purest
+     form: thirteen of the platform's sign-in, verification and account-deletion
+     fields had NO visible focus indicator at all for a keyboard user, and
+     nothing anywhere threw.
+
+     The inline declarations are gone, and the ring lives here, because:
+
+       1. An inline style attribute BEATS this stylesheet. So a rule here could
+          never have overridden those fourteen — removing them was the only
+          route, and once removed the ring has to come from somewhere.
+       2. One rule covers every field on the platform, including the ones
+          nobody has written yet. Fourteen per-page copies is how you get
+          thirteen of them missing.
+
+     :focus for the halo (a text field should look focused when you CLICK into
+     it — you are about to type), :focus-visible for the outline ring on top,
+     which is the keyboard-only part. Same split as ServicePicker's own sheet.
+
+     box-shadow, not border-color, for the halo. Every one of those field style
+     objects sets the 'border' SHORTHAND inline, which sets border-color inline
+     too, so a border-color from this sheet loses. box-shadow is unset inline at
+     all of them, so it is the one property that reliably lands. Where a page
+     wants the border to move as well it does it in its own scoped sheet, as
+     ServicePicker does.
+
+     Checkboxes and radios are excluded: they are not text fields and the UA
+     already rings them legibly. */
+  input:not([type="checkbox"]):not([type="radio"]):focus,
+  select:focus, textarea:focus {
+    box-shadow: 0 0 0 3px var(--ff-accent-soft);
+  }
+  input:not([type="checkbox"]):not([type="radio"]):focus-visible,
+  select:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--ff-accent-400);
+    outline-offset: 2px;
+  }
+
   /* Horizontal scroll, killed at the root.
      This is overflow-x: CLIP, not hidden, and the difference is the whole
      reason it is safe to put here. 'hidden' makes the element a scroll
@@ -336,10 +551,78 @@ style.textContent = `
      blow tight button rows off the side of the screen, which is the exact
      bug the block above exists to prevent. */
   @media (pointer: coarse) {
-    button, [role="button"], a.ff-tap, label.ff-tap, select { min-height: 44px; }
-    /* Opt-out for anything genuinely inline, e.g. a link styled as a word
-       inside a sentence that must not become a 44px-tall gap. */
+    /* 48px, not 44, as of 2026-11-08. 44 is the floor Apple publishes as the
+       MINIMUM; 48 is what iOS actually ships for a list row or a bar button,
+       and the owner asked for "generous" targets. --ff-h-row was already 48,
+       so this makes the control floor and the row height agree instead of
+       being 44 and 48 for no reason anyone could state.
+
+       ⚠️ The selector was 'a.ff-tap, label.ff-tap' until 2026-11-08 — opt-IN,
+       with exactly ONE element in all of src/ opting in (ui/Pass.tsx:108).
+       Every other tappable link and label on the site was therefore under the
+       floor, which is the bug, not the default. It is now opt-OUT for those
+       two as well, and the escape hatch is .ff-tap-auto, which is why that
+       class is listed for a and label too. The direction matters: a missed
+       opt-in is an invisible accessibility failure, while a missed opt-out is
+       a visibly too-tall link that someone fixes in a minute.
+
+       .ff-tap did NOT become dead when the default flipped — it changed jobs.
+       Its new and only job is the force-ON for a control link that happens to
+       sit inside one of the prose containers listed in the restore rule below.
+       The one pre-existing use of it (ui/Pass.tsx:108) is on a <button>, which
+       now gets the floor unconditionally, so that use is redundant — left in
+       place because removing a class from the sheet's selector list while it
+       is still in the JSX is the kind of change that looks complete and is
+       not, and because it costs nothing. */
+    button, [role="button"], select { min-height: 48px; }
+    a:not(.ff-tap-auto), label:not(.ff-tap-auto) {
+      min-height: 48px;
+      display: inline-flex;
+      align-items: center;
+      vertical-align: middle;
+    }
+    /* ⚠️ READ THIS BEFORE DELETING THE RULE BELOW — it is not a refinement,
+       it is what makes the rule above safe to apply at all.
+
+       min-height does NOTHING to a plain inline element, so the floor needs
+       inline-flex to bite. But an inline-flex element will not break its text
+       across lines: its text node becomes a single anonymous flex item. A
+       blanket floor on 'a' therefore turns every link inside a sentence into
+       an unwrappable 48px-tall box that overflows its column — which on the
+       legal pages, where whole clauses are links, is a worse bug than the one
+       being fixed.
+
+       So prose links are restored to inline. The restore is keyed on the
+       CONTAINER, because that is the only thing that distinguishes "link that
+       is a control" from "link that is a word": a nav item or a card link is a
+       child of a layout element, a prose link lives in running text.
+
+       Direction of failure, which is the whole argument for doing it this way:
+       a link wrongly treated as prose is merely under the floor — the status
+       quo for all but one element in src/ before today — while a link wrongly
+       treated as a control visibly wrecks a paragraph. So the ambiguous case
+       loses, and '.ff-tap' forces the floor back on for a control that does
+       happen to sit in a list item or a label.
+
+       :where() so the restore carries ZERO specificity from its ancestors and
+       the single class .ff-tap can always beat it. With a plain descendant
+       selector the restore would be specificity 0,0,1,2 and .ff-tap would
+       lose, making the escape hatch silently dead. */
+    :where(p, li, h1, h2, h3, h4, h5, h6, blockquote, dd, dt, figcaption, small, label)
+      a:not(.ff-tap) {
+      min-height: 0;
+      display: inline;
+      vertical-align: baseline;
+    }
+    /* Opt-out for anything genuinely inline that is NOT in one of the prose
+       containers above — e.g. a link styled as a word inside a <div> or a
+       <span> of copy. */
     button.ff-tap-auto, [role="button"].ff-tap-auto { min-height: 0; }
+    a.ff-tap-auto, label.ff-tap-auto {
+      min-height: 0;
+      display: inline;
+      vertical-align: baseline;
+    }
 
     /* Text fields, and the reason for the !important.
        iOS Safari ZOOMS THE WHOLE VIEWPORT whenever you focus a field whose
@@ -542,6 +825,60 @@ style.textContent = `
       transition-duration: 0.001ms !important;
       scroll-behavior: auto !important;
     }
+  }
+
+  /* ── The other two accessibility preferences (2026-11-08) ──────────────
+     THREE INDEPENDENT QUERIES, NOT ONE. The material pass earlier today
+     shipped --ff-glass / --ff-glass-blur onto four primitives and left four
+     hand-rolled blurs in Home.tsx, and at that point this file answered
+     exactly one of the three preferences an OS can express: reduce-motion was
+     covered in 13 places, while prefers-reduced-transparency and
+     prefers-contrast appeared ZERO times in all of src/. Translucency is not
+     a motion problem and contrast is not a transparency problem — a user who
+     turns on Reduce Transparency has not asked for less animation, and one
+     who turns on Increase Contrast wants a border they can see, which no
+     amount of removing blur gives them. Hence two separate blocks.
+
+     ⚠️ THE KILL IS A BLANKET AND IT IS DELIBERATE. Four of the eight
+     backdrop-filter sites in src/ write a LITERAL blur (Home's hero panel at
+     blur(10px), its three before/after pills at blur(4px)) rather than going
+     through --ff-glass-blur, so setting the token to "none" would silently
+     miss half the surfaces on the busiest page. The universal selector with
+     !important is the only rule that cannot be out-specified by an inline
+     style or a per-page style block — the same reasoning as the reduced-
+     motion blanket directly above, and the same reasoning as the 16px font
+     floor in the (pointer: coarse) block. The token is set to "none" as well,
+     so a surface that reads it computes the right thing rather than being
+     overridden after the fact.
+
+     What this does NOT do is make the surfaces opaque, because --ff-glass is
+     theme-dependent and carries a literal in each of the three palette blocks
+     — reaching in from here would need the value spelled a fourth and fifth
+     time. The opaque grounds live beside the classes that consume them, in
+     src/components/ui/uiStyles.ts, where they are expressed as the existing
+     theme tokens and are therefore correct in both themes by construction. */
+  @media (prefers-reduced-transparency: reduce) {
+    *, *::before, *::after {
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+    }
+    :root { --ff-glass-blur: none; }
+  }
+
+  /* Increase Contrast implies Reduce Transparency and then asks for more: a
+     blurred ground is low-contrast by definition, so the blur goes first, and
+     then the hairline doubles. --ff-hair-w is geometry at plain :root rather
+     than a colour, so overriding it here needs no theme counterpart — and
+     0.5px is a HAIRLINE, which is the one thing a user asking for higher
+     contrast is least able to see. 1px is where it already was before the
+     material pass, so this degrades to the previously-shipped appearance
+     rather than to something nobody has looked at. */
+  @media (prefers-contrast: more) {
+    *, *::before, *::after {
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+    }
+    :root { --ff-glass-blur: none; --ff-hair-w: 1px; }
   }
 `;
 document.head.appendChild(style);

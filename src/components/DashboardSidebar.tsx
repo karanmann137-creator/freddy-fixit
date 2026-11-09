@@ -56,7 +56,7 @@ export default function DashboardSidebar({
 
   const rowBase = (labels: boolean): React.CSSProperties => ({
     position:"relative" as const,
-    display:"flex", alignItems:"center", gap:".7rem", width:"100%", textAlign:"left" as const,
+    display:"flex", alignItems:"center", gap: "var(--ff-s3)", width:"100%", textAlign:"left" as const,
     padding: labels ? ".62rem .8rem" : ".62rem 0", justifyContent: labels ? "flex-start" : "center",
     border:"none", cursor:"pointer", borderRadius:"10px",
     fontFamily:"'DM Sans',sans-serif", fontSize:".9rem",
@@ -72,18 +72,18 @@ export default function DashboardSidebar({
         onClick={() => { onSelect(it.key); if (narrow) setExpanded(false); }}
         style={{
           ...rowBase(labels),
-          background: on ? "rgba(234,107,20,.13)" : "transparent",
-          color: on ? "#ea6b14" : "rgba(var(--ff-muted), .8)",
+          background: on ? "rgba(var(--ff-accent-rgb), .13)" : "transparent",
+          color: on ? "var(--ff-c10)" : "rgba(var(--ff-muted), .8)",
           fontWeight: on ? 600 : 500,
-          boxShadow: on ? "inset 3px 0 0 #ea6b14" : "none",
+          boxShadow: on ? "inset 3px 0 0 var(--ff-c10)" : "none",
         }}
         onMouseEnter={e => { if (!on) e.currentTarget.style.background = "rgba(var(--ff-fg), .05)"; showTip(e, it.label, labels); }}
         onMouseLeave={e => { if (!on) e.currentTarget.style.background = "transparent"; hideTip(); }}
       >
-        <Ic name={it.icon} size={18} color={on ? "#ea6b14" : "currentColor"} />
+        <Ic name={it.icon} size={18} color={on ? "var(--ff-c10)" : "currentColor"} />
         {labels && <span style={{ whiteSpace:"nowrap" as const, flex:1 }}>{it.label}</span>}
         {labels && it.badge ? (
-          <span style={{ marginLeft:"auto", fontSize:".7rem", fontWeight:700, minWidth:"18px", textAlign:"center" as const, padding:".05rem .35rem", borderRadius:"999px", background: on ? "rgba(234,107,20,.25)" : "rgba(var(--ff-fg), .1)", color: on ? "#ea6b14" : "rgba(var(--ff-muted), .8)" }}>{it.badge}</span>
+          <span style={{ marginLeft:"auto", fontSize:".7rem", fontWeight:700, minWidth:"18px", textAlign:"center" as const, padding:".05rem .35rem", borderRadius:"999px", background: on ? "rgba(var(--ff-accent-rgb), .25)" : "rgba(var(--ff-fg), .1)", color: on ? "var(--ff-c10)" : "rgba(var(--ff-muted), .8)" }}>{it.badge}</span>
         ) : null}
         {/* Icon-only rail (mobile, and the collapsed desktop rail): there's no room
             for a label, but hiding the count entirely meant unread messages were
@@ -96,7 +96,7 @@ export default function DashboardSidebar({
               minWidth:"16px", height:"16px", padding:"0 .22rem", boxSizing:"border-box" as const,
               display:"flex", alignItems:"center", justifyContent:"center",
               fontSize:".62rem", fontWeight:700, lineHeight:1,
-              borderRadius:"999px", background:"#ea6b14", color:"#fff",
+              borderRadius:"999px", background:"var(--ff-c10)", color:"#fff",
             }}
           >{Number(it.badge) > 9 ? "9+" : it.badge}</span>
         ) : null}
@@ -106,7 +106,7 @@ export default function DashboardSidebar({
 
   const renderFooter = (labels: boolean) => {
     return (
-      <div style={{ marginTop:"auto", display:"flex", flexDirection:"column" as const, gap:".25rem", paddingTop:".5rem" }}>
+      <div style={{ marginTop:"auto", display:"flex", flexDirection:"column" as const, gap: "var(--ff-s1)", paddingTop:".5rem" }}>
         {/* Desktop-only collapse / expand toggle */}
         {!narrow && (
           <button
@@ -126,11 +126,11 @@ export default function DashboardSidebar({
   };
 
   const renderNav = (labels: boolean) => (
-    <div style={{ display:"flex", flexDirection:"column" as const, minHeight:"100%", gap:".25rem" }}>
+    <div style={{ display:"flex", flexDirection:"column" as const, minHeight:"100%", gap: "var(--ff-s1)" }}>
       {narrow && (
         <button
           onClick={() => setExpanded(e => !e)} aria-label="Toggle menu" title="Menu"
-          style={{ display:"flex", alignItems:"center", justifyContent: labels ? "flex-start" : "center", gap:".7rem", padding: labels ? ".55rem .8rem" : ".55rem 0", background:"transparent", border:"none", cursor:"pointer", marginBottom:".35rem", color:"rgba(var(--ff-muted), .85)" }}
+          style={{ display:"flex", alignItems:"center", justifyContent: labels ? "flex-start" : "center", gap: "var(--ff-s3)", padding: labels ? ".55rem .8rem" : ".55rem 0", background:"transparent", border:"none", cursor:"pointer", marginBottom:".35rem", color:"rgba(var(--ff-muted), .85)" }}
         >
           <Ic name="menu" size={18} />
           {labels && <span style={{ fontWeight:600 }}>Menu</span>}
@@ -139,7 +139,7 @@ export default function DashboardSidebar({
       {title && labels && (
         <div style={{ fontSize:".68rem", textTransform:"uppercase" as const, letterSpacing:".12em", color:"rgba(var(--ff-muted), .45)", padding:"0 .8rem", margin:".2rem 0 .5rem" }}>{title}</div>
       )}
-      <div style={{ display:"flex", flexDirection:"column" as const, gap:".25rem" }}>
+      <div style={{ display:"flex", flexDirection:"column" as const, gap: "var(--ff-s1)" }}>
         {items.map(it => itemBtn(it, labels))}
       </div>
       {renderFooter(labels)}
@@ -148,12 +148,12 @@ export default function DashboardSidebar({
 
   const asideBase: React.CSSProperties = {
     position:"sticky", top:"3.75rem", alignSelf:"flex-start", height:"calc(100vh - 3.75rem)",
-    overflowY:"auto" as const, borderRight:"1px solid rgba(var(--ff-fg), .08)", background:"var(--ff-card-bg)",
+    overflowY:"auto" as const, borderRight:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", background:"var(--ff-card-bg)",
     transition:"width .18s ease",
   };
 
   const tipEl = tip ? (
-    <div style={{ position:"fixed", top:tip.top, left:tip.left, transform:"translateY(-50%)", zIndex:1000, background:"var(--ff-surface)", color:"var(--ff-text)", border:"1px solid rgba(var(--ff-fg), .14)", borderRadius:"8px", padding:".3rem .6rem", fontSize:".78rem", fontWeight:500, fontFamily:"'DM Sans',sans-serif", whiteSpace:"nowrap" as const, boxShadow:"0 8px 24px rgba(0,0,0,.35)", pointerEvents:"none" as const }}>
+    <div style={{ position:"fixed", top:tip.top, left:tip.left, transform:"translateY(-50%)", zIndex:1000, background:"var(--ff-surface)", color:"var(--ff-text)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .14)", borderRadius:"8px", padding:".3rem .6rem", fontSize:".78rem", fontWeight:500, fontFamily:"'DM Sans',sans-serif", whiteSpace:"nowrap" as const, boxShadow:"0 8px 24px rgba(0,0,0,.35)", pointerEvents:"none" as const }}>
       {tip.label}
     </div>
   ) : null;
@@ -170,7 +170,7 @@ export default function DashboardSidebar({
       {expanded && (
         <>
           <div onClick={() => setExpanded(false)} style={{ position:"fixed", inset:0, top:"3.75rem", background:"rgba(8,12,22,.5)", zIndex:900 }} />
-          <div style={{ position:"fixed", top:"3.75rem", left:0, bottom:0, width:"min(216px, 80vw)", zIndex:901, background:"var(--ff-surface)", borderRight:"1px solid rgba(var(--ff-fg), .12)", overflowY:"auto" as const, padding:"1.1rem .7rem", boxShadow:"6px 0 28px rgba(0,0,0,.35)" }}>
+          <div style={{ position:"fixed", top:"3.75rem", left:0, bottom:0, width:"min(216px, 80vw)", zIndex:901, background:"var(--ff-surface)", borderRight:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", overflowY:"auto" as const, padding:"1.1rem .7rem", boxShadow:"6px 0 28px rgba(0,0,0,.35)" }}>
             {renderNav(true)}
           </div>
         </>

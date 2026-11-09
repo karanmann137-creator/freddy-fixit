@@ -17,30 +17,30 @@ export default function ContractorSuccess() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
         .ff-wrap { min-height: 100vh; background: var(--ff-bg);
-          background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(234,107,20,0.15) 0%, transparent 70%);
+          background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(var(--ff-accent-rgb), 0.15) 0%, transparent 70%);
           padding: 3rem 1rem; font-family: 'DM Sans', sans-serif; color: var(--ff-text); position: relative; overflow: hidden; }
         .ff-wrap::before { content: ''; position: absolute; inset: 0;
           background-image: repeating-linear-gradient(0deg, transparent, transparent 60px, rgba(var(--ff-fg), 0.015) 60px, rgba(var(--ff-fg), 0.015) 61px),
             repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(var(--ff-fg), 0.015) 60px, rgba(var(--ff-fg), 0.015) 61px);
           pointer-events: none; }
         .ff-container { max-width: 560px; margin: 0 auto; position: relative; z-index: 1; }
-        .ff-check { width: 72px; height: 72px; background: rgba(234,107,20,0.15); border: 2px solid rgba(234,107,20,0.4);
+        .ff-check { width: 72px; height: 72px; background: rgba(var(--ff-accent-rgb), 0.15); border: 2px solid rgba(var(--ff-accent-rgb), 0.4);
           border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 2rem;
-          box-shadow: 0 0 32px rgba(234,107,20,0.25); }
-        .ff-check svg { color: #ea6b14; }
+          box-shadow: 0 0 32px rgba(var(--ff-accent-rgb), 0.25); }
+        .ff-check svg { color: var(--ff-c10); }
         .ff-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(2.4rem, 8vw, 3.5rem);
           letter-spacing: 0.06em; color: var(--ff-text); text-align: center; margin: 0 0 0.5rem; line-height: 1; }
-        .ff-title span { color: #ea6b14; }
+        .ff-title span { color: var(--ff-c10); }
         .ff-subtitle { text-align: center; color: rgba(var(--ff-muted), 0.65); font-size: 1rem; font-weight: 300; margin-bottom: 2.5rem; }
-        .ff-card { background: rgba(var(--ff-fg), 0.04); border: 1px solid rgba(var(--ff-fg), 0.08); border-radius: 14px; padding: 2rem; margin-bottom: 1.5rem; }
-        .ff-card-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 0.06em; color: #ea6b14; margin-bottom: 1.5rem; }
+        .ff-card { background: rgba(var(--ff-fg), 0.04); border: var(--ff-hair-w) solid rgba(var(--ff-fg), 0.08); border-radius: 14px; padding: 2rem; margin-bottom: 1.5rem; }
+        .ff-card-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 0.06em; color: var(--ff-c10); margin-bottom: 1.5rem; }
         .ff-step { display: flex; gap: 1rem; margin-bottom: 1.25rem; align-items: flex-start; }
         .ff-step:last-child { margin-bottom: 0; }
         .ff-step-icon { font-size: 1.4rem; flex-shrink: 0; width: 36px; text-align: center; }
         .ff-step-title { font-size: 0.95rem; font-weight: 500; color: var(--ff-text); margin-bottom: 0.2rem; }
         .ff-step-desc { font-size: 0.85rem; color: rgba(var(--ff-muted), 0.6); font-weight: 300; line-height: 1.5; }
-        .ff-notice { background: rgba(234,107,20,0.08); border: 1px solid rgba(234,107,20,0.2); border-radius: 10px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; }
-        .ff-notice-title { font-size: 0.85rem; font-weight: 500; color: #ea6b14; margin-bottom: 0.4rem; letter-spacing: 0.05em; text-transform: uppercase; }
+        .ff-notice { background: rgba(var(--ff-accent-rgb), 0.08); border: 1px solid rgba(var(--ff-accent-rgb), 0.2); border-radius: 10px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; }
+        .ff-notice-title { font-size: 0.85rem; font-weight: 500; color: var(--ff-c10); margin-bottom: 0.4rem; letter-spacing: 0.05em; text-transform: uppercase; }
         .ff-notice-text { font-size: 0.85rem; color: rgba(var(--ff-muted), 0.7); font-weight: 300; line-height: 1.5; }
         .ff-nav { display: flex; gap: 0.75rem; flex-wrap: wrap; }
         .ff-btn { flex: 1; min-width: 140px; padding: 0.85rem 1.5rem; border-radius: 8px; font-family: 'DM Sans', sans-serif;
@@ -54,10 +54,10 @@ export default function ContractorSuccess() {
            return is the 0.2s above; the press itself is faster, because a
            control should feel instant going down and settle coming back up. */
         .ff-btn:active { transform: scale(0.97); }
-        .ff-btn-secondary { background: rgba(var(--ff-fg), 0.06); color: rgba(var(--ff-muted), 0.8); border: 1px solid rgba(var(--ff-fg), 0.1); }
+        .ff-btn-secondary { background: rgba(var(--ff-fg), 0.06); color: rgba(var(--ff-muted), 0.8); border: var(--ff-hair-w) solid rgba(var(--ff-fg), 0.1); }
         .ff-btn-secondary:hover { background: rgba(var(--ff-fg), 0.1); }
-        .ff-btn-primary { background: #ea6b14; color: #fff; }
-        .ff-btn-primary:hover { background: #f07a28; box-shadow: 0 4px 20px rgba(234,107,20,0.35); }
+        .ff-btn-primary { background: var(--ff-c10); color: #fff; }
+        .ff-btn-primary:hover { background: #f07a28; box-shadow: 0 4px 20px rgba(var(--ff-accent-rgb), 0.35); }
         .ff-whatsapp { display: flex; align-items: center; justify-content: center; gap: 0.5rem;
           background: rgba(37,211,102,0.1); border: 1px solid rgba(37,211,102,0.25); border-radius: 8px;
           padding: 0.85rem 1.5rem; color: #25d366; font-size: 0.9rem; font-weight: 500;
@@ -95,7 +95,7 @@ export default function ContractorSuccess() {
             <div className="ff-card-title">What Happens Next</div>
             {steps.map((s, i) => (
               <motion.div key={s.title} className="ff-step" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 + i * 0.08 }}>
-                <span className="ff-step-icon"><Ic name={s.iconName as any} size={28} color="#ea6b14" /></span>
+                <span className="ff-step-icon"><Ic name={s.iconName as any} size={28} color="var(--ff-c10)" /></span>
                 <div>
                   <div className="ff-step-title">{s.title}</div>
                   <div className="ff-step-desc">{s.desc}</div>

@@ -65,14 +65,14 @@ export default function GetQuote() {
     }
   };
 
-  const inp = { width:"100%", padding:".75rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".95rem", outline:"none", boxSizing:"border-box" as const };
+  const inp = { width:"100%", padding:".75rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".95rem", boxSizing:"border-box" as const };
   const s = {
     wrap: { minHeight:"100vh", background:"var(--ff-bg)", padding:"3rem 1rem 4rem", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
     inner: { maxWidth:"560px", margin:"0 auto" },
-    card: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"2rem" },
+    card: { background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"2rem" },
     label: { display:"block", fontSize:".78rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .6)", marginBottom:".6rem", marginTop:"1.25rem" },
     err: { fontSize:".78rem", color:"var(--ff-danger)", marginTop:".35rem" },
-    btn: { padding:".85rem 1.5rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".95rem", fontWeight:600, cursor:"pointer", border:"none", background:"linear-gradient(135deg,#ea6b14,#f09020)", color:"#fff", width:"100%" },
+    btn: { padding:".85rem 1.5rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".95rem", fontWeight:600, cursor:"pointer", border:"none", background:"linear-gradient(135deg,var(--ff-c10),#f09020)", color:"#fff", width:"100%" },
   };
 
   if (done) return (
@@ -121,7 +121,7 @@ export default function GetQuote() {
         />
         <p style={{ textAlign:"center", fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.6, margin:"1.5rem auto 0", maxWidth:"460px" }}>
           Are you a contractor? We&rsquo;re still onboarding pros while we rebuild &mdash;{" "}
-          <a href="/contractor-onboarding" style={{ color:"#ea6b14", textDecoration:"none", fontWeight:600 }}>join Freddy&rsquo;s team &rarr;</a>
+          <a href="/contractor-onboarding" style={{ color:"var(--ff-c10)", textDecoration:"none", fontWeight:600 }}>join Freddy&rsquo;s team &rarr;</a>
         </p>
       </div>
     </div>
@@ -135,7 +135,7 @@ export default function GetQuote() {
         <button onClick={() => setLocation("/")} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".82rem", textTransform:"uppercase", letterSpacing:".08em", padding:0, marginBottom:"1.5rem", display:"block" }}>
           ← Home
         </button>
-        <p style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".15em", color:"#ea6b14", marginBottom:".4rem" }}>Free Estimate</p>
+        <p style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".15em", color:"var(--ff-c10)", marginBottom:".4rem" }}>Free Estimate</p>
         <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.6rem", letterSpacing:".06em", marginBottom:".4rem" }}>Get a free estimate</h1>
         <p style={{ color:"rgba(var(--ff-muted), .6)", fontSize:".95rem", marginBottom:"2rem", lineHeight:1.6 }}>
           No account needed. Tell us what you need and how to reach you — we'll get back with a ballpark price.
@@ -161,7 +161,7 @@ export default function GetQuote() {
             ))}
           </select>
           {errors.service && <p style={s.err}>{errors.service}</p>}
-          {service && rangeText(pricing[service]) && <p style={{ margin:".4rem 0 0", fontSize:".8rem", color:"#ea6b14", fontWeight:600 }}>Typical range: {rangeText(pricing[service])}{pricing[service]?.unit ? " (" + pricing[service].unit + ")" : ""}</p>}
+          {service && rangeText(pricing[service]) && <p style={{ margin:".4rem 0 0", fontSize:".8rem", color:"var(--ff-c10)", fontWeight:600 }}>Typical range: {rangeText(pricing[service])}{pricing[service]?.unit ? " (" + pricing[service].unit + ")" : ""}</p>}
 
           <label style={s.label}>Area / neighbourhood <span style={{ opacity:.5, textTransform:"none", letterSpacing:0 }}>(optional)</span></label>
           <input style={inp} placeholder="e.g. NW Calgary, Beltline…" value={location} onChange={e => setLoc(e.target.value)} />

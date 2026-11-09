@@ -1,12 +1,19 @@
+import { PageTitle } from "../components/ui";
+
 export default function ProtectionPromise() {
   return (
     <div style={{ fontFamily:"'DM Sans',sans-serif", background:"var(--ff-bg)", color:"var(--ff-text)", minHeight:"100vh", padding:"6rem clamp(1rem, 4vw, 1.5rem) 4rem" }}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-      <style>{"h1,h2{font-family:var(--ff-font-display);font-weight:var(--ff-display-wght);letter-spacing:-.015em} h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em} h2{color:#ea6b14} h3{color:var(--ff-text);font-size:1.05rem;margin-top:1.4rem;margin-bottom:.4rem} p,li{line-height:1.8;color:rgba(var(--ff-muted), .85);font-weight:300} strong{color:var(--ff-text);font-weight:500} a{color:#ea6b14} ul,ol{padding-left:1.5rem;margin:.5rem 0} li{margin:.3rem 0}"}</style>
-      <div style={{ maxWidth:"800px", margin:"0 auto" }}>
+      <style>{"h1,h2{font-family:var(--ff-font-display);font-weight:var(--ff-display-wght);letter-spacing:-.015em} h3{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em} h2{color:var(--ff-c10)} h3{color:var(--ff-text);font-size:1.05rem;margin-top:1.4rem;margin-bottom:.4rem} p,li{line-height:1.8;color:rgba(var(--ff-muted), .85);font-weight:300} strong{color:var(--ff-text);font-weight:500} a{color:var(--ff-c10)} ul,ol{padding-left:1.5rem;margin:.5rem 0} li{margin:.3rem 0}"}</style>
+      {/* --ffu-ptitle-w tracks this column, not the sheet's 860px default. */}
+      <div style={{ maxWidth:"800px", margin:"0 auto", ["--ffu-ptitle-w" as any]:"800px" }}>
 
-        <h1 style={{ fontSize:"clamp(2.5rem,6vw,4rem)", color:"var(--ff-text)", marginBottom:".5rem" }}>Homeowner Protection Promise</h1>
-        <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)", marginBottom:"3rem", textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 4, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
+        {/* `compact` for the same reason as the Contractor Terms: 28 characters
+            will not survive a 44px bar on a phone, and "Protection Promise" is
+            the name a person would use for this document anyway. */}
+        <PageTitle title="Homeowner Protection Promise" compact="Protection Promise" style={{ marginBottom:"3rem" }}>
+          <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .4)", margin:0, textTransform:"uppercase", letterSpacing:".1em" }}>Effective Date: June 4, 2026 &nbsp;·&nbsp; Freddy FixIt Contractors Inc.</p>
+        </PageTitle>
 
         <section style={{ marginBottom:"2.5rem" }}>
           <h2 style={{ fontSize:"1.4rem", marginBottom:".75rem" }}>1. Our Promise to You</h2>
@@ -104,7 +111,7 @@ export default function ProtectionPromise() {
           </p>
         </section>
 
-        <div style={{ borderTop:"1px solid rgba(var(--ff-fg), .08)", paddingTop:"2rem", marginTop:"2rem", textAlign:"center" }}>
+        <div style={{ borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", paddingTop:"2rem", marginTop:"2rem", textAlign:"center" }}>
           <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .3)" }}>
             &copy; {new Date().getFullYear()} Freddy FixIt Contractors Inc. &nbsp;·&nbsp;
             <a href="/user-agreement" style={{ color:"rgba(var(--ff-muted), .4)" }}>User Agreement</a> &nbsp;·&nbsp;

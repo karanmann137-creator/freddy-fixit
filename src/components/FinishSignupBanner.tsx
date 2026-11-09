@@ -95,7 +95,7 @@ export default function FinishSignupBanner() {
           Finish setting up →
         </button>
       ) : (
-        <span style={{ display: "inline-flex", gap: ".45rem", flexWrap: "wrap" }}>
+        <span style={{ display: "inline-flex", gap: "var(--ff-s2)", flexWrap: "wrap" }}>
           <button style={cta} onClick={() => go("/client-onboarding")}>I need a fix →</button>
           <button style={ctaGhost} onClick={() => go("/contractor-onboarding")}>I&rsquo;m a contractor →</button>
         </span>
@@ -109,7 +109,7 @@ const bar: React.CSSProperties = {
   display: "flex", alignItems: "center", justifyContent: "center",
   gap: ".6rem", flexWrap: "wrap", textAlign: "center",
   padding: ".65rem .9rem",
-  background: "linear-gradient(135deg,#ea6b14,#d95f0e)", color: "#fff",
+  background: "linear-gradient(135deg,var(--ff-c10),#d95f0e)", color: "#fff",
   fontFamily: "'DM Sans',sans-serif", fontSize: ".85rem", lineHeight: 1.4,
   boxShadow: "0 -6px 24px rgba(0,0,0,.3)", animation: "ffFsbIn .3s ease",
 };

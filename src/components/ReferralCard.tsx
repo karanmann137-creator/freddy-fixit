@@ -59,7 +59,7 @@ export default function ReferralCard() {
   }, []);
 
   const card: React.CSSProperties = {
-    background: "rgba(234,107,20,.06)", border: "1px solid rgba(234,107,20,.22)",
+    background: "rgba(var(--ff-accent-rgb), .06)", border: "1px solid rgba(var(--ff-accent-rgb), .22)",
     borderRadius: "12px", padding: "1rem 1.05rem", marginBottom: "1.1rem",
   };
   const title: React.CSSProperties = {
@@ -70,7 +70,7 @@ export default function ReferralCard() {
     fontSize: ".85rem", color: "rgb(var(--ff-muted))", margin: 0, lineHeight: 1.5,
   };
   const pill: React.CSSProperties = {
-    padding: ".5rem .85rem", borderRadius: "10px", border: "1px solid rgba(var(--ff-fg), .16)",
+    padding: ".5rem .85rem", borderRadius: "10px", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .16)",
     background: "rgba(var(--ff-fg), .05)", color: "var(--ff-text)",
     fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600, cursor: "pointer",
   };
@@ -79,10 +79,10 @@ export default function ReferralCard() {
 
   if (state === "failed") {
     return (
-      <div style={{ ...card, background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .1)" }}>
+      <div style={{ ...card, background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)" }}>
         <p style={title}>Invite a friend</p>
         <p style={body}>We couldn't load your referral code just now.</p>
-        <button type="button" onClick={() => void load()} style={{ ...pill, marginTop: ".7rem" }}>Try again</button>
+        <button type="button" onClick={() => void load()} style={{ ...pill, marginTop: "var(--ff-s3)" }}>Try again</button>
       </div>
     );
   }
@@ -145,7 +145,7 @@ export default function ReferralCard() {
     <div style={card}>
       <p style={title}>{retired ? "Friend referred" : "Invite a friend, they save"}</p>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: ".9rem", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "var(--ff-s4)", flexWrap: "wrap" }}>
         <div style={{ minWidth: 0, flex: "1 1 12rem" }}>
           <p style={body}>
             {retired ? (
@@ -162,19 +162,19 @@ export default function ReferralCard() {
             a code that will be refused is a dead end the sharer can't see. */}
         {retired ? (
           <div style={{ textAlign: "center", padding: ".6rem 1.1rem", border: "1px solid rgba(34,197,94,.42)", background: "rgba(34,197,94,.12)", borderRadius: "12px" }}>
-            <div style={{ marginBottom: ".2rem" }}><Ic name="user-check" size={26} color="#22c55e" /></div>
+            <div style={{ marginBottom: "var(--ff-s1)" }}><Ic name="user-check" size={26} color="#22c55e" /></div>
             <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.05rem", letterSpacing: ".08em", color: "#22c55e", lineHeight: 1.1 }}>Friend Referred</div>
           </div>
         ) : (
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.8rem", letterSpacing: ".12em", color: "#ea6b14", border: "1px dashed rgba(234,107,20,.5)", borderRadius: "10px", padding: ".35rem .9rem", ...(inUse ? { opacity: .45 } : {}) }}>{referral.code}</div>
+            <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.8rem", letterSpacing: ".12em", color: "var(--ff-c10)", border: "1px dashed rgba(var(--ff-accent-rgb), .5)", borderRadius: "10px", padding: ".35rem .9rem", ...(inUse ? { opacity: .45 } : {}) }}>{referral.code}</div>
             {inUse ? (
               <div style={{ marginTop: ".5rem", fontSize: ".74rem", color: "rgb(var(--ff-muted))" }}>On hold with a friend</div>
             ) : (
               <button
                 type="button"
                 onClick={() => void copy()}
-                style={{ ...pill, marginTop: ".45rem", fontSize: ".78rem", ...(copied ? { color: "#22c55e", borderColor: "rgba(34,197,94,.4)", background: "rgba(34,197,94,.1)" } : {}) }}
+                style={{ ...pill, marginTop: "var(--ff-s2)", fontSize: ".78rem", ...(copied ? { color: "#22c55e", borderColor: "rgba(34,197,94,.4)", background: "rgba(34,197,94,.1)" } : {}) }}
               >{copied ? "Copied ✓" : "Copy invite link"}</button>
             )}
           </div>
@@ -185,7 +185,7 @@ export default function ReferralCard() {
           apply_referral_code succeeds it refuses a second code, so leaving the
           box up would just be a button that always fails. */}
       {!referral.i_was_referred && (
-        <div style={{ marginTop: ".9rem", paddingTop: ".85rem", borderTop: "1px solid rgba(var(--ff-fg), .1)" }}>
+        <div style={{ marginTop: "var(--ff-s4)", paddingTop: ".85rem", borderTop: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)" }}>
           <p style={{ ...body, marginBottom: ".5rem" }}>
             Got a code from a friend? Enter it before your first job and we'll waive your 3% service fee.
           </p>
@@ -200,7 +200,7 @@ export default function ReferralCard() {
               placeholder="Friend's code"
               aria-label="Friend's referral code"
               autoCapitalize="characters" autoCorrect="off" spellCheck={false} maxLength={24}
-              style={{ flex: "1 1 9rem", minWidth: 0, padding: ".55rem .7rem", background: "rgba(var(--ff-fg), .06)", border: "1px solid rgba(var(--ff-fg), .12)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".95rem", letterSpacing: ".08em", boxSizing: "border-box" }}
+              style={{ flex: "1 1 9rem", minWidth: 0, padding: ".55rem .7rem", background: "rgba(var(--ff-fg), .06)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius: "8px", color: "var(--ff-text)", fontFamily: "inherit", fontSize: ".95rem", letterSpacing: ".08em", boxSizing: "border-box" }}
             />
             <button
               type="button"

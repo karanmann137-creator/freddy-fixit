@@ -189,12 +189,12 @@ function namesFromEmail(email: string): { first: string; last: string } {
 function NextSteps({ email, signedIn }: { email: string; signedIn: boolean }) {
   const row: React.CSSProperties = {
     display: "flex", gap: ".75rem", alignItems: "flex-start",
-    padding: ".85rem 0", borderTop: "1px solid rgba(var(--ff-fg), .08)",
+    padding: ".85rem 0", borderTop: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)",
   };
   const num: React.CSSProperties = {
     flex: "0 0 auto", width: "26px", height: "26px", borderRadius: "50%",
-    background: "rgba(234,107,20,.14)", border: "1px solid rgba(234,107,20,.35)",
-    color: "#ea6b14", fontSize: ".8rem", fontWeight: 600,
+    background: "rgba(var(--ff-accent-rgb), .14)", border: "1px solid rgba(var(--ff-accent-rgb), .35)",
+    color: "var(--ff-c10)", fontSize: ".8rem", fontWeight: 600,
     display: "flex", alignItems: "center", justifyContent: "center", marginTop: "1px",
   };
   const body: React.CSSProperties = { fontSize: ".88rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .75)" };
@@ -218,7 +218,7 @@ function NextSteps({ email, signedIn }: { email: string; signedIn: boolean }) {
       ];
 
   return (
-    <div style={{ textAlign: "left", background: "rgba(var(--ff-fg), .04)", border: "1px solid rgba(var(--ff-fg), .1)", borderRadius: "12px", padding: "1.25rem 1.4rem", marginBottom: "2rem" }}>
+    <div style={{ textAlign: "left", background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", borderRadius: "12px", padding: "1.25rem 1.4rem", marginBottom: "2rem" }}>
       <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.3rem", letterSpacing: ".05em", marginBottom: ".35rem" }}>What happens next</div>
       {steps.map((st, i) => (
         <div key={st.t} style={i === 0 ? { ...row, borderTop: "none", paddingTop: ".35rem" } : row}>
@@ -924,17 +924,17 @@ export default function ClientOnboarding() {
     } catch {}
   };
 
-  const inp = { width:"100%", padding:".75rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .1)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".95rem", outline:"none", boxSizing:"border-box" as const };
+  const inp = { width:"100%", padding:".75rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".95rem", boxSizing:"border-box" as const };
   const s = {
-    wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"linear-gradient(rgba(var(--ff-bg-rgb), 0.90), rgba(var(--ff-bg-rgb), 0.95)), radial-gradient(ellipse 50% 32% at 18% -4%, rgba(234,107,20,0.30) 0%, transparent 68%), radial-gradient(ellipse 55% 36% at 84% -8%, rgba(234,107,20,0.18) 0%, transparent 70%), repeating-linear-gradient(45deg, transparent 0 26px, rgba(var(--ff-fg), 0.022) 26px, rgba(var(--ff-fg), 0.022) 27px), repeating-linear-gradient(-45deg, transparent 0 26px, rgba(var(--ff-fg), 0.018) 26px, rgba(var(--ff-fg), 0.018) 27px), url(\"https://images.unsplash.com/photo-1750128973550-750f796f431b?auto=format&fit=crop&w=1600&q=65\")", backgroundSize:"auto, auto, auto, auto, auto, cover", backgroundPosition:"center, center, center, center, center, center", backgroundAttachment:"fixed", padding:"3rem 1rem 4rem", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
+    wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"linear-gradient(rgba(var(--ff-bg-rgb), 0.90), rgba(var(--ff-bg-rgb), 0.95)), radial-gradient(ellipse 50% 32% at 18% -4%, rgba(var(--ff-accent-rgb), 0.30) 0%, transparent 68%), radial-gradient(ellipse 55% 36% at 84% -8%, rgba(var(--ff-accent-rgb), 0.18) 0%, transparent 70%), repeating-linear-gradient(45deg, transparent 0 26px, rgba(var(--ff-fg), 0.022) 26px, rgba(var(--ff-fg), 0.022) 27px), repeating-linear-gradient(-45deg, transparent 0 26px, rgba(var(--ff-fg), 0.018) 26px, rgba(var(--ff-fg), 0.018) 27px), url(\"https://images.unsplash.com/photo-1750128973550-750f796f431b?auto=format&fit=crop&w=1600&q=65\")", backgroundSize:"auto, auto, auto, auto, auto, cover", backgroundPosition:"center, center, center, center, center, center", backgroundAttachment:"fixed", padding:"3rem 1rem 4rem", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
     inner: { maxWidth:"580px", margin:"0 auto" },
-    card: { background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"2rem" },
+    card: { background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"2rem" },
     label: { display:"block", fontSize:".78rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .6)", marginBottom:".6rem" },
     err: { fontSize:".78rem", color:"var(--ff-danger)", marginTop:".35rem" },
-    svcBtn: { display:"flex", alignItems:"center", gap:".65rem", padding:".9rem 1rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"10px", color:"rgba(var(--ff-muted), .8)", fontFamily:"inherit", fontSize:".88rem", cursor:"pointer", textAlign:"left" as const, width:"100%" },
-    svcBtnSel: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.5)", color:"var(--ff-text)" },
-    schedBtn: { display:"flex", alignItems:"center", gap:"1rem", padding:"1rem 1.2rem", background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"10px", color:"rgba(var(--ff-muted), .8)", fontFamily:"inherit", cursor:"pointer", textAlign:"left" as const, width:"100%", marginBottom:".75rem" },
-    schedBtnSel: { background:"rgba(234,107,20,.12)", borderColor:"rgba(234,107,20,.5)", color:"var(--ff-text)" },
+    svcBtn: { display:"flex", alignItems:"center", gap:".65rem", padding:".9rem 1rem", background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"10px", color:"rgba(var(--ff-muted), .8)", fontFamily:"inherit", fontSize:".88rem", cursor:"pointer", textAlign:"left" as const, width:"100%" },
+    svcBtnSel: { background:"rgba(var(--ff-accent-rgb), .12)", borderColor:"rgba(var(--ff-accent-rgb), .5)", color:"var(--ff-text)" },
+    schedBtn: { display:"flex", alignItems:"center", gap:"1rem", padding:"1rem 1.2rem", background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"10px", color:"rgba(var(--ff-muted), .8)", fontFamily:"inherit", cursor:"pointer", textAlign:"left" as const, width:"100%", marginBottom:".75rem" },
+    schedBtnSel: { background:"rgba(var(--ff-accent-rgb), .12)", borderColor:"rgba(var(--ff-accent-rgb), .5)", color:"var(--ff-text)" },
     navBtn: { flex:1, padding:".85rem 1.5rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer", border:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:".4rem" },
   };
 
@@ -942,7 +942,7 @@ export default function ClientOnboarding() {
     <>
       <style>{`@keyframes ff-spin{to{transform:rotate(360deg)}}`}</style>
       <div style={{ minHeight:"100vh", background:"var(--ff-bg)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-        <Ic name="refresh" size={40} color="#ea6b14" style={{ animation:"ff-spin .8s linear infinite" }} />
+        <Ic name="refresh" size={40} color="var(--ff-c10)" style={{ animation:"ff-spin .8s linear infinite" }} />
       </div>
     </>
   );
@@ -952,14 +952,14 @@ export default function ClientOnboarding() {
     <div style={s.wrap}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       <div style={{ ...s.inner, textAlign:"center", paddingTop:"4rem" }}>
-        <div style={{ width:"72px", height:"72px", background:"rgba(234,107,20,.15)", border:"2px solid rgba(234,107,20,.4)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 2rem" }}>
-          <Ic name="mail" size={32} color="#ea6b14" />
+        <div style={{ width:"72px", height:"72px", background:"rgba(var(--ff-accent-rgb), .15)", border:"2px solid rgba(var(--ff-accent-rgb), .4)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 2rem" }}>
+          <Ic name="mail" size={32} color="var(--ff-c10)" />
         </div>
-        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:".5rem" }}>Check Your <span style={{ color:"#ea6b14" }}>Email</span></h1>
+        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:".5rem" }}>Check Your <span style={{ color:"var(--ff-c10)" }}>Email</span></h1>
         <p style={{ color:"rgba(var(--ff-muted), .7)", marginBottom:".5rem", lineHeight:1.6 }}>We sent a confirmation link to <strong>{form.email}</strong>. Click it to activate your account.</p>
         <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".85rem", marginBottom:"1.75rem", fontWeight:300 }}>Your request is saved — we'll start matching you with contractors right away.{photoFile ? " Once you've verified, you can add your photo from your dashboard." : ""}</p>
         <NextSteps email={form.email} signedIn={false} />
-        <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff", maxWidth:"260px", margin:"0 auto" }} onClick={() => setLocation("/login")}>Go to Sign In →</button>
+        <button style={{ ...s.navBtn, background:"var(--ff-c10)", color:"#fff", maxWidth:"260px", margin:"0 auto" }} onClick={() => setLocation("/login")}>Go to Sign In →</button>
       </div>
     </div>
   );
@@ -968,13 +968,17 @@ export default function ClientOnboarding() {
     <div style={s.wrap}>
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       <div style={{ ...s.inner, textAlign:"center", paddingTop:"4rem" }}>
-        <div style={{ width:"72px", height:"72px", background:"rgba(234,107,20,.15)", border:"2px solid rgba(234,107,20,.4)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 2rem" }}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ea6b14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        {/* `color` on the WRAPPER, currentColor through the attribute — the pattern
+            CLAUDE.md names. The ring's two rgba()s were already tokens, so the tick
+            inside it was the only part of this badge still painting the dark-mode
+            orange on the light-mode ground. */}
+        <div style={{ width:"72px", height:"72px", background:"rgba(var(--ff-accent-rgb), .15)", border:"2px solid rgba(var(--ff-accent-rgb), .4)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 2rem", color:"var(--ff-c10)" }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
-        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"3rem", letterSpacing:".06em", marginBottom:".5rem" }}>Request <span style={{ color:"#ea6b14" }}>Received!</span></h1>
+        <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"3rem", letterSpacing:".06em", marginBottom:".5rem" }}>Request <span style={{ color:"var(--ff-c10)" }}>Received!</span></h1>
         <p style={{ color:"rgba(var(--ff-muted), .65)", marginBottom:"2rem" }}>We'll be in touch within a few hours.</p>
         {photoWarn && (
-          <p style={{ background:"rgba(234,107,20,.1)", border:"1px solid rgba(234,107,20,.45)", borderRadius:"10px", padding:".85rem 1rem", color:"var(--ff-text)", fontSize:".88rem", lineHeight:1.55, marginBottom:"2rem", textAlign:"left" }}>
+          <p style={{ background:"rgba(var(--ff-accent-rgb), .1)", border:"1px solid rgba(var(--ff-accent-rgb), .45)", borderRadius:"10px", padding:".85rem 1rem", color:"var(--ff-text)", fontSize:".88rem", lineHeight:1.55, marginBottom:"2rem", textAlign:"left" }}>
             Heads up — your photo didn't upload. Your request went through fine; you can add the photo again from your dashboard.
           </p>
         )}
@@ -992,18 +996,18 @@ export default function ClientOnboarding() {
             ask never goes above the instructions. */}
         <NextSteps email={form.email} signedIn={true} />
         {referral?.code && (
-          <div style={{ background:"linear-gradient(135deg, rgba(234,107,20,.10), rgba(var(--ff-fg),.03))", border:"1px solid rgba(234,107,20,.28)", borderRadius:"12px", padding:"1.25rem", marginBottom:"2rem", textAlign:"left" }}>
+          <div style={{ background:"linear-gradient(135deg, rgba(var(--ff-accent-rgb), .10), rgba(var(--ff-fg),.03))", border:"1px solid rgba(var(--ff-accent-rgb), .28)", borderRadius:"12px", padding:"1.25rem", marginBottom:"2rem", textAlign:"left" }}>
             <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.3rem", letterSpacing:".04em", marginBottom:".35rem" }}>Invite a friend, they save</div>
-            <div style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.5, marginBottom:".9rem" }}>Friends who join with your code get the <strong>3% service fee waived on their first job</strong>.</div>
+            <div style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.5, marginBottom: "var(--ff-s4)" }}>Friends who join with your code get the <strong>3% service fee waived on their first job</strong>.</div>
             <div style={{ display:"flex", gap:".6rem", alignItems:"center", flexWrap:"wrap" as const }}>
-              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.6rem", letterSpacing:".12em", color:"#ea6b14", border:"1px dashed rgba(234,107,20,.5)", borderRadius:"10px", padding:".3rem .85rem" }}>{referral.code}</div>
-              <button style={{ ...s.navBtn, fontSize:".82rem", padding:".55rem 1rem", ...(refCopied ? { color:"#22c55e", borderColor:"rgba(34,197,94,.4)", background:"rgba(34,197,94,.1)" } : { background:"rgba(var(--ff-fg), .06)", color:"var(--ff-text)", border:"1px solid rgba(var(--ff-fg), .12)" }) }} onClick={copyReferral}>{refCopied ? "Copied ✓" : "Copy invite link"}</button>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.6rem", letterSpacing:".12em", color:"var(--ff-c10)", border:"1px dashed rgba(var(--ff-accent-rgb), .5)", borderRadius:"10px", padding:".3rem .85rem" }}>{referral.code}</div>
+              <button style={{ ...s.navBtn, fontSize:".82rem", padding:".55rem 1rem", ...(refCopied ? { color:"#22c55e", borderColor:"rgba(34,197,94,.4)", background:"rgba(34,197,94,.1)" } : { background:"rgba(var(--ff-fg), .06)", color:"var(--ff-text)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)" }) }} onClick={copyReferral}>{refCopied ? "Copied ✓" : "Copy invite link"}</button>
             </div>
           </div>
         )}
         <div style={{ display:"flex", gap:".75rem", justifyContent:"center" }}>
-          <button style={{ ...s.navBtn, background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"1px solid rgba(var(--ff-fg), .1)" }} onClick={() => setLocation("/")}>← Home</button>
-          <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff" }} onClick={() => setLocation("/client-dashboard")}>My Dashboard →</button>
+          <button style={{ ...s.navBtn, background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)" }} onClick={() => setLocation("/")}>← Home</button>
+          <button style={{ ...s.navBtn, background:"var(--ff-c10)", color:"#fff" }} onClick={() => setLocation("/client-dashboard")}>My Dashboard →</button>
         </div>
       </div>
     </div>
@@ -1031,7 +1035,7 @@ export default function ClientOnboarding() {
         />
         <p style={{ textAlign:"center", fontSize:".82rem", color:"rgba(var(--ff-muted), .6)", lineHeight:1.6, margin:"1.5rem auto 0", maxWidth:"460px" }}>
           Are you a contractor? We're still onboarding pros while we rebuild —{" "}
-          <a href="/contractor-onboarding" style={{ color:"#ea6b14", textDecoration:"none", fontWeight:600 }}>join Freddy's team →</a>
+          <a href="/contractor-onboarding" style={{ color:"var(--ff-c10)", textDecoration:"none", fontWeight:600 }}>join Freddy's team →</a>
         </p>
       </div>
     </div>
@@ -1044,9 +1048,9 @@ export default function ClientOnboarding() {
           is outside it, so it carries its own copy. Same 1.5s x 3 timing and the
           same static tint under prefers-reduced-motion, so the highlight means
           the same thing wherever a person meets it. */}
-      <style>{"@keyframes ff-co-pulse{0%{box-shadow:0 0 0 0 rgba(234,107,20,.55)}70%{box-shadow:0 0 0 12px rgba(234,107,20,0)}100%{box-shadow:0 0 0 0 rgba(234,107,20,0)}}"
-        + " .ff-photo-pulse{outline:2px solid rgba(234,107,20,.75); outline-offset:6px; border-radius:12px; animation:ff-co-pulse 1.5s ease-out 3}"
-        + " @media (prefers-reduced-motion: reduce){.ff-photo-pulse{animation:none; background:rgba(234,107,20,.12)}}"}</style>
+      <style>{"@keyframes ff-co-pulse{0%{box-shadow:0 0 0 0 rgba(var(--ff-accent-rgb), .55)}70%{box-shadow:0 0 0 12px rgba(var(--ff-accent-rgb), 0)}100%{box-shadow:0 0 0 0 rgba(var(--ff-accent-rgb), 0)}}"
+        + " .ff-photo-pulse{outline:2px solid rgba(var(--ff-accent-rgb), .75); outline-offset:6px; border-radius:12px; animation:ff-co-pulse 1.5s ease-out 3}"
+        + " @media (prefers-reduced-motion: reduce){.ff-photo-pulse{animation:none; background:rgba(var(--ff-accent-rgb), .12)}}"}</style>
       <div style={s.inner}>
         <button onClick={back} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(var(--ff-muted), .5)", fontFamily:"inherit", fontSize:".82rem", textTransform:"uppercase", letterSpacing:".08em", padding:0, marginBottom:"2rem", display:"block" }}>
           {step === S_DESCRIBE ? "← Home" : "← Back"}
@@ -1143,28 +1147,28 @@ export default function ClientOnboarding() {
                   Referred by someone? Enter their code and we&rsquo;ll waive the 3% service fee on your first job. Prefilled automatically if you arrived from an invite link.
                 </p>
               </div>
-              <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", margin:"1.5rem 0 .5rem", padding:"1rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
+              <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", margin:"1.5rem 0 .5rem", padding:"1rem", background:"rgba(var(--ff-fg), .03)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
                 <input
                   type="checkbox"
                   id="agreeTerms"
                   checked={agreedToTerms}
                   onChange={e => { setAgreedToTerms(e.target.checked); if (e.target.checked) setSubmitError(""); }}
-                  style={{ marginTop:"2px", accentColor:"#ea6b14", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }}
+                  style={{ marginTop:"2px", accentColor:"var(--ff-c10)", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }}
                 />
                 <label htmlFor="agreeTerms" style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.6, cursor:"pointer", fontWeight:300 }}>
                   I am 18 or older and I agree to Freddy Fix It&rsquo;s{" "}
-                  <a href="/user-agreement" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>User Agreement</a>
+                  <a href="/user-agreement" target="_blank" rel="noopener noreferrer" style={{ color:"var(--ff-c10)", textDecoration:"none" }}>User Agreement</a>
                   {" "}and{" "}
-                  <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color:"#ea6b14", textDecoration:"none" }}>Privacy Policy</a>.
+                  <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color:"var(--ff-c10)", textDecoration:"none" }}>Privacy Policy</a>.
                 </label>
               </div>
-              <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", margin:".5rem 0", padding:".85rem 1rem", background:"rgba(var(--ff-fg), .03)", border:"1px solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
+              <div style={{ display:"flex", alignItems:"flex-start", gap:".75rem", margin:".5rem 0", padding:".85rem 1rem", background:"rgba(var(--ff-fg), .03)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
                 <input
                   type="checkbox"
                   id="newsTips"
                   checked={newsletterOptIn}
                   onChange={e => setNewsletterOptIn(e.target.checked)}
-                  style={{ marginTop:"2px", accentColor:"#ea6b14", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }}
+                  style={{ marginTop:"2px", accentColor:"var(--ff-c10)", width:"16px", height:"16px", flexShrink:0, cursor:"pointer" }}
                 />
                 <label htmlFor="newsTips" style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.6, cursor:"pointer", fontWeight:300 }}>
                   Email me practical Calgary home &amp; vehicle tips (about once a week — unsubscribe anytime).
@@ -1285,7 +1289,7 @@ export default function ClientOnboarding() {
                 {!showAreaChips && derivedArea && (
                   <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const, marginTop:".6rem" }}>
                     <span style={{ display:"inline-flex", alignItems:"center", gap:".35rem", padding:".4rem .75rem", borderRadius:"999px", fontSize:".82rem", fontWeight:500,
-                      background:"rgba(234,107,20,.13)", border:"1px solid rgba(234,107,20,.45)", color:"var(--ff-text)" }}>
+                      background:"rgba(var(--ff-accent-rgb), .13)", border:"1px solid rgba(var(--ff-accent-rgb), .45)", color:"var(--ff-text)" }}>
                       {areaToken(derivedArea) || derivedArea}
                     </span>
                     <button type="button" onClick={() => setAreaOverride(true)}
@@ -1308,8 +1312,8 @@ export default function ClientOnboarding() {
                         return (
                           <button key={a} type="button" onClick={() => set("area", on ? "" : a)}
                             style={{ padding:".55rem .9rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".85rem", fontWeight: on ? 500 : 400, cursor:"pointer",
-                              background: on ? "rgba(234,107,20,.15)" : "rgba(var(--ff-fg), .04)",
-                              border: on ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .12)",
+                              background: on ? "rgba(var(--ff-accent-rgb), .15)" : "rgba(var(--ff-fg), .04)",
+                              border: on ? "1px solid var(--ff-c10)" : "1px solid rgba(var(--ff-fg), .12)",
                               color: on ? "var(--ff-text)" : "rgba(var(--ff-muted), .8)" }}>
                             {a}
                           </button>
@@ -1348,7 +1352,7 @@ export default function ClientOnboarding() {
                       what's required, and people learn very quickly to ignore an
                       asterisk that turns out not to mean anything. */}
                   {photoNudged.current && !photoFile
-                    ? <span aria-hidden="true" style={{ color:"#ea6b14", fontWeight:600 }}>*</span>
+                    ? <span aria-hidden="true" style={{ color:"var(--ff-c10)", fontWeight:600 }}>*</span>
                     : <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span>}
                 </label>
                 {/* One shared control — see PhotoPicker.tsx. It owns the size
@@ -1368,10 +1372,10 @@ export default function ClientOnboarding() {
                     animation is what draws the eye, the words are what answer
                     "why does it matter?", and those are not the same job. */}
                 {photoNudged.current && !photoFile && (
-                  <div style={{ background:"rgba(234,107,20,.08)", border:"1px solid rgba(234,107,20,.28)", borderRadius:"8px", padding:".8rem 1rem", marginTop:".6rem", fontSize:".82rem", lineHeight:1.6, color:"rgba(var(--ff-muted), .85)" }}>
+                  <div style={{ background:"rgba(var(--ff-accent-rgb), .08)", border:"1px solid rgba(var(--ff-accent-rgb), .28)", borderRadius:"8px", padding:".8rem 1rem", marginTop:".6rem", fontSize:".82rem", lineHeight:1.6, color:"rgba(var(--ff-muted), .85)" }}>
                     <strong style={{ color:"var(--ff-text)" }}>A photo gets you a real number, faster.</strong>{" "}
                     Pros price what they can see. With a photo you'll usually get firm estimates the same day; without one you're more likely to get a wide ballpark, questions before anyone will quote, or a pro who wants to come out and look first.
-                    <div style={{ marginTop:".45rem", opacity:.8 }}>It's still optional — press Next again to carry on without one, and you can add a photo from your dashboard any time after you post.</div>
+                    <div style={{ marginTop: "var(--ff-s2)", opacity:.8 }}>It's still optional — press Next again to carry on without one, and you can add a photo from your dashboard any time after you post.</div>
                   </div>
                 )}
               </div>
@@ -1395,9 +1399,9 @@ export default function ClientOnboarding() {
                 <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginBottom:".75rem" }}>
                   {selectedServices.map(sv => (
                     <button key={sv} type="button" onClick={() => toggleService(sv)}
-                      style={{ display:"inline-flex", alignItems:"center", gap:".5rem", padding:".55rem .9rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".88rem", fontWeight:500, cursor:"pointer", background:"rgba(234,107,20,.15)", border:"1px solid #ea6b14", color:"var(--ff-text)" }}>
+                      style={{ display:"inline-flex", alignItems:"center", gap:".5rem", padding:".55rem .9rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".88rem", fontWeight:500, cursor:"pointer", background:"rgba(var(--ff-accent-rgb), .15)", border:"1px solid var(--ff-c10)", color:"var(--ff-text)" }}>
                       {sv}
-                      <span aria-hidden style={{ color:"#ea6b14", fontSize:"1.05rem", lineHeight:1 }}>×</span>
+                      <span aria-hidden style={{ color:"var(--ff-c10)", fontSize:"1.05rem", lineHeight:1 }}>×</span>
                     </button>
                   ))}
                 </div>
@@ -1419,7 +1423,7 @@ export default function ClientOnboarding() {
                   <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
                     {tags.map(t => (
                       <button key={t} type="button" onClick={() => removeTag(t)}
-                        style={{ display:"inline-flex", alignItems:"center", gap:".45rem", padding:".4rem .75rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer", background:"rgba(var(--ff-fg), .06)", border:"1px solid rgba(var(--ff-fg), .14)", color:"rgba(var(--ff-muted), .85)" }}>
+                        style={{ display:"inline-flex", alignItems:"center", gap: "var(--ff-s2)", padding:".4rem .75rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .14)", color:"rgba(var(--ff-muted), .85)" }}>
                         {t}
                         <span aria-hidden style={{ fontSize:"1rem", lineHeight:1, opacity:.7 }}>×</span>
                       </button>
@@ -1469,7 +1473,7 @@ export default function ClientOnboarding() {
               )}
               {activeQuestions.map(q => (
                 <div key={q.id} style={{ marginBottom:"1.75rem" }}>
-                  <p style={{ fontSize:".95rem", fontWeight:500, color:"var(--ff-text)", marginBottom:".7rem", lineHeight:1.45 }}>
+                  <p style={{ fontSize:".95rem", fontWeight:500, color:"var(--ff-text)", marginBottom: "var(--ff-s3)", lineHeight:1.45 }}>
                     {q.prompt}
                     {q.multi && <span style={{ fontWeight:400, color:"rgba(var(--ff-muted), .55)", fontSize:".82rem" }}> · pick any that apply</span>}
                   </p>
@@ -1479,8 +1483,8 @@ export default function ClientOnboarding() {
                       return (
                         <button key={opt} type="button" onClick={() => setAnswer(q, opt)}
                           style={{ padding:".6rem 1rem", borderRadius:"10px", fontFamily:"inherit", fontSize:".88rem", fontWeight: on ? 500 : 400, cursor:"pointer",
-                            background: on ? "rgba(234,107,20,.15)" : "rgba(var(--ff-fg), .04)",
-                            border: on ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .12)",
+                            background: on ? "rgba(var(--ff-accent-rgb), .15)" : "rgba(var(--ff-fg), .04)",
+                            border: on ? "1px solid var(--ff-c10)" : "1px solid rgba(var(--ff-fg), .12)",
                             color: on ? "var(--ff-text)" : "rgba(var(--ff-muted), .8)" }}>
                           {opt}
                         </button>
@@ -1498,15 +1502,15 @@ export default function ClientOnboarding() {
                   {([["individual","Just me / household"],["business","A small business"]] as const).map(([val,lbl]) => (
                     <button key={val} type="button" onClick={() => setClientType(val)}
                       style={{ flex:1, padding:".7rem .5rem", borderRadius:"10px", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem", fontWeight:500,
-                        background: clientType===val ? "rgba(234,107,20,.15)" : "rgba(var(--ff-fg), .04)",
-                        border: clientType===val ? "1px solid #ea6b14" : "1px solid rgba(var(--ff-fg), .12)",
+                        background: clientType===val ? "rgba(var(--ff-accent-rgb), .15)" : "rgba(var(--ff-fg), .04)",
+                        border: clientType===val ? "1px solid var(--ff-c10)" : "1px solid rgba(var(--ff-fg), .12)",
                         color: clientType===val ? "var(--ff-text)" : "rgba(var(--ff-muted), .7)" }}>{lbl}</button>
                   ))}
                 </div>
               </div>
               {clientType === "business" && (
-                <div style={{ marginBottom:"1.75rem", paddingBottom:"1.25rem", borderBottom:"1px solid rgba(var(--ff-fg), .08)" }}>
-                  <div style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".12em", color:"#ea6b14", marginBottom:".9rem" }}>Business details</div>
+                <div style={{ marginBottom:"1.75rem", paddingBottom:"1.25rem", borderBottom:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)" }}>
+                  <div style={{ fontSize:".75rem", textTransform:"uppercase", letterSpacing:".12em", color:"var(--ff-c10)", marginBottom: "var(--ff-s4)" }}>Business details</div>
                   <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:"1rem" }}>
                     <div style={{ marginBottom:"1.2rem" }}>
                       <label style={s.label}>Business name</label>
@@ -1526,7 +1530,7 @@ export default function ClientOnboarding() {
                     <input style={inp} placeholder="e.g. Net-30 invoicing, PO required" value={form.billingPreference} onChange={e => set("billingPreference", e.target.value)} />
                   </div>
                   <label style={{ display:"flex", alignItems:"center", gap:".5rem", cursor:"pointer", fontSize:".88rem", color:"rgba(var(--ff-fg), .85)" }}>
-                    <input type="checkbox" checked={recurring} onChange={e => setRecurring(e.target.checked)} style={{ width:"16px", height:"16px", accentColor:"#ea6b14" }} />
+                    <input type="checkbox" checked={recurring} onChange={e => setRecurring(e.target.checked)} style={{ width:"16px", height:"16px", accentColor:"var(--ff-c10)" }} />
                     This is recurring / scheduled maintenance
                   </label>
                 </div>
@@ -1538,14 +1542,14 @@ export default function ClientOnboarding() {
               <p style={{ ...s.label, marginTop:"1.5rem" }}>When Do You Need It?</p>
               {SCHEDULES.map(sc => (
                 <button key={sc.label} style={{ ...s.schedBtn, ...(form.preferredSchedule===sc.label ? s.schedBtnSel : {}) }} onClick={() => set("preferredSchedule",sc.label)}>
-                  <span style={{ fontSize:"1.5rem" }}><Ic name={sc.iconName as any} size={20} color="#ea6b14" style={{ marginRight:8, flexShrink:0 }} /></span>
+                  <span style={{ fontSize:"1.5rem" }}><Ic name={sc.iconName as any} size={20} color="var(--ff-c10)" style={{ marginRight:8, flexShrink:0 }} /></span>
                   <div><div style={{ fontSize:".95rem", fontWeight:500 }}>{sc.label}</div><div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .5)" }}>{sc.sub}</div></div>
                 </button>
               ))}
               {errors.preferredSchedule && <p id="co-err-preferredSchedule" style={s.err}>{errors.preferredSchedule}</p>}
 
               {form.preferredSchedule === "Recurring" && (
-                <div style={{ marginTop:"1rem", padding:"1rem", background:"rgba(234,107,20,.06)", border:"1px solid rgba(234,107,20,.2)", borderRadius:"10px", display:"flex", flexDirection:"column" as const, gap:"1rem" }}>
+                <div style={{ marginTop:"1rem", padding:"1rem", background:"rgba(var(--ff-accent-rgb), .06)", border:"1px solid rgba(var(--ff-accent-rgb), .2)", borderRadius:"10px", display:"flex", flexDirection:"column" as const, gap:"1rem" }}>
                   <div>
                     <p style={{ ...s.label, marginBottom:".6rem" }}>How often?</p>
                     {recurringFrequency !== "seasonal" && recurringFrequency !== "per_km" && (
@@ -1553,18 +1557,18 @@ export default function ClientOnboarding() {
                         <input type="range" min={0} max={SLIDER_STOPS.length - 1} step={1}
                           value={sliderIdx} onChange={e => pickSlider(parseInt(e.target.value, 10))}
                           aria-label="How often"
-                          style={{ width:"100%", accentColor:"#ea6b14", cursor:"pointer" }} />
-                        <div style={{ display:"flex", justifyContent:"space-between", marginTop:".2rem" }}>
+                          style={{ width:"100%", accentColor:"var(--ff-c10)", cursor:"pointer" }} />
+                        <div style={{ display:"flex", justifyContent:"space-between", marginTop: "var(--ff-s1)" }}>
                           {SLIDER_STOPS.map((stop, i) => (
                             <span key={stop} onClick={() => pickSlider(i)}
                               style={{ fontSize:".68rem", cursor:"pointer", textAlign:"center" as const, flex:1,
-                                color: i === sliderIdx ? "#ea6b14" : "rgba(var(--ff-muted), .5)",
+                                color: i === sliderIdx ? "var(--ff-c10)" : "rgba(var(--ff-muted), .5)",
                                 fontWeight: i === sliderIdx ? 600 : 400 }}>
                               {SLIDER_SHORT[stop]}
                             </span>
                           ))}
                         </div>
-                        <p style={{ fontSize:".85rem", color:"var(--ff-text)", marginTop:".45rem", fontWeight:500 }}>
+                        <p style={{ fontSize:".85rem", color:"var(--ff-text)", marginTop: "var(--ff-s2)", fontWeight:500 }}>
                           {freqLabel(SLIDER_STOPS[sliderIdx])}
                         </p>
                       </div>
@@ -1572,23 +1576,23 @@ export default function ClientOnboarding() {
                     <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                       <button type="button" onClick={() => setRecurringFrequency("seasonal")}
                         style={{ padding:".55rem 1.05rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", border:"1px solid",
-                          background: recurringFrequency==="seasonal" ? "rgba(234,107,20,.2)" : "rgba(var(--ff-fg), .04)",
-                          borderColor: recurringFrequency==="seasonal" ? "#ea6b14" : "rgba(var(--ff-fg), .12)",
+                          background: recurringFrequency==="seasonal" ? "rgba(var(--ff-accent-rgb), .2)" : "rgba(var(--ff-fg), .04)",
+                          borderColor: recurringFrequency==="seasonal" ? "var(--ff-c10)" : "rgba(var(--ff-fg), .12)",
                           color: recurringFrequency==="seasonal" ? "var(--ff-text)" : "rgba(var(--ff-muted), .7)" }}>
                         Seasonal
                       </button>
                       {selectedServices.some(isPerKmService) && (
                         <button type="button" onClick={() => setRecurringFrequency("per_km")}
                           style={{ padding:".55rem 1.05rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", border:"1px solid",
-                            background: recurringFrequency==="per_km" ? "rgba(234,107,20,.2)" : "rgba(var(--ff-fg), .04)",
-                            borderColor: recurringFrequency==="per_km" ? "#ea6b14" : "rgba(var(--ff-fg), .12)",
+                            background: recurringFrequency==="per_km" ? "rgba(var(--ff-accent-rgb), .2)" : "rgba(var(--ff-fg), .04)",
+                            borderColor: recurringFrequency==="per_km" ? "var(--ff-c10)" : "rgba(var(--ff-fg), .12)",
                             color: recurringFrequency==="per_km" ? "var(--ff-text)" : "rgba(var(--ff-muted), .7)" }}>
                           Per distance (km)
                         </button>
                       )}
                       {(recurringFrequency==="seasonal" || recurringFrequency==="per_km") && (
                         <button type="button" onClick={() => pickSlider(sliderIdx)}
-                          style={{ padding:".55rem 1.05rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", border:"1px solid rgba(var(--ff-fg), .12)", background:"rgba(var(--ff-fg), .04)", color:"rgba(var(--ff-muted), .7)" }}>
+                          style={{ padding:".55rem 1.05rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", background:"rgba(var(--ff-fg), .04)", color:"rgba(var(--ff-muted), .7)" }}>
                           Use slider instead
                         </button>
                       )}
@@ -1612,8 +1616,8 @@ export default function ClientOnboarding() {
                         <button key={n} type="button"
                           onClick={() => setPrepayPref(n)}
                           style={{ padding:".6rem 1.1rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor:"pointer", border:"1px solid",
-                            background: prepayPref===n ? "rgba(234,107,20,.2)" : "rgba(var(--ff-fg), .04)",
-                            borderColor: prepayPref===n ? "#ea6b14" : "rgba(var(--ff-fg), .12)",
+                            background: prepayPref===n ? "rgba(var(--ff-accent-rgb), .2)" : "rgba(var(--ff-fg), .04)",
+                            borderColor: prepayPref===n ? "var(--ff-c10)" : "rgba(var(--ff-fg), .12)",
                             color: prepayPref===n ? "var(--ff-text)" : "rgba(var(--ff-muted), .7)" }}>
                           {n === 0 ? "Pay each visit" : `Prepay ${n} visits`}
                         </button>
@@ -1629,7 +1633,7 @@ export default function ClientOnboarding() {
                       <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
                         {SEASON_PRESETS.map(sp => (
                           <button key={sp.label} type="button" onClick={() => applySeason(sp)}
-                            style={{ padding:".5rem .9rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer", border:"1px solid rgba(var(--ff-fg), .15)", background:"rgba(var(--ff-fg), .05)", color:"rgba(var(--ff-muted), .8)" }}>
+                            style={{ padding:".5rem .9rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".82rem", cursor:"pointer", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .15)", background:"rgba(var(--ff-fg), .05)", color:"rgba(var(--ff-muted), .8)" }}>
                             {sp.label}
                           </button>
                         ))}
@@ -1657,17 +1661,17 @@ export default function ClientOnboarding() {
                       <input type="date" min={todayStr} value={newDate} onChange={e => setNewDate(e.target.value)}
                         style={{ ...inp, padding:".6rem .8rem", fontSize:".88rem", maxWidth:"180px", minWidth:0 }} />
                       <button type="button" onClick={addDate} disabled={!newDate}
-                        style={{ padding:".55rem 1rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor: newDate ? "pointer" : "default", border:"1px solid #ea6b14", background:"rgba(234,107,20,.15)", color:"var(--ff-text)", opacity: newDate ? 1 : .5 }}>
+                        style={{ padding:".55rem 1rem", borderRadius:"8px", fontFamily:"inherit", fontSize:".85rem", cursor: newDate ? "pointer" : "default", border:"1px solid var(--ff-c10)", background:"rgba(var(--ff-accent-rgb), .15)", color:"var(--ff-text)", opacity: newDate ? 1 : .5 }}>
                         + Add date
                       </button>
                     </div>
                     {recurringDates.length > 0 && (
                       <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginTop:".6rem" }}>
                         {recurringDates.map(d => (
-                          <span key={d} style={{ display:"inline-flex", alignItems:"center", gap:".4rem", padding:".35rem .6rem", borderRadius:"999px", fontSize:".8rem", background:"rgba(234,107,20,.12)", border:"1px solid rgba(234,107,20,.3)", color:"var(--ff-text)" }}>
+                          <span key={d} style={{ display:"inline-flex", alignItems:"center", gap:".4rem", padding:".35rem .6rem", borderRadius:"999px", fontSize:".8rem", background:"rgba(var(--ff-accent-rgb), .12)", border:"1px solid rgba(var(--ff-accent-rgb), .3)", color:"var(--ff-text)" }}>
                             {new Date(d + "T00:00:00").toLocaleDateString(undefined, { month:"short", day:"numeric", year:"numeric" })}
                             <button type="button" onClick={() => removeDate(d)} aria-label="Remove date"
-                              style={{ border:"none", background:"none", color:"#ea6b14", cursor:"pointer", fontSize:"1rem", lineHeight:1, padding:0 }}>×</button>
+                              style={{ border:"none", background:"none", color:"var(--ff-c10)", cursor:"pointer", fontSize:"1rem", lineHeight:1, padding:0 }}>×</button>
                           </span>
                         ))}
                       </div>
@@ -1683,20 +1687,20 @@ export default function ClientOnboarding() {
         </div>
 
         <div style={{ display:"flex", gap:".75rem", marginTop:"2rem" }}>
-          <button style={{ ...s.navBtn, background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"1px solid rgba(var(--ff-fg), .1)" }} onClick={back}>{step===S_DESCRIBE ? "← Home" : "← Back"}</button>
+          <button style={{ ...s.navBtn, background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)" }} onClick={back}>{step===S_DESCRIBE ? "← Home" : "← Back"}</button>
           {/* Keyed on the ACCOUNT screen's stable id, never on a path length:
               SHORT_PATH and FULL_PATH both END on S_ACCOUNT but are different
               lengths, so `step < path.length` would show Submit one screen early
               on the run that skipped the confirm screen. */}
           {step !== S_ACCOUNT
-            ? <button style={{ ...s.navBtn, background:"#ea6b14", color:"#fff" }} onClick={next}>Next →</button>
-            : <button style={{ ...s.navBtn, background:"linear-gradient(135deg,#ea6b14,#f09020)", color:"#fff", opacity: loading ? .6 : 1 }} onClick={handleSubmit} disabled={loading}>
+            ? <button style={{ ...s.navBtn, background:"var(--ff-c10)", color:"#fff" }} onClick={next}>Next →</button>
+            : <button style={{ ...s.navBtn, background:"linear-gradient(135deg,var(--ff-c10),#f09020)", color:"#fff", opacity: loading ? .6 : 1 }} onClick={handleSubmit} disabled={loading}>
                 {loading ? <><span className="ff-btn-spin" aria-hidden="true" />Submitting…</> : "Submit Request →"}
               </button>
           }
         </div>
         <p style={{ textAlign:"center", marginTop:"1.25rem", fontSize:".82rem", color:"rgba(var(--ff-muted), .4)" }}>
-          Already have an account? <button onClick={() => setLocation("/login")} style={{ background:"none", border:"none", cursor:"pointer", color:"#ea6b14", fontFamily:"inherit", fontSize:".82rem", padding:0 }}>Sign in</button>
+          Already have an account? <button onClick={() => setLocation("/login")} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--ff-c10)", fontFamily:"inherit", fontSize:".82rem", padding:0 }}>Sign in</button>
         </p>
       </div>
     </div>
