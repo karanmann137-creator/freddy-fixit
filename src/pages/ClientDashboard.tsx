@@ -14,6 +14,7 @@ import {
   Pill, type PillTone,
   Button,
   AttentionCard,
+  DashShell, DashContent, DashCard,
 } from "@/components/ui";
 import { DashboardSkeleton, useEnterAnim } from "@/components/Skeleton";
 import { useState, useEffect, useRef } from "react";
@@ -1615,14 +1616,22 @@ export default function ClientDashboard() {
   };
 
   const s = {
-    wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(var(--ff-accent-rgb), 0.16) 0%, transparent 70%), radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
-    // `header` and `logo` were removed on 2026-10-30. `header` styled the
+    // ⚠️ `wrap`, `content`, `card`, `cardTitle`, `tabs`, `tab` and `activeTab`
+    // are GONE (2026-11-08) — they are <DashShell>, <DashContent>, <DashCard>,
+    // `.ffd-cardtitle` and `.ffd-tab` from src/components/ui/Dash.tsx now.
+    //
+    // They were not merely duplicated: the three dashboards had each decided
+    // these values independently and all three disagreed, on a page whose whole
+    // job is to look like one product. Dash.tsx adopted CLIENT's numbers, so
+    // this page's appearance is unchanged by the move — what changed is that
+    // there is now one place to change them, instead of the next person
+    // discovering the drift the way this pass did.
+    //
+    // `header` and `logo` went on 2026-10-30. `header` styled the
     // "Welcome, <name>" bar the pass replaced; `logo` had already been dead for
     // some time (the global TopNav carries the wordmark). Neither had a single
     // reader left — grep before adding anything back here.
-    // Fluid padding: a flat 1.5rem on each side ate ~24% of the usable width
-    // once the sidebar rail is subtracted on a phone.
-    content: { maxWidth:"800px", margin:"0 auto", padding:"clamp(1rem, 4vw, 1.5rem)" },
+    //
     // ── Retargeted onto the token scale on 2026-10-30, as STYLE OBJECTS ─────
     // There are 34 call sites between `btn` and `primaryBtn`, six of them on the
     // contract-gated payment surface where the `disabled` expression carries
@@ -1634,20 +1643,17 @@ export default function ClientDashboard() {
     // fails closed, so a dropped `disabled` makes a job unpayable with no error.
     //
     // ⚠️ These are inline styles, so they cannot express :hover/:active/:disabled
-    // and MUST NOT try. Those three live in the `.ffdash button` block below
-    // (brightness on hover, scale(0.97) on press, .55 opacity disabled) and
-    // apply to every <button> on the page. An inline style beats the injected
-    // sheet, so adding `opacity` here would override the disabled state.
-    card: { background:"var(--ff-card-bg)", border:"var(--ff-hair-w) solid var(--ff-card-border)", borderRadius:"var(--ff-r3)", padding:"clamp(1rem, 4vw, 1.5rem)", marginBottom:"var(--ff-s6)" },
-    cardTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", lineHeight:1.1, color:"var(--ff-accent-500)", marginBottom:"var(--ff-s5)" },
+    // and MUST NOT try. Those three live in uiStyles.ts as
+    // `.ffdash button:not(.ffu-btn)` — brightness on hover, scale(0.97) on
+    // press, .55 opacity disabled — and apply to every <button> inside
+    // <DashShell>. An inline style beats the injected sheet, so adding
+    // `opacity` here would override the disabled state.
+    //
     // Bebas on buttons is the brand rule, not a preference — CLAUDE.md puts all
     // buttons, chips, labels and numerals on it. Tracking matters at this size:
     // Bebas without the .09em reads as a solid block.
     btn: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s4)", background:"var(--ff-card-bg)", border:"var(--ff-hair-w) solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", color:"var(--ff-text)", fontFamily:"'Bebas Neue',sans-serif", fontSize:".88rem", letterSpacing:".09em", cursor:"pointer" },
     primaryBtn: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s5)", background:"var(--ff-accent-500)", color:"#fff", border:"none", borderRadius:"var(--ff-r2)", boxShadow:"var(--ff-lift-2)", fontFamily:"'Bebas Neue',sans-serif", fontSize:".95rem", letterSpacing:".09em", cursor:"pointer" },
-    tabs: { display:"flex", gap:"var(--ff-s2)", marginBottom:"var(--ff-s6)", flexWrap:"wrap" as const },
-    tab: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s4)", background:"transparent", border:"var(--ff-hair-w) solid var(--ff-hair)", borderRadius:"var(--ff-r2)", color:"rgba(var(--ff-muted), .7)", cursor:"pointer", fontFamily:"'Bebas Neue',sans-serif", fontSize:".85rem", letterSpacing:".09em" },
-    activeTab: { background:"var(--ff-accent-soft)", borderColor:"var(--ff-accent-line)", color:"var(--ff-text)" },
   };
 
   // A time the CONTRACTOR named in the chat, waiting on this client to accept or
@@ -1669,28 +1675,32 @@ export default function ClientDashboard() {
   // jumps when the data arrives. DashboardSkeleton renders NOTHING for its
   // first 120ms, so a warm load still looks instant.
   if (loading) return (
-    <div style={s.wrap}>
+    <DashShell>
       <DashboardSkeleton />
-    </div>
+    </DashShell>
   );
 
   // A read failure is distinct from "you have no jobs yet" — never show the empty
   // state when the data simply didn't load; offer a retry instead.
   if (loadError) return (
-    <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>
+    <DashShell style={{ display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ textAlign:"center", color:"rgba(var(--ff-muted), .7)", maxWidth:"320px", padding:"1.5rem" }}>
         <div style={{ marginBottom:".75rem", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".04em" }}>Couldn't load your dashboard</div>
         <div style={{ fontSize:".9rem", marginBottom:"1.25rem" }}>Check your connection and try again.</div>
         <button style={s.primaryBtn} onClick={() => window.location.reload()}>Retry</button>
       </div>
-    </div>
+    </DashShell>
   );
 
   // Signed in but signup was never finished (e.g. Google one-tap creates the login
   // instantly, before the profile exists). Point them back to finish, not a blank page.
+  //
+  // The per-page Google Fonts <link> that used to sit here is gone (2026-11-08).
+  // All three faces load from the single <link> in index.html, and CLAUDE.md is
+  // explicit that a face used site-wide belongs in that one — a per-page loader
+  // is a subset of it that re-requests the same stylesheet on this branch only.
   if (!profile) return (
-    <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+    <DashShell style={{ display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ textAlign:"center", maxWidth:"380px", padding:"1.5rem" }}>
         <div style={{ width:56, height:56, borderRadius:"50%", margin:"0 auto 1rem", background:"linear-gradient(135deg,var(--ff-c10),#f59e42)", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.9rem" }}>F</div>
         <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.7rem", letterSpacing:".04em", lineHeight:1.1, color:"var(--ff-text)", marginBottom:".5rem" }}>You're almost there</div>
@@ -1699,7 +1709,7 @@ export default function ClientDashboard() {
         </div>
         <button style={s.primaryBtn} onClick={() => setLocation("/client-onboarding")}>Finish setting up →</button>
       </div>
-    </div>
+    </DashShell>
   );
 
   // ── "Needs your attention", hoisted ────────────────────────────────────────
@@ -1986,18 +1996,29 @@ export default function ClientDashboard() {
     };
   })();
 
+  // ⚠️ The page's own `<style>{".ffdash button{…}"}</style>` block is GONE
+  // (2026-11-08), and deleting it FIXED a live defect rather than just removing
+  // a duplicate. uiStyles.ts carries the same four button rules scoped as
+  // `.ffdash button:not(.ffu-btn)`; this page's copy was unscoped, and
+  // `.ffdash button` (0,0,1,1) outranks `.ffu-btn` (0,0,1,0) — so every button
+  // already ported onto the <Button> primitive was having its
+  // `--ff-ease-spring` release overridden back to `.16s var(--ff-ease-out)` by
+  // the page it was mounted on. The @keyframes and the .ff-pulse rule were
+  // straight duplicates (an @keyframes is document-global). Do not copy any of
+  // it back: the press lives in ONE place now, which is what makes
+  // "byte-identical across the three dashboards" structural instead of an
+  // obligation someone has to keep remembering.
   return (
-    <div style={s.wrap} className="ffdash">
-      <style>{".ffdash button{transition:filter .16s var(--ff-ease-out), transform .16s var(--ff-ease-out), opacity .16s var(--ff-ease-out)} .ffdash button:hover:not(:disabled){filter:brightness(1.09)} .ffdash button:active:not(:disabled){transform:scale(0.97); transition-duration:.1s} .ffdash button:disabled{opacity:.55; cursor:not-allowed}"
-        + " @keyframes ff-pulse-ring{0%{box-shadow:0 0 0 0 rgba(var(--ff-accent-rgb), .55); background:rgba(var(--ff-accent-rgb), .14)}70%{box-shadow:0 0 0 12px rgba(var(--ff-accent-rgb), 0); background:rgba(var(--ff-accent-rgb), .05)}100%{box-shadow:0 0 0 0 rgba(var(--ff-accent-rgb), 0); background:rgba(var(--ff-accent-rgb), 0)}}"
-        + " .ffdash .ff-pulse{outline:2px solid rgba(var(--ff-accent-rgb), .75); outline-offset:6px; border-radius:12px; animation:ff-pulse-ring 1.5s ease-out 3}"
-        + " @media (prefers-reduced-motion: reduce){.ffdash .ff-pulse{animation:none; background:rgba(var(--ff-accent-rgb), .12)}}"}</style>
+    <DashShell>
       {toast && (
         <div onClick={() => setToast(null)} className="ff-toast-in" style={{ position:"fixed", left:"50%", bottom:"calc(1.5rem + var(--ff-fsb-h, 0px))", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
       )}
-      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 
-      <div style={{ height: "3.75rem" }} />
+      {/* Clears the fixed TopNav. The height is MEASURED and published by
+          TopNav on :root; the hardcoded 3.75rem that used to be here was one
+          of three disagreeing constants and went stale the moment the nav's
+          breakpoint or the user's text size moved it. */}
+      <div style={{ height: "var(--ff-topnav-h)" }} />
       <div style={{ display:"flex", alignItems:"flex-start" as const }}>
         <DashboardSidebar
           items={visibleNav({
@@ -2086,7 +2107,7 @@ export default function ClientDashboard() {
         </Pass>
       </div>
 
-      <div style={s.content} className={tabAnim}>
+      <DashContent className={tabAnim}>
         {(() => {
           // Keys, not sentences: the dismissal is stored against WHAT is missing,
           // so it survives a copy change and — more importantly — returns on its
@@ -2616,10 +2637,20 @@ export default function ClientDashboard() {
                   const bidsOnScreen = activeReq.status === "pending" && clientBids.length > 0;
                   const showReqDetail = reqDetailOpen || !bidsOnScreen;
                   return (
-                  <div style={s.card}>
+                  <DashCard>
                     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".75rem", flexWrap:"wrap" as const, marginBottom: showReqDetail ? undefined : ".25rem" }}>
                       <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const, minWidth:0 }}>
-                        <div style={{ ...s.cardTitle, marginBottom:0 }}>Current Request</div>
+                        {/* The shared `.ffd-cardtitle` class directly, NOT
+                            DashCard's `title` prop and not <DashCardTitle>: the
+                            prop renders the caption as the card's first block,
+                            and this one has to sit INSIDE a flex row beside the
+                            status pill. The class carries margin-bottom:
+                            var(--ff-s5), which is wrong for a flex child, so the
+                            one declaration that does not apply here is
+                            overridden inline and the other four still come from
+                            the shared rule. Same precedent as Admin's filter
+                            chips, which take `.ffd-tab` without <DashTabs>. */}
+                        <div className="ffd-cardtitle" style={{ marginBottom: 0 }}>Current Request</div>
                         {/* No icon inside the chip. It sits directly beside the
                             words "Current Request", so the label already has all
                             the context it needs, and a 12px glyph at that size
@@ -3235,13 +3266,12 @@ export default function ClientDashboard() {
                         {canRemoveRequest(activeReq, activeJob) && <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyReq} onClick={() => removeRequest(activeReq)}><Ic name="trash" size={13} style={{ marginRight:4 }} />Delete</button>}
                       </div>
                     )}
-                  </div>
+                  </DashCard>
                   );
                 })()}
 
                 {contractor && (
-                  <div style={s.card}>
-                    <div style={s.cardTitle}>Your Contractor</div>
+                  <DashCard title="Your Contractor">
                     <div style={{ display:"flex", alignItems:"center", gap:"1rem", flexWrap:"wrap" as const }}>
                       <div style={{ width:"48px", height:"48px", borderRadius:"50%", background:"rgba(var(--ff-accent-rgb), .2)", border:"2px solid rgba(var(--ff-accent-rgb), .4)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.1rem", color:"var(--ff-c10)", flexShrink:0 }}>
                         {contractor.first_name?.[0]}{contractor.last_name?.[0]}
@@ -3265,7 +3295,7 @@ export default function ClientDashboard() {
                         </button>
                       )}
                     </div>
-                  </div>
+                  </DashCard>
                 )}
               </>
             )}
@@ -3314,9 +3344,25 @@ export default function ClientDashboard() {
                       label="Request history"
                       action={<span style={{ opacity:.7 }}>{filtered.length} of {histAll.length}</span>}
                     >
-                      <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginBottom:"var(--ff-s3)" }}>
+                      {/* ⚠️ The shared `.ffd-tab` LOOK but NOT <DashTabs>, and
+                          the refusal is semantic rather than cosmetic — same
+                          call Admin made for its Accounts role chips and its
+                          Agents filter. DashTabs renders role="tablist" with
+                          aria-selected, which claims these switch between
+                          SECTIONS of the page. These FILTER one list: the tab is
+                          still "history" whichever chip is lit, so announcing
+                          them as a tablist would tell a screen reader the page
+                          changed when it did not. `aria-pressed` says what
+                          actually happened.
+
+                          The `.4rem .85rem` / `.8rem` override is gone with
+                          `s.tab`: it was shrinking these chips below the 48px
+                          thumb floor that the pointer:coarse block in main.tsx
+                          promises, and `.ffd-tab` reads --ff-h-ctl so it clears
+                          the floor by construction. That was invisible on a Mac. */}
+                      <div className="ffd-tabs" style={{ marginBottom:"var(--ff-s3)" }}>
                         {FILTERS.map(f => (
-                          <button key={f.key} onClick={() => { setHistFilter(f.key); setHistLimit(5); }} style={{ ...s.tab, padding:".4rem .85rem", fontSize:".8rem", ...(histFilter === f.key ? s.activeTab : {}) }}>{f.label}</button>
+                          <button key={f.key} type="button" onClick={() => { setHistFilter(f.key); setHistLimit(5); }} aria-pressed={histFilter === f.key} className={histFilter === f.key ? "ffd-tab ffd-on" : "ffd-tab"}>{f.label}</button>
                         ))}
                       </div>
                       {histAll.length > 3 && (
@@ -3405,7 +3451,7 @@ export default function ClientDashboard() {
                     </Group>
                   );
                 })()}
-      </div>
+      </DashContent>
         </div>
       </div>
 
@@ -3485,6 +3531,6 @@ export default function ClientDashboard() {
         <RequestHelpModal userId={profile.id} role="client" mode="bug" onClose={() => setBugOpen(false)} />
       )}
       <ConfirmDialog state={confirmState} onClose={(ok) => { confirmState?.resolve(ok); setConfirmState(null); }} />
-    </div>
+    </DashShell>
   );
 }

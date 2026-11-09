@@ -47,6 +47,8 @@ export function Button({
   children,
   style,
   className,
+  id,
+  title,
   "aria-label": ariaLabel,
 }: {
   variant?: "primary" | "secondary" | "ghost" | "danger";
@@ -59,6 +61,23 @@ export function Button({
   children: React.ReactNode;
   style?: React.CSSProperties;
   className?: string;
+  /**
+   * A stable id for focusJobAnchor / ringAnchor — the same contract as Row's.
+   * Anchors are bare ids, deliberately NOT keyed per job: exactly one card is
+   * expanded at a time and the pulse compares the anchor by string, so keying
+   * them per job silently breaks the ring. Set it on EVERY render branch
+   * including loading, or the scroll target vanishes while data is in flight.
+   *
+   * ⚠️ ADDED 2026-11-08, and its absence was blocking rather than cosmetic: a
+   * hand-rolled button carrying an attention anchor could not be ported here
+   * without silently dropping the anchor. A dropped anchor throws nothing —
+   * the attention row still renders, the click still scrolls somewhere, and
+   * the control it was meant to land on just never gets the ring. Same
+   * absence class as the pulse keyframes Admin never had.
+   */
+  id?: string;
+  /** The native tooltip. NOT a substitute for aria-label on an icon button. */
+  title?: string;
   "aria-label"?: string;
 }) {
   const v =
@@ -70,10 +89,12 @@ export function Button({
   return (
     <button
       type={type}
+      id={id}
+      title={title}
       aria-label={ariaLabel}
       aria-busy={loading || undefined}
       className={cx("ffu-btn", v, full && "ffu-full", className)}
-      style={style}
+      style={{ scrollMarginTop: "5.5rem", ...style }}
       disabled={disabled || loading}
       onClick={onClick}
     >

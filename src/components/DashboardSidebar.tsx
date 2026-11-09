@@ -1,7 +1,28 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Ic, type IconName } from "@/components/Ic";
+// cx and the .ffd-navsec rule both live in the ui/ sheet. Importing from
+// uiStyles also injects it, which is what guarantees the caption is styled on
+// a dashboard that happens to mount no other primitive.
+import { cx } from "@/components/ui/uiStyles";
 
-export type SidebarItem = { key: string; label: string; icon: IconName; badge?: number };
+/**
+ * `section` is the optional caption this item groups under. Items with no
+ * section render as a plain column, exactly as before — Client and Contractor
+ * have few enough items that captioning them would add structure where there
+ * is none to communicate.
+ *
+ * It exists for Admin, which had TWELVE flat items: a 12-way decision every
+ * time the owner opens the page, which is Hick's Law stated as a complaint
+ * rather than a law. Four captioned groups make it four smaller decisions.
+ * Grouping was chosen over shortening because an admin item is not optional —
+ * Disputes still has to be reachable on the day there are no disputes.
+ *
+ * ⚠️ ORDER COMES FROM THE ARRAY, NOT FROM THE SECTION NAMES. Items are grouped
+ * by first appearance, so an item placed out of order lands in whichever group
+ * already opened, and does not start a second group with the same caption.
+ * Keep each section's items contiguous in the array.
+ */
+export type SidebarItem = { key: string; label: string; icon: IconName; badge?: number; section?: string };
 
 const COLLAPSE_KEY = "ff_sidebar_collapsed";
 
@@ -125,6 +146,20 @@ export default function DashboardSidebar({
     );
   };
 
+  // Grouped by FIRST APPEARANCE, so the array's order is the screen's order and
+  // a section name cannot open a second group further down. An unsectioned list
+  // collapses to exactly one nameless group, which is why Client and Contractor
+  // need no branch below.
+  const groups = React.useMemo(() => {
+    const out: Array<{ name?: string; items: SidebarItem[] }> = [];
+    for (const it of items) {
+      const last = out[out.length - 1];
+      if (last && last.name === it.section) last.items.push(it);
+      else out.push({ name: it.section, items: [it] });
+    }
+    return out;
+  }, [items]);
+
   const renderNav = (labels: boolean) => (
     <div style={{ display:"flex", flexDirection:"column" as const, minHeight:"100%", gap: "var(--ff-s1)" }}>
       {narrow && (
@@ -140,7 +175,22 @@ export default function DashboardSidebar({
         <div style={{ fontSize:".68rem", textTransform:"uppercase" as const, letterSpacing:".12em", color:"rgba(var(--ff-muted), .45)", padding:"0 .8rem", margin:".2rem 0 .5rem" }}>{title}</div>
       )}
       <div style={{ display:"flex", flexDirection:"column" as const, gap: "var(--ff-s1)" }}>
-        {items.map(it => itemBtn(it, labels))}
+        {groups.map((g, gi) => (
+          <React.Fragment key={g.name ?? ("_" + gi)}>
+            {g.name && (
+              // Collapsed to the icon rail there is no room for the words, so
+              // .ffd-rail turns the caption into the hairline it already
+              // implies. Hiding it outright would merge the groups back into
+              // one undifferentiated column of twelve icons, which is the
+              // problem the sections exist to solve.
+              <div
+                className={cx("ffd-navsec", gi === 0 && "ffd-first", !labels && "ffd-rail")}
+                aria-hidden={!labels || undefined}
+              >{g.name}</div>
+            )}
+            {g.items.map(it => itemBtn(it, labels))}
+          </React.Fragment>
+        ))}
       </div>
       {renderFooter(labels)}
     </div>

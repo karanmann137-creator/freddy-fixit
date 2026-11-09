@@ -42,6 +42,7 @@ import { searchTokens, matchesSearch } from "@/lib/dashSearch";
 import {
   Pass, PassTop, IconButton, StateLine, Hero, HeroSub, PassMeta, PassMetaItem,
   JobSwitcher, AttentionCard, Group, Sheet, Row, Button, Pill,
+  DashShell, DashContent, DashCard,
   type State, type RowTone, type PillTone,
 } from "@/components/ui";
 
@@ -109,6 +110,12 @@ function historyIcon(status: string): IconName {
   return "briefcase";
 }
 
+/**
+ * Every tab this page can route to. This array is the ROUTING table, not the
+ * sidebar — what a contractor actually sees is `visibleNav()` below, which is a
+ * filter over it. Never trim this array to tidy the sidebar; trim the filter
+ * instead, or a live deep link starts landing on nothing.
+ */
 const CONTRACTOR_NAV: SidebarItem[] = [
   { key: "jobs",      label: "My Jobs",        icon: "briefcase" },
   { key: "available", label: "Available Jobs", icon: "search" },
@@ -118,6 +125,35 @@ const CONTRACTOR_NAV: SidebarItem[] = [
   { key: "reviews",   label: "Reviews",        icon: "star" },
   { key: "profile",   label: "Profile",        icon: "user" },
 ];
+
+/**
+ * The sidebar a contractor actually gets.
+ *
+ * ⚠️ This page had NO filter at all — all seven items showed from minute one,
+ * and for a pro who had never been awarded a job, four of the seven opened an
+ * empty state: Calendar drew an empty month, Earnings showed $0 against a goal
+ * bar with nothing in it, Reviews said "No Reviews Yet", and only My Jobs,
+ * Available Jobs, Messages and Profile did anything. Client and Admin had both
+ * already solved this; Contractor was the outlier, which is the same shape as
+ * every other divergence this pass closed — nobody decided it.
+ *
+ * Hick's law is the reason this matters rather than being tidiness: the cost of
+ * a choice is the number of options, so four dead options make the three live
+ * ones measurably slower to find. Each one appears the moment it has something
+ * in it, and `CONTRACTOR_NAV` stays whole so the key is still routable if an
+ * older link or a `ff:dash-nav` event aims at it.
+ *
+ * Calendar keys on a job with a `scheduled_at`, not on having any job at all —
+ * JobsCalendar buckets by that field, so a pro with assigned-but-unscheduled
+ * work would still get an empty grid.
+ */
+function visibleNav(opts: { scheduled: number; earned: number; reviews: number }): SidebarItem[] {
+  const show = new Set<string>(["jobs", "available", "messages", "profile"]);
+  if (opts.scheduled > 0) show.add("calendar");
+  if (opts.earned > 0)    show.add("earnings");
+  if (opts.reviews > 0)   show.add("reviews");
+  return CONTRACTOR_NAV.filter(it => show.has(String(it.key)));
+}
 
 // Pipeline-stage matchers — single source shared by the workflow strip counters
 // and the My Jobs stage filter, so a stage's count always equals what its click shows.
@@ -1408,38 +1444,47 @@ export default function ContractorDashboard() {
   })();
 
   const s = {
-    wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(var(--ff-accent-rgb), 0.16) 0%, transparent 70%), radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
     // `header` and `logo` were removed on 2026-10-30. `header` was the v1
     // greeting strip, which the <Pass> replaced; `logo` had already been dead
     // for some time (the global TopNav carries the wordmark). Both are deleted
     // rather than left in place because a style key that nothing reads still
     // looks like the live answer to "how is the top of this page styled".
-    tabsBar: { background:"rgba(var(--ff-fg), .02)", borderBottom:"var(--ff-hair-w) solid rgba(var(--ff-fg), .06)", padding:"0 1.5rem", overflowX:"auto" as const },
-    tabsInner: { maxWidth:"900px", margin:"0 auto", display:"flex", gap: "var(--ff-s1)" },
-    // ── Retargeted onto the token scale on 2026-10-30 ──────────────────────
-    // Same move, and the same reasoning, as ClientDashboard's `s` object: these
-    // objects have 50 call sites between `btn`, `card` and `cardTitle`, and
-    // editing the objects lands the theme on all of them without touching one
-    // `disabled` expression. The structural port onto <Button>/<Sheet> is still
-    // owed on this page — only <JobTimeline> has reached it so far — but it is
-    // its own change, not a line item inside a reskin.
     //
-    // ⚠️ Inline styles cannot express :hover/:active/:disabled and must not try;
-    // `.ffdash button` carries all three. Setting `opacity` here would beat the
-    // injected sheet and freeze every button's disabled state.
-    tab: { padding:".85rem 1.25rem", background:"none", border:"none", borderBottom:"2px solid transparent", color:"rgba(var(--ff-muted), .5)", fontFamily:"'Bebas Neue',sans-serif", fontSize:".88rem", letterSpacing:".09em", cursor:"pointer", whiteSpace:"nowrap" as const },
-    activeTab: { color:"var(--ff-accent-500)", borderBottomColor:"var(--ff-accent-500)" },
-    // Fluid padding: on a ~276px-wide phone column a flat 1.5rem/1.75rem ate
-    // ~20% of the usable width before any content was drawn.
-    content: { maxWidth:"900px", margin:"0 auto", padding:"clamp(1rem, 4vw, 2rem) clamp(.75rem, 3vw, 1.5rem)" },
-    card: { background:"var(--ff-card-bg)", border:"var(--ff-hair-w) solid var(--ff-card-border)", borderRadius:"var(--ff-r3)", padding:"clamp(1rem, 4vw, 1.75rem)", marginBottom:"var(--ff-s6)" },
-    cardTitle: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".06em", lineHeight:1.1, color:"var(--ff-accent-500)", marginBottom:"var(--ff-s5)" },
+    // ── 2026-11-08: the page chrome moved to the shared primitives ─────────
+    // ⚠️ `wrap`, `content`, `card` and `cardTitle` are GONE — they are
+    // <DashShell>, <DashContent>, <DashCard> and `.ffd-cardtitle` from
+    // src/components/ui/Dash.tsx now. Dash.tsx adopted CLIENT's numbers
+    // because Client is the stated reference, so this page's column narrowed
+    // 900 → 800px and its card padding tightened 1.75 → 1.5rem. Those are
+    // real visual changes and they ARE the alignment; see the comments at the
+    // <DashContent> and <DashCard> mounts.
+    //
+    // ⚠️ `tabsBar`, `tabsInner`, `tab`, `activeTab`, `slot` and `slotSel` are
+    // also gone, and those six were DEAD — zero call sites, each one. The
+    // underline tab bar they described had already been replaced by the
+    // sidebar; only the keys survived, which is worse than either, because a
+    // style key that nothing reads reads as the live answer. Anything that
+    // needs a tab or a filter chip here takes `.ffd-tab` / `.ffd-tab.ffd-on`.
+    //
+    // ⚠️ Inline styles cannot express :hover/:active/:disabled and must not
+    // try; the shared `.ffdash button:not(.ffu-btn)` rule carries all three.
+    // Setting `opacity` here would beat the injected sheet and freeze every
+    // button's disabled state.
+    //
+    // `btn`/`primaryBtn`/`jobCard`/`earnCard`/`chip` stay as objects for now:
+    // `btn` alone has 28 call sites, several on the contract-gated payment
+    // surface where the `disabled` expression carries `contractBlocked`. The
+    // structural port onto <Button>/<Sheet> is its own change, to be read
+    // against the fail-closed gate, not a line item inside a reskin.
     jobCard: { background:"var(--ff-card-bg)", border:"var(--ff-hair-w) solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", padding:"clamp(.9rem, 3.5vw, 1.5rem)", marginBottom:"var(--ff-s4)", cursor:"pointer" },
     btn: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s4)", background:"var(--ff-card-bg)", border:"var(--ff-hair-w) solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", color:"var(--ff-text)", fontFamily:"'Bebas Neue',sans-serif", fontSize:".88rem", letterSpacing:".09em", cursor:"pointer" },
+    // Byte-identical to ClientDashboard's `primaryBtn`. It is NEW here: this
+    // page had no primary-button key at all, so its two primary actions (the
+    // load-error Retry and the finish-setup CTA) were hand-rolled with their
+    // own padding, radius, font and weight — two more undecided divergences.
+    primaryBtn: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s5)", background:"var(--ff-accent-500)", color:"#fff", border:"none", borderRadius:"var(--ff-r2)", boxShadow:"var(--ff-lift-2)", fontFamily:"'Bebas Neue',sans-serif", fontSize:".95rem", letterSpacing:".09em", cursor:"pointer" },
     earnCard: { background:"var(--ff-card-bg)", border:"var(--ff-hair-w) solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", padding:"var(--ff-s5)", textAlign:"center" as const },
-    chip: { padding:".3rem .75rem", background:"rgba(var(--ff-accent-rgb), .08)", border:"1px solid rgba(var(--ff-accent-rgb), .18)", borderRadius:"99px", fontSize:".78rem", color:"rgba(var(--ff-muted), .8)", display:"inline-block", margin: "var(--ff-s1)" },
-    slot: { padding:".38rem .85rem", borderRadius:"99px", fontSize:".78rem", cursor:"pointer", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", background:"rgba(var(--ff-fg), .04)", color:"rgba(var(--ff-muted), .7)", fontFamily:"inherit", margin: "var(--ff-s1)" },
-    slotSel: { background:"rgba(var(--ff-accent-rgb), .15)", borderColor:"rgba(var(--ff-accent-rgb), .5)", color:"var(--ff-text)" },
+    chip: { padding:".3rem .75rem", background:"rgba(var(--ff-accent-rgb), .08)", border:"var(--ff-hair-w) solid rgba(var(--ff-accent-rgb), .18)", borderRadius:"99px", fontSize:".78rem", color:"rgba(var(--ff-muted), .8)", display:"inline-block", margin: "var(--ff-s1)" },
   };
 
   // A layout-matched shell rather than a centred spinner: the sidebar, header
@@ -1447,19 +1492,19 @@ export default function ContractorDashboard() {
   // jumps when the data arrives. DashboardSkeleton renders NOTHING for its
   // first 120ms, so a warm load still looks instant.
   if (loading) return (
-    <div style={s.wrap}>
+    <DashShell>
       <DashboardSkeleton />
-    </div>
+    </DashShell>
   );
 
   if (loadError) return (
-    <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>
+    <DashShell style={{ display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ textAlign:"center", color:"rgba(var(--ff-muted), .7)", maxWidth:"320px", padding:"1.5rem" }}>
         <div style={{ marginBottom:".75rem", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".04em" }}>Couldn't load your dashboard</div>
         <div style={{ fontSize:".9rem", marginBottom:"1.25rem" }}>Check your connection and try again.</div>
-        <button style={{ padding:".75rem 1.5rem", background:"var(--ff-c10)", color:"#fff", border:"none", borderRadius:"8px", fontFamily:"inherit", fontSize:".9rem", fontWeight:500, cursor:"pointer" }} onClick={() => window.location.reload()}>Retry</button>
+        <button style={s.primaryBtn} onClick={() => window.location.reload()}>Retry</button>
       </div>
-    </div>
+    </DashShell>
   );
 
   // Signed in but signup was never finished (e.g. Google one-tap creates the login
@@ -1474,19 +1519,21 @@ export default function ContractorDashboard() {
     && new Date(j.chat_time_at).getTime() > Date.now());
   const timePromptJob = chatTimeJobs.find((j: any) => !timeDismissed.has(j.id)) ?? null;
 
+  // The per-page Google Fonts <link> that used to sit on this branch is gone
+  // (2026-11-08). All three faces load from the single <link> in index.html,
+  // and CLAUDE.md is explicit that a face used site-wide belongs in that one —
+  // a per-page loader is a subset of it that re-requests the same stylesheet.
   if (!profile || !contractor) return (
-    <div style={{ ...s.wrap, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+    <DashShell style={{ display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ textAlign:"center", maxWidth:"380px", padding:"1.5rem" }}>
         <div style={{ width:56, height:56, borderRadius:"50%", margin:"0 auto 1rem", background:"linear-gradient(135deg,var(--ff-c10),#f59e42)", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.9rem" }}>F</div>
         <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.7rem", letterSpacing:".04em", lineHeight:1.1, color:"var(--ff-text)", marginBottom:".5rem" }}>You're almost there</div>
         <div style={{ fontSize:".92rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.55, marginBottom:"1.25rem" }}>
           Your login is set up, but we still need a few details before you can see and bid on jobs. It takes about two minutes — and if you started earlier, we saved your progress.
         </div>
-        <button style={{ padding:".8rem 1.6rem", background:"var(--ff-c10)", color:"#fff", border:"none", borderRadius:"10px", fontFamily:"'DM Sans',sans-serif", fontSize:".95rem", fontWeight:600, cursor:"pointer" }}
-          onClick={() => setLocation("/contractor-onboarding")}>Finish setting up →</button>
+        <button style={s.primaryBtn} onClick={() => setLocation("/contractor-onboarding")}>Finish setting up →</button>
       </div>
-    </div>
+    </DashShell>
   );
 
   // ── "Needs your attention", HOISTED out of the JSX on 2026-10-30 ──────────
@@ -1706,19 +1753,35 @@ export default function ContractorDashboard() {
   })();
 
   return (
-    <div style={s.wrap} className="ffdash">
-      <style>{".ffdash button{transition:filter .16s var(--ff-ease-out), transform .16s var(--ff-ease-out), opacity .16s var(--ff-ease-out)} .ffdash button:hover:not(:disabled){filter:brightness(1.09)} .ffdash button:active:not(:disabled){transform:scale(0.97); transition-duration:.1s} .ffdash button:disabled{opacity:.55; cursor:not-allowed}"
-        + " @keyframes ff-pulse-ring{0%{box-shadow:0 0 0 0 rgba(var(--ff-accent-rgb), .55); background:rgba(var(--ff-accent-rgb), .14)}70%{box-shadow:0 0 0 12px rgba(var(--ff-accent-rgb), 0); background:rgba(var(--ff-accent-rgb), .05)}100%{box-shadow:0 0 0 0 rgba(var(--ff-accent-rgb), 0); background:rgba(var(--ff-accent-rgb), 0)}}"
-        + " .ffdash .ff-pulse{outline:2px solid rgba(var(--ff-accent-rgb), .75); outline-offset:6px; border-radius:10px; animation:ff-pulse-ring 1.5s ease-out 3}"
-        + " @media (prefers-reduced-motion: reduce){.ffdash .ff-pulse{animation:none; background:rgba(var(--ff-accent-rgb), .12)}}"}</style>
+    <DashShell>
+      {/* ⚠️ The page's own `<style>{".ffdash button{…}"}</style>` block is GONE
+          (2026-11-08), and deleting it FIXED a live defect rather than merely
+          removing a duplicate. The shared sheet in ui/uiStyles.ts scopes the
+          press as `.ffdash button:not(.ffu-btn)`; this page's copy was
+          unscoped, and `.ffdash button` (0,0,1,1) outranks `.ffu-btn`
+          (0,0,1,0) — so every button ported onto the <Button> primitive was
+          having its release overridden back to `.16s var(--ff-ease-out)` by
+          the page it was mounted on. The pulse ring came with it, and its
+          radius was 10px here against Client's 12px; neither number was ever
+          decided, so the shared one is Client's. Do not copy any of it back. */}
       {toast && (
         <div onClick={() => setToast(null)} className="ff-toast-in" style={{ position:"fixed", left:"50%", bottom:"calc(1.5rem + var(--ff-fsb-h, 0px))", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
       )}
-      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
-      <div style={{ height: "3.75rem" }} />
+      {/* The per-page Google Fonts <link> that used to sit here is gone — it
+          was a strict subset of the single <link> in index.html, which is
+          where a face used site-wide belongs. */}
+      {/* Clears the fixed TopNav. The height is MEASURED and published by
+          TopNav on :root; the hardcoded 3.75rem that used to be here was one
+          of three disagreeing constants and went stale the moment the nav's
+          breakpoint or the user's text size moved it. */}
+      <div style={{ height: "var(--ff-topnav-h)" }} />
       <div style={{ display:"flex", alignItems:"flex-start" as const }}>
         <DashboardSidebar
-          items={CONTRACTOR_NAV.map(it => {
+          items={visibleNav({
+            scheduled: myJobs.filter((j: any) => j.scheduled_at && j.status !== "cancelled").length,
+            earned: totalEarned,
+            reviews: myReviews.length,
+          }).map(it => {
             if (it.key === "available" && contractor?.status === "active" && availableJobs.length > 0) return { ...it, badge: availableJobs.length };
             if (it.key === "messages" && msgUnread > 0) return { ...it, badge: msgUnread };
             return it;
@@ -1797,7 +1860,16 @@ export default function ContractorDashboard() {
         />
       )}
 
-      <div style={s.content} className={tabAnim}>
+      {/* ⚠️ This column was 900px wide with its own `clamp(1rem,4vw,2rem)
+          clamp(.75rem,3vw,1.5rem)` padding; <DashContent> is Client's 800px
+          and `clamp(1rem,4vw,1.5rem)`. That is a VISIBLE narrowing and it is
+          the point of the change, not a side effect — the three dashboards had
+          three different column widths and three different paddings, and
+          Dash.tsx's docblock records that none of the three was ever decided.
+          Client is the stated reference, so Client's numbers won. Do NOT reach
+          for `wide` here: that opt-out exists for Admin's list tabs, which
+          render wide tables. */}
+      <DashContent className={tabAnim}>
         <ProfileCompletionModal role="contractor" profile={profile} contractor={contractor} onSetupPayouts={setupPayouts} />
 
         {contractor && !contractor.stripe_payouts_enabled && (() => {
@@ -1929,18 +2001,52 @@ export default function ContractorDashboard() {
         {(activeTab === "jobs" || activeTab === "available" || activeTab === "calendar") && (() => {
           // Jobber-style workflow pipeline strip: where every job sits, at a glance.
           // Clicking a stage jumps to the right tab (and filters My Jobs by stage).
+          //
+          // ── The stage colours are TOKENS as of 2026-11-08 ────────────────
+          // They were `#3b82f6` / `#f59e0b` / `#8b5cf6` / `#8b5cf6` /
+          // `var(--ff-c10)` / `#22c55e` — four raw hexes imported from the
+          // Jobber strip this is modelled on, and every one of them was a
+          // LIGHT-MODE BUG of exactly the kind CLAUDE.md describes: a literal
+          // renders its dark-mode value on the off-white ground, with nothing
+          // thrown. `--ff-success`/`--ff-warn`/`--ff-info` each carry a
+          // separate light value, so the strip now follows the theme.
+          //
+          // ⚠️ The orange is GONE from `working`, and that is Von Restorff,
+          // not tidying. The selected chip already spends accent — a `.1`
+          // tint plus a `.5` border — so an orange top-rule on a *different*
+          // chip put two orange things in one strip, and the one that means
+          // "you pressed this" lost. "In progress" is a STATUS, and the
+          // question orange answers is "is this the one action for you?", so
+          // the answer for a status is a neutral or semantic colour.
+          //
+          // ⚠️ And the two purples were the SAME hex on two different stages,
+          // which means the purple was already carrying no distinction. Five
+          // hues for six stages was never a six-step ramp; this palette has no
+          // such ramp and inventing one would be a palette change, which is
+          // out of scope by decision. So the rule now answers the one question
+          // a pro actually asks the strip — WHOSE TURN IS IT:
+          //   info    → an opportunity that is not yours yet
+          //   warn    → you owe an action
+          //   muted   → waiting on someone else
+          //   success → money is inbound
+          // A new stage picks one of those four. If none fits, the stage is
+          // probably two stages.
+          const TURN_YOU   = "var(--ff-warn)";
+          const TURN_THEM  = "rgba(var(--ff-muted), .3)";
+          const TURN_NEW   = "var(--ff-info)";
+          const TURN_MONEY = "var(--ff-success)";
           const stages: { key: string; label: string; count: number; color: string; onClick: () => void }[] = [
-            { key: "leads", label: "New leads", count: availableJobs.length, color: "#3b82f6",
+            { key: "leads", label: "New leads", count: availableJobs.length, color: TURN_NEW,
               onClick: () => { setActiveTab("available"); window.scrollTo({ top: 0, behavior: "smooth" }); } },
-            { key: "propose", label: "Needs your estimate", count: myJobs.filter(STAGE_MATCH.propose).length, color: "#f59e0b",
+            { key: "propose", label: "Needs your estimate", count: myJobs.filter(STAGE_MATCH.propose).length, color: TURN_YOU,
               onClick: () => { setActiveTab("jobs"); setJobFilter(f => f === "propose" ? null : "propose"); } },
-            { key: "awaiting", label: "Awaiting client", count: myJobs.filter(STAGE_MATCH.awaiting).length, color: "#8b5cf6",
+            { key: "awaiting", label: "Awaiting client", count: myJobs.filter(STAGE_MATCH.awaiting).length, color: TURN_THEM,
               onClick: () => { setActiveTab("jobs"); setJobFilter(f => f === "awaiting" ? null : "awaiting"); } },
-            { key: "scheduled", label: "Scheduled", count: myJobs.filter(STAGE_MATCH.scheduled).length, color: "#8b5cf6",
+            { key: "scheduled", label: "Scheduled", count: myJobs.filter(STAGE_MATCH.scheduled).length, color: TURN_THEM,
               onClick: () => { setActiveTab("jobs"); setJobFilter(f => f === "scheduled" ? null : "scheduled"); } },
-            { key: "working", label: "In progress", count: myJobs.filter(STAGE_MATCH.working).length, color: "var(--ff-c10)",
+            { key: "working", label: "In progress", count: myJobs.filter(STAGE_MATCH.working).length, color: TURN_YOU,
               onClick: () => { setActiveTab("jobs"); setJobFilter(f => f === "working" ? null : "working"); } },
-            { key: "payment", label: "Awaiting payment", count: myJobs.filter(STAGE_MATCH.payment).length, color: "#22c55e",
+            { key: "payment", label: "Awaiting payment", count: myJobs.filter(STAGE_MATCH.payment).length, color: TURN_MONEY,
               onClick: () => { setActiveTab("jobs"); setJobFilter(f => f === "payment" ? null : "payment"); } },
           ];
           return (
@@ -2074,7 +2180,7 @@ export default function ContractorDashboard() {
               if (remaining.length === 0) return null;
               const settled = steps.length - remaining.length;
               return (
-                <div style={{ ...s.card, padding:"1.25rem 1.4rem" }}>
+                <DashCard style={{ padding:"1.25rem 1.4rem" }}>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:".6rem", flexWrap:"wrap" as const, marginBottom:".35rem" }}>
                     <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.35rem", letterSpacing:".03em", lineHeight:1.1, margin:0 }}>Get set up</h2>
                     <span style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .6)" }}>{settled} of {steps.length} done</span>
@@ -2102,7 +2208,7 @@ export default function ContractorDashboard() {
                       </div>
                     );
                   })}
-                </div>
+                </DashCard>
               );
             })()}
             {myJobs.length === 0 ? (
@@ -2788,8 +2894,8 @@ export default function ContractorDashboard() {
               // contractor with no way to change their photo or their area again.
               const done = missing.length === 0;
               return (
-                <div style={done ? s.card : { ...s.card, border:"1px solid rgba(var(--ff-accent-rgb), .35)", background:"rgba(var(--ff-accent-rgb), .06)" }}>
-                  <div style={{ ...s.cardTitle, display:"flex", alignItems:"center", gap:".5rem" }}>
+                <DashCard style={done ? undefined : { border:"1px solid rgba(var(--ff-accent-rgb), .35)", background:"rgba(var(--ff-accent-rgb), .06)" }}>
+                  <div className="ffd-cardtitle" style={{ display:"flex", alignItems:"center", gap:".5rem" }}>
                     <Ic name="info" size={18} color="var(--ff-c10)" /> {done ? "Your profile details" : "Finish setting up your profile"}
                   </div>
                   <p style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.55, marginBottom:"1.25rem" }}>
@@ -2807,7 +2913,7 @@ export default function ContractorDashboard() {
                       setContractor((c: any) => ({ ...c, ...patch }));
                     }}
                   />
-                </div>
+                </DashCard>
               );
             })()}
             <Group label="YOUR PROFILE">
@@ -2815,7 +2921,7 @@ export default function ContractorDashboard() {
                   so leaving the card's own bottom margin in place stacked two
                   gaps between every pair of cards. The gap has exactly one
                   owner now, which is the whole point of the spacing scale. */}
-              <div style={{ ...s.card, marginBottom:0 }}>
+              <DashCard style={{ marginBottom:0 }}>
               {/* auto-fit + min(): collapses to one column on a phone instead of
                   forcing two columns that an email address then overflows. */}
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(min(180px, 100%), 1fr))", gap:".75rem", marginBottom:"1.25rem" }}>
@@ -2843,10 +2949,10 @@ export default function ContractorDashboard() {
                   {contractor.service_area.map((z: string) => <Pill key={z} tone="neutral"><Ic name="map-pin" size={11} style={{ marginRight:3 }} />{z}</Pill>)}
                 </div>
               )}
-            </div>
+            </DashCard>
             </Group>
             <Group label="YOUR DEFAULT PRICING">
-              <div style={{ ...s.card, marginBottom:0 }}>
+              <DashCard style={{ marginBottom:0 }}>
               <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"1rem", lineHeight:1.5 }}>
                 Set these once and they'll pre-fill your call-out fee when you send an estimate, so you bid faster and more consistently. Clients don't see these numbers.
               </p>
@@ -2861,10 +2967,10 @@ export default function ContractorDashboard() {
                 </div>
               </div>
               <button style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none", marginTop:"1rem" }} disabled={busyPricing} onClick={savePricing}>{busyPricing ? "Saving…" : "Save pricing"}</button>
-            </div>
+            </DashCard>
             </Group>
             <Group label="PORTFOLIO & REVIEWS">
-              <div style={{ ...s.card, marginBottom:0 }}>
+              <DashCard style={{ marginBottom:0 }}>
               <div style={{ marginBottom:"1.25rem" }}>
                 <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .4)", marginBottom:".35rem" }}>Google reviews link</div>
                 <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
@@ -2894,10 +3000,10 @@ export default function ContractorDashboard() {
                 <input type="file" accept="image/*" onChange={e => { const nf = e.target.files?.[0]; if (!nf) return; setPfForm(f => ({ ...f, file: nf })); }} style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)" }} />
                 <button style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none", alignSelf:"flex-start" as const }} disabled={busyPf} onClick={addPortfolioItem}>{busyPf ? "Adding…" : "+ Add portfolio item"}</button>
               </div>
-            </div>
+            </DashCard>
             </Group>
             <Group label="AVAILABILITY">
-              <div style={{ ...s.card, marginBottom:0 }}>
+              <DashCard style={{ marginBottom:0 }}>
               <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .5)", marginBottom:"1.1rem", lineHeight:1.5 }}>
                 Pick a typical week. You can fine-tune any day. Changes save automatically.
               </p>
@@ -2981,7 +3087,7 @@ export default function ContractorDashboard() {
                   </div>
                 );
               })()}
-            </div>
+            </DashCard>
             </Group>
             <DeleteAccount />
           </div>
@@ -2996,7 +3102,7 @@ export default function ContractorDashboard() {
               const trend = Array.isArray(earn.trend) ? earn.trend : [];
               const peak = Math.max(1, ...trend.map((t: any) => Number(t.amount || 0)));
               return (
-                <div style={{ ...s.card, marginBottom:"1.5rem", background:"linear-gradient(135deg, rgba(var(--ff-accent-rgb), .10), rgba(var(--ff-fg),.03))", borderColor:"rgba(var(--ff-accent-rgb), .3)" }}>
+                <DashCard style={{ marginBottom:"1.5rem", background:"linear-gradient(135deg, rgba(var(--ff-accent-rgb), .10), rgba(var(--ff-fg),.03))", borderColor:"rgba(var(--ff-accent-rgb), .3)" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:".75rem", flexWrap:"wrap" as const }}>
                     <div>
                       <div style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".1em", color:"rgba(var(--ff-muted), .5)" }}>This week</div>
@@ -3065,7 +3171,7 @@ export default function ContractorDashboard() {
                     <div><span style={{ color:"rgba(var(--ff-muted),.5)" }}>Last month </span><strong style={{ color:"var(--ff-text)" }}>${Number(earn.last_month||0).toFixed(0)}</strong></div>
                     <div><span style={{ color:"rgba(var(--ff-muted),.5)" }}>This year </span><strong style={{ color:"var(--ff-text)" }}>${Number(earn.this_year||0).toFixed(0)}</strong></div>
                   </div>
-                </div>
+                </DashCard>
               );
             })()}
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(min(130px, 100%), 1fr))", gap:"1rem", marginBottom:"1.5rem" }}>
@@ -3100,7 +3206,7 @@ export default function ContractorDashboard() {
               );
             })()}
             {awaitingTotal > 0 && (
-              <div style={{ ...s.card, marginBottom:"1.5rem", borderColor:"rgba(var(--ff-accent-rgb), .35)", background:"rgba(var(--ff-accent-rgb), .06)" }}>
+              <DashCard style={{ marginBottom:"1.5rem", borderColor:"rgba(var(--ff-accent-rgb), .35)", background:"rgba(var(--ff-accent-rgb), .06)" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:".6rem" }}>
                   <Ic name="key" size={16} color="var(--ff-c10)" />
                   <div>
@@ -3111,10 +3217,10 @@ export default function ContractorDashboard() {
                     <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .65)", lineHeight:1.45, marginTop:".1rem" }}>Your 93% payout across {awaitingJobs.length} active job{awaitingJobs.length === 1 ? "" : "s"}, after the 7% platform fee. Clients pay a deposit up front to book you and the balance once the work is done — every payment is held safely and released to you after the client confirms (or automatically after 3 days).</div>
                   </div>
                 </div>
-              </div>
+              </DashCard>
             )}
             <Group label="PAYOUTS">
-              <div style={{ ...s.card, marginBottom:0 }}>
+              <DashCard style={{ marginBottom:0 }}>
               {contractor?.stripe_payouts_enabled ? (
                 <div style={{ display:"flex", alignItems:"center", gap:".6rem", color:"#22c55e", fontSize:".9rem" }}>
                   <Ic name="check" size={16} color="#22c55e" />
@@ -3151,7 +3257,7 @@ export default function ContractorDashboard() {
                   </button>
                 </div>
               )}
-            </div>
+            </DashCard>
             </Group>
             {/* JOB HISTORY — the caption moves OUT of the card.
                 v1 put a 1.2rem orange Bebas title inside the card; a <Group>
@@ -3224,7 +3330,7 @@ export default function ContractorDashboard() {
                   ))}
                 </div>
                 {myReviews.map(r => (
-                  <div key={r.id} style={{ ...s.card, marginBottom:"1rem" }}>
+                  <DashCard key={r.id} style={{ marginBottom:"1rem" }}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:".75rem" }}>
                       <div style={{ fontWeight:500, color:"var(--ff-text)" }}>{r.client?.first_name ?? "Client"}</div>
                       <div style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .4)" }}>{new Date(r.created_at).toLocaleDateString()}</div>
@@ -3235,14 +3341,14 @@ export default function ContractorDashboard() {
                       ))}
                     </div>
                     {r.comment && <p style={{ fontSize:".88rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.6, margin:0 }}>{r.comment}</p>}
-                  </div>
+                  </DashCard>
                 ))}
               </>
             )}
           </div>
         )}
 
-      </div>
+      </DashContent>
         </div>
       </div>
 
@@ -3330,6 +3436,6 @@ export default function ContractorDashboard() {
           <RequestHelpModal userId={profile.id} role="contractor" mode="bug" onClose={() => setBugOpen(false)} />
         )}
         <ConfirmDialog state={confirmState} onClose={(ok) => { confirmState?.resolve(ok); setConfirmState(null); }} />
-    </div>
+    </DashShell>
   );
 }

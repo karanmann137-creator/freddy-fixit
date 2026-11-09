@@ -42,8 +42,21 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 INVARIANTS = {
     # The payment gate fails closed, so no ContractPanel means no job can ever
     # be paid for, with no error on any surface. This is the costliest entry.
+    # 2026-11-08: <DashShell> is the ONLY thing that puts `ffdash` on the page,
+    # and three rule blocks in ui/uiStyles.ts are scoped to it -- the button
+    # press, the disabled state, and `.ff-pulse`. Swap it back for a plain
+    # <div> and the page renders pixel-identical at rest while every attention
+    # button silently stops ringing the control it names: focusJobAnchor()
+    # still scrolls, ringAnchor() still sets the class, the class simply has no
+    # animation attached. Nothing throws and nothing looks wrong on a Mac.
+    #
+    # This already happened once, in the other direction -- Admin was applying
+    # `.ff-pulse` to elements that were outside any `.ffdash` wrapper -- which
+    # is what Dash.tsx's docblock is warning about. Needled on all three pages
+    # because the wrapper is per page; losing one loses one dashboard's worth
+    # of feedback, which is the sort of thing only the owner would find.
     "src/pages/ClientDashboard.tsx": [
-        "<ContractPanel",
+        "<ContractPanel", "<DashShell",
         # 2026-11-07: the ONLY surface on the platform that can approve or
         # decline a pending price change. adjust-payment and
         # decline_price_change both need a real auth.uid(), so neither is
@@ -57,7 +70,7 @@ INVARIANTS = {
         "declinePriceChange",
     ],
     "src/pages/ContractorDashboard.tsx": [
-        "<ContractPanel", "STAGE_MATCH", "JobsCalendar",
+        "<ContractPanel", "STAGE_MATCH", "JobsCalendar", "<DashShell",
         # 2026-11-07: the pro's only undo for a price change they proposed
         # themselves. Without it the proposal sits 'pending' forever, the client
         # keeps getting nudged about a figure the pro no longer wants, and the
@@ -67,7 +80,7 @@ INVARIANTS = {
         "withdrawPriceChange",
     ],
     "src/pages/AdminDashboard.tsx": [
-        "<ContractPanel",
+        "<ContractPanel", "<DashShell",
         # 2026-11-04: without this mount every admin_guard() RPC refuses with
         # "Verify your sign-in code first" and there is no surface anywhere in
         # the product that can request that code. The owner sat locked out of

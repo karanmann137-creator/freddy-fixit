@@ -740,6 +740,187 @@ const CSS = `
   .ffu-modal{ border-color: var(--ff-text); }
   .ffu-ptitle-bar{ border-bottom-color: var(--ff-text); }
 }
+
+/* ═══ the dashboard shell ═════════════════════════════════════════════════
+   Added 2026-11-08, when Contractor and Admin were aligned to Client.
+
+   WHAT THIS REPLACES. All three dashboards opened with a near-identical
+   style object and an inline .ffdash style block, and the three had drifted
+   in every dimension that matters to whether they look like one product:
+   the content column was 800 / 900 / 1000px, the card was --ff-r3 at
+   clamp(1rem,4vw,1.5rem) / --ff-r3 at 1.75rem / --ff-r2 at --ff-s5, the card
+   title was Bebas-accent on two and a .95rem weight-500 line on Admin, the
+   tab strip was pill chips on two and an underline bar on Contractor, and the
+   pulse ring was 12px / 10px / absent. None of that was decided; it was three
+   people solving the same problem three times. The values below are Client's,
+   because Client is the stated reference.
+
+   ⚠️ THE PULSE RING MUST EXIST ON ALL THREE OR focusJobAnchor IS SILENT.
+   ringAnchor adds .ff-pulse and the dashboards scoped the keyframes rule to
+   their own sheet, so Admin -- which never copied the rule -- applied the
+   class to an element with no animation attached and no error anywhere. That
+   is the absence class of defect this codebase keeps getting bitten by: the
+   class lands, nothing throws, and the ring just never appears. It is here
+   now, once, so a dashboard cannot forget it.
+
+   The radius is Client's 12px. Contractor's 10px was not a decision either.
+
+   ⚠️ WHY THE BLANKET BUTTON RULES CARRY :not(.ffu-btn). The three .ffdash
+   copies style EVERY button inside the dashboard, and .ffdash button is
+   specificity (0,0,1,1) against .ffu-btn's (0,0,1,0) -- so before this change
+   a shared Button mounted on a dashboard silently LOST its own transition,
+   its own hover and its own disabled opacity to the page's sheet, and gained
+   a brightness filter stacked on top of the variant hover it already had.
+   Nothing looked broken, which is why it survived the first port.
+
+   Excluding the primitive is the resolution Button.tsx asks for in its own
+   docblock: the goal was one copy instead of four, and a button that settles
+   differently depending on whether it came from the primitive or from the
+   page's sheet is the exact thing a shared primitive exists to prevent. So
+   the primitive now owns its feel on the dashboards too, which means ported
+   buttons DO get the --ff-ease-spring release. That resolves the divergence
+   Button.tsx flagged as open, in the only direction that leaves one copy.
+   What it does NOT do is change the hand-rolled buttons: they keep
+   transform .16s var(--ff-ease-out) with .1s on the downstroke, byte-identical
+   to what the three sheets carried, which is what CLAUDE.md requires of them.
+
+   The press lives here now rather than in three inline blocks, so
+   byte-identical is STRUCTURAL instead of an obligation someone has to keep
+   remembering. Do not copy it back into a page. */
+.ffdash{
+  min-height:100vh;
+  background: var(--ff-bg);
+  background-image:
+    radial-gradient(ellipse 60% 30% at 80% -6%, rgba(var(--ff-accent-rgb), 0.16) 0%, transparent 70%),
+    radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px);
+  background-size: auto, 22px 22px;
+  background-attachment: fixed;
+  font-family:'DM Sans', sans-serif;
+  color: var(--ff-text);
+}
+.ffdash button:not(.ffu-btn){
+  transition: filter .16s var(--ff-ease-out), transform .16s var(--ff-ease-out), opacity .16s var(--ff-ease-out);
+}
+.ffdash button:not(.ffu-btn):hover:not(:disabled){ filter:brightness(1.09); }
+.ffdash button:not(.ffu-btn):active:not(:disabled){ transform:scale(0.97); transition-duration:.1s; }
+.ffdash button:not(.ffu-btn):disabled{ opacity:.55; cursor:not-allowed; }
+.ffdash .ff-pulse{
+  outline:2px solid rgba(var(--ff-accent-rgb), .75);
+  outline-offset:6px; border-radius:12px;
+  animation: ff-pulse-ring 1.5s ease-out 3;
+}
+/* ⚠️ The keyframes were defined ONLY inside ClientDashboard's and
+   ContractorDashboard's own style blocks. An @keyframes is document-global, so
+   the two copies were identical and redundant -- and Admin, which had neither
+   the rule above nor these frames, was the one surface where ringAnchor did
+   nothing. Keeping the frames beside the rule that is their only consumer is
+   what stops that recurring. */
+@keyframes ff-pulse-ring{
+  0%{ box-shadow:0 0 0 0 rgba(var(--ff-accent-rgb), .55); background: rgba(var(--ff-accent-rgb), .14); }
+  70%{ box-shadow:0 0 0 12px rgba(var(--ff-accent-rgb), 0); background: rgba(var(--ff-accent-rgb), .05); }
+  100%{ box-shadow:0 0 0 0 rgba(var(--ff-accent-rgb), 0); background: rgba(var(--ff-accent-rgb), 0); }
+}
+@media (prefers-reduced-motion: reduce){
+  .ffdash .ff-pulse{ animation:none; background: rgba(var(--ff-accent-rgb), .12); }
+}
+
+/* The content column. ONE padding for all three (Client's), and one width,
+   with a single documented opt-out: Admin's list tabs render tables of
+   accounts and jobs that genuinely need the room, so DashContent takes a
+   wide prop rather than Admin keeping its own column. An opt-out with a
+   stated reason is a different thing from three defaults nobody chose. */
+.ffd-col{
+  max-width: 800px; margin: 0 auto;
+  padding: clamp(1rem, 4vw, 1.5rem);
+}
+.ffd-col.ffd-wide{ max-width: 1040px; }
+
+/* The card. Client's geometry. This is the surface a page uses when its
+   content is NOT a list of rows -- a list of rows is a Sheet, and reaching
+   for a card where a Sheet fits is how the dashboards ended up as a pile of
+   differently-padded boxes in v1. */
+.ffd-card{
+  background: var(--ff-card-bg);
+  border: var(--ff-hair-w) solid var(--ff-card-border);
+  border-radius: var(--ff-r3);
+  padding: clamp(1rem, 4vw, 1.5rem);
+  margin-bottom: var(--ff-s6);
+}
+.ffd-cardtitle{
+  font-family:'Bebas Neue', sans-serif;
+  font-size:1.2rem; letter-spacing:.06em; line-height:1.1;
+  color: var(--ff-accent-500);
+  margin-bottom: var(--ff-s5);
+}
+
+/* ═══ the tab strip ═══════════════════════════════════════════════════════
+   Pill chips, because Client is the reference and because the pills read the
+   control height token -- so they clear the 48px touch floor that the
+   pointer:coarse block in main.tsx sets, which Contractor's underline bar
+   (.85rem of vertical padding, no min-height) did not. That bar was a tap
+   floor violation on every phone and was invisible on a Mac.
+
+   overflow-x on the strip, not on html/body -- CLAUDE.md forbids the latter
+   because it breaks position:sticky, which the sidebar depends on. The
+   scrollbar is hidden because a strip of six chips that fits on desktop and
+   scrolls on a phone should not grow a visible track on the phone. */
+.ffd-tabs{
+  display:flex; gap: var(--ff-s2);
+  margin-bottom: var(--ff-s6);
+  flex-wrap: wrap;
+}
+.ffd-tab{
+  min-height: var(--ff-h-ctl);
+  padding: 0 var(--ff-s4);
+  background: transparent;
+  border: var(--ff-hair-w) solid var(--ff-hair);
+  border-radius: var(--ff-r2);
+  color: rgba(var(--ff-muted), .7);
+  cursor: pointer;
+  font-family:'Bebas Neue', sans-serif;
+  font-size:.85rem; letter-spacing:.09em;
+  display:inline-flex; align-items:center; gap: var(--ff-s2);
+  white-space: nowrap;
+}
+.ffd-tab.ffd-on{
+  background: var(--ff-accent-soft);
+  border-color: var(--ff-accent-line);
+  color: var(--ff-text);
+}
+/* The count on a tab. Neutral, never accent: a strip where four chips each
+   carry an orange number spends the one-orange-per-screen budget four times
+   over, and the state line has first claim on it. */
+.ffd-tab i{
+  font-style: normal; font-size:.72rem;
+  padding: 0 .4em; min-width: 1.5em;
+  border-radius: 99px;
+  background: rgba(var(--ff-fg), .08);
+  color: rgba(var(--ff-muted), .9);
+}
+.ffd-tab.ffd-on i{ background: rgba(var(--ff-accent-rgb), .18); color: var(--ff-text); }
+
+/* ═══ the sidebar section caption ═════════════════════════════════════════
+   Admin had twelve flat nav items, which is a 12-way decision every time the
+   owner opens the page. Four captioned groups make it four smaller ones.
+   Bebas at this size with this tracking is the same treatment as .ffu-grplbl,
+   because it is the same thing: a caption over a group of rows. */
+.ffd-navsec{
+  font-family:'Bebas Neue', sans-serif;
+  font-size:.7rem; letter-spacing:.14em;
+  color: rgba(var(--ff-muted), .55);
+  padding: var(--ff-s4) var(--ff-s3) var(--ff-s2);
+  margin: 0;
+}
+.ffd-navsec.ffd-first{ padding-top: var(--ff-s2); }
+/* Collapsed to the icon rail there is no room for the words, so the caption
+   becomes the hairline it already implies. Hiding it outright would merge
+   four groups into one undifferentiated column of twelve icons, which is the
+   problem the sections exist to solve. */
+.ffd-navsec.ffd-rail{
+  height: var(--ff-hair-w); padding:0; margin: var(--ff-s3) auto;
+  width: 60%; background: var(--ff-hair);
+  overflow: hidden; text-indent: -999em;
+}
 `;
 
 /** Injects the ui/ stylesheet once per document. Idempotent and SSR-safe. */

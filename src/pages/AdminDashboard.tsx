@@ -22,34 +22,124 @@ import { searchTokens, matchesSearch } from "@/lib/dashSearch";
 import { getDismissals, dismiss as dismissKey } from "@/lib/dismissals";
 import VerifyCodeModal from "@/components/VerifyCodeModal";
 import { mfaOwed } from "@/lib/mfa";
+// The shared dashboard primitives. Admin was the last of the three dashboards
+// to hand-roll all of its chrome in a local `s` style object; see Dash.tsx for
+// what each of these replaced and how far the three had drifted.
+import {
+  DashShell, DashContent, DashCard,
+  Pass, PassTop, Hero, HeroSub, PassMeta, PassMetaItem,
+  StateLine, Group, Sheet, Row, Pill, Button, AttentionCard,
+} from "@/components/ui";
 
 // Re-signup flagging is computed server-side by admin_resignup_matches().
 // The Accounts tab lists every auth user (via admin_list_accounts) so the admin
 // can see full details and fully delete any account (admin-delete-account edge
 // fn wipes jobs, requests, messages, reviews, storage + the login).
 
+/**
+ * ADMIN_NAV is the ROUTING truth and must stay complete. `applyDashNav` below
+ * validates an incoming deep link against this array (`ADMIN_NAV.some(i =>
+ * i.key === d.tab)`), so an item removed from here stops being reachable from a
+ * notification even though its tab body still exists. Never trim this array to
+ * tidy the sidebar; trim `visibleNav()` instead.
+ *
+ * ── THE FOUR SECTIONS, and why the ORDER of the array is load-bearing ────
+ * Twelve flat items is a twelve-way decision every time the admin looks at the
+ * rail (Hick). Four captioned groups make it one four-way decision and then one
+ * small one. The captions answer "what am I here to do":
+ *
+ *   OPERATE  the day's work — requests in, jobs running, picks, flagged chat,
+ *            disputes. Everything here is something a human works THROUGH.
+ *   MONEY    money the platform is holding that isn't a job yet.
+ *   GROW     pipeline — leads, and the agents that propose work on them.
+ *   SYSTEM   the platform itself and the record of what was done to it.
+ *
+ * ⚠️ DashboardSidebar groups by FIRST APPEARANCE — it walks the array and opens
+ * a new group whenever `section` differs from the previous item's. So a section
+ * whose items are not CONTIGUOUS here renders as two groups with the same
+ * caption. If you add an item, insert it inside its section's run; do not
+ * append it at the end with the right `section` string and assume that works.
+ *
+ * Operate leads because that is what an admin opens the dashboard to do, and
+ * System is last because it is the thing you go to deliberately rather than the
+ * thing you were already doing (Serial Position: the ends of a list are what
+ * gets seen, so the daily work and the settings sit at them).
+ */
 const ADMIN_NAV: SidebarItem[] = [
-  { key: "health",   label: "Health",   icon: "check" },
-  { key: "platform", label: "Platform", icon: "settings" },
-  { key: "requests", label: "Requests", icon: "clipboard-list" },
-  { key: "jobs",     label: "Jobs",     icon: "briefcase" },
-  { key: "picks",    label: "Picks",    icon: "star" },
-  { key: "accounts", label: "Accounts", icon: "user" },
-  { key: "flagged",  label: "Flagged chat", icon: "message-square" },
-  { key: "disputes", label: "Disputes", icon: "alert-triangle" },
-  { key: "prepaid",  label: "Prepaid",  icon: "dollar" },
-  { key: "leads",    label: "Leads",    icon: "user-check" },
-  // Agents — the background workers' proposal queue. Sits here, before Activity,
-  // because it IS something to work through: nothing an agent produces reaches a
-  // client, a contractor, a social account or `main` until it is approved here.
-  // `sparkles` because Ic has no bot or cpu glyph and a missing glyph renders
-  // BLANK rather than erroring.
-  { key: "agents",   label: "Agents",   icon: "sparkles" },
+  { key: "requests", label: "Requests", icon: "clipboard-list", section: "Operate" },
+  { key: "jobs",     label: "Jobs",     icon: "briefcase",      section: "Operate" },
+  { key: "picks",    label: "Picks",    icon: "star",           section: "Operate" },
+  { key: "flagged",  label: "Flagged chat", icon: "message-square", section: "Operate" },
+  { key: "disputes", label: "Disputes", icon: "alert-triangle", section: "Operate" },
+  { key: "prepaid",  label: "Prepaid",  icon: "dollar",         section: "Money" },
+  { key: "leads",    label: "Leads",    icon: "user-check",     section: "Grow" },
+  // Agents — the background workers' proposal queue. Sits in Grow, beside the
+  // leads it proposes against, because it IS something to work through: nothing
+  // an agent produces reaches a client, a contractor, a social account or `main`
+  // until it is approved here. `sparkles` because Ic has no bot or cpu glyph and
+  // a missing glyph renders BLANK rather than erroring.
+  { key: "agents",   label: "Agents",   icon: "sparkles",       section: "Grow" },
+  { key: "health",   label: "Health",   icon: "check",          section: "System" },
+  { key: "platform", label: "Platform", icon: "settings",       section: "System" },
+  { key: "accounts", label: "Accounts", icon: "user",           section: "System" },
   // Last, because it is read-after-the-fact rather than something to work
   // through. `clock` because Ic has no shield or history glyph and a missing
   // glyph renders BLANK rather than erroring.
-  { key: "activity", label: "Activity", icon: "clock" },
+  { key: "activity", label: "Activity", icon: "clock",          section: "System" },
 ];
+
+/**
+ * Which rail items to SHOW. Modelled on ClientDashboard's `visibleNav()`, and
+ * for the same reason: an item that opens an empty state is worse than no item,
+ * because it costs a decision on every visit and pays nothing back.
+ *
+ * ── THE SPLIT ───────────────────────────────────────────────────────────
+ * ALWAYS VISIBLE — the seven surfaces whose empty state is itself the answer,
+ * or that the admin must be able to reach when there is nothing in them:
+ *   Requests, Jobs, Accounts  the platform's three core lists. "No requests
+ *                             today" is information; a missing Requests tab is
+ *                             an admin wondering where requests went.
+ *   Health, Platform          the controls. Platform in particular is how the
+ *                             site is paused and re-armed, and the moment you
+ *                             need it most is an incident — exactly when a
+ *                             count-driven rule might have hidden it.
+ *   Activity                  the audit trail. Append-only, no clear button,
+ *                             and it must never look optional.
+ *   Agents                    the roster is DECLARED, so an agent that has
+ *                             never run is still listed. Hiding the tab on an
+ *                             empty queue would hide the only surface that can
+ *                             tell you an agent is silently not running — you
+ *                             cannot query an absence.
+ *
+ * EARNED — appears the moment it has rows, disappears when it is cleared:
+ *   Picks, Flagged chat, Disputes, Prepaid, Leads. All five are exception
+ *   queues. Disputes has never had a row on this platform; Picks and Flagged
+ *   chat are usually zero. Five permanently-empty items in a rail of twelve is
+ *   how the rail stopped being read.
+ *
+ * The counts come from the ones already computed for the badges — one source,
+ * so a visible item can never show a badge the filter disagreed with.
+ *
+ * ⚠️ `active` is always shown, and that is not a nicety. A notification deep
+ * link can land on an earned tab whose rows have since been cleared — a dispute
+ * resolved, a held request released — and the body still renders. Without this
+ * the admin would be looking at the Disputes tab with nothing highlighted in
+ * the rail and no way back to it. The filter decides what to OFFER; it must
+ * never contradict where you already are.
+ */
+function visibleNav(opts: {
+  active: string;
+  picks: number; flagged: number; disputes: number; prepaid: number; leads: number;
+}): SidebarItem[] {
+  const show = new Set<string>(["requests", "jobs", "accounts", "health", "platform", "activity", "agents"]);
+  if (opts.picks > 0)    show.add("picks");
+  if (opts.flagged > 0)  show.add("flagged");
+  if (opts.disputes > 0) show.add("disputes");
+  if (opts.prepaid > 0)  show.add("prepaid");
+  if (opts.leads > 0)    show.add("leads");
+  show.add(opts.active);
+  return ADMIN_NAV.filter(it => show.has(String(it.key)));
+}
 
 /**
  * What each admin list is searched against — one definition per list, so the
@@ -380,11 +470,16 @@ export default function AdminDashboard() {
   const pager = (which: "requests"|"jobs") => (
     counts[which] > PAGE_SIZE ? (
       <div style={{ display:"flex", gap:".75rem", alignItems:"center", justifyContent:"center", marginTop:"1.25rem" }}>
-        <button style={{ ...s.btn, opacity: page[which] <= 0 ? .4 : 1 }} disabled={page[which] <= 0}
-          onClick={() => setPage(p => ({ ...p, [which]: Math.max(0, p[which] - 1) }))}>← Prev</button>
+        {/* The inline `opacity` the old buttons carried is GONE on purpose: the
+            shared `.ffdash .ffu-btn:disabled` rule dims a disabled button, so
+            the literal was a second, competing answer to the same question —
+            and an inline style beats the sheet, so the page's number would have
+            won and the primitive's would never have applied. */}
+        <Button disabled={page[which] <= 0}
+          onClick={() => setPage(p => ({ ...p, [which]: Math.max(0, p[which] - 1) }))}>← Prev</Button>
         <span style={{ color:"rgba(var(--ff-muted), .6)", fontSize:".82rem" }}>Page {page[which] + 1} of {pageCount(which)}</span>
-        <button style={{ ...s.btn, opacity: page[which] >= pageCount(which) - 1 ? .4 : 1 }} disabled={page[which] >= pageCount(which) - 1}
-          onClick={() => setPage(p => ({ ...p, [which]: p[which] + 1 }))}>Next →</button>
+        <Button disabled={page[which] >= pageCount(which) - 1}
+          onClick={() => setPage(p => ({ ...p, [which]: p[which] + 1 }))}>Next →</Button>
       </div>
     ) : null
   );
@@ -884,51 +979,61 @@ export default function AdminDashboard() {
     } finally { setBusyRelease(false); }
   };
 
-  // ── Retargeted onto the token scale on 2026-10-30, and broken onto separate
-  // lines in the same pass ────────────────────────────────────────────────────
-  // This was ONE 1,400-character line, which meant any future edit to a single
-  // style here produced a diff of the entire object and could not be reviewed.
-  // The values moved onto the --ff-* scale; nothing was added or removed, and
-  // `tabs`/`title`/`meta`/`badge` keep their geometry exactly.
+  // ── What is left of the local `s` object ───────────────────────────────────
   //
-  // The theme lands on all 51 call sites (33 × btn, 17 × card, 1 × tab) without
-  // touching a line of JSX. The structural port onto the shared primitives in
-  // src/components/ui is still owed on this page — nothing here has reached it
-  // yet — and is deliberately a separate change.
+  // This was twelve keys re-deriving the whole dashboard chrome: `wrap`,
+  // `header`, `content`, `tabs`, `tab`, `activeTab`, `card` and `title` are now
+  // <DashShell>, <Pass>, <DashContent> and <DashCard>, and `logo` was already
+  // dead with zero call sites. The values here had drifted from Client's in
+  // every dimension that decides whether the three read as one product — a
+  // 1000px column against 800, --ff-r2 and --ff-s5 against --ff-r3 and
+  // clamp(1rem,4vw,1.5rem), and a .95rem weight-500 card title where Client
+  // uses the Bebas accent caption. None of those differences was ever decided.
   //
-  // ⚠️ Inline styles cannot express :hover/:active/:disabled, and must not try.
-  // `.ffdash button` below carries all three for every button on the page; an
-  // inline `opacity` here would beat it and freeze the disabled state.
+  // TWO KEYS SURVIVE, and each one is a TEXT style rather than a piece of
+  // chrome, which is why no primitive replaced it. `badge` is now every <Pill>
+  // and `btn` is now every <Button>, so both are gone.
+  //
+  //   `title` is the ITEM NAME at the top of a per-item card, and ⚠️ it was
+  //          deliberately NOT ported to <DashCard title=…>. That prop renders
+  //          `.ffd-cardtitle`, which is the Bebas accent caption — i.e. ORANGE
+  //          (uiStyles.ts:852, `color: var(--ff-accent-500)`). There are twenty
+  //          of these cards on this page, so using it would paint twenty orange
+  //          headings and spend the one-orange-per-screen budget twenty times
+  //          over. That is precisely the state the old dashboards were in,
+  //          where nothing read as important because everything did. So
+  //          `DashCard`'s `title` prop goes UNUSED on this page: Admin has no
+  //          one-per-section caption that a <Group> label does not already do
+  //          better, and the Group label is the neutral shared caption.
+  //   `meta` is the metadata line inside a card (icon + one fact). The
+  //          primitives have no equivalent — <Row>'s `sub` is one line, and
+  //          these cards stack four to six of them.
+  //
+  // ⚠️ Neither may grow an interactive state. Inline styles cannot express
+  // :hover/:active/:disabled, and the shared sheet's
+  // `.ffdash button:not(.ffu-btn)` carries all three for every raw button left
+  // on the page; an inline `opacity` here would beat it and freeze the
+  // disabled state. That is why the pager's hand-written `opacity` is gone.
   const s = {
-    wrap: { minHeight:"100vh", background:"var(--ff-bg)", backgroundImage:"radial-gradient(ellipse 60% 30% at 80% -6%, rgba(var(--ff-accent-rgb), 0.16) 0%, transparent 70%), radial-gradient(rgba(var(--ff-fg), 0.025) 1px, transparent 1px)", backgroundSize:"auto, 22px 22px", backgroundAttachment:"fixed", fontFamily:"'DM Sans',sans-serif", color:"var(--ff-text)" },
-    header: { background:"var(--ff-card-bg)", borderBottom:"var(--ff-hair-w) solid var(--ff-hair)", padding:"var(--ff-s4) var(--ff-s6)", display:"flex", justifyContent:"space-between", alignItems:"center" },
-    logo: { fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.4rem", letterSpacing:".1em" },
-    content: { maxWidth:"1000px", margin:"0 auto", padding:"clamp(1rem, 4vw, 2rem) clamp(.75rem, 3vw, 1.5rem)" },
-    tabs: { display:"flex", gap:"var(--ff-s2)", marginBottom:"var(--ff-s6)", flexWrap:"wrap" as const },
-    tab: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s4)", background:"transparent", border:"var(--ff-hair-w) solid var(--ff-hair)", borderRadius:"var(--ff-r2)", color:"rgba(var(--ff-muted), .7)", cursor:"pointer", fontFamily:"'Bebas Neue',sans-serif", fontSize:".85rem", letterSpacing:".09em" },
-    activeTab: { background:"var(--ff-accent-soft)", borderColor:"var(--ff-accent-line)", color:"var(--ff-text)" },
-    card: { background:"var(--ff-card-bg)", border:"var(--ff-hair-w) solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", padding:"var(--ff-s5)", marginBottom:"var(--ff-s4)" },
     title: { fontSize:".95rem", fontWeight:500, color:"var(--ff-text)", marginBottom:".35rem" },
     meta: { fontSize:".78rem", color:"rgba(var(--ff-muted), .5)", marginBottom: "var(--ff-s1)" },
-    badge: { fontSize:".75rem", fontWeight:500, color:"var(--ff-accent-500)" },
-    btn: { minHeight:"var(--ff-h-ctl)", padding:"0 var(--ff-s4)", background:"var(--ff-card-bg)", border:"var(--ff-hair-w) solid var(--ff-card-border)", borderRadius:"var(--ff-r2)", color:"var(--ff-text)", fontFamily:"'Bebas Neue',sans-serif", fontSize:".88rem", letterSpacing:".09em", cursor:"pointer" },
   };
 
-  // Shaped like the admin chrome: header bar, tab strip, then the 1000px
-  // content column of cards. Same reason as the other two dashboards -- the
-  // real tabs land where the placeholder chips are, so nothing jumps.
+  // Shaped like the ported chrome: the nav spacer, then the shared content
+  // column of cards. Same reason as the other two dashboards — the real
+  // content lands where the placeholders are, so nothing jumps. The skeleton
+  // mounts <DashShell> too, so it gets the same page ground as the real page
+  // rather than a second hand-rolled copy of it.
   if (loading) return (
-    <div style={s.wrap}>
-      <div style={s.header} aria-hidden="true"><Sk w={150} h={20} /><Sk w={96} h={30} r={8} /></div>
-      <div style={s.content} aria-busy="true">
+    <DashShell>
+      <div style={{ height: "var(--ff-topnav-h)" }} />
+      <DashContent wide busy>
         <span className="ff-sr-only">Loading the admin dashboard</span>
-        <div style={{ ...s.tabs, gap:".5rem" }} aria-hidden="true">
-          {Array.from({ length: 8 }).map((_, i) => <Sk key={i} w={92} h={36} r={8} />)}
-        </div>
+        <div aria-hidden="true" style={{ marginBottom:"var(--ff-s5)" }}><Sk w={220} h={28} r={8} /></div>
         <div style={{ display:"grid", gap:"1rem" }}><SkCard /><SkCard /><SkCard /></div>
         <StalledNotice />
-      </div>
-    </div>
+      </DashContent>
+    </DashShell>
   );
 
   const roleChip = (role?: string) => {
@@ -940,7 +1045,19 @@ export default function AdminDashboard() {
   const openDisputes = disputes.filter(d => d.status === "open").length;
   const newLeads = leads.filter(l => l.status === "new").length;
   const healthAlerts = health ? ((health.no_bid_count||0) + (health.awaiting_confirm_count||0) + (health.awaiting_approval_count||0) + (health.stale_disputes_count||0)) : 0;
-  const navItems: SidebarItem[] = ADMIN_NAV.map(it => ({
+  // The badge counts and the visibility filter read the SAME numbers, so a
+  // visible item can never carry a badge the filter disagreed with. Leads uses
+  // `leads.length` for visibility and `newLeads` for the badge on purpose: the
+  // tab is earned by having any lead at all, but the badge counts only the ones
+  // nobody has looked at yet.
+  const navItems: SidebarItem[] = visibleNav({
+    active: tab,
+    picks: picks.length,
+    flagged: chatFlags.length,
+    disputes: openDisputes,
+    prepaid: prepays.length,
+    leads: leads.length,
+  }).map(it => ({
     ...it,
     badge: it.key === "health"   ? (healthAlerts || undefined)
          : it.key === "platform" ? (heldReqs.length || undefined)
@@ -1004,11 +1121,104 @@ export default function AdminDashboard() {
   const toggleSelect = (id: string) =>
     setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
+  // ── What needs an admin ────────────────────────────────────────────────────
+  //
+  // Derived ONCE and read by both the pass and the attention card, so the navy
+  // block can never say "all clear" above a list of three things to do. Same
+  // reason ClientDashboard hoists `attnRows` above its pass.
+  //
+  // ⚠️ Every count here is an existing one, re-read rather than re-queried. A
+  // second query would be a second answer, and the rail's badges, the pass and
+  // this list would start disagreeing about the same number.
+  const pendingAgentCount = agentActions.filter((a:any) => a.status === "pending").length;
+  const adminAttn: { key:string; icon:any; tone:any; title:string; sub:string; cta:string; tab:string }[] = [
+    // MONEY FIRST, and the order is the whole point of a capped list. An open
+    // dispute freezes a payout — `resolve-dispute` is the only thing that
+    // un-freezes it — so it outranks everything below even when there are more
+    // of them. The card renders three rows; what gets cut is decided here.
+    openDisputes > 0 ? {
+      key:"disputes", icon:"alert-triangle" as const, tone:"accent" as const,
+      title: openDisputes === 1 ? "1 open dispute" : openDisputes + " open disputes",
+      sub:"Money on these jobs stays held until you resolve them.",
+      cta:"Review", tab:"disputes",
+    } : null,
+    // Also money, one step further back: a held request has reached nobody, so
+    // no bid, no job and no charge can happen on it at all.
+    heldReqs.length > 0 ? {
+      key:"held", icon:"clipboard-list" as const, tone:"accent" as const,
+      title: heldReqs.length === 1 ? "1 request held" : heldReqs.length + " requests held",
+      sub:"These came in while the site was paused and have not reached a single pro.",
+      cta:"Release", tab:"platform",
+    } : null,
+    healthAlerts > 0 ? {
+      key:"health", icon:"check" as const, tone:"warn" as const,
+      title: healthAlerts === 1 ? "1 overdue item" : healthAlerts + " overdue items",
+      sub:"Requests with no bids, or jobs waiting on a client past the normal window.",
+      cta:"Open", tab:"health",
+    } : null,
+    pendingAgentCount > 0 ? {
+      key:"agents", icon:"sparkles" as const, tone:"warn" as const,
+      title: pendingAgentCount === 1 ? "1 agent proposal waiting" : pendingAgentCount + " agent proposals waiting",
+      sub:"Nothing an agent drafted leaves the platform until you approve it.",
+      cta:"Review", tab:"agents",
+    } : null,
+  ].filter(Boolean) as any[];
+
+  /**
+   * The pass. Admin's states PLATFORM state, not navigation — the rail already
+   * answers "where can I go", and everything in here is a condition.
+   *
+   * ⚠️ THE ORANGE RULE. `turn` is the only branch that paints orange and there
+   * is exactly one of those, gated on `adminAttn.length` — the same list the
+   * card below renders, so the orange appears if and only if there is something
+   * in it. A quiet platform has no orange on this screen anywhere, and that
+   * absence is what makes the orange legible on the days there is something.
+   * `paused` is `review` (amber) rather than a softer orange: the site being
+   * paused is a state the admin chose, not a thing waiting on him.
+   *
+   * No `accent` on the meta strip for the same budget reason — three counts are
+   * metadata, and the state line has first claim on the one accent.
+   */
+  const pass = (() => {
+    const n = adminAttn.length;
+    if (n > 0) return {
+      state: "turn" as const,
+      label: n === 1 ? "1 THING NEEDS YOU" : n + " THINGS NEED YOU",
+      hero: adminAttn[0].title + " — " + adminAttn[0].sub,
+      sub: n > 1 ? "The rest are listed below." : "",
+    };
+    if (platMode !== "open") return {
+      state: "review" as const,
+      label: platMode === "waitlist" ? "WAITLIST MODE" : "SITE PAUSED",
+      hero: platMode === "waitlist"
+        ? "The site is taking waitlist signups and holding new requests."
+        : "The site is paused. Outbound email is suppressed and new requests are held.",
+      sub: "Re-arm everything from Platform when you are ready.",
+    };
+    return {
+      state: "ok" as const,
+      label: "ALL CLEAR",
+      hero: "Nothing is overdue, disputed or waiting on you.",
+      sub: "",
+    };
+  })();
+
   return (
-    <div style={s.wrap} className="ffdash">
-      <style>{".ffdash button{transition:filter .16s var(--ff-ease-out), transform .16s var(--ff-ease-out), opacity .16s var(--ff-ease-out)} .ffdash button:hover:not(:disabled){filter:brightness(1.09)} .ffdash button:active:not(:disabled){transform:scale(0.97); transition-duration:.1s} .ffdash button:disabled{opacity:.55; cursor:not-allowed}"}</style>
+    <DashShell>
+      {/* ⚠️ The page's own `<style>{".ffdash button{…}"}</style>` block was
+          DELETED here, and deleting it is the point of the port rather than
+          tidying after it. The shared sheet carries the same press scoped as
+          `.ffdash button:not(.ffu-btn)`; the page's copy was unscoped, and
+          `.ffdash button` (0,0,1,1) outranks `.ffu-btn` (0,0,1,0), so leaving
+          it would have silently re-overridden the transition, hover filter and
+          disabled opacity of every <Button> ported below — the primitives
+          would still render, and would just not behave like primitives. */}
       <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
-      <div style={{ height: "3.75rem" }} />
+      {/* Clears the fixed TopNav. The height is MEASURED and published by
+          TopNav on :root — the old hardcoded 3.75rem was one of three
+          disagreeing constants and went stale the moment the nav's breakpoint
+          or the user's text size moved it. */}
+      <div style={{ height: "var(--ff-topnav-h)" }} />
       <div style={{ display:"flex", alignItems:"flex-start" as const }}>
         <DashboardSidebar
           items={navItems}
@@ -1018,19 +1228,32 @@ export default function AdminDashboard() {
         />
         <div style={{ flex:1, minWidth:0 }}>
 
-      <div style={s.header}>
-        <div>
-          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.7rem", letterSpacing:".02em", margin:0, lineHeight:1.1 }}>
-            Welcome{me?.first_name ? ", " + me.first_name : ""} <span style={{ fontSize:".6rem", background:"var(--ff-c10)", color:"#fff", borderRadius:"4px", padding:".15rem .45rem", verticalAlign:"middle", letterSpacing:".05em" }}>ADMIN</span>
-          </h1>
-          <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .6)", marginTop: "var(--ff-s1)" }}>Manage requests, jobs, accounts and disputes.</div>
-        </div>
+      {/* ── The pass ──────────────────────────────────────────────────────────
+          Replaces a hand-rolled header bar whose h1 carried an "ADMIN" chip on
+          a raw `var(--ff-c10)` background — a permanent second orange on every
+          screen, spent on a label that told the admin something he knew. The
+          pass spends it at most once, on a condition.
+
+          `lead` replaces the mark: TopNav already carries the logo three rems
+          above this, and PassTop would otherwise draw it twice. */}
+      <div style={{ margin:"0 var(--ff-s4) var(--ff-s5)", borderRadius:"var(--ff-r4)", overflow:"hidden", boxShadow:"var(--ff-lift-3)" }}>
+        <Pass>
+          <PassTop lead={<span className="ffu-wordmark">{me?.first_name ? "HI, " + String(me.first_name).toUpperCase() : "ADMIN"}</span>} />
+          <StateLine state={pass.state} pulse={pass.state === "turn"}>{pass.label}</StateLine>
+          <Hero>{pass.hero}</Hero>
+          {pass.sub && <HeroSub>{pass.sub}</HeroSub>}
+          <PassMeta>
+            <PassMetaItem label="Requests" value={counts.requests} />
+            <PassMetaItem label="Jobs" value={counts.jobs} />
+            <PassMetaItem label="Accounts" value={accounts.length} />
+          </PassMeta>
+        </Pass>
       </div>
 
       {loadError && !hiddenNow.has("loadError") && (
-        <div style={{ margin:"1rem 1.5rem 0", padding:".8rem 1rem", background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.4)", borderRadius:"10px", display:"flex", alignItems:"center", gap:".75rem", flexWrap:"wrap" }}>
+        <div style={{ margin:"1rem 1.5rem 0", padding:".8rem 1rem", background:"rgba(239,68,68,.1)", border:"var(--ff-hair-w) solid rgba(239,68,68,.4)", borderRadius:"10px", display:"flex", alignItems:"center", gap:".75rem", flexWrap:"wrap" }}>
           <span style={{ fontSize:".85rem", color:"var(--ff-text)", flex:1, minWidth:0 }}>{loadError}</span>
-          <button style={{ ...s.btn, borderColor:"rgba(239,68,68,.5)" }} onClick={() => loadAll()}>Retry</button>
+          <Button onClick={() => loadAll()} style={{ borderColor:"rgba(239,68,68,.5)" }}>Retry</Button>
           {/* Session-only, and deliberately not persisted. This names a real
               fault whose text changes with the fault — dismissing it forever
               would silence a DIFFERENT failure later. `loadAll` clears and
@@ -1039,8 +1262,27 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      <div style={s.content} className={tabAnim}>
+      {/* `wide` is the documented opt-out from the shared 800px column, and
+          Admin's list tabs are what it exists for — Accounts and Jobs render
+          tables of people and money that genuinely need the room. */}
+      <DashContent wide className={tabAnim}>
         <ProfileBar role="admin" />
+
+        {/* <AttentionCard> caps the render at `max` and returns null on an
+            empty list, so there is no length check here. The rows are ordered
+            money-first in `adminAttn`; what the cap cuts is decided there. */}
+        <AttentionCard max={3}>
+          {adminAttn.map(a => (
+            <Row
+              key={a.key}
+              icon={a.icon}
+              tone={a.tone}
+              title={a.title}
+              sub={a.sub}
+              right={<Button variant="primary" onClick={() => { setTab(a.tab as any); window.scrollTo({ top: 0, behavior: "smooth" }); }}>{a.cta}</Button>}
+            />
+          ))}
+        </AttentionCard>
 
         {tab === "requests" && (() => {
           const tokens = searchTokens(search);
@@ -1065,12 +1307,16 @@ export default function AdminDashboard() {
               </p>
             )}
             {shown.map(r => (
-              <div key={r.id} style={s.card}>
+              <DashCard key={r.id}>
                 <div style={s.title}>{r.service_needed}</div>
                 <div style={s.meta}><Ic name="user" size={13} style={{ marginRight:4 }} />{r.first_name} {r.last_name} · <Ic name="phone" size={13} style={{ marginRight:4, marginLeft:4 }} />{r.phone}</div>
                 <div style={s.meta}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{r.location} · <Ic name="timer" size={13} style={{ marginRight:4, marginLeft:4 }} />{r.preferred_schedule}</div>
                 <div style={s.meta}>{r.job_description}</div>
-                <div style={{ ...s.badge, marginTop:".5rem" }}>● {r.status}</div>
+                {/* Was `s.badge` — a raw --ff-accent-500 chip on EVERY request
+                    row. A request's status is plain metadata with no urgency,
+                    which is exactly what "neutral" is for, and neutral is the
+                    right answer far more often than it feels like it is. */}
+                <div style={{ marginTop:".5rem" }}><Pill tone="neutral">{r.status}</Pill></div>
                 {/* Bid history stays visible AFTER the pick — the winner is marked and the
                     others are dimmed, so it's obvious who the client chose and who they passed on. */}
                 {(bidsBy[r.id]?.length ?? 0) > 0 && (() => {
@@ -1119,13 +1365,16 @@ export default function AdminDashboard() {
                   {/* Only for requests still taking bids — dispatch-job refuses anything
                       else, so offering the button there would be a dead control. */}
                   {r.status === "pending" && (
-                    <button style={{ ...s.btn, color:"var(--ff-c10)", borderColor:"rgba(var(--ff-accent-rgb), .35)", background:"rgba(var(--ff-accent-rgb), .08)" }}
-                      disabled={busyRefire === r.id} onClick={() => refireRequest(r)}>
+                    // Was an orange-tinted raw button, on every pending request
+                    // in the list. `secondary` rather than `primary` on purpose:
+                    // there are twenty of these on screen, and twenty primaries
+                    // is no primary at all.
+                    <Button disabled={busyRefire === r.id} onClick={() => refireRequest(r)}>
                       <Ic name="mail" size={13} style={{ marginRight:4 }} />
                       {busyRefire === r.id ? "Sending…" : "Re-send to contractors"}
-                    </button>
+                    </Button>
                   )}
-                  <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyDelete} onClick={() => deleteRequest(r)}><Ic name="trash" size={13} style={{ marginRight:4 }} />Delete request</button>
+                  <Button variant="danger" disabled={busyDelete} onClick={() => deleteRequest(r)}><Ic name="trash" size={13} style={{ marginRight:4 }} />Delete request</Button>
                 </div>
                 {r.status === "pending" && Number(r.refire_count ?? 0) > 0 && (
                   <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .45)", marginTop:".4rem" }}>
@@ -1133,7 +1382,7 @@ export default function AdminDashboard() {
                     {Number(r.refire_count) >= 2 ? " — automatic nudges are used up, but you can still re-send by hand." : "."}
                   </div>
                 )}
-              </div>
+              </DashCard>
             ))}
             {pager("requests")}
           </div>
@@ -1152,10 +1401,26 @@ export default function AdminDashboard() {
               placeholder="Search name, email or phone"
               resultText={filteredAccounts.length + " of " + accounts.length + " shown"}
             />
-            <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginBottom:"1rem" }}>
+            {/* ⚠️ NOT <DashTabs>, and the refusal is semantic rather than
+                cosmetic. DashTabs renders role="tablist" with aria-selected,
+                which is a claim that these switch between SECTIONS of the page.
+                These are a FILTER over one list — the tab is still "accounts"
+                whichever chip is lit, and the search box beside them composes
+                with them rather than replacing them. Announcing a filter as a
+                tablist would tell a screen reader the page changed when it did
+                not. `s.tab`/`s.activeTab` were deleted, so the chips now carry
+                `.ffd-tab` from the shared sheet — the same chip the real tab
+                strip uses, which is the point: they LOOK the same because they
+                come from one rule, while meaning something different in the
+                accessibility tree. The padding override that used to shrink
+                them is gone too; it was pushing them under the 48px thumb
+                floor that the pointer:coarse block promises. */}
+            <div className="ffd-tabs" style={{ marginBottom:"1rem" }}>
               {(["all","client","contractor","admin","orphaned"] as const).map(rf => (
-                <button key={rf} onClick={() => setAccountRole(rf)}
-                  style={{ ...s.tab, padding:".4rem .9rem", textTransform:"capitalize" as const, ...(accountRole === rf ? s.activeTab : {}) }}>
+                <button key={rf} type="button" onClick={() => setAccountRole(rf)}
+                  aria-pressed={accountRole === rf}
+                  className={accountRole === rf ? "ffd-tab ffd-on" : "ffd-tab"}
+                  style={{ textTransform:"capitalize" as const }}>
                   {rf}{rf === "all" ? ` (${accounts.length})` : ` (${accounts.filter(a => rf === "orphaned" ? a.orphaned : (a.role || "") === rf).length})`}
                 </button>
               ))}
@@ -1165,30 +1430,34 @@ export default function AdminDashboard() {
                 Email accounts a custom message{selectedIds.size > 0 ? ` · ${selectedIds.size} selected` : ""}.
               </span>
               {selectedIds.size > 0 && (
-                <button style={s.btn} onClick={() => setSelectedIds(new Set())}>Clear</button>
+                <Button variant="ghost" onClick={() => setSelectedIds(new Set())}>Clear</Button>
               )}
-              <button style={{ ...s.btn, color:"var(--ff-c10)", borderColor:"rgba(var(--ff-accent-rgb), .4)", background:"rgba(var(--ff-accent-rgb), .1)" }}
+              {/* Three identically orange-tinted raw buttons became one primary
+                  and two secondaries. The primary is the one that acts on what
+                  the admin has already selected; "email EVERY contractor" is the
+                  bigger hammer and deliberately the quieter button. */}
+              <Button variant="primary"
                 disabled={selectedIds.size === 0} onClick={() => setMsgRecipients(selectedRecipients())}>
                 <Ic name="mail" size={13} style={{ marginRight:4 }} />Email selected{selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
-              </button>
-              <button style={{ ...s.btn, color:"var(--ff-c10)", borderColor:"rgba(var(--ff-accent-rgb), .4)", background:"rgba(var(--ff-accent-rgb), .1)" }}
+              </Button>
+              <Button
                 disabled={contractorAccts.length === 0} onClick={() => setMsgRecipients(contractorAccts.map(toRecipient))}>
                 <Ic name="mail" size={13} style={{ marginRight:4 }} />Email all contractors ({contractorAccts.length})
-              </button>
-              <button style={{ ...s.btn, color:"var(--ff-c10)", borderColor:"rgba(var(--ff-accent-rgb), .4)", background:"rgba(var(--ff-accent-rgb), .1)" }}
+              </Button>
+              <Button
                 disabled={clientAccts.length === 0} onClick={() => setMsgRecipients(clientAccts.map(toRecipient))}>
                 <Ic name="mail" size={13} style={{ marginRight:4 }} />Email all clients ({clientAccts.length})
-              </button>
+              </Button>
             </div>
             {accounts.some(a => a.orphaned) && !hiddenNow.has("orphans") && (
               <div style={{ display:"flex", alignItems:"center", gap:".6rem", flexWrap:"wrap" as const, marginBottom:"1rem", padding:".7rem .85rem", background:"rgba(var(--ff-accent-rgb), .06)", border:"1px solid rgba(var(--ff-accent-rgb), .2)", borderRadius:"8px" }}>
                 <span style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)", flex:1 }}>
                   {accounts.filter(a => a.orphaned).length} account{accounts.filter(a => a.orphaned).length>1?"s":""} signed in but never finished onboarding.
                 </span>
-                <button style={{ ...s.btn, color:"var(--ff-c10)", borderColor:"rgba(var(--ff-accent-rgb), .4)", background:"rgba(var(--ff-accent-rgb), .1)" }}
+                <Button variant="primary"
                   disabled={busyNudge} onClick={nudgeIncomplete}>
                   <Ic name="mail" size={13} style={{ marginRight:4 }} />{busyNudge ? "Sending…" : "Email a finish-signup reminder"}
-                </button>
+                </Button>
                 {/* Session-only. This is a live count of people who are stuck
                     mid-signup — the exact state health check 7 exists to catch —
                     so it must come back, and the orphaned filter chip above
@@ -1201,7 +1470,7 @@ export default function AdminDashboard() {
               const nm = [a.first_name, a.last_name].filter(Boolean).join(" ") || a.company_name || "(no name)";
               const isContractor = (a.role === "contractor") || !!a.company_name || (a.specialties && a.specialties.length);
               return (
-                <div key={a.id} style={s.card}>
+                <DashCard key={a.id}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const, gap:".5rem" }}>
                     <div style={{ display:"flex", alignItems:"center", gap:".55rem" }}>
                       {a.email && (
@@ -1224,18 +1493,23 @@ export default function AdminDashboard() {
                     <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, alignItems:"center", margin:".3rem 0 .45rem" }}>
                       <input value={editEmailVal} onChange={e => setEditEmailVal(e.target.value)} type="email" placeholder="new@email.com" autoComplete="off"
                         style={{ padding:".4rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .18)", borderRadius:"7px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".82rem", flex:"1 1 210px", minWidth:0 }} />
-                      <button style={{ ...s.btn, color:"var(--ff-success)", borderColor:"rgba(34,197,94,.35)" }} disabled={busyEmailEdit === a.id} onClick={() => saveEmail(a)}>
+                      <Button variant="primary" disabled={busyEmailEdit === a.id} onClick={() => saveEmail(a)}>
                         {busyEmailEdit === a.id ? "Saving…" : "Save"}
-                      </button>
-                      <button style={s.btn} disabled={busyEmailEdit === a.id} onClick={() => setEditEmailId(null)}>Cancel</button>
+                      </Button>
+                      <Button variant="ghost" disabled={busyEmailEdit === a.id} onClick={() => setEditEmailId(null)}>Cancel</Button>
                     </div>
                   ) : (
-                    <div style={s.meta}>
-                      {[a.email, a.phone || a.meta_phone].filter(Boolean).join(" · ") || "—"}
-                      <button onClick={() => { setEditEmailId(a.id); setEditEmailVal(a.email || ""); }}
-                        style={{ ...s.btn, fontSize:".72rem", padding:".2rem .55rem", marginLeft:".5rem" }}>
+                    <div style={{ ...s.meta, display:"flex", alignItems:"center", gap:".5rem", flexWrap:"wrap" as const }}>
+                      <span>{[a.email, a.phone || a.meta_phone].filter(Boolean).join(" · ") || "—"}</span>
+                      {/* The old inline style shrank this to .72rem and .2rem of
+                          vertical padding, which put it well under the 48px
+                          thumb floor. Porting it to the primitive drops those
+                          overrides rather than carrying them through — an
+                          inline padding would have beaten the class and
+                          re-created the Fitts violation inside the fix. */}
+                      <Button variant="ghost" onClick={() => { setEditEmailId(a.id); setEditEmailVal(a.email || ""); }}>
                         <Ic name="mail" size={11} style={{ marginRight:3 }} />Edit email
-                      </button>
+                      </Button>
                     </div>
                   )}
                   <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .4)" }}>
@@ -1274,10 +1548,10 @@ export default function AdminDashboard() {
                         return (
                           <div style={{ marginTop:".35rem" }}>
                             {!chk ? (
-                              <button style={{ ...s.btn, fontSize:".72rem", padding:".25rem .6rem", color:"var(--ff-c10)", borderColor:"rgba(var(--ff-accent-rgb), .35)", background:"rgba(var(--ff-accent-rgb), .08)" }}
+                              <Button
                                 disabled={busyPayoutCheck === a.id} onClick={() => checkPayout(a.id)}>
                                 {busyPayoutCheck === a.id ? "Checking Stripe…" : "What's blocking their payouts?"}
-                              </button>
+                              </Button>
                             ) : chk.error ? (
                               <div style={{ ...s.meta, color:"#ef4444" }}>Couldn't check Stripe: {chk.error}</div>
                             ) : (
@@ -1331,9 +1605,9 @@ export default function AdminDashboard() {
                                 <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .6)", fontWeight:500 }}>Documents</div>
                                 <div style={{ display:"flex", gap:".4rem", flexWrap:"wrap" as const, marginTop: "var(--ff-s1)" }}>
                                   {docKeys.map(k => (
-                                    <button key={k} style={{ ...s.btn, fontSize:".76rem", padding:".35rem .7rem" }} onClick={() => openDoc(docs[k])}>
+                                    <Button key={k} variant="ghost" onClick={() => openDoc(docs[k])}>
                                       <Ic name="file" size={12} style={{ marginRight:4 }} />{DOC_LABELS[k] || k} ↗
-                                    </button>
+                                    </Button>
                                   ))}
                                 </div>
                               </>
@@ -1359,41 +1633,52 @@ export default function AdminDashboard() {
                           </div>
                         );
                       })()}
-                      <div style={{ ...s.badge, marginTop:".35rem" }}>● {a.contractor_status || "—"}</div>
+                      {/* Vetting state is "pending us", which is what the warn
+                          tone is for; active is settled, which is good. The
+                          raw --ff-accent-500 chip this replaced was orange for
+                          every state including the settled one. */}
+                      <div style={{ marginTop:".35rem" }}>
+                        <Pill tone={a.contractor_status === "active" ? "good" : a.contractor_status ? "warn" : "neutral"}>
+                          {a.contractor_status || "—"}
+                        </Pill>
+                      </div>
                     </div>
                   )}
                   <div style={{ display:"flex", gap:".5rem", marginTop:".75rem", flexWrap:"wrap" as const }}>
                     {isContractor && (
-                      <button style={s.btn} onClick={() => window.open("/contractors/" + a.id, "_blank")}>View Profile ↗</button>
+                      <Button onClick={() => window.open("/contractors/" + a.id, "_blank")}>View Profile ↗</Button>
                     )}
                     {a.email && (
-                      <button style={{ ...s.btn, color:"var(--ff-c10)", borderColor:"rgba(var(--ff-accent-rgb), .4)", background:"rgba(var(--ff-accent-rgb), .1)" }}
+                      <Button
                         onClick={() => setMsgRecipients([toRecipient(a)])}>
                         <Ic name="mail" size={13} style={{ marginRight:4 }} />Email
-                      </button>
+                      </Button>
                     )}
                     {isContractor && a.contractor_status !== "active" && (
-                      <button style={{ ...s.btn, color:"var(--ff-success)", borderColor:"rgba(34,197,94,.35)" }}
+                      // The one primary in this cluster. Approving a contractor
+                      // is the action the admin opened the account for; the rest
+                      // are things he might also do while he is here.
+                      <Button variant="primary"
                         disabled={busyStatus === a.id} onClick={() => setContractorStatus(a.id, "active")}>
                         {busyStatus === a.id ? "…" : "Approve"}
-                      </button>
+                      </Button>
                     )}
                     {isContractor && a.contractor_status === "active" && (
-                      <button style={{ ...s.btn, color:"var(--ff-danger)", borderColor:"rgba(239,68,68,.3)" }}
+                      <Button variant="danger"
                         disabled={busyStatus === a.id} onClick={() => setContractorStatus(a.id, "inactive")}>
                         {busyStatus === a.id ? "…" : "Deactivate"}
-                      </button>
+                      </Button>
                     )}
-                    <button style={s.btn} disabled={busyMfa === a.id} onClick={() => clearMfa(a)}
+                    <Button disabled={busyMfa === a.id} onClick={() => clearMfa(a)}
                       title="Use only when someone has lost both their email and their recovery codes">
                       <Ic name="key" size={13} style={{ marginRight:4 }} />{busyMfa === a.id ? "…" : "Turn off two-step"}
-                    </button>
-                    <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)", marginLeft:"auto" }}
+                    </Button>
+                    <Button variant="danger" style={{ marginLeft:"auto" }}
                       disabled={busyDeleteAccount === a.id} onClick={() => deleteAccount(a)}>
                       <Ic name="trash" size={13} style={{ marginRight:4 }} />{busyDeleteAccount === a.id ? "Deleting…" : "Delete account"}
-                    </button>
+                    </Button>
                   </div>
-                </div>
+                </DashCard>
               );
             })}
           </div>
@@ -1422,7 +1707,12 @@ export default function AdminDashboard() {
               </p>
             )}
             {shown.map(j => (
-              <div key={j.id} style={s.card}>
+              // ⚠️ <DashCard> and NOT a <Row>: this card mounts <ContractPanel>
+              // and <MilestonePanel>, which are the fail-closed payment gate and
+              // the escrow stage list. A Row has one `sub` slot and could not
+              // hold either, and dropping the ContractPanel mount is exactly
+              // what made every job unpayable with no error in fa5e2b5.
+              <DashCard key={j.id}>
                 <div style={s.title}>
                   {j.request?.service_needed || "Job"} <span style={{ fontFamily:"monospace", color:"var(--ff-c10)", fontSize:".8em" }}>{jobCode(j.id)}</span>
                 </div>
@@ -1439,10 +1729,10 @@ export default function AdminDashboard() {
                 <ContractPanel role="admin" job={j} />
                 {j.is_milestone && <MilestonePanel role="admin" job={j} />}
                 <div style={{ marginTop:".75rem", display:"flex", gap:".5rem", flexWrap:"wrap" as const }}>
-                  <button style={s.btn} onClick={() => setChatJob(j)}><Ic name="message-square" size={13} style={{ marginRight:4 }} />Read chat</button>
-                  <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJob === j.id} onClick={() => deleteJob(j)}><Ic name="trash" size={13} style={{ marginRight:4 }} />{busyJob === j.id ? "Deleting…" : "Delete job"}</button>
+                  <Button onClick={() => setChatJob(j)}><Ic name="message-square" size={13} style={{ marginRight:4 }} />Read chat</Button>
+                  <Button variant="danger" disabled={busyJob === j.id} onClick={() => deleteJob(j)}><Ic name="trash" size={13} style={{ marginRight:4 }} />{busyJob === j.id ? "Deleting…" : "Delete job"}</Button>
                 </div>
-              </div>
+              </DashCard>
             ))}
             {pager("jobs")}
           </div>
@@ -1453,36 +1743,49 @@ export default function AdminDashboard() {
           <div>
             {tabNote("picks", "Every contractor a client has been matched with, newest first — who won, at what price, and how many bids they beat.")}
             {picks.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No picks yet. This fills in as clients choose contractors.</p>}
-            {picks.map((p: any) => {
-              const how = p.how === "client_pick" ? { label:"Client picked", color:"#22c55e" }
-                        : p.how === "rehire"      ? { label:"Rehired their pro", color:"var(--ff-c10)" }
-                        :                            { label:"Assigned by admin", color:"rgba(var(--ff-muted), .6)" };
-              const price = p.winning_amount ?? p.amount;
-              return (
-                <div key={p.job_id} style={s.card}>
-                  <div style={{ display:"flex", alignItems:"baseline", gap:".5rem", flexWrap:"wrap" as const }}>
-                    <div style={s.title}>{p.service || "Job"}</div>
-                    <span style={{ fontFamily:"monospace", color:"var(--ff-c10)", fontSize:".75rem" }}>{jobCode(p.job_id)}</span>
-                    <span style={{ fontSize:".65rem", color:how.color, border:"1px solid currentColor", borderRadius:"4px", padding:".1rem .4rem", letterSpacing:".04em", opacity:.9 }}>{how.label}</span>
-                  </div>
-                  <div style={s.meta}>
-                    <Ic name="user" size={13} style={{ marginRight:4 }} />{p.client_name || "Client"}
-                    {" chose "}
-                    <span style={{ color:"var(--ff-success)" }}>{p.contractor_name || p.company_name || "a contractor"}</span>
-                    {p.company_name && p.contractor_name ? " (" + p.company_name + ")" : ""}
-                  </div>
-                  <div style={s.meta}>
-                    {price != null ? "$" + price : "Price not set yet"}
-                    {p.bid_count > 0 ? " · from " + p.bid_count + (p.bid_count === 1 ? " bid" : " bids") : " · no bids"}
-                    {" · "}{p.job_status}
-                  </div>
-                  {p.location && <div style={s.meta}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{p.location}</div>}
-                  <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .45)" }}>
-                    {new Date(p.picked_at).toLocaleString("en-CA", { dateStyle:"medium", timeStyle:"short" })}
-                  </div>
-                </div>
-              );
-            })}
+            {/* ── A genuine LIST OF ROWS, so it is a <Sheet> and not a stack of
+                cards. Each pick is one fact with no controls on it — the tab is
+                a record, not a workspace — which is exactly the shape Row was
+                written for. Four separately-padded card boxes per pick were
+                four boxes saying one thing.
+
+                `amount` carries the price because Row renders it in the numeral
+                slot; `right` carries HOW the pick happened as a <Pill>, which
+                replaced a hand-rolled chip whose colour came from a local
+                `how.color` — including a raw --ff-c10 for "rehired", a second
+                orange on a screen that has no action on it at all. */}
+            {picks.length > 0 && (
+              <Group label={"PICKS (" + picks.length + ")"}>
+                <Sheet>
+                  {picks.map((p: any) => {
+                    const how = p.how === "client_pick" ? { label:"Client picked", tone:"good" as const }
+                              : p.how === "rehire"      ? { label:"Rehired their pro", tone:"neutral" as const }
+                              :                            { label:"Assigned by admin", tone:"neutral" as const };
+                    const price = p.winning_amount ?? p.amount;
+                    return (
+                      <Row
+                        key={p.job_id}
+                        icon="star"
+                        tone="neutral"
+                        title={<>{p.service || "Job"} <span style={{ fontFamily:"monospace", fontSize:".8em", opacity:.7 }}>{jobCode(p.job_id)}</span></>}
+                        sub={
+                          <>
+                            {(p.client_name || "Client") + " chose " + (p.contractor_name || p.company_name || "a contractor")}
+                            {p.company_name && p.contractor_name ? " (" + p.company_name + ")" : ""}
+                            {p.bid_count > 0 ? " · from " + p.bid_count + (p.bid_count === 1 ? " bid" : " bids") : " · no bids"}
+                            {" · " + p.job_status}
+                            {p.location ? " · " + p.location : ""}
+                            {" · " + new Date(p.picked_at).toLocaleString("en-CA", { dateStyle:"medium", timeStyle:"short" })}
+                          </>
+                        }
+                        amount={price != null ? "$" + price : undefined}
+                        right={<Pill tone={how.tone}>{how.label}</Pill>}
+                      />
+                    );
+                  })}
+                </Sheet>
+              </Group>
+            )}
           </div>
         )}
 
@@ -1493,7 +1796,14 @@ export default function AdminDashboard() {
               <p style={{ color:"rgba(var(--ff-muted), .45)" }}>Nothing has been blocked. 🎉</p>
             )}
             {chatFlags.map(f => (
-              <div key={f.message_id} style={{ ...s.card, borderColor:"rgba(239,68,68,.3)" }}>
+              /* A <DashCard> and NOT a <Row>: the payload is a quoted block of
+                 the blocked message, which is the whole reason this record
+                 exists. A Row has nowhere to put a pre-wrapped paragraph. The
+                 only surviving style override is the red `borderColor` — a
+                 LONGHAND, so `.ffd-card`'s own `var(--ff-hair-w)` width and
+                 `solid` style survive it. Writing the `border` shorthand here
+                 would silently take the edge back to 1px. */
+              <DashCard key={f.message_id} style={{ borderColor:"rgba(239,68,68,.3)" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", gap:".75rem", flexWrap:"wrap", alignItems:"baseline" }}>
                   <div style={{ fontWeight:600, color:"var(--ff-text)" }}>
                     {f.sender_name || "Someone"}
@@ -1507,11 +1817,7 @@ export default function AdminDashboard() {
                 </div>
                 <div style={{ display:"flex", gap:".35rem", flexWrap:"wrap", margin:".5rem 0" }}>
                   {(f.flag_reasons ?? []).map((r: string) => (
-                    <span key={r} style={{
-                      fontSize:".68rem", fontWeight:700, letterSpacing:".4px", textTransform:"uppercase" as const,
-                      padding:".18rem .5rem", borderRadius:999,
-                      color:"#fca5a5", background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.28)",
-                    }}>{String(r).replace(/_/g, " ")}</span>
+                    <Pill key={r} tone="danger">{String(r).replace(/_/g, " ")}</Pill>
                   ))}
                 </div>
                 <div style={{
@@ -1525,7 +1831,7 @@ export default function AdminDashboard() {
                   {f.contractor_name ? " · pro " + f.contractor_name : ""}
                   {f.job_id ? " · " + jobCode(f.job_id) : ""}
                 </div>
-              </div>
+              </DashCard>
             ))}
           </div>
         )}
@@ -1533,27 +1839,43 @@ export default function AdminDashboard() {
         {tab === "prepaid" && (
           <div>
             {prepays.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No prepaid recurring plans yet.</p>}
-            {prepays.map(pp => {
-              const perOcc = Number(pp.amount_per_occurrence || 0) + Number(pp.client_fee_per || 0);
-              const refundable = Math.max(0, Number(pp.total_charged || 0) - Number(pp.occurrences_released || 0) * perOcc);
-              const canRefund = (pp.status === "held" || pp.status === "partially_released") && refundable > 0;
-              const who = pp.client ? `${pp.client.first_name ?? ""} ${pp.client.last_name ?? ""}`.trim() : "";
-              return (
-                <div key={pp.id} style={s.card}>
-                  <div style={s.title}>{pp.plan?.service_needed || "Recurring plan"}{who ? ` · ${who}` : ""}</div>
-                  <div style={s.meta}>Status: {pp.status}</div>
-                  <div style={s.meta}>Visits: {pp.occurrences_released}/{pp.occurrences_total} released</div>
-                  <div style={s.meta}>Charged: ${Number(pp.total_charged || 0).toFixed(2)} · Refundable now: ${refundable.toFixed(2)}</div>
-                  {canRefund ? (
-                    <button style={{ ...s.btn, background:"#ef4444", color:"#fff", border:"none", marginTop:".5rem" }} disabled={busyRefund === pp.id} onClick={() => refundPrepay(pp)}>
-                      {busyRefund === pp.id ? "…" : "Refund unreleased visits"}
-                    </button>
-                  ) : (
-                    <div style={{ ...s.meta, opacity:.6 }}>{pp.status === "refunded" ? "Refunded" : pp.status === "released" ? "Fully released" : "Nothing refundable"}</div>
-                  )}
-                </div>
-              );
-            })}
+            {/* A genuine list of records with one control each, so a <Sheet> of
+                <Row>s rather than N cards. The `right` slot carries either the
+                refund Button or the reason there is nothing to refund — the two
+                are mutually exclusive and answer the same question, so they
+                belong in the same place rather than one above the other. */}
+            {prepays.length > 0 && (
+              <Group label={"PREPAID PLANS (" + prepays.length + ")"}>
+                <Sheet>
+                  {prepays.map(pp => {
+                    const perOcc = Number(pp.amount_per_occurrence || 0) + Number(pp.client_fee_per || 0);
+                    const refundable = Math.max(0, Number(pp.total_charged || 0) - Number(pp.occurrences_released || 0) * perOcc);
+                    const canRefund = (pp.status === "held" || pp.status === "partially_released") && refundable > 0;
+                    const who = pp.client ? `${pp.client.first_name ?? ""} ${pp.client.last_name ?? ""}`.trim() : "";
+                    return (
+                      <Row key={pp.id} icon="dollar" tone="neutral"
+                        title={(pp.plan?.service_needed || "Recurring plan") + (who ? " · " + who : "")}
+                        sub={
+                          <>
+                            {String(pp.status)}
+                            {" · visits " + pp.occurrences_released + "/" + pp.occurrences_total + " released"}
+                            {" · charged $" + Number(pp.total_charged || 0).toFixed(2)}
+                            {" · refundable now $" + refundable.toFixed(2)}
+                          </>
+                        }
+                        right={canRefund ? (
+                          <Button variant="danger" disabled={busyRefund === pp.id} onClick={() => refundPrepay(pp)}>
+                            {busyRefund === pp.id ? "…" : "Refund unreleased"}
+                          </Button>
+                        ) : (
+                          <Pill tone="neutral">{pp.status === "refunded" ? "Refunded" : pp.status === "released" ? "Fully released" : "Nothing refundable"}</Pill>
+                        )}
+                      />
+                    );
+                  })}
+                </Sheet>
+              </Group>
+            )}
           </div>
         )}
 
@@ -1571,12 +1893,15 @@ export default function AdminDashboard() {
                 resolved_released: "Resolved — released to contractor",
                 rejected: "Rejected",
               };
-              const statusColor = d.status === "open" ? "var(--ff-warn)" : "var(--ff-success)";
               return (
-                <div key={d.id} style={{ ...s.card, ...(d.status === "open" ? { borderColor:"rgba(251,191,36,.4)" } : {}) }}>
+                /* A <DashCard>, not a <Row>: a dispute carries evidence photos,
+                   a quoted declaration, the contractor's response and a
+                   three-way resolution form. The open-state `borderColor` is a
+                   longhand so the class's hairline WIDTH survives. */
+                <DashCard key={d.id} style={d.status === "open" ? { borderColor:"rgba(251,191,36,.4)" } : undefined}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const, gap:".5rem" }}>
                     <div style={s.title}>{d.reason}</div>
-                    <div style={{ fontSize:".78rem", fontWeight:500, color: statusColor }}>● {statusLabel[d.status] ?? d.status}</div>
+                    <Pill tone={d.status === "open" ? "warn" : "good"}>{statusLabel[d.status] ?? d.status}</Pill>
                   </div>
                   <div style={s.meta}>Job {String(d.job_id).slice(0,8)} · Charged ${charged.toFixed(2)} · Contractor payout ${payout.toFixed(2)}</div>
                   <div style={s.meta}>Reported {new Date(d.created_at).toLocaleString("en-CA", { dateStyle:"medium", timeStyle:"short" })}</div>
@@ -1631,14 +1956,21 @@ export default function AdminDashboard() {
                         onChange={e => setResolveNote(p => ({ ...p, [d.id]: e.target.value }))}
                         style={{ width:"100%", padding:".55rem .7rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".82rem", boxSizing:"border-box" as const, resize:"vertical" as const, marginBottom: "var(--ff-s3)" }} />
                       <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center" }}>
-                        <button style={{ ...s.btn, background:"#ef4444", color:"#fff", border:"none" }} disabled={busyResolve === d.id} onClick={() => resolveDispute(d, "refund_full")}>{busyResolve === d.id ? "…" : "Refund client in full"}</button>
-                        <button style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none" }} disabled={busyResolve === d.id} onClick={() => resolveDispute(d, "release")}>Release to contractor</button>
+                        {/* ⚠️ NONE of the three resolutions is `primary`, and that
+                            is a decision rather than an oversight. They are
+                            mutually exclusive ways to move real money and the
+                            platform has no view on which is right — an orange
+                            button here would read as a recommendation we cannot
+                            make. The full refund is `danger` because it reverses
+                            a charge; the other two are plain. */}
+                        <Button variant="danger" disabled={busyResolve === d.id} onClick={() => resolveDispute(d, "refund_full")}>{busyResolve === d.id ? "…" : "Refund client in full"}</Button>
+                        <Button disabled={busyResolve === d.id} onClick={() => resolveDispute(d, "release")}>Release to contractor</Button>
                       </div>
                       <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center", marginTop:".6rem" }}>
                         <input type="number" min={0} max={charged} step="0.01" value={partialAmt[d.id] ?? ""} placeholder="Partial $"
                           onChange={e => setPartialAmt(p => ({ ...p, [d.id]: e.target.value }))}
                           style={{ width:"110px", padding:".5rem .6rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", borderRadius:"6px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".82rem" }} />
-                        <button style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none" }} disabled={busyResolve === d.id} onClick={() => resolveDispute(d, "refund_partial")}>Partial refund + pay contractor</button>
+                        <Button disabled={busyResolve === d.id} onClick={() => resolveDispute(d, "refund_partial")}>Partial refund + pay contractor</Button>
                       </div>
                       <div style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .45)", marginTop:".55rem", lineHeight:1.45 }}>Full refund returns the whole charge to the client and pays nothing out. Partial refund returns part to the client and still pays the contractor their payout. Release pays the contractor and keeps the charge.</div>
                     </div>
@@ -1649,7 +1981,7 @@ export default function AdminDashboard() {
                       {d.resolution_note ? ` — ${d.resolution_note}` : ""}
                     </div>
                   )}
-                </div>
+                </DashCard>
               );
             })}
           </div>
@@ -1662,10 +1994,17 @@ export default function AdminDashboard() {
             </p>
             {leads.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No estimate leads yet.</p>}
             {leads.map(l => (
-              <div key={l.id} style={{ ...s.card, ...(l.status === "new" ? { borderColor:"rgba(var(--ff-accent-rgb), .4)" } : {}) }}>
+              /* A <DashCard>, not a <Row>: the payload is the visitor's own
+                 words plus two tappable contact links, and the mailto/tel
+                 targets are the point of the record. */
+              <DashCard key={l.id} style={l.status === "new" ? { borderColor:"rgba(var(--ff-accent-rgb), .4)" } : undefined}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap" as const, gap:".5rem" }}>
                   <div style={s.title}>{l.service_needed || "General enquiry"}</div>
-                  <div style={{ fontSize:".78rem", fontWeight:500, color: l.status === "new" ? "var(--ff-c10)" : "var(--ff-success)" }}>● {l.status === "new" ? "New" : "Contacted"}</div>
+                  {/* `warn` and NOT `accent`, even though a new lead does want
+                      you: there are N leads on this tab, so an accent chip per
+                      card would spend the one-orange budget N times. "Pending
+                      us" is exactly what `warn` means. */}
+                  <Pill tone={l.status === "new" ? "warn" : "good"}>{l.status === "new" ? "New" : "Contacted"}</Pill>
                 </div>
                 <div style={s.meta}><Ic name="user" size={13} style={{ marginRight:4 }} />{l.name || "—"}</div>
                 <div style={s.meta}>
@@ -1680,10 +2019,10 @@ export default function AdminDashboard() {
                 <div style={{ ...s.meta, marginTop:".4rem", color:"rgba(var(--ff-muted), .45)" }}>Received {new Date(l.created_at).toLocaleString("en-CA", { dateStyle:"medium", timeStyle:"short" })}</div>
                 {l.status === "new" && (
                   <div style={{ marginTop:".75rem" }}>
-                    <button style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none" }} disabled={busyLead === l.id} onClick={() => markLeadContacted(l.id)}>{busyLead === l.id ? "…" : "Mark contacted"}</button>
+                    <Button disabled={busyLead === l.id} onClick={() => markLeadContacted(l.id)}>{busyLead === l.id ? "…" : "Mark contacted"}</Button>
                   </div>
                 )}
-              </div>
+              </DashCard>
             ))}
           </div>
         )}
@@ -1726,15 +2065,23 @@ export default function AdminDashboard() {
               {actionsFailed && (
                 <p style={{ color:"var(--ff-warn)", fontSize:".9rem" }}>
                   Couldn&rsquo;t load the proposal queue, so this list may be incomplete.{" "}
-                  <button style={s.btn} onClick={() => loadAll()}>Retry</button>
+                  <Button onClick={() => loadAll()}>Retry</Button>
                 </p>
               )}
               {!actionsFailed && (
                 <>
-                  <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, alignItems:"center", marginBottom: "var(--ff-s4)" }}>
+                  {/* Same refusal as the Accounts role chips: these two carry the
+                      shared `.ffd-tab` LOOK but not <DashTabs>, because they
+                      filter one list rather than switch sections — `role="tab"`
+                      plus `aria-selected` would tell a screen reader the page
+                      changed. `aria-pressed` says what actually happened. The
+                      `.4rem .9rem` padding override is gone with them: it put
+                      the chips under the 48px thumb floor the class clears. */}
+                  <div className="ffd-tabs" style={{ marginBottom: "var(--ff-s4)" }}>
                     {(["pending","all"] as const).map(f => (
-                      <button key={f} onClick={() => setAgentFilter(f)}
-                        style={{ ...s.tab, padding:".4rem .9rem", ...(agentFilter === f ? s.activeTab : {}) }}>
+                      <button key={f} type="button" onClick={() => setAgentFilter(f)}
+                        aria-pressed={agentFilter === f}
+                        className={agentFilter === f ? "ffd-tab ffd-on" : "ffd-tab"}>
                         {f === "pending" ? `Waiting on you (${pending.length})` : `Everything (${agentActions.length})`}
                       </button>
                     ))}
@@ -1764,7 +2111,10 @@ export default function AdminDashboard() {
                       && ["pending","approved","sent"].includes(String(a.status))
                       && !!a.payload?.client;
                     return (
-                      <div key={a.id} style={{ ...s.card, borderColor: isOpen && !expired ? "rgba(var(--ff-accent-rgb), .3)" : "rgba(var(--ff-fg), .08)" }}>
+                      /* A <DashCard>, not a <Row>: every proposal carries an
+                         editable textarea of its own payload, optionally a
+                         transcript and a generated draft. */
+                      <DashCard key={a.id} style={{ borderColor: isOpen && !expired ? "rgba(var(--ff-accent-rgb), .3)" : "rgba(var(--ff-fg), .08)" }}>
                         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", flexWrap:"wrap" as const, gap:".5rem" }}>
                           <div style={s.title}>
                             {String(a.kind || "action").replace(/_/g, " ")}
@@ -1850,12 +2200,18 @@ export default function AdminDashboard() {
                             than no control. */}
                         {canDraft && (
                           <div style={{ marginTop: "var(--ff-s3)" }}>
-                            <button
-                              style={{ ...s.btn, ...(d ? {} : { background:"var(--ff-c10)", color:"#1a2236", border:"none" }) }}
+                            {/* ⚠️ Deliberately NOT `primary`, though the old button
+                                painted itself orange when no draft existed. The
+                                Approve button below is the terminal decision on
+                                this card and it now owns the card's one orange;
+                                drafting is a tool you reach for on the way
+                                there, and it keeps the explanatory note beside
+                                it instead of the colour. */}
+                            <Button
                               disabled={busyDraft === a.id}
                               onClick={() => draftLead(a)}>
                               {busyDraft === a.id ? "Writing…" : d ? "Rewrite the message" : "Draft a message"}
-                            </button>
+                            </Button>
                             {!d && busyDraft !== a.id && (
                               <span style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .45)", marginLeft:".55rem" }}>
                                 writes you a text and an email you can edit before sending
@@ -1872,10 +2228,15 @@ export default function AdminDashboard() {
                                   <div style={{ padding:".6rem .75rem", background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
                                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", marginBottom:".35rem" }}>
                                       <span style={{ fontSize:".74rem", letterSpacing:".04em", color:"rgba(var(--ff-muted), .5)", fontFamily:"'Bebas Neue',sans-serif" }}>TEXT MESSAGE</span>
-                                      <button style={{ ...s.btn, padding:".25rem .6rem", fontSize:".74rem" }}
+                                      {/* The `.25rem .6rem` / `.74rem` shrink is NOT
+                                          carried over — it put a real control at
+                                          roughly 26px tall, well under the 48px
+                                          floor, on the one surface the owner uses
+                                          from a phone. */}
+                                      <Button variant="ghost"
                                         onClick={() => copyText(a.id + ":text", String(d.text))}>
                                         {copiedKey === a.id + ":text" ? "Copied" : "Copy"}
-                                      </button>
+                                      </Button>
                                     </div>
                                     <div style={{ fontSize:".88rem", color:"var(--ff-text)", lineHeight:1.55, whiteSpace:"pre-wrap" as const }}>{String(d.text)}</div>
                                   </div>
@@ -1884,10 +2245,10 @@ export default function AdminDashboard() {
                                   <div style={{ padding:".6rem .75rem", background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"8px" }}>
                                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:".5rem", marginBottom:".35rem" }}>
                                       <span style={{ fontSize:".74rem", letterSpacing:".04em", color:"rgba(var(--ff-muted), .5)", fontFamily:"'Bebas Neue',sans-serif" }}>EMAIL</span>
-                                      <button style={{ ...s.btn, padding:".25rem .6rem", fontSize:".74rem" }}
+                                      <Button variant="ghost"
                                         onClick={() => copyText(a.id + ":email", (d.email_subject ? "Subject: " + d.email_subject + "\n\n" : "") + String(d.email_body))}>
                                         {copiedKey === a.id + ":email" ? "Copied" : "Copy"}
-                                      </button>
+                                      </Button>
                                     </div>
                                     {d.email_subject && (
                                       <div style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .8)", marginBottom:".3rem" }}>
@@ -1930,26 +2291,25 @@ export default function AdminDashboard() {
                                 `approved`. One predicate decides the label and the status, so
                                 the button cannot promise something the DB won't do. */}
                             {!expired && (
-                              <button
-                                style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none" }}
+                              <Button
+                                variant="primary"
                                 disabled={busyReview === a.id}
                                 onClick={() => reviewAction(a, true)}>
                                 {busyReview === a.id ? "…"
                                   : a.needs_harness === false ? (edited ? "Mark handled (edited)" : "Mark handled")
                                   : edited ? "Approve edited" : "Approve"}
-                              </button>
+                              </Button>
                             )}
-                            <button
-                              style={s.btn}
+                            <Button
                               disabled={busyReview === a.id}
                               onClick={() => reviewAction(a, false)}>
                               Reject
-                            </button>
+                            </Button>
                             {edited && (
-                              <button style={s.btn} disabled={busyReview === a.id}
+                              <Button variant="ghost" disabled={busyReview === a.id}
                                 onClick={() => setActionEdit(prev => { const n = { ...prev }; delete n[a.id]; return n; })}>
                                 Reset
-                              </button>
+                              </Button>
                             )}
                           </div>
                         )}
@@ -1963,7 +2323,7 @@ export default function AdminDashboard() {
                             Result: {JSON.stringify(a.result)}
                           </div>
                         )}
-                      </div>
+                      </DashCard>
                     );
                   })}
                 </>
@@ -1980,7 +2340,7 @@ export default function AdminDashboard() {
               {agentsFailed && (
                 <p style={{ color:"var(--ff-warn)", fontSize:".9rem" }}>
                   Couldn&rsquo;t load the roster, so this is not a clean bill of health.{" "}
-                  <button style={s.btn} onClick={() => loadAll()}>Retry</button>
+                  <Button onClick={() => loadAll()}>Retry</Button>
                 </p>
               )}
               {!agentsFailed && !ov && (
@@ -1996,12 +2356,10 @@ export default function AdminDashboard() {
                 </p>
               )}
               {!agentsFailed && roster.map((g:any) => (
-                <div key={g.agent} style={{ ...s.card, borderColor: g.stale ? "rgba(251,191,36,.3)" : g.last_run_status === "error" ? "rgba(239,68,68,.3)" : "rgba(var(--ff-fg), .08)" }}>
+                <DashCard key={g.agent} style={{ borderColor: g.stale ? "rgba(251,191,36,.3)" : g.last_run_status === "error" ? "rgba(239,68,68,.3)" : "rgba(var(--ff-fg), .08)" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", flexWrap:"wrap" as const, gap:".5rem" }}>
                     <div style={s.title}>{g.label || g.agent}</div>
-                    <div style={{ fontSize:".76rem", color: g.enabled ? "var(--ff-success)" : "rgba(var(--ff-muted), .4)" }}>
-                      {g.enabled ? "on" : "not set up yet"}
-                    </div>
+                    <Pill tone={g.enabled ? "good" : "neutral"}>{g.enabled ? "on" : "not set up yet"}</Pill>
                   </div>
                   <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .6)" }}>{g.purpose || ""}</div>
                   <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .45)" }}>
@@ -2063,7 +2421,7 @@ export default function AdminDashboard() {
                   {g.last_run_summary && !g.last_run_error && (
                     <div style={{ marginTop:".5rem", fontSize:".8rem", color:"rgba(var(--ff-muted), .6)" }}>{String(g.last_run_summary)}</div>
                   )}
-                </div>
+                </DashCard>
               ))}
               {ov?.generated_at && (
                 <p style={{ fontSize:".74rem", color:"rgba(var(--ff-muted), .35)", marginTop:".75rem" }}>Checked {ov.generated_at}</p>
@@ -2091,7 +2449,7 @@ export default function AdminDashboard() {
             </p>
             {auditFailed && (
               <p style={{ color:"var(--ff-warn)", fontSize:".9rem" }}>
-                Couldn&rsquo;t load the activity log. <button style={s.btn} onClick={() => loadAll()}>Retry</button>
+                Couldn&rsquo;t load the activity log. <Button onClick={() => loadAll()}>Retry</Button>
               </p>
             )}
             {!auditFailed && audit.length === 0 && (
@@ -2099,35 +2457,37 @@ export default function AdminDashboard() {
                 No admin actions recorded yet. The log starts from 3 Nov 2026 — anything done before that was never recorded.
               </p>
             )}
-            {audit.map((a:any) => {
-              const d = a.detail && typeof a.detail === "object" ? a.detail : null;
-              const pairs = d ? Object.entries(d).filter(([, v]) => v !== null && v !== "" && v !== undefined) : [];
-              return (
-                <div key={a.id} style={s.card}>
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", flexWrap:"wrap" as const, gap:".5rem" }}>
-                    <div style={s.title}>{String(a.action || "action")}</div>
-                    <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .45)" }}>{a.at_local || ""}</div>
-                  </div>
-                  <div style={s.meta}>
-                    <Ic name="user" size={13} style={{ marginRight:4 }} />
-                    {a.actor_email || "(account since removed)"}
-                    {a.via === "edge" ? " · via dashboard tool" : ""}
-                  </div>
-                  {a.target_table && (
-                    <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .45)", wordBreak:"break-all" as const }}>
-                      {String(a.target_table)}{a.target_id ? " · " + String(a.target_id) : ""}
-                    </div>
-                  )}
-                  {pairs.length > 0 && (
-                    <div style={{ marginTop:".5rem", padding:".55rem .75rem", background:"rgba(var(--ff-fg), .03)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .06)", borderRadius:"8px", fontSize:".8rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.6, wordBreak:"break-word" as const }}>
-                      {pairs.map(([k, v]) => (
-                        <div key={k}>{k.replace(/_/g, " ")}: {typeof v === "object" ? JSON.stringify(v) : String(v)}</div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {/* The log is the one tab that is unambiguously a list of rows: no
+                controls, one record per line, read in scan order. A <Sheet> is
+                what that is. Nothing is dropped — every detail key still
+                renders, joined onto the sub line rather than stacked in a box,
+                because a 24-row log of boxed JSON is unscannable. */}
+            {audit.length > 0 && (
+              <Group label={"ADMIN ACTIONS (" + audit.length + ")"}>
+                <Sheet>
+                  {audit.map((a:any) => {
+                    const d = a.detail && typeof a.detail === "object" ? a.detail : null;
+                    const pairs = d ? Object.entries(d).filter(([, v]) => v !== null && v !== "" && v !== undefined) : [];
+                    return (
+                      <Row key={a.id} icon="clock" tone="neutral"
+                        title={String(a.action || "action").replace(/_/g, " ")}
+                        sub={
+                          <>
+                            {a.actor_email || "(account since removed)"}
+                            {a.via === "edge" ? " · via dashboard tool" : ""}
+                            {a.target_table ? " · " + String(a.target_table) + (a.target_id ? " " + String(a.target_id) : "") : ""}
+                            {pairs.length > 0
+                              ? " · " + pairs.map(([k, v]) => k.replace(/_/g, " ") + ": " + (typeof v === "object" ? JSON.stringify(v) : String(v))).join(" · ")
+                              : ""}
+                          </>
+                        }
+                        right={<span style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .45)" }}>{a.at_local || ""}</span>}
+                      />
+                    );
+                  })}
+                </Sheet>
+              </Group>
+            )}
           </div>
         )}
 
@@ -2137,7 +2497,7 @@ export default function AdminDashboard() {
               Things that may need your attention. Buckets only show items that have been waiting too long.
             </p>
             {!health && (healthFailed
-              ? <p style={{ color:"var(--ff-warn)" }}>Couldn&rsquo;t load the health checks. <button style={s.btn} onClick={() => loadAll()}>Retry</button></p>
+              ? <p style={{ color:"var(--ff-warn)" }}>Couldn&rsquo;t load the health checks. <Button onClick={() => loadAll()}>Retry</Button></p>
               : <div aria-busy="true" style={{ display:"grid", gap:".75rem" }}>
                   <span className="ff-sr-only">Loading the health checks</span>
                   <Sk h={54} r={10} /><Sk h={54} r={10} /><Sk h={54} r={10} />
@@ -2153,31 +2513,48 @@ export default function AdminDashboard() {
               return (
                 <>
                   <div style={{ display:"flex", gap:".75rem", flexWrap:"wrap" as const, marginBottom:"1.25rem" }}>
-                    <div style={{ ...s.card, flex:"1 1 180px", margin:0, textAlign:"center" as const }}>
+                    {/* `flex` and `margin:0` are the only overrides, and both are
+                        position-in-a-row rather than look — the card's own
+                        radius, padding, ground and hairline all survive. */}
+                    <DashCard style={{ flex:"1 1 180px", margin:0, textAlign:"center" as const }}>
                       <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"var(--ff-c10)", lineHeight:1 }}>{health.new_leads_count ?? 0}</div>
                       <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", marginTop:".35rem" }}>New estimate leads</div>
-                    </div>
-                    <div style={{ ...s.card, flex:"1 1 180px", margin:0, textAlign:"center" as const }}>
+                    </DashCard>
+                    <DashCard style={{ flex:"1 1 180px", margin:0, textAlign:"center" as const }}>
                       <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color:"var(--ff-warn)", lineHeight:1 }}>{health.pending_contractors_count ?? 0}</div>
                       <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .6)", marginTop:".35rem" }}>Contractors awaiting review</div>
-                    </div>
+                    </DashCard>
                   </div>
                   {allClear && <p style={{ color:"var(--ff-success)", fontSize:".9rem" }}>● All clear — nothing is overdue right now.</p>}
+                  {/* Each bucket is a <Group> of <Row>s: four stacked facts and no
+                      control is a row, not a card. The buckets' hand-rolled
+                      Bebas heading was `var(--ff-warn)` amber; the Group label is
+                      the neutral shared caption and the URGENCY moved onto the
+                      rows themselves as `tone="warn"`, which is where it belongs
+                      — the heading says what the bucket IS, the rows say that
+                      each item is overdue. */}
                   {buckets.map(b => b.count > 0 && (
-                    <div key={b.key} style={{ marginBottom:"1.5rem" }}>
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.1rem", letterSpacing:".04em", color:"var(--ff-warn)" }}>{b.title} ({b.count})</div>
-                      <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .5)", marginBottom:".6rem" }}>{b.hint}</div>
-                      {b.items.map((it:any) => (
-                        <div key={it.id} style={{ ...s.card, borderColor:"rgba(251,191,36,.25)" }}>
-                          <div style={s.title}>{it.service_needed || it.service || it.reason || "Item"}</div>
-                          {(it.first_name || it.last_name || it.client_name) && (
-                            <div style={s.meta}><Ic name="user" size={13} style={{ marginRight:4 }} />{it.client_name || `${it.first_name||""} ${it.last_name||""}`.trim()}</div>
-                          )}
-                          {it.location && <div style={s.meta}><Ic name="map-pin" size={13} style={{ marginRight:4 }} />{it.location}</div>}
-                          {(it.created_at || it.since) && <div style={{ ...s.meta, color:"rgba(var(--ff-muted), .45)" }}>Since {new Date(it.created_at || it.since).toLocaleString("en-CA", { dateStyle:"medium", timeStyle:"short" })}</div>}
-                        </div>
-                      ))}
-                    </div>
+                    <Group key={b.key} label={b.title.toUpperCase() + " (" + b.count + ")"}>
+                      <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .5)", marginBottom:".6rem", padding:"0 var(--ff-s3)" }}>{b.hint}</div>
+                      <Sheet>
+                        {b.items.map((it:any) => (
+                          <Row key={it.id} icon="alert-triangle" tone="warn"
+                            title={it.service_needed || it.service || it.reason || "Item"}
+                            sub={
+                              <>
+                                {(it.first_name || it.last_name || it.client_name)
+                                  ? (it.client_name || `${it.first_name||""} ${it.last_name||""}`.trim())
+                                  : ""}
+                                {it.location ? " · " + it.location : ""}
+                                {(it.created_at || it.since)
+                                  ? " · since " + new Date(it.created_at || it.since).toLocaleString("en-CA", { dateStyle:"medium", timeStyle:"short" })
+                                  : ""}
+                              </>
+                            }
+                          />
+                        ))}
+                      </Sheet>
+                    </Group>
                   ))}
                 </>
               );
@@ -2204,12 +2581,18 @@ export default function AdminDashboard() {
             ]).map(m => {
               const on = platMode === m.key;
               return (
+                /* ⚠️ NOT a <DashCard>: this is a <button>, and DashCard renders a
+                   div. It wears the card's LOOK by borrowing the class, which is
+                   the documented way to get the sheet's values onto an element
+                   the primitive cannot be. The accent ring on the selected mode
+                   stays a SIGNAL, so its border is left at the class's own
+                   width via a borderColor longhand rather than a shorthand. */
                 <button
                   key={m.key}
                   onClick={() => changeMode(m.key)}
                   disabled={busyPlatform}
+                  className="ffd-card"
                   style={{
-                    ...s.card,
                     display:"flex", alignItems:"flex-start", gap:".75rem", width:"100%",
                     textAlign:"left" as const, cursor: busyPlatform ? "default" : "pointer",
                     fontFamily:"inherit", color:"var(--ff-text)",
@@ -2229,7 +2612,7 @@ export default function AdminDashboard() {
             })}
 
             {/* ── Notice wording ──────────────────────────────────────────── */}
-            <div style={{ ...s.card, marginTop:"1.5rem" }}>
+            <DashCard style={{ marginTop:"1.5rem" }}>
               <div style={{ ...s.title, marginBottom: "var(--ff-s1)" }}>What clients see while you're paused</div>
               <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginBottom: "var(--ff-s4)" }}>
                 Used on the site-wide banner and on the waitlist form. Editing this takes effect on the next page load — no deploy needed.
@@ -2277,14 +2660,10 @@ export default function AdminDashboard() {
                 />
               </label>
 
-              <button
-                onClick={saveNotice}
-                disabled={busyPlatform}
-                style={{ ...s.btn, background:"rgba(var(--ff-accent-rgb), .15)", borderColor:"rgba(var(--ff-accent-rgb), .4)", color:"var(--ff-text)" }}
-              >
+              <Button variant="primary" onClick={saveNotice} disabled={busyPlatform}>
                 {busyPlatform ? "Saving…" : "Save wording"}
-              </button>
-            </div>
+              </Button>
+            </DashCard>
 
             {/* ── Held requests ───────────────────────────────────────────── */}
             <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:".05em", marginTop:"2rem", marginBottom:".3rem" }}>
@@ -2294,33 +2673,35 @@ export default function AdminDashboard() {
               Real job requests from signed-in clients that were captured instead of sent out. Releasing one emails every matching contractor immediately.
             </p>
             {heldReqs.length === 0 ? (
-              <div style={{ ...s.card, color:"rgba(var(--ff-muted), .55)", fontSize:".85rem" }}>
+              <DashCard style={{ color:"rgba(var(--ff-muted), .55)", fontSize:".85rem" }}>
                 Nothing is being held right now.
-              </div>
+              </DashCard>
             ) : (
               <>
                 <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginBottom: "var(--ff-s4)", alignItems:"center" }}>
-                  <button
+                  <Button variant="ghost"
                     onClick={() => setHeldSel(prev => prev.size === heldReqs.length ? new Set() : new Set(heldReqs.map(r => r.id)))}
-                    style={s.btn}
                   >
                     {heldSel.size === heldReqs.length ? "Clear selection" : "Select all"}
-                  </button>
-                  <button
+                  </Button>
+                  {/* The old button hand-painted its own enabled AND disabled
+                      look — three literals keyed on `heldSel.size`, duplicating
+                      what the primitive's `:disabled` rule already says. The
+                      `disabled` expression is untouched; only the paint is gone. */}
+                  <Button variant="primary"
                     onClick={() => releaseHeld(Array.from(heldSel))}
                     disabled={busyRelease || heldSel.size === 0}
-                    style={{ ...s.btn,
-                      background: heldSel.size ? "rgba(var(--ff-accent-rgb), .15)" : "rgba(var(--ff-fg), .06)",
-                      borderColor: heldSel.size ? "rgba(var(--ff-accent-rgb), .4)" : "rgba(var(--ff-fg), .1)",
-                      color: heldSel.size ? "var(--ff-text)" : "rgba(var(--ff-muted), .5)" }}
                   >
                     {busyRelease ? "Releasing…" : `Release selected (${heldSel.size})`}
-                  </button>
+                  </Button>
                 </div>
                 {heldReqs.map(r => {
                   const picked = heldSel.has(r.id);
                   return (
-                    <div key={r.id} style={{ ...s.card, borderColor: picked ? "rgba(var(--ff-accent-rgb), .4)" : "rgba(var(--ff-fg), .08)" }}>
+                    /* A <DashCard>, not a <Row>: each held request carries a
+                       selection checkbox, up to 400 characters of the client's
+                       own description and its own release button. */
+                    <DashCard key={r.id} style={{ borderColor: picked ? "rgba(var(--ff-accent-rgb), .4)" : "rgba(var(--ff-fg), .08)" }}>
                       <div style={{ display:"flex", gap: "var(--ff-s3)", alignItems:"flex-start" }}>
                         <input
                           type="checkbox"
@@ -2342,16 +2723,16 @@ export default function AdminDashboard() {
                               {String(r.job_description).slice(0, 400)}{String(r.job_description).length > 400 ? "…" : ""}
                             </div>
                           )}
-                          <button
+                          <Button
                             onClick={() => releaseHeld([r.id])}
                             disabled={busyRelease}
-                            style={{ ...s.btn, marginTop: "var(--ff-s3)" }}
+                            style={{ marginTop: "var(--ff-s3)" }}
                           >
                             {busyRelease ? "Working…" : "Release just this one"}
-                          </button>
+                          </Button>
                         </div>
                       </div>
-                    </div>
+                    </DashCard>
                   );
                 })}
               </>
@@ -2365,11 +2746,11 @@ export default function AdminDashboard() {
               People who left their details while the site was paused. Nobody here has an account or a job request yet — email them when you reopen.
             </p>
             {waitlistRows.length === 0 ? (
-              <div style={{ ...s.card, color:"rgba(var(--ff-muted), .55)", fontSize:".85rem" }}>
+              <DashCard style={{ color:"rgba(var(--ff-muted), .55)", fontSize:".85rem" }}>
                 No signups yet.
-              </div>
+              </DashCard>
             ) : waitlistRows.map(w => (
-              <div key={w.id} style={s.card}>
+              <DashCard key={w.id}>
                 <div style={s.title}>{w.name || w.email}</div>
                 <div style={s.meta}><Ic name="mail" size={13} style={{ marginRight:4 }} />{w.email}{w.phone ? ` · ${w.phone}` : ""}</div>
                 {w.service && <div style={s.meta}><Ic name="wrench" size={13} style={{ marginRight:4 }} />{w.service}</div>}
@@ -2383,11 +2764,11 @@ export default function AdminDashboard() {
                     {String(w.description).slice(0, 400)}{String(w.description).length > 400 ? "…" : ""}
                   </div>
                 )}
-              </div>
+              </DashCard>
             ))}
           </div>
         )}
-      </div>
+      </DashContent>
         </div>
       </div>
       {msgRecipients && (
@@ -2415,6 +2796,6 @@ export default function AdminDashboard() {
           onCancel={() => setVerifyGate(null)}
         />
       )}
-    </div>
+    </DashShell>
   );
 }

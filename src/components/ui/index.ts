@@ -37,6 +37,15 @@ export { Stepper, type Step, type StepState } from "./Stepper";
 export { Pill, type PillTone } from "./Pill";
 export { Button, ButtonRow, Stack } from "./Button";
 export { AttentionCard, TrustLine } from "./AttentionCard";
+// The chrome all three dashboards share — page background, content column and
+// card. Added 2026-11-08, when Contractor and Admin were aligned to Client.
+// Before it each page re-derived all three in its own `s` object and the three
+// had drifted in every dimension that decides whether they read as one product.
+// See Dash.tsx for what each one replaced — and for the two components that are
+// deliberately NOT exported here (a DashCardTitle and a DashTabs were both
+// written and both deleted unmounted; the chip strips take `.ffd-tab` from the
+// shared sheet instead, because a filter over one list is not a tablist).
+export { DashShell, DashContent, DashCard } from "./Dash";
 // The one primitive here that is for READ pages rather than the dashboards. It
 // belongs in this folder anyway — no business logic, and its styles belong in
 // the one shared sheet — but see its ⚠️ note: mounting it on a dashboard is a

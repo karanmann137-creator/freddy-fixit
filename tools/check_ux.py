@@ -315,7 +315,19 @@ ORANGE = re.compile(r"#ea6b14|rgba\(\s*234\s*,\s*107\s*,\s*20\b", re.I)
 # PROXIMITY IMPROVES BY DELETING A HAND-ROLLED LAYOUT, not by swapping a
 # literal for a token one site at a time. The token scale is how a primitive
 # SPELLS its spacing; the primitive is what makes the ratios agree.
-SPACING_BASELINE = 1478
+#
+# 1478 -> 1469 the same day, FIFTH fall, same mechanism: ClientDashboard and
+# ContractorDashboard moved their page frame onto ui/Dash.tsx
+# (DashShell/DashContent/DashCard), which deleted the `wrap` / `content` /
+# `card` / `cardTitle` / `tabsBar` / `tab` keys out of both pages' own `s`
+# objects along with every padding and gap literal inside them. The three
+# dashboards had each answered "how wide is the column, how round is the card,
+# how much padding does it carry" differently -- 800/900/1000px, three radii,
+# three paddings -- and none of those differences was ever decided. The
+# replacement values live in ui/uiStyles.ts under "the dashboard shell", which
+# this checker does not count, for the reason stated at the 1486 fall: taxing
+# the one shared sheet would tax the only cure.
+SPACING_BASELINE = 1469
 
 SPACING_PROP = (
     r"(?:gap|rowGap|columnGap|padding|paddingTop|paddingBottom|paddingLeft"
