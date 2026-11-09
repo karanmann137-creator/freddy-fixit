@@ -22,7 +22,7 @@ gate someone learns to skip" -- which undoes the checks that do work. Same
 treatment CLAUDE.md gives the rejected "feature table has 0 rows" sweep.
 
 
-THE SIX CHECKS
+THE TEN CHECKS
 --------------
 
 (1) RAW-ORANGE RATCHET, not a zero. Von Restorff in this repo means orange
@@ -242,15 +242,27 @@ THE SIX CHECKS
 
     Name the properties. The right-hand side is usually two of them.
 
-ALL NINE ARE SELF-CLEARING on the tree as written today, and the only way to
+(10) RAW STATUS-COLOUR RATCHET -- check (1) in four more colours, added later
+    the same day while aligning Contractor and Admin to Client. The full
+    reasoning sits at STATUS_BASELINE rather than here, but the one thing worth
+    reading twice: these literals are wrong in BOTH themes, where orange was at
+    least correct in dark. The light token value is DARKER than the dark one,
+    so the literal sits between the two and matches neither.
+
+    It is here for the reason check (9) is: the rule was already true in prose
+    and asserted by nothing. The three dashboards were spelling the same
+    semantic colour both ways INSIDE ONE FILE, which is what finally made it
+    obvious that writing it down had not been enough.
+
+ALL TEN ARE SELF-CLEARING on the tree as written today, and the only way to
 make any of them go red is to introduce the defect.
 
-Note which laws got which SHAPE, because it is the reusable rule: the three
-that are populations with an irreducible remainder (orange, spacing, hairlines)
-are ratchets; the six that can genuinely be zero (the shared focus rule, the
-unringed outline, the display preferences, the webkit prefix, the safe-area
-inset, transition:all) are absolutes. Don't ratchet something that can be zero,
-and don't demand zero of something that can't be.
+Note which laws got which SHAPE, because it is the reusable rule: the four
+that are populations with an irreducible remainder (orange, status colour,
+spacing, hairlines) are ratchets; the six that can genuinely be zero (the
+shared focus rule, the unringed outline, the display preferences, the webkit
+prefix, the safe-area inset, transition:all) are absolutes. Don't ratchet
+something that can be zero, and don't demand zero of something that can't be.
 
 Usage:  python3 tools/check_ux.py        # exits 1 and prints every finding
 """
@@ -370,6 +382,57 @@ HAIR_NEUTRAL = (r"var\(--ff-hair\)"
                 r"|var\(--ff-card-border\)"
                 r"|rgba\(\s*var\(--ff-fg\)\s*,\s*[0-9.]+\s*\)")
 HAIRLINE_RAW = re.compile(r"1px\s+solid\s+(?:%s)" % HAIR_NEUTRAL)
+
+# ── (10) the status-colour ratchet ─────────────────────────────────────────
+# The orange bug in four more colours, found 2026-11-08 while aligning
+# Contractor and Admin to Client, and WORSE than orange in two ways.
+#
+# First, the same semantic colour was spelled two ways INSIDE ONE FILE --
+# `color:"#22c55e"` on one line and `color:"var(--ff-success)"` forty lines
+# down -- so this was never cross-file drift you could blame on two authors.
+#
+# Second, and this is the part that makes it a ratchet rather than a tidy-up:
+# every one of these literals is wrong in BOTH themes, where orange was at
+# least right in dark. Read the pairs as a set --
+#
+#     --ff-success   #86efac dark   #15803d light
+#     --ff-warn      #fbbf24 dark   #b45309 light
+#     --ff-danger    #f87171 dark   #dc2626 light
+#     --ff-info      #93c5fd dark   #2563eb light
+#
+# -- the light value is DARKER than the dark value, because dark needs a pale
+# hue to carry on navy and light needs a deep one to carry on off-white. The
+# literals sit BETWEEN the two, so #22c55e is neither #86efac nor #15803d.
+#
+# SAME RULE AS THE OTHER THREE RATCHETS: may fall, never rise.
+#
+# 321 tree-wide when first measured; 219 after the three dashboards were
+# migrated by tools/migrate_status.py --apply plus a hand pass over the seven
+# filled buttons. The dashboards are now at ZERO, which is why the remainder is
+# a flat tail across 38 files rather than concentrated anywhere.
+#
+# ⚠️ READ THIS BEFORE RUNNING THE SCRIPT AT THE REMAINING 219. A regex cannot
+# tell a filled button from a tinted chip, and a filled button's INK has to move
+# in the same edit: `background:"#22c55e", color:"#06210f"` is fine, but rewrite
+# only the background and light mode becomes near-black on #15803d, about
+# 1.3:1. The correct paired ink for all four hues in both themes is
+# var(--ff-bg) -- it is the page ground, so it is dark when the hue is pale and
+# pale when the hue is dark, by construction. ContractPanel and MilestonePanel
+# both have such buttons and are the two highest-risk money surfaces here, so
+# that pass wants review, not a flag. Grep first:
+#     grep -n 'background:\s*"#\(22c55e\|f59e0b\|ef4444\|3b82f6\)"'
+#
+# Unlike orange's 18, this number is NOT believed to be near its floor -- most
+# of the 219 are ordinary tints and text colours that migrate cleanly. A rise
+# here still means what a rise at orange's 96 meant: someone typed a literal
+# instead of the token.
+STATUS_BASELINE = 219
+
+STATUS_RAW = re.compile(r"#22c55e|#f59e0b|#ef4444|#3b82f6"
+                        r"|rgba\(\s*34\s*,\s*197\s*,\s*94\b"
+                        r"|rgba\(\s*245\s*,\s*158\s*,\s*11\b"
+                        r"|rgba\(\s*239\s*,\s*68\s*,\s*68\b"
+                        r"|rgba\(\s*59\s*,\s*130\s*,\s*246\b", re.I)
 
 # ── (5) the three accessibility preferences ────────────────────────────────
 # An OS can express three independent display preferences and this repo
@@ -703,6 +766,40 @@ def check(repo=REPO):
                ", ".join("%s (%d)" % (f, n) for f, n in worst))
         )
 
+    # (10) status-colour ratchet
+    #
+    # Comments stripped for the third time and the third reason: three comments
+    # in ContractorDashboard name the old hexes while explaining the value-blind
+    # colours they replaced. migrate_status.py refuses to rewrite those (prose
+    # renders nothing), so counting them would put three sites permanently
+    # beyond the ratchet's reach and make the only route to a lower number
+    # deleting the explanation.
+    status = 0
+    status_per_file = {}
+    for path in _walk(src):
+        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+            n = len(STATUS_RAW.findall(_strip_comments(fh.read())))
+        if n:
+            status_per_file[os.path.relpath(path, repo)] = n
+            status += n
+
+    if status > STATUS_BASELINE:
+        worst = sorted(status_per_file.items(), key=lambda kv: -kv[1])[:5]
+        problems.append(
+            "raw status-colour literals ROSE: %d now, ratchet is %d.\n"
+            "      These are wrong in BOTH themes, not just light: --ff-success is\n"
+            "      #86efac dark but #15803d LIGHT, and #22c55e is neither. The light\n"
+            "      value is darker than the dark one on purpose -- navy needs a pale\n"
+            "      hue, off-white needs a deep one. Use var(--ff-success|warn|danger|\n"
+            "      info), or rgba(var(--ff-<hue>-rgb), A) when you need an alpha.\n"
+            "      If the site is a FILLED button, move its ink to var(--ff-bg) in the\n"
+            "      same edit or light mode goes unreadable. Run\n"
+            "      tools/migrate_status.py --all --dry-run to see what is mechanical.\n"
+            "      Heaviest files: %s"
+            % (status, STATUS_BASELINE,
+               ", ".join("%s (%d)" % (f, n) for f, n in worst))
+        )
+
     # (3) outline:none without a ring in the same file
     for path in _walk(src):
         with open(path, "r", encoding="utf-8", errors="replace") as fh:
@@ -811,18 +908,22 @@ def main():
         src = os.path.join(REPO, SRC)
         total = 0
         spacing = 0
+        status = 0
         for path in _walk(src):
             with open(path, "r", encoding="utf-8", errors="replace") as fh:
                 body = _strip_comments(fh.read())
             total += len(ORANGE.findall(body))
             spacing += len(SPACING_RAW.findall(body))
+            status += len(STATUS_RAW.findall(body))
         hair, _ = _count_hairlines(src, REPO)
-        print("ok   ux laws (%d raw orange, ratchet %d; %d raw spacing, ratchet %d; "
+        print("ok   ux laws (%d raw orange, ratchet %d; %d raw status colour, "
+              "ratchet %d; %d raw spacing, ratchet %d; "
               "%d neutral 1px borders, ratchet %d; shared focus rule present; "
               "no unringed outline:none; all 3 display preferences answered; "
               "every backdrop-filter prefixed; every bottom-fixed surface insets; "
               "no transition:all)"
-              % (total, BASELINE, spacing, SPACING_BASELINE,
+              % (total, BASELINE, status, STATUS_BASELINE,
+                 spacing, SPACING_BASELINE,
                  hair, HAIRLINE_BASELINE))
         return 0
     print("FAIL ux-law violation in %s/\n" % SRC)

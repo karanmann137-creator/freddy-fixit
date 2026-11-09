@@ -1213,7 +1213,16 @@ export default function AdminDashboard() {
           it would have silently re-overridden the transition, hover filter and
           disabled opacity of every <Button> ported below — the primitives
           would still render, and would just not behave like primitives. */}
-      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+      {/* A Google Fonts <link> stood here and was DELETED 2026-11-08. It asked
+          for Bebas Neue + DM Sans 300/400/500, a strict SUBSET of the single
+          <link> in index.html, so it fetched nothing new and could only ever
+          disagree with it. That is the live hazard, not the wasted request: a
+          face used site-wide belongs in that one <link>, and a per-page loader
+          is the thing that makes "we changed the display face" leave one page
+          rendering the old one with no error. ~38 of these subset loaders are
+          still scattered across the read pages; this is the first to go, and it
+          went because a dashboard is the last place that should be deciding
+          which fonts the site uses. */}
       {/* Clears the fixed TopNav. The height is MEASURED and published by
           TopNav on :root — the old hardcoded 3.75rem was one of three
           disagreeing constants and went stale the moment the nav's breakpoint
@@ -1251,9 +1260,9 @@ export default function AdminDashboard() {
       </div>
 
       {loadError && !hiddenNow.has("loadError") && (
-        <div style={{ margin:"1rem 1.5rem 0", padding:".8rem 1rem", background:"rgba(239,68,68,.1)", border:"var(--ff-hair-w) solid rgba(239,68,68,.4)", borderRadius:"10px", display:"flex", alignItems:"center", gap:".75rem", flexWrap:"wrap" }}>
+        <div style={{ margin:"1rem 1.5rem 0", padding:".8rem 1rem", background:"rgba(var(--ff-danger-rgb), .1)", border:"var(--ff-hair-w) solid rgba(var(--ff-danger-rgb), .4)", borderRadius:"10px", display:"flex", alignItems:"center", gap:".75rem", flexWrap:"wrap" }}>
           <span style={{ fontSize:".85rem", color:"var(--ff-text)", flex:1, minWidth:0 }}>{loadError}</span>
-          <Button onClick={() => loadAll()} style={{ borderColor:"rgba(239,68,68,.5)" }}>Retry</Button>
+          <Button onClick={() => loadAll()} style={{ borderColor:"rgba(var(--ff-danger-rgb), .5)" }}>Retry</Button>
           {/* Session-only, and deliberately not persisted. This names a real
               fault whose text changes with the fault — dismissing it forever
               would silence a DIFFERENT failure later. `loadAll` clears and
@@ -1333,13 +1342,13 @@ export default function AdminDashboard() {
                         return (
                           <div key={b.id} style={{
                             padding:".5rem .6rem", marginBottom:".4rem", borderRadius:"8px",
-                            background: won ? "rgba(34,197,94,.08)" : "rgba(var(--ff-fg), .04)",
-                            border: won ? "1px solid rgba(34,197,94,.4)" : "1px solid rgba(var(--ff-fg), .08)",
+                            background: won ? "rgba(var(--ff-success-rgb), .08)" : "rgba(var(--ff-fg), .04)",
+                            border: won ? "1px solid rgba(var(--ff-success-rgb), .4)" : "1px solid rgba(var(--ff-fg), .08)",
                             opacity: lost ? .55 : 1,
                           }}>
                             <div style={{ fontSize:".85rem", color:"var(--ff-text)", display:"flex", alignItems:"center", gap:".4rem", flexWrap:"wrap" as const }}>
                               <span>{nameFor(b.contractor_id)}{b.amount != null ? " — $" + b.amount : (b.walkthrough_requested ? " — walkthrough first" : "")}</span>
-                              {won && <span style={{ fontSize:".65rem", background:"rgba(34,197,94,.18)", color:"var(--ff-success)", border:"1px solid rgba(34,197,94,.4)", borderRadius:"4px", padding:".1rem .4rem", letterSpacing:".04em" }}>✓ PICKED</span>}
+                              {won && <span style={{ fontSize:".65rem", background:"rgba(var(--ff-success-rgb), .18)", color:"var(--ff-success)", border:"1px solid rgba(var(--ff-success-rgb), .4)", borderRadius:"4px", padding:".1rem .4rem", letterSpacing:".04em" }}>✓ PICKED</span>}
                               {lost && <span style={{ fontSize:".65rem", color:"rgba(var(--ff-muted), .5)", letterSpacing:".04em" }}>not picked</span>}
                             </div>
                             {b.message && <div style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .6)" }}>{b.message}</div>}
@@ -1483,7 +1492,7 @@ export default function AdminDashboard() {
                   </div>
                   {a.orphaned && <div style={{ fontSize:".74rem", color:"var(--ff-warn)", marginBottom:".3rem" }}>⚠ No profile row (orphaned auth account)</div>}
                   {flagMatches[a.id] && (
-                    <div style={{ marginTop:".3rem", marginBottom:".4rem", padding:".6rem .8rem", background:"rgba(239,68,68,.12)", border:"1px solid rgba(239,68,68,.4)", borderRadius:"8px", color:"var(--ff-danger)", fontSize:".8rem", lineHeight:1.45 }}>
+                    <div style={{ marginTop:".3rem", marginBottom:".4rem", padding:".6rem .8rem", background:"rgba(var(--ff-danger-rgb), .12)", border:"1px solid rgba(var(--ff-danger-rgb), .4)", borderRadius:"8px", color:"var(--ff-danger)", fontSize:".8rem", lineHeight:1.45 }}>
                       {"Possible re-signup — matches a previously deleted account that had poor reviews (avg "}
                       {flagMatches[a.id].avg}{"/10 over "}{flagMatches[a.id].count}{" review"}{flagMatches[a.id].count === 1 ? "" : "s"}{", deleted "}
                       {new Date(flagMatches[a.id].date).toLocaleDateString()}{"). Matched on "}{flagMatches[a.id].fields.join(", ")}{"."}
@@ -1553,7 +1562,7 @@ export default function AdminDashboard() {
                                 {busyPayoutCheck === a.id ? "Checking Stripe…" : "What's blocking their payouts?"}
                               </Button>
                             ) : chk.error ? (
-                              <div style={{ ...s.meta, color:"#ef4444" }}>Couldn't check Stripe: {chk.error}</div>
+                              <div style={{ ...s.meta, color:"var(--ff-danger)" }}>Couldn't check Stripe: {chk.error}</div>
                             ) : (
                               <div style={{ padding:".55rem .7rem", borderRadius:"8px", background:"rgba(var(--ff-accent-rgb), .06)", border:"1px solid rgba(var(--ff-accent-rgb), .18)" }}>
                                 {steps.length > 0 ? (
@@ -1803,7 +1812,7 @@ export default function AdminDashboard() {
                  LONGHAND, so `.ffd-card`'s own `var(--ff-hair-w)` width and
                  `solid` style survive it. Writing the `border` shorthand here
                  would silently take the edge back to 1px. */
-              <DashCard key={f.message_id} style={{ borderColor:"rgba(239,68,68,.3)" }}>
+              <DashCard key={f.message_id} style={{ borderColor:"rgba(var(--ff-danger-rgb), .3)" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", gap:".75rem", flexWrap:"wrap", alignItems:"baseline" }}>
                   <div style={{ fontWeight:600, color:"var(--ff-text)" }}>
                     {f.sender_name || "Someone"}
@@ -1822,7 +1831,7 @@ export default function AdminDashboard() {
                 </div>
                 <div style={{
                   fontSize:".85rem", lineHeight:1.6, color:"var(--ff-text)", whiteSpace:"pre-wrap",
-                  background:"rgba(var(--ff-fg), .05)", borderLeft:"3px solid rgba(239,68,68,.5)",
+                  background:"rgba(var(--ff-fg), .05)", borderLeft:"3px solid rgba(var(--ff-danger-rgb), .5)",
                   borderRadius:6, padding:".6rem .75rem",
                 }}>{f.content}</div>
                 <div style={{ ...s.meta, marginTop:".55rem" }}>
@@ -1928,7 +1937,7 @@ export default function AdminDashboard() {
                     </div>
                   )}
 
-                  <div style={{ marginTop:".6rem", padding:".6rem .8rem", background: d.contractor_responded_at ? "rgba(59,130,246,.07)" : "rgba(251,191,36,.06)", border: "1px solid " + (d.contractor_responded_at ? "rgba(59,130,246,.3)" : "rgba(251,191,36,.25)"), borderRadius:"8px", fontSize:".82rem", lineHeight:1.5 }}>
+                  <div style={{ marginTop:".6rem", padding:".6rem .8rem", background: d.contractor_responded_at ? "rgba(var(--ff-info-rgb), .07)" : "rgba(251,191,36,.06)", border: "1px solid " + (d.contractor_responded_at ? "rgba(var(--ff-info-rgb), .3)" : "rgba(251,191,36,.25)"), borderRadius:"8px", fontSize:".82rem", lineHeight:1.5 }}>
                     {d.contractor_responded_at ? (
                       <>
                         <div style={{ fontWeight:600, color:"var(--ff-info)", marginBottom:".3rem" }}>Contractor responded</div>
@@ -2356,7 +2365,7 @@ export default function AdminDashboard() {
                 </p>
               )}
               {!agentsFailed && roster.map((g:any) => (
-                <DashCard key={g.agent} style={{ borderColor: g.stale ? "rgba(251,191,36,.3)" : g.last_run_status === "error" ? "rgba(239,68,68,.3)" : "rgba(var(--ff-fg), .08)" }}>
+                <DashCard key={g.agent} style={{ borderColor: g.stale ? "rgba(251,191,36,.3)" : g.last_run_status === "error" ? "rgba(var(--ff-danger-rgb), .3)" : "rgba(var(--ff-fg), .08)" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", flexWrap:"wrap" as const, gap:".5rem" }}>
                     <div style={s.title}>{g.label || g.agent}</div>
                     <Pill tone={g.enabled ? "good" : "neutral"}>{g.enabled ? "on" : "not set up yet"}</Pill>
@@ -2414,7 +2423,7 @@ export default function AdminDashboard() {
                     </div>
                   )}
                   {g.last_run_error && (
-                    <div style={{ marginTop:".5rem", padding:".5rem .7rem", background:"rgba(239,68,68,.07)", border:"1px solid rgba(239,68,68,.2)", borderRadius:"8px", fontSize:".8rem", color:"rgba(var(--ff-muted), .85)", wordBreak:"break-word" as const }}>
+                    <div style={{ marginTop:".5rem", padding:".5rem .7rem", background:"rgba(var(--ff-danger-rgb), .07)", border:"1px solid rgba(var(--ff-danger-rgb), .2)", borderRadius:"8px", fontSize:".8rem", color:"rgba(var(--ff-muted), .85)", wordBreak:"break-word" as const }}>
                       {String(g.last_run_error)}
                     </div>
                   )}

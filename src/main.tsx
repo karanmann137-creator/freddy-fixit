@@ -55,6 +55,29 @@ style.textContent = `
     --ff-warn: #fbbf24;
     --ff-danger: #f87171;
     --ff-info: #93c5fd;
+    /* The four status hues as TRIPLETS, for exactly the reason
+       --ff-accent-rgb exists and documented at length down there: a tint or a
+       border is an alpha over the hue, and the three dashboards carried 54 of
+       them across 15 distinct alphas. Snapping those alphas to two named steps
+       would have moved every one of them, so the alpha stays at the call site
+       and only the colour is tokenised.
+
+       MIGRATION TOKENS, not colours to reach for -- same status as
+       --ff-accent-rgb. A new tint wants a plain var(--ff-success); reach for
+       the triplet only when you genuinely need an alpha.
+
+       ⚠️ Read the pairs as a SET, not four numbers: the light values are
+       DARKER than the dark ones, because the dark theme needs a pale hue to
+       carry on navy and the light theme needs a deep one to carry on off-white.
+       That is why the literals these replaced were a live bug in both themes at
+       once -- #22c55e is neither #86efac nor #15803d, so a hardcoded "success"
+       green was the wrong green on navy AND the wrong green on off-white, and
+       sat beside a var(--ff-success) spelling of the same meaning in the same
+       file. 111 raw sites against 76 token uses when this landed. */
+    --ff-success-rgb: 134,239,172;
+    --ff-warn-rgb: 251,191,36;
+    --ff-danger-rgb: 248,113,113;
+    --ff-info-rgb: 147,197,253;
 
     /* ── 60 / 30 / 10 ──────────────────────────────────────────────
        The palette is unchanged; what's new is the RATIO discipline and
@@ -274,6 +297,10 @@ style.textContent = `
     --ff-warn: #b45309;
     --ff-danger: #dc2626;
     --ff-info: #2563eb;
+    --ff-success-rgb: 21,128,61;
+    --ff-warn-rgb: 180,83,9;
+    --ff-danger-rgb: 220,38,38;
+    --ff-info-rgb: 37,99,235;
     --ff-accent-600: #b8500b;
     --ff-accent-500: #d65f10;
     --ff-accent-400: #ea6b14;
@@ -363,6 +390,15 @@ style.textContent = `
     --ff-warn: #fbbf24;
     --ff-danger: #f87171;
     --ff-info: #93c5fd;
+    /* Restored here for the same reason the four solid hues above are: a
+       subtree inside .ff-on-dark is painted on navy under BOTH themes, so a
+       status tint in it must read the dark triplet even when the page around
+       it is light. Literals, not var(--ff-success-rgb) -- that would be the
+       alias trap, and check_tokens.py refuses it. */
+    --ff-success-rgb: 134,239,172;
+    --ff-warn-rgb: 251,191,36;
+    --ff-danger-rgb: 248,113,113;
+    --ff-info-rgb: 147,197,253;
     /* These five are spelled out as literals rather than left to alias
        --ff-bg / --ff-surface / --ff-text. A var() inside a custom-property
        DECLARATION is substituted where it is declared, not where it is used,

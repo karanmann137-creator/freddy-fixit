@@ -189,11 +189,11 @@ function QuoteBreakdownView({ row, assumptionsKey = "assumptions" }: { row: any;
  * disagreement to be resolved by whichever surface was written last.
  */
 const STATUS_META: Record<string, { icon: string; label: string; color: string; tone: PillTone; rowTone: RowTone }> = {
-  pending:     { icon: "clock", label: "Pending Review",     color: "#f59e0b", tone: "warn",    rowTone: "warn" },
-  matched:     { icon: "link", label: "Contractor Matched", color: "#3b82f6", tone: "neutral", rowTone: "neutral" },
+  pending:     { icon: "clock", label: "Pending Review",     color: "var(--ff-warn)", tone: "warn",    rowTone: "warn" },
+  matched:     { icon: "link", label: "Contractor Matched", color: "var(--ff-info)", tone: "neutral", rowTone: "neutral" },
   in_progress: { icon: "wrench", label: "Work In Progress",   color: "var(--ff-c10)", tone: "neutral", rowTone: "neutral" },
-  completed:   { icon: "check-circle", label: "Completed",          color: "#22c55e", tone: "good",    rowTone: "good" },
-  cancelled:   { icon: "x-circle", label: "Cancelled",          color: "#ef4444", tone: "danger",  rowTone: "neutral" },
+  completed:   { icon: "check-circle", label: "Completed",          color: "var(--ff-success)", tone: "good",    rowTone: "good" },
+  cancelled:   { icon: "x-circle", label: "Cancelled",          color: "var(--ff-danger)", tone: "danger",  rowTone: "neutral" },
 };
 
 // Can the client actually delete this request? `remove_client_request` is guarded
@@ -2011,7 +2011,7 @@ export default function ClientDashboard() {
   return (
     <DashShell>
       {toast && (
-        <div onClick={() => setToast(null)} className="ff-toast-in" style={{ position:"fixed", left:"50%", bottom:"calc(1.5rem + var(--ff-fsb-h, 0px))", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
+        <div onClick={() => setToast(null)} className="ff-toast-in" style={{ position:"fixed", left:"50%", bottom:"calc(1.5rem + var(--ff-fsb-h, 0px))", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(var(--ff-success-rgb), .55)" : "rgba(var(--ff-danger-rgb), .55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
       )}
 
       {/* Clears the fixed TopNav. The height is MEASURED and published by
@@ -2147,10 +2147,10 @@ export default function ClientDashboard() {
             every paying client landed on the marketing homepage with no
             confirmation that their money had arrived. */}
         {payReturn === "success" && (
-          <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.45)", display:"flex", alignItems:"flex-start", gap:".6rem" }}>
-            <Ic name="check" size={16} color="#22c55e" style={{ marginTop:2, flexShrink:0 }} />
+          <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(var(--ff-success-rgb), .1)", border:"1px solid rgba(var(--ff-success-rgb), .45)", display:"flex", alignItems:"flex-start", gap:".6rem" }}>
+            <Ic name="check" size={16} color="var(--ff-success)" style={{ marginTop:2, flexShrink:0 }} />
             <div style={{ flex:"1 1 auto", minWidth:0 }}>
-              <div style={{ fontSize:".88rem", fontWeight:700, color:"#22c55e", marginBottom: "var(--ff-s1)" }}>Payment received</div>
+              <div style={{ fontSize:".88rem", fontWeight:700, color:"var(--ff-success)", marginBottom: "var(--ff-s1)" }}>Payment received</div>
               <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
                 Your money is <strong>held safely</strong> and only released to your contractor once you confirm the work is done. It can take a few seconds to show below.
               </div>
@@ -2174,8 +2174,8 @@ export default function ClientDashboard() {
         {/* A failed read is not an empty result. The last-known job stays on
             screen behind this rather than the whole payment surface vanishing. */}
         {jobLoadFailed && (
-          <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(239,68,68,.08)", border:"1px solid rgba(239,68,68,.4)", display:"flex", alignItems:"flex-start", gap:".6rem" }}>
-            <Ic name="alert-triangle" size={16} color="#ef4444" style={{ marginTop:2, flexShrink:0 }} />
+          <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(var(--ff-danger-rgb), .08)", border:"1px solid rgba(var(--ff-danger-rgb), .4)", display:"flex", alignItems:"flex-start", gap:".6rem" }}>
+            <Ic name="alert-triangle" size={16} color="var(--ff-danger)" style={{ marginTop:2, flexShrink:0 }} />
             <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .85)", lineHeight:1.5 }}>
               <strong style={{ color:"var(--ff-text)" }}>We couldn't load the latest on this job.</strong> What you see below may be out of date — please refresh. Nothing has changed with your job or your money.
             </div>
@@ -2186,8 +2186,8 @@ export default function ClientDashboard() {
             the estimates was indistinguishable from "nobody has bid yet", and
             the client had no reason to refresh and no way to pick. */}
         {bidsFailed && (
-          <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(239,68,68,.08)", border:"1px solid rgba(239,68,68,.4)", display:"flex", alignItems:"flex-start", gap:".6rem" }}>
-            <Ic name="alert-triangle" size={16} color="#ef4444" style={{ marginTop:2, flexShrink:0 }} />
+          <div style={{ margin:"0 0 1.25rem", padding:"1rem 1.1rem", borderRadius:"12px", background:"rgba(var(--ff-danger-rgb), .08)", border:"1px solid rgba(var(--ff-danger-rgb), .4)", display:"flex", alignItems:"flex-start", gap:".6rem" }}>
+            <Ic name="alert-triangle" size={16} color="var(--ff-danger)" style={{ marginTop:2, flexShrink:0 }} />
             <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .85)", lineHeight:1.5 }}>
               <strong style={{ color:"var(--ff-text)" }}>We couldn't load your estimates just now.</strong> This isn't the same as having none — please refresh. If any pros have quoted your request, they'll appear here.
             </div>
@@ -2564,7 +2564,7 @@ export default function ClientDashboard() {
                         return <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .6)", marginTop: "var(--ff-s1)" }}>{bits.join(" \u00b7 ")}</div>;
                       })()}
                       {bidResp[b.contractor_id] != null && (
-                        <div style={{ display:"inline-block", marginTop: "var(--ff-s1)", padding:".15rem .5rem", borderRadius:"999px", fontSize:".68rem", fontWeight:600, background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.3)", color:"#22c55e" }}>
+                        <div style={{ display:"inline-block", marginTop: "var(--ff-s1)", padding:".15rem .5rem", borderRadius:"999px", fontSize:".68rem", fontWeight:600, background:"rgba(var(--ff-success-rgb), .1)", border:"1px solid rgba(var(--ff-success-rgb), .3)", color:"var(--ff-success)" }}>
                           ⚡ Usually responds in {respText(bidResp[b.contractor_id])}
                         </div>
                       )}
@@ -2585,7 +2585,7 @@ export default function ClientDashboard() {
                     {/* Ask before you commit. Every pro on this list can be
                         messaged privately — they can only reply, never cold-call. */}
                     <div style={{ display:"flex", flexDirection:"column", gap:".4rem", flex:"0 0 auto" }}>
-                      <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f", padding:".5rem 1rem" }} disabled={busyPick === b.id} onClick={() => pickBid(b.id)}>{busyPick === b.id ? "…" : "Choose"}</button>
+                      <button style={{ ...s.primaryBtn, background:"var(--ff-success)", color:"var(--ff-bg)", padding:".5rem 1rem" }} disabled={busyPick === b.id} onClick={() => pickBid(b.id)}>{busyPick === b.id ? "…" : "Choose"}</button>
                       <button
                         style={{ ...s.btn, padding:".4rem .8rem", fontSize:".78rem", position:"relative" as const }}
                         onClick={() => setBidChat({ requestId: activeReq.id, contractorId: b.contractor_id, name: bidNames[b.contractor_id] ?? "Contractor", title: activeReq.service_needed })}
@@ -2884,11 +2884,11 @@ export default function ClientDashboard() {
                                 </div>
                               );
                               return (
-                                <div {...anchor("ffc-hike")} style={{ ...anchorPad, marginBottom:"1.5rem", padding:"1.15rem 1.15rem 1.25rem", borderRadius:"14px", background:"rgba(239,68,68,.08)", border:"1px solid rgba(239,68,68,.4)" }}>
+                                <div {...anchor("ffc-hike")} style={{ ...anchorPad, marginBottom:"1.5rem", padding:"1.15rem 1.15rem 1.25rem", borderRadius:"14px", background:"rgba(var(--ff-danger-rgb), .08)", border:"1px solid rgba(var(--ff-danger-rgb), .4)" }}>
                                   <div style={{ display:"flex", alignItems:"flex-start", gap:".6rem" }}>
-                                    <Ic name="alert-triangle" size={16} color="#ef4444" style={{ marginTop:3, flexShrink:0 }} />
+                                    <Ic name="alert-triangle" size={16} color="var(--ff-danger)" style={{ marginTop:3, flexShrink:0 }} />
                                     <div>
-                                      <div style={{ fontSize:"1rem", fontWeight:700, color:"#ef4444", lineHeight:1.3 }}>Your pro raised the price</div>
+                                      <div style={{ fontSize:"1rem", fontWeight:700, color:"var(--ff-danger)", lineHeight:1.3 }}>Your pro raised the price</div>
                                       <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .75)", lineHeight:1.55, marginTop: "var(--ff-s1)" }}>
                                         This is more than the estimate you picked them on. Nothing has been charged.
                                       </div>
@@ -2896,7 +2896,7 @@ export default function ClientDashboard() {
                                   </div>
 
                                   {activeJob.price_hike_reason && (
-                                    <div style={{ margin:"1.1rem 0 0", padding:".8rem .9rem", borderRadius:"10px", background:"rgba(239,68,68,.07)", borderLeft:"3px solid #ef4444" }}>
+                                    <div style={{ margin:"1.1rem 0 0", padding:".8rem .9rem", borderRadius:"10px", background:"rgba(var(--ff-danger-rgb), .07)", borderLeft:"3px solid var(--ff-danger)" }}>
                                       <div style={{ fontSize:".7rem", textTransform:"uppercase" as const, letterSpacing:".09em", fontWeight:700, color:"rgba(var(--ff-muted), .55)", marginBottom:".4rem" }}>Their reason</div>
                                       <div style={{ fontSize:".86rem", color:"var(--ff-text)", lineHeight:1.6 }}>{"“" + activeJob.price_hike_reason + "”"}</div>
                                     </div>
@@ -2904,12 +2904,12 @@ export default function ClientDashboard() {
 
                                   <div style={{ marginTop:"1.1rem", padding:".4rem .95rem .65rem", borderRadius:"12px", background:"rgba(var(--ff-fg), .035)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .09)" }}>
                                     {hkRow("The estimate you picked", pcMoney(hk.oldPrice))}
-                                    {hkRow("Increase", "+" + pcMoney(hk.delta), { color:"#ef4444" })}
+                                    {hkRow("Increase", "+" + pcMoney(hk.delta), { color:"var(--ff-danger)" })}
                                     {hkRow("New job price", pcMoney(hk.newPrice))}
                                     {hk.rate > 0
                                       ? hkRow("Service fee (" + pcRateLabel(hk.rate) + " of the job price)", pcMoney(hk.newFee))
                                       : hkRow("Service fee", "Waived", { color:"var(--ff-success)" })}
-                                    {hkRow("New total", pcMoney(hk.newTotal), { strong:true, color:"#ef4444", top:true })}
+                                    {hkRow("New total", pcMoney(hk.newTotal), { strong:true, color:"var(--ff-danger)", top:true })}
                                   </div>
 
                                   <div style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.7, marginTop:"1.1rem" }}>
@@ -2917,7 +2917,7 @@ export default function ClientDashboard() {
                                     win your job instead &mdash; you keep your request and their estimates, and you do not start over.
                                   </div>
                                   <div style={{ marginTop:"1.1rem" }}>
-                                    <button style={{ ...s.primaryBtn, background:"#ef4444", color:"#fff" }} disabled={busyReq} onClick={declineReopen}>{busyReq ? "…" : "Decline & re-open to other pros"}</button>
+                                    <button style={{ ...s.primaryBtn, background:"var(--ff-danger)", color:"var(--ff-bg)" }} disabled={busyReq} onClick={declineReopen}>{busyReq ? "…" : "Decline & re-open to other pros"}</button>
                                   </div>
                                 </div>
                               );
@@ -2996,7 +2996,7 @@ export default function ClientDashboard() {
                         {activeJob.status === "assigned" && activeJob.slot_released_at && !activeJob.schedule_proposed_at && (
                           <div style={{ marginBottom:".75rem", padding:".8rem .85rem", borderRadius:"10px", background:"rgba(251,191,36,.08)", border:"1px solid rgba(251,191,36,.35)" }}>
                             <div style={{ fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.55 }}>
-                              <Ic name="clock" size={13} color="#f59e0b" style={{ marginRight:5 }} />
+                              <Ic name="clock" size={13} color="var(--ff-warn)" style={{ marginRight:5 }} />
                               <strong>Your booked time was released.</strong>{activeJob.slot_released_from ? " " + new Date(activeJob.slot_released_from).toLocaleString() + " arrived without the service agreement being signed and paid, so we freed the slot rather than have your pro hold it." : " The service agreement wasn't signed and paid in time, so we freed the slot rather than have your pro hold it."} <strong>Nothing was cancelled</strong> — you still have the same contractor and the same price. They'll propose a new time, and you can approve it as usual. You haven't been charged anything.
                             </div>
                           </div>
@@ -3053,7 +3053,7 @@ export default function ClientDashboard() {
                                 <>
                                   <div style={{ fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.5, marginBottom:".6rem" }}>Is this time still good? Confirm it, or pick a new day/time. Changes close 24 hours before the visit.</div>
                                   <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
-                                    <button style={{ ...s.btn, color:"var(--ff-success)", borderColor:"rgba(34,197,94,.4)", background:"rgba(34,197,94,.1)" }} disabled={busyReq} onClick={confirmVisit}>{busyReq ? "…" : "✓ Confirm this time"}</button>
+                                    <button style={{ ...s.btn, color:"var(--ff-success)", borderColor:"rgba(var(--ff-success-rgb), .4)", background:"rgba(var(--ff-success-rgb), .1)" }} disabled={busyReq} onClick={confirmVisit}>{busyReq ? "…" : "✓ Confirm this time"}</button>
                                     <button style={s.btn} disabled={busyReq} onClick={() => setShowChangeTime(v => !v)}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Change the time</button>
                                   </div>
                                 </>
@@ -3160,7 +3160,7 @@ export default function ClientDashboard() {
                                   <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".75rem" }}>Confirm the work is done and we'll release your held payment to the contractor. If you don't, it auto-confirms in a few days.</div>
                                 )}
                                 <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
-                                  <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq || !!activeJob.price_change_pending || (activeJob.payment_status === "held" && !jobFullyFunded(activeJob))} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm & release payment"}</button>
+                                  <button style={{ ...s.primaryBtn, background:"var(--ff-success)", color:"var(--ff-bg)" }} disabled={busyReq || !!activeJob.price_change_pending || (activeJob.payment_status === "held" && !jobFullyFunded(activeJob))} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm & release payment"}</button>
                                   <button style={s.btn} onClick={() => downloadReceipt(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Download receipt</button>
                                 </div>
                                 {/* Demoted from a third equal-weight button to a
@@ -3213,7 +3213,7 @@ export default function ClientDashboard() {
                             ) : (
                               <>
                                 <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .7)", marginBottom:".75rem" }}>Please confirm the work is done. If you don't, it auto-confirms in a few days.</div>
-                                <button style={{ ...s.primaryBtn, background:"#22c55e", color:"#06210f" }} disabled={busyReq || !!activeJob.price_change_pending} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm completion"}</button>
+                                <button style={{ ...s.primaryBtn, background:"var(--ff-success)", color:"var(--ff-bg)" }} disabled={busyReq || !!activeJob.price_change_pending} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm completion"}</button>
                               </>
                             )}
                           </div>
@@ -3263,7 +3263,7 @@ export default function ClientDashboard() {
                     ) : (
                       <div style={{ display:"flex", gap:".6rem", marginTop:"1rem" }}>
                         <button style={s.btn} onClick={() => startEdit(activeReq)}><Ic name="pencil" size={13} style={{ marginRight:4 }} />Edit</button>
-                        {canRemoveRequest(activeReq, activeJob) && <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyReq} onClick={() => removeRequest(activeReq)}><Ic name="trash" size={13} style={{ marginRight:4 }} />Delete</button>}
+                        {canRemoveRequest(activeReq, activeJob) && <button style={{ ...s.btn, color:"var(--ff-danger)", borderColor:"rgba(var(--ff-danger-rgb), .3)", background:"rgba(var(--ff-danger-rgb), .08)" }} disabled={busyReq} onClick={() => removeRequest(activeReq)}><Ic name="trash" size={13} style={{ marginRight:4 }} />Delete</button>}
                       </div>
                     )}
                   </DashCard>

@@ -1160,9 +1160,9 @@ export default function ContractorDashboard() {
           const paidInFull = jobFullyFunded(job);
           const payout = commission == null ? null : Math.round(pc.newPrice * (1 - commission) * 100) / 100;
           return (
-            <div style={{ borderRadius:"14px", border:"1px solid rgba(245,158,11,.34)", background:"rgba(245,158,11,.07)", padding:"1.1rem 1.1rem 1.2rem" }}>
+            <div style={{ borderRadius:"14px", border:"1px solid rgba(var(--ff-warn-rgb), .34)", background:"rgba(var(--ff-warn-rgb), .07)", padding:"1.1rem 1.1rem 1.2rem" }}>
               <div style={{ display:"flex", alignItems:"flex-start", gap:".6rem", marginBottom: "var(--ff-s4)" }}>
-                <Ic name="clock" size={16} color="#f59e0b" style={{ marginTop:2, flexShrink:0 }} />
+                <Ic name="clock" size={16} color="var(--ff-warn)" style={{ marginTop:2, flexShrink:0 }} />
                 <div>
                   <div style={{ fontFamily:"var(--ff-font-head, inherit)", fontSize:"1rem", color:"var(--ff-text)", letterSpacing:".01em" }}>
                     Waiting on the client to approve {pcMoney(pc.newPrice)}
@@ -1174,7 +1174,7 @@ export default function ContractorDashboard() {
               </div>
 
               {pending.reason ? (
-                <div style={{ borderLeft:"3px solid #f59e0b", paddingLeft:".75rem", margin:"0 0 .95rem", fontSize:".82rem", color:"rgba(var(--ff-muted), .85)", lineHeight:1.6 }}>
+                <div style={{ borderLeft:"3px solid var(--ff-warn)", paddingLeft:".75rem", margin:"0 0 .95rem", fontSize:".82rem", color:"rgba(var(--ff-muted), .85)", lineHeight:1.6 }}>
                   {pending.reason}
                 </div>
               ) : null}
@@ -1229,15 +1229,15 @@ export default function ContractorDashboard() {
                 above on its own was misleading. Once money is held the job
                 can't be handed away, so say that instead of implying it can. */}
             {(job.payment_status ?? "unpaid") === "unpaid" ? (
-              <div style={{ display:"flex", alignItems:"flex-start", gap:".5rem", padding:".7rem .8rem", borderRadius:"10px", background:"rgba(245,158,11,.10)", border:"1px solid rgba(245,158,11,.32)" }}>
-                <Ic name="alert-triangle" size={14} color="#f59e0b" style={{ marginTop:2, flexShrink:0 }} />
+              <div style={{ display:"flex", alignItems:"flex-start", gap:".5rem", padding:".7rem .8rem", borderRadius:"10px", background:"rgba(var(--ff-warn-rgb), .10)", border:"1px solid rgba(var(--ff-warn-rgb), .32)" }}>
+                <Ic name="alert-triangle" size={14} color="var(--ff-warn)" style={{ marginTop:2, flexShrink:0 }} />
                 <div style={{ fontSize:".78rem", color:"var(--ff-text)", lineHeight:1.55 }}>
                   <strong>Raising the price can cost you the job.</strong> Nothing has been paid yet, so the client can decline and re-open the request to the other pros who bid — in one tap, without talking to you first. Only raise it if the work genuinely changed, give the specific reason, and message them about it before you send this.
                 </div>
               </div>
             ) : (
               <div style={{ display:"flex", alignItems:"flex-start", gap:".5rem", padding:".7rem .8rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)" }}>
-                <Ic name="info" size={14} color="#f59e0b" style={{ marginTop:2, flexShrink:0 }} />
+                <Ic name="info" size={14} color="var(--ff-warn)" style={{ marginTop:2, flexShrink:0 }} />
                 <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.55 }}>
                   The client has already paid on this job, so they can't hand it to another pro. But they can decline the change — you'd finish at the agreed price. Give the specific reason and message them first.
                 </div>
@@ -1432,7 +1432,7 @@ export default function ContractorDashboard() {
   // simply doesn't render.
   const awaitingUnknown = awaitingJobs.some(j => j.amount && netPayout(j) == null);
   const awaitingTotal = awaitingUnknown ? 0 : awaitingJobs.reduce((t,j) => t + (j.amount ? (netPayout(j) ?? 0) : 0), 0);
-  const STATUS_COLORS: Record<string,string> = { pending:"#f59e0b", matched:"#3b82f6", in_progress:"var(--ff-c10)", completed:"#22c55e", cancelled:"#ef4444", assigned:"#3b82f6", scheduled:"#8b5cf6", pending_confirmation:"#f59e0b" };
+  const STATUS_COLORS: Record<string,string> = { pending:"var(--ff-warn)", matched:"var(--ff-info)", in_progress:"var(--ff-c10)", completed:"var(--ff-success)", cancelled:"var(--ff-danger)", assigned:"var(--ff-info)", scheduled:"#8b5cf6", pending_confirmation:"var(--ff-warn)" };
   // "Reliability streak" — consecutive most-recent finished jobs that were completed & confirmed with no claim.
   const streak = (() => {
     const finished = [...myJobs]
@@ -1765,7 +1765,7 @@ export default function ContractorDashboard() {
           radius was 10px here against Client's 12px; neither number was ever
           decided, so the shared one is Client's. Do not copy any of it back. */}
       {toast && (
-        <div onClick={() => setToast(null)} className="ff-toast-in" style={{ position:"fixed", left:"50%", bottom:"calc(1.5rem + var(--ff-fsb-h, 0px))", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(34,197,94,.55)" : "rgba(239,68,68,.55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
+        <div onClick={() => setToast(null)} className="ff-toast-in" style={{ position:"fixed", left:"50%", bottom:"calc(1.5rem + var(--ff-fsb-h, 0px))", transform:"translateX(-50%)", zIndex:9999, maxWidth:"90vw", padding:".8rem 1.1rem", borderRadius:"12px", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:".9rem", lineHeight:1.45, color:"#fff", background: toast.kind==="ok" ? "#1c6b39" : "#8a2020", border:"1px solid " + (toast.kind==="ok" ? "rgba(var(--ff-success-rgb), .55)" : "rgba(var(--ff-danger-rgb), .55)"), boxShadow:"0 10px 34px rgba(0,0,0,.4)" }}>{toast.text}</div>
       )}
       {/* The per-page Google Fonts <link> that used to sit here is gone — it
           was a strict subset of the single <link> in index.html, which is
@@ -2192,7 +2192,7 @@ export default function ContractorDashboard() {
                     const isSkipped = step.skippable && skipped.includes(step.key);
                     return (
                       <div key={step.key} style={{ display:"flex", gap: "var(--ff-s3)", alignItems:"flex-start", padding:".7rem .1rem", borderTop: i === 0 ? "none" : "var(--ff-hair-w) solid rgba(var(--ff-fg), .06)", opacity: isSkipped && !step.done ? .55 : 1 }}>
-                        <div style={{ width:"22px", height:"22px", borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background: step.done ? "rgba(34,197,94,.15)" : "rgba(var(--ff-accent-rgb), .12)", border:"1px solid " + (step.done ? "rgba(34,197,94,.4)" : "rgba(var(--ff-accent-rgb), .35)"), color: step.done ? "#22c55e" : "var(--ff-c10)", fontSize:".72rem", fontWeight:700 }}>{step.done ? <Ic name="check" size={12} color="#22c55e" /> : i + 1}</div>
+                        <div style={{ width:"22px", height:"22px", borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", background: step.done ? "rgba(var(--ff-success-rgb), .15)" : "rgba(var(--ff-accent-rgb), .12)", border:"1px solid " + (step.done ? "rgba(var(--ff-success-rgb), .4)" : "rgba(var(--ff-accent-rgb), .35)"), color: step.done ? "var(--ff-success)" : "var(--ff-c10)", fontSize:".72rem", fontWeight:700 }}>{step.done ? <Ic name="check" size={12} color="var(--ff-success)" /> : i + 1}</div>
                         <div style={{ flex:1, minWidth:0 }}>
                           <div onClick={step.done || isSkipped ? undefined : step.onClick} style={{ fontSize:".88rem", fontWeight:500, color:"var(--ff-text)", cursor: step.done || isSkipped ? "default" : "pointer", textDecoration: isSkipped && !step.done ? "line-through" : "none" }}>{step.label}</div>
                           <div style={{ fontSize:".76rem", color:"rgba(var(--ff-muted), .55)", marginTop:".1rem" }}>{isSkipped && !step.done ? "Skipped — you can still do this any time from your Profile tab." : step.sub}</div>
@@ -2241,9 +2241,18 @@ export default function ContractorDashboard() {
                   <div style={{ textAlign:"right" as const, flexShrink:0 }}>
                     {/* A pill rather than "● scheduled". At a glance on a card
                         list, a tinted chip is what separates one job's state
-                        from the next; a coloured bullet in body text does not. */}
-                    <span style={{ display:"inline-block", padding:".22rem .55rem", borderRadius:"99px", fontSize:".7rem", fontWeight:700, letterSpacing:".03em", textTransform:"uppercase" as const, whiteSpace:"nowrap" as const, color: STATUS_COLORS[job.status] ?? "#94a3b8", background:"rgba(var(--ff-fg), .07)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)" }}>{job.status.replace("_"," ")}</span>
-                    {job.amount && <div style={{ fontSize:"1rem", fontWeight:600, color:"#22c55e", marginTop:".35rem" }}>${job.amount}</div>}
+                        from the next; a coloured bullet in body text does not.
+
+                        The ?? fallback is `rgb(var(--ff-muted))` and NOT one of
+                        the four status hues on purpose: it fires only for a
+                        status STATUS_COLORS has no entry for, and a colour that
+                        claims a meaning for an unknown state is a lie. Muted
+                        secondary text is the honest answer — the pill still
+                        reads, it just doesn't assert. It was `#94a3b8`, which
+                        was slate-400 in both themes and so sat at 2.6:1 on the
+                        off-white ground; the token is 71,85,105 in light. */}
+                    <span style={{ display:"inline-block", padding:".22rem .55rem", borderRadius:"99px", fontSize:".7rem", fontWeight:700, letterSpacing:".03em", textTransform:"uppercase" as const, whiteSpace:"nowrap" as const, color: STATUS_COLORS[job.status] ?? "rgb(var(--ff-muted))", background:"rgba(var(--ff-fg), .07)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)" }}>{job.status.replace("_"," ")}</span>
+                    {job.amount && <div style={{ fontSize:"1rem", fontWeight:600, color:"var(--ff-success)", marginTop:".35rem" }}>${job.amount}</div>}
                   </div>
                 </div>
                 {activeJobId === job.id && (
@@ -2333,12 +2342,12 @@ export default function ContractorDashboard() {
                           Accept button sat on completed and cancelled jobs forever. */}
                       {job.client_rescheduled_at && !job.reschedule_accepted_at
                         && ["assigned","scheduled","in_progress"].includes(job.status) && (
-                        <div {...jobAnchor(A_RESCHED, { padding:".7rem .8rem", borderRadius:"10px", background:"rgba(59,130,246,.10)", border:"1px solid rgba(59,130,246,.30)", marginBottom:".3rem" })}>
+                        <div {...jobAnchor(A_RESCHED, { padding:".7rem .8rem", borderRadius:"10px", background:"rgba(var(--ff-info-rgb), .10)", border:"1px solid rgba(var(--ff-info-rgb), .30)", marginBottom:".3rem" })}>
                           <div style={{ fontSize:".8rem", color:"var(--ff-text)", lineHeight:1.5, marginBottom:".55rem" }}>
-                            <Ic name="calendar" size={14} color="#3b82f6" style={{ marginRight:5 }} />
+                            <Ic name="calendar" size={14} color="var(--ff-info)" style={{ marginRight:5 }} />
                             <strong>The client changed the time</strong> to {job.scheduled_at ? new Date(job.scheduled_at).toLocaleString() : "a new time"}. Accept it, or propose a different time below if you're not available.
                           </div>
-                          <button style={{ ...s.btn, background:"#3b82f6", color:"#fff", border:"none" }} disabled={busyJobId === job.id} onClick={() => acceptReschedule(job)}>{busyJobId === job.id ?"…" : "Accept new time"}</button>
+                          <button style={{ ...s.btn, background:"var(--ff-info)", color:"var(--ff-bg)", border:"none" }} disabled={busyJobId === job.id} onClick={() => acceptReschedule(job)}>{busyJobId === job.id ?"…" : "Accept new time"}</button>
                         </div>
                       )}
                       {job.status === "assigned" && (
@@ -2349,7 +2358,7 @@ export default function ContractorDashboard() {
                           {job.slot_released_at && !job.schedule_proposed_at && (
                             <div style={{ padding:".7rem .8rem", borderRadius:"10px", background:"rgba(251,191,36,.08)", border:"1px solid rgba(251,191,36,.35)" }}>
                               <div style={{ fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.55 }}>
-                                <Ic name="clock" size={13} color="#f59e0b" style={{ marginRight:5 }} />
+                                <Ic name="clock" size={13} color="var(--ff-warn)" style={{ marginRight:5 }} />
                                 <strong>The booked time was released.</strong>{job.slot_released_from ? " " + new Date(job.slot_released_from).toLocaleString() + " came round without the agreement being signed and paid, so we freed the slot rather than hold it." : " The agreement wasn't signed and paid in time, so we freed the slot rather than hold it."} You still have this job — propose a new time below and your client can approve it as usual.
                               </div>
                             </div>
@@ -2358,12 +2367,12 @@ export default function ContractorDashboard() {
                           {job.walkthrough_done_at ? (
                             <div style={{ fontSize:".82rem", color:"var(--ff-success)" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Walkthrough done — send your estimate below while it's fresh.</div>
                           ) : job.walkthrough_proposed_at && job.walkthrough_approved_at ? (
-                            <div {...jobAnchor(A_WALK, { padding:".7rem .8rem", borderRadius:"10px", background:"rgba(34,197,94,.08)", border:"1px solid rgba(34,197,94,.3)" })}>
+                            <div {...jobAnchor(A_WALK, { padding:".7rem .8rem", borderRadius:"10px", background:"rgba(var(--ff-success-rgb), .08)", border:"1px solid rgba(var(--ff-success-rgb), .3)" })}>
                               <div style={{ fontSize:".82rem", color:"var(--ff-text)", lineHeight:1.5, marginBottom:".55rem" }}>
-                                <Ic name="calendar" size={14} color="#22c55e" style={{ marginRight:5 }} />
+                                <Ic name="calendar" size={14} color="var(--ff-success)" style={{ marginRight:5 }} />
                                 <strong>Walkthrough confirmed</strong> for {job.walkthrough_at ? new Date(job.walkthrough_at).toLocaleString() : "the agreed time"}. It's a free visit — after you've seen the space, mark it done and send your estimate.
                               </div>
-                              <button style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none", fontWeight:600 }} disabled={busyJobId === job.id} onClick={() => completeWalkthrough(job)}>{busyJobId === job.id ? "…" : "✓ Walkthrough done"}</button>
+                              <button style={{ ...s.btn, background:"var(--ff-success)", color:"var(--ff-bg)", border:"none", fontWeight:600 }} disabled={busyJobId === job.id} onClick={() => completeWalkthrough(job)}>{busyJobId === job.id ? "…" : "✓ Walkthrough done"}</button>
                             </div>
                           ) : job.walkthrough_proposed_at ? (
                             <div style={{ padding:".7rem .8rem", borderRadius:"10px", background:"rgba(var(--ff-accent-rgb), .08)", border:"1px solid rgba(var(--ff-accent-rgb), .28)" }}>
@@ -2434,7 +2443,7 @@ export default function ContractorDashboard() {
                           </div>
                           <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                             <button style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none" }} disabled={busyJobId === job.id} onClick={() => proposeSchedule(job)}>{busyJobId === job.id ?"Sending…" : (job.schedule_proposed_at ? "Update proposal" : "Propose time & price")}</button>
-                            {canWithdraw(job) && <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJobId === job.id} onClick={() => withdrawJob(job)}>Withdraw</button>}
+                            {canWithdraw(job) && <button style={{ ...s.btn, color:"var(--ff-danger)", borderColor:"rgba(var(--ff-danger-rgb), .3)", background:"rgba(var(--ff-danger-rgb), .08)" }} disabled={busyJobId === job.id} onClick={() => withdrawJob(job)}>Withdraw</button>}
                           </div>
                           {/* A client can move the time on a job they've already paid for,
                               which flips it back to 'assigned' — so this branch can render
@@ -2460,7 +2469,7 @@ export default function ContractorDashboard() {
                           <div style={{ fontSize:".85rem", color:"var(--ff-success)" }}><Ic name="calendar" size={13} style={{ marginRight:4 }} />Booked for {job.scheduled_at ? new Date(job.scheduled_at).toLocaleString() : "the agreed time"}{job.amount ? " · $" + job.amount : ""}.</div>
                           {Array.isArray(job.quote_items) && job.quote_items.some((i: any) => i.accepted) && (
                             <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .7)", lineHeight:1.5 }}>
-                              <Ic name="check-circle" size={13} color="#22c55e" style={{ marginRight:4 }} />
+                              <Ic name="check-circle" size={13} color="var(--ff-success)" style={{ marginRight:4 }} />
                               Add-ons the client picked: {job.quote_items.filter((i: any) => i.accepted).map((i: any) => i.label + " ($" + i.amount + ")").join(", ")} — included in the price above.
                             </div>
                           )}
@@ -2489,8 +2498,8 @@ export default function ContractorDashboard() {
                               </a>
                             )}
                             {job.on_my_way_at ? (
-                              <div style={{ flex:"1 1 190px", display:"flex", alignItems:"center", justifyContent:"center", gap: "var(--ff-s2)", padding:".75rem .9rem", borderRadius:"12px", background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.35)", fontSize:".84rem", color:"var(--ff-success)", fontWeight:600, textAlign:"center" as const }}>
-                                <Ic name="check-circle" size={16} color="#22c55e" style={{ flexShrink:0 }} />Client knows you're on the way
+                              <div style={{ flex:"1 1 190px", display:"flex", alignItems:"center", justifyContent:"center", gap: "var(--ff-s2)", padding:".75rem .9rem", borderRadius:"12px", background:"rgba(var(--ff-success-rgb), .1)", border:"1px solid rgba(var(--ff-success-rgb), .35)", fontSize:".84rem", color:"var(--ff-success)", fontWeight:600, textAlign:"center" as const }}>
+                                <Ic name="check-circle" size={16} color="var(--ff-success)" style={{ flexShrink:0 }} />Client knows you're on the way
                               </div>
                             ) : (
                               <button disabled={busyJobId === job.id} onClick={() => onMyWay(job)}
@@ -2509,8 +2518,8 @@ export default function ContractorDashboard() {
                           <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                             {/* Dimmed AND actually disabled while photos are outstanding —
                                 the reason is spelled out directly underneath. */}
-                            {!job.is_milestone && <button title={photosMissing(job).length ? "Add " + photosMissing(job).join(" and ") + " first." : undefined} style={{ ...s.btn, background:"#22c55e", color:"#06210f", border:"none", fontWeight:600, opacity: photosMissing(job).length ? .55 : 1, cursor: photosMissing(job).length ? "not-allowed" : "pointer" }} disabled={busyJobId === job.id || photosMissing(job).length > 0} onClick={() => markComplete(job)}>{busyJobId === job.id ?"Working…" : "✓ Mark complete"}</button>}
-                            {canWithdraw(job) && <button style={{ ...s.btn, color:"#ef4444", borderColor:"rgba(239,68,68,.3)", background:"rgba(239,68,68,.08)" }} disabled={busyJobId === job.id} onClick={() => withdrawJob(job)}>Withdraw</button>}
+                            {!job.is_milestone && <button title={photosMissing(job).length ? "Add " + photosMissing(job).join(" and ") + " first." : undefined} style={{ ...s.btn, background:"var(--ff-success)", color:"var(--ff-bg)", border:"none", fontWeight:600, opacity: photosMissing(job).length ? .55 : 1, cursor: photosMissing(job).length ? "not-allowed" : "pointer" }} disabled={busyJobId === job.id || photosMissing(job).length > 0} onClick={() => markComplete(job)}>{busyJobId === job.id ?"Working…" : "✓ Mark complete"}</button>}
+                            {canWithdraw(job) && <button style={{ ...s.btn, color:"var(--ff-danger)", borderColor:"rgba(var(--ff-danger-rgb), .3)", background:"rgba(var(--ff-danger-rgb), .08)" }} disabled={busyJobId === job.id} onClick={() => withdrawJob(job)}>Withdraw</button>}
                           </div>
                           {!job.is_milestone && photosMissing(job).length > 0 && (
                             <div style={{ fontSize:".78rem", color:"var(--ff-c10)", display:"flex", alignItems:"center", gap:".35rem" }}>
@@ -2771,15 +2780,15 @@ export default function ContractorDashboard() {
                 <div style={{ margin:".75rem 0", padding:".75rem", borderRadius:"10px", background:"rgba(var(--ff-fg), .03)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:".5rem" }}>
                     <span style={{ fontSize:".75rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .5)" }}>Bids</span>
-                    <span style={{ fontSize:".78rem", fontWeight:600, color: (r.bid_count ?? 0) >= 7 ? "#f59e0b" : "var(--ff-success)" }}>{r.bid_count ?? 0}/7</span>
+                    <span style={{ fontSize:".78rem", fontWeight:600, color: (r.bid_count ?? 0) >= 7 ? "var(--ff-warn)" : "var(--ff-success)" }}>{r.bid_count ?? 0}/7</span>
                   </div>
                   {(() => {
                     const hasBid = r.my_amount != null || r.my_walkthrough;
                     const isOpen = bidOpen[r.id] ?? false;
                     if (hasBid && !isOpen) {
                       return (
-                        <div style={{ display:"flex", alignItems:"flex-start", gap:".55rem", padding:".6rem .7rem", borderRadius:"10px", background:"rgba(34,197,94,.10)", border:"1px solid rgba(34,197,94,.3)" }}>
-                          <Ic name="check-circle" size={16} color="#22c55e" style={{ marginTop:1, flexShrink:0 }} />
+                        <div style={{ display:"flex", alignItems:"flex-start", gap:".55rem", padding:".6rem .7rem", borderRadius:"10px", background:"rgba(var(--ff-success-rgb), .10)", border:"1px solid rgba(var(--ff-success-rgb), .3)" }}>
+                          <Ic name="check-circle" size={16} color="var(--ff-success)" style={{ marginTop:1, flexShrink:0 }} />
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ fontSize:".85rem", fontWeight:600, color:"var(--ff-text)" }}>Your bid has been placed</div>
                             <div style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .7)", marginTop:"1px" }}>Waiting on client confirmation · {r.my_walkthrough
@@ -2988,7 +2997,7 @@ export default function ContractorDashboard() {
                       <div style={{ padding:".5rem .6rem" }}>
                         {item.title && <div style={{ fontSize:".8rem", fontWeight:600, color:"var(--ff-text)" }}>{item.title}</div>}
                         {item.description && <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .6)", marginTop:".15rem" }}>{item.description}</div>}
-                        <button onClick={() => deletePortfolioItem(item)} style={{ marginTop:".4rem", fontSize:".7rem", color:"#ef4444", background:"none", border:"none", cursor:"pointer", padding:0 }}>Remove</button>
+                        <button onClick={() => deletePortfolioItem(item)} style={{ marginTop:".4rem", fontSize:".7rem", color:"var(--ff-danger)", background:"none", border:"none", cursor:"pointer", padding:0 }}>Remove</button>
                       </div>
                     </div>
                   ))}
@@ -3121,7 +3130,7 @@ export default function ContractorDashboard() {
                     </div>
                     {goal > 0 && (
                       <div style={{ height:"10px", borderRadius:"999px", background:"rgba(var(--ff-fg),.1)", overflow:"hidden" }}>
-                        <div style={{ width:`${pct}%`, height:"100%", background: pct>=100 ? "#22c55e" : "var(--ff-c10)", borderRadius:"999px", transition:"width .4s" }} />
+                        <div style={{ width:`${pct}%`, height:"100%", background: pct>=100 ? "var(--ff-success)" : "var(--ff-c10)", borderRadius:"999px", transition:"width .4s" }} />
                       </div>
                     )}
                     <div style={{ display:"flex", gap:".5rem", marginTop:".6rem", alignItems:"center" }}>
@@ -3183,7 +3192,7 @@ export default function ContractorDashboard() {
               ))}
             </div>
             {expensesFailed && (
-              <div style={{ ...s.earnCard, marginBottom:"1.5rem", textAlign:"left" as const, borderColor:"rgba(239,68,68,.3)" }}>
+              <div style={{ ...s.earnCard, marginBottom:"1.5rem", textAlign:"left" as const, borderColor:"rgba(var(--ff-danger-rgb), .3)" }}>
                 <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
                   We couldn't load your logged job costs just now, so your real-profit total isn't shown. Nothing has been lost — refresh the page to try again.
                 </div>
@@ -3199,7 +3208,7 @@ export default function ContractorDashboard() {
                   <div style={{ display:"flex", gap:"1.4rem", flexWrap:"wrap" as const, fontSize:".85rem", color:"rgba(var(--ff-muted), .7)" }}>
                     <div>Earned <strong style={{ color:"var(--ff-text)" }}>{"$" + totalEarned.toFixed(2)}</strong></div>
                     <div>Job costs <strong style={{ color:"var(--ff-text)" }}>{"−$" + totalCosts.toFixed(2)}</strong></div>
-                    <div>Est. profit <strong style={{ color: profit >= 0 ? "#22c55e" : "#ef4444" }}>{"$" + profit.toFixed(2)}</strong>{margin != null && <span style={{ color:"rgba(var(--ff-muted), .5)" }}> ({margin}% margin)</span>}</div>
+                    <div>Est. profit <strong style={{ color: profit >= 0 ? "var(--ff-success)" : "var(--ff-danger)" }}>{"$" + profit.toFixed(2)}</strong>{margin != null && <span style={{ color:"rgba(var(--ff-muted), .5)" }}> ({margin}% margin)</span>}</div>
                   </div>
                   <div style={{ fontSize:".7rem", color:"rgba(var(--ff-muted), .4)", marginTop:".4rem" }}>Based on the costs you've logged on your jobs — private to you.</div>
                 </div>
@@ -3222,8 +3231,8 @@ export default function ContractorDashboard() {
             <Group label="PAYOUTS">
               <DashCard style={{ marginBottom:0 }}>
               {contractor?.stripe_payouts_enabled ? (
-                <div style={{ display:"flex", alignItems:"center", gap:".6rem", color:"#22c55e", fontSize:".9rem" }}>
-                  <Ic name="check" size={16} color="#22c55e" />
+                <div style={{ display:"flex", alignItems:"center", gap:".6rem", color:"var(--ff-success)", fontSize:".9rem" }}>
+                  <Ic name="check" size={16} color="var(--ff-success)" />
                   <span>Connected — you're set up to receive payouts.</span>
                 </div>
               ) : (
