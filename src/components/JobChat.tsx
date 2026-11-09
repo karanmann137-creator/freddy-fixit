@@ -359,7 +359,13 @@ export default function JobChat({
       onClick={onClose}
       style={{
         position: "fixed", inset: 0, zIndex: 9998,
-        background: "rgba(8,11,20,.6)", backdropFilter: "blur(2px)",
+        // 0.72, not 0.6 — the scrim has to darken the page on its own, because
+        // the blur is killed outright under Reduce Transparency and Increase
+        // Contrast (main.tsx). And the -webkit- key is required: iOS Safari
+        // reads only the prefixed property, so without it the frost was never
+        // there on the one platform this panel is used on most.
+        background: "rgba(8,11,20,.72)",
+        WebkitBackdropFilter: "blur(2px)", backdropFilter: "blur(2px)",
         display: "flex", justifyContent: "flex-end",
         fontFamily: "'DM Sans', sans-serif",
       }}

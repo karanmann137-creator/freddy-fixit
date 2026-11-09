@@ -145,7 +145,7 @@ export default function Login() {
     sub: { fontSize:".85rem", color:"rgba(var(--ff-muted), .5)", fontWeight:300, marginBottom:"1.75rem" },
     label: { display:"block", fontSize:".75rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .55)", marginBottom:".5rem" },
     err: { background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:"8px", padding:".75rem 1rem", fontSize:".83rem", color:"var(--ff-danger)", marginBottom:"1rem" },
-    btn: { width:"100%", padding: "var(--ff-s4)", background:"var(--ff-c10)", color:"#fff", border:"none", borderRadius:"8px", fontFamily:"inherit", fontSize:".95rem", fontWeight:500, cursor:"pointer", transition:"all .2s", boxSizing:"border-box" as const },
+    btn: { width:"100%", padding: "var(--ff-s4)", background:"var(--ff-c10)", color:"#fff", border:"none", borderRadius:"8px", fontFamily:"inherit", fontSize:".95rem", fontWeight:500, cursor:"pointer", transition:"opacity .2s var(--ff-ease-out), background .2s var(--ff-ease-out)", boxSizing:"border-box" as const },
     textBtn: { background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:".85rem", color:"var(--ff-c10)", padding:0 },
     // This page is outside the dashboards' scoped `.ffdash` stylesheet, so
     // :disabled styling has to be applied inline or a busy button looks live.

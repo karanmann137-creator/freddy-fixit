@@ -164,10 +164,33 @@ export default function OverhaulNotice() {
           display: flex;
           align-items: center;
           gap: .6rem;
-          padding: .6rem 4.5rem .6rem 1rem;
-          background: linear-gradient(90deg, rgba(var(--ff-accent-rgb), .16), rgba(var(--ff-accent-rgb), .08));
-          border-top: 1px solid rgba(var(--ff-accent-rgb), .35);
-          backdrop-filter: blur(6px);
+          /* Full-bleed strip pinned to bottom: 0, so the home-indicator inset
+             goes on PADDING, not on bottom. Lifting it with bottom would leave
+             a transparent band of page content showing under the painted bar.
+             Same rule as FinishSignupBanner. */
+          padding: .6rem 4.5rem calc(.6rem + env(safe-area-inset-bottom, 0px)) 1rem;
+          /* The tint is a LAYER over var(--ff-glass), not a ground of its own.
+             It used to be the gradient alone — .16 to .08 — which is a
+             transparent smear with text on it: whatever was scrolled behind
+             the bar read straight through at ~90% strength, and the blur was
+             carrying the legibility rather than enhancing it. --ff-glass is
+             0.72/0.76, which is the floor a frosted surface has to meet
+             unblurred. background takes a list, so the orange survives. */
+          background: linear-gradient(90deg, rgba(var(--ff-accent-rgb), .16), rgba(var(--ff-accent-rgb), .08)), var(--ff-glass);
+          border-top: var(--ff-hair-w) solid rgba(var(--ff-accent-rgb), .35);
+          /* -webkit- FIRST. Safari reads the prefixed property and ignores the
+             unprefixed one; declaring it second means the cascade hands Safari
+             the prefixed value anyway, but the order is the documented house
+             rule (main.tsx:166) and getting it backwards is how three other
+             paint sites ended up unprefixed. Reads the token so the two
+             reduced-transparency overrides reach it. */
+          -webkit-backdrop-filter: var(--ff-glass-blur);
+          backdrop-filter: var(--ff-glass-blur);
+          /* backdrop-filter makes this a containing block for fixed
+             descendants and samples everything painted below it in the same
+             stacking context. It has none, but the isolation is what keeps
+             that true if one is ever added. */
+          isolation: isolate;
           font-family: 'DM Sans', sans-serif;
           color: var(--ff-text);
         }
@@ -245,6 +268,7 @@ export default function OverhaulNotice() {
           inset: 0;
           z-index: 10000;
           background: rgba(10,14,24,.72);
+          -webkit-backdrop-filter: blur(3px);
           backdrop-filter: blur(3px);
           display: flex;
           align-items: center;

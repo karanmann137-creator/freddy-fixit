@@ -83,7 +83,14 @@ export default function ChatWidget() {
       {/* Chat panel */}
       {open && (
         <div style={{
-          position: "fixed", bottom: "calc(5.5rem + var(--ff-fsb-h, 0px))", right: "1.5rem",
+          // max(), not a sum. --ff-fsb-h is the measured height of
+          // FinishSignupBanner, and that measurement ALREADY includes the
+          // safe-area inset in its own bottom padding — so adding env() to it
+          // would count the home indicator twice and leave a 34px gap under
+          // the panel whenever the banner is up. max() picks whichever single
+          // obstacle is taller: the banner, or the gesture strip.
+          bottom: "calc(5.5rem + max(var(--ff-fsb-h, 0px), env(safe-area-inset-bottom, 0px)))",
+          right: "1.5rem",
           // 360px + the 1.5rem right offset overflowed a 360px-wide phone.
           width: "min(360px, calc(100vw - 3rem))", maxHeight: "min(520px, calc(100vh - 9rem))",
           background: "var(--ff-bg)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .12)",
@@ -191,7 +198,7 @@ export default function ChatWidget() {
                 color: input.trim() && !loading ? "#fff" : "rgba(var(--ff-muted), .3)",
                 cursor: input.trim() && !loading ? "pointer" : "default",
                 fontFamily: "inherit", fontSize: ".88rem", fontWeight: 600,
-                transition: "all .2s",
+                transition: "background .2s var(--ff-ease-out), color .2s var(--ff-ease-out)",
               }}
             >
               ↑
@@ -222,14 +229,22 @@ export default function ChatWidget() {
         onClick={() => setOpen(o => !o)}
         aria-label={open ? "Close chat" : "Open chat"}
         style={{
-          position: "fixed", bottom: "calc(1.5rem + var(--ff-fsb-h, 0px))", right: "1.5rem",
+          // max() for the same reason as the panel above — --ff-fsb-h already
+          // contains the inset, so a sum would double-count it.
+          bottom: "calc(1.5rem + max(var(--ff-fsb-h, 0px), env(safe-area-inset-bottom, 0px)))",
+          right: "1.5rem",
           width: 56, height: 56, borderRadius: "50%", border: "none",
-          background: open ? "rgba(var(--ff-fg), .1)" : "linear-gradient(135deg, var(--ff-c10), #f09020)",
+          background: open ? "rgba(var(--ff-fg), .1)" : "linear-gradient(135deg, var(--ff-c10), var(--ff-accent-400))",
           color: "#fff", fontSize: open ? "1.2rem" : "1.4rem",
           cursor: "pointer", zIndex: 9999,
           boxShadow: "0 4px 20px rgba(var(--ff-accent-rgb), .5)",
           display: "flex", alignItems: "center", justifyContent: "center",
-          transition: "all .25s ease",
+          // Named properties, not `all`. fontSize flips 1.4rem → 1.2rem when
+          // this toggles, and `all` animated THAT — the glyph grew and shrank
+          // over a quarter second every time the bubble was pressed, which is
+          // the "something moves that shouldn't" defect rather than a curve
+          // problem. Transitioning background alone leaves the swap instant.
+          transition: "background .25s var(--ff-ease-out), box-shadow .25s var(--ff-ease-out)",
         }}
       >
         {open ? "✕" : "💬"}

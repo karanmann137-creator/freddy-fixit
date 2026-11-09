@@ -170,7 +170,14 @@ export default function DashboardSidebar({
       {expanded && (
         <>
           <div onClick={() => setExpanded(false)} style={{ position:"fixed", inset:0, top:"3.75rem", background:"rgba(8,12,22,.5)", zIndex:900 }} />
-          <div style={{ position:"fixed", top:"3.75rem", left:0, bottom:0, width:"min(216px, 80vw)", zIndex:901, background:"var(--ff-surface)", borderRight:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", overflowY:"auto" as const, padding:"1.1rem .7rem", boxShadow:"6px 0 28px rgba(0,0,0,.35)" }}>
+          {/* bottom: 0 on a phone puts the LAST nav item under the home
+              indicator, where a tap is a system gesture rather than a tap. The
+              inset goes on this scroller's bottom padding, not on `bottom` —
+              the drawer is a painted panel and lifting it would leave a
+              transparent band at the foot of it. Same rule as
+              FinishSignupBanner; the distinction is strip-vs-floater, and a
+              full-height drawer is a strip. */}
+          <div style={{ position:"fixed", top:"3.75rem", left:0, bottom:0, width:"min(216px, 80vw)", zIndex:901, background:"var(--ff-surface)", borderRight:"var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", overflowY:"auto" as const, padding:"1.1rem .7rem calc(1.1rem + env(safe-area-inset-bottom, 0px))", boxShadow:"6px 0 28px rgba(0,0,0,.35)" }}>
             {renderNav(true)}
           </div>
         </>

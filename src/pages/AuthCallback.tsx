@@ -141,7 +141,7 @@ export default function AuthCallback() {
     card: { maxWidth: "440px", width: "100%", background: "rgba(var(--ff-fg), .04)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: "14px", padding: "2rem", textAlign: "center" },
     h: { fontFamily: "'Bebas Neue',sans-serif", fontSize: "2rem", letterSpacing: ".05em", marginBottom: ".4rem" },
     sub: { fontSize: ".88rem", color: "rgba(var(--ff-muted), .6)", fontWeight: 300, marginBottom: "1.75rem", lineHeight: 1.6 },
-    opt: { width: "100%", padding: "1.1rem 1.25rem", borderRadius: "10px", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", background: "rgba(var(--ff-fg), .04)", color: "var(--ff-text)", cursor: "pointer", fontFamily: "inherit", textAlign: "left", marginBottom: ".75rem", transition: "all .2s" },
+    opt: { width: "100%", padding: "1.1rem 1.25rem", borderRadius: "10px", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .12)", background: "rgba(var(--ff-fg), .04)", color: "var(--ff-text)", cursor: "pointer", fontFamily: "inherit", textAlign: "left", marginBottom: ".75rem", transition: "background .2s var(--ff-ease-out), border-color .2s var(--ff-ease-out)" },
     optTitle: { fontSize: "1rem", fontWeight: 500, marginBottom: "var(--ff-s1)" },
     optSub: { fontSize: ".8rem", color: "rgba(var(--ff-muted), .55)", fontWeight: 300 },
   };

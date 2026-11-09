@@ -104,18 +104,39 @@ export default function FinishSignupBanner() {
   );
 }
 
+// The bottom inset goes on PADDING, not on `bottom`. This bar is a full-bleed
+// strip, so its background must still reach the physical edge of the screen —
+// lifting it with `bottom` would leave a transparent band under it on a phone
+// with a home indicator. Padding keeps the paint flush and moves only the text
+// and the buttons out of the gesture strip.
+//
+// And because --ff-fsb-h is MEASURED off offsetHeight (see the effect above),
+// which includes padding, the inset propagates to every surface that reads
+// that var — ChatWidget's bubble and panel, the cookie bar — with no second
+// mention of env() anywhere. That is the argument for measuring a height
+// rather than declaring it: the inset is answered once.
 const bar: React.CSSProperties = {
   position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 950,
   display: "flex", alignItems: "center", justifyContent: "center",
   gap: ".6rem", flexWrap: "wrap", textAlign: "center",
-  padding: ".65rem .9rem",
-  background: "linear-gradient(135deg,var(--ff-c10),#d95f0e)", color: "#fff",
+  padding: ".65rem .9rem calc(.65rem + env(safe-area-inset-bottom, 0px))",
+  background: "linear-gradient(135deg,var(--ff-c10),var(--ff-accent-600))", color: "#fff",
   fontFamily: "'DM Sans',sans-serif", fontSize: ".85rem", lineHeight: 1.4,
   boxShadow: "0 -6px 24px rgba(0,0,0,.3)", animation: "ffFsbIn .3s ease",
 };
+// --ff-accent-600 rather than --ff-c10: this sits on a WHITE pill, and the
+// 500 step is chosen to read on navy, not on white. The 600 step is the
+// darkest in the ramp and clears 4.5:1 against #fff in both themes, which
+// --ff-c10 does not in light mode.
+//
+// The literal here was #c2570d and the gradient's was #d95f0e. Neither is
+// #ea6b14, so migrate_orange.py never saw them and the orange ratchet could
+// never have counted them — a near-miss literal is invisible to a checker
+// keyed on the brand hex. Which is the point: the ratchet measures drift in
+// the colour it knows, not every orange somebody typed.
 const cta: React.CSSProperties = {
   padding: ".42rem .95rem", borderRadius: "999px", border: "none",
-  background: "#fff", color: "#c2570d", fontWeight: 700, fontSize: ".8rem",
+  background: "#fff", color: "var(--ff-accent-600)", fontWeight: 700, fontSize: ".8rem",
   fontFamily: "'DM Sans',sans-serif", cursor: "pointer", whiteSpace: "nowrap",
 };
 const ctaGhost: React.CSSProperties = {

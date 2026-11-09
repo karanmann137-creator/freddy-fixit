@@ -65,12 +65,19 @@ export default function CookieConsent() {
       {/* Inline styles can't express media queries or :hover, so the whole bar
           is styled here. Sits bottom-left so the chat bubble (bottom-right)
           stays tappable; on narrow screens it lifts clear of the bubble and
-          the buttons drop below the text rather than squeezing it. */}
+          the buttons drop below the text rather than squeezing it.
+
+          env(safe-area-inset-bottom) is added to BOTH bottom values, not just
+          the base one. The narrow-screen 5.25rem exists only to clear the chat
+          bubble, and that bubble is itself being pushed up by the same inset
+          (ChatWidget.tsx) — so leaving the override alone would close the gap
+          the override exists to open. The fallback is 0px, so on a device with
+          no home indicator both values are exactly what they were. */}
       <style>{`
         .ff-cookie {
           position: fixed;
           left: .75rem;
-          bottom: .75rem;
+          bottom: calc(.75rem + env(safe-area-inset-bottom, 0px));
           z-index: 9998;
           width: min(420px, calc(100% - 1.5rem));
           display: flex;
@@ -112,7 +119,7 @@ export default function CookieConsent() {
           to   { opacity: 1; transform: none; }
         }
         @media (max-width: 560px) {
-          .ff-cookie { bottom: 5.25rem; flex-wrap: wrap; }
+          .ff-cookie { bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px)); flex-wrap: wrap; }
           .ff-cookie-btns { width: 100%; }
           .ff-cookie-btns button { flex: 1 1 auto; }
         }

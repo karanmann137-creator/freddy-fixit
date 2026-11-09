@@ -716,7 +716,8 @@ export default function ContractorOnboarding() {
                       padding:".75rem 1rem",
                       background: docFiles.insurance ? "rgba(var(--ff-accent-rgb), .08)" : "rgba(var(--ff-fg), .04)",
                       border: `1px solid ${docFiles.insurance ? "rgba(var(--ff-accent-rgb), .4)" : "rgba(var(--ff-fg), .1)"}`,
-                      borderRadius:"8px", cursor:"pointer", transition:"all .2s",
+                      borderRadius:"8px", cursor:"pointer",
+                      transition:"background .2s var(--ff-ease-out), border-color .2s var(--ff-ease-out)",
                     }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={docFiles.insurance ? "var(--ff-c10)" : "rgba(var(--ff-muted), .5)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
@@ -810,7 +811,8 @@ export default function ContractorOnboarding() {
                     padding:".75rem 1rem",
                     background: docFiles[doc.key] ? "rgba(var(--ff-accent-rgb), .08)" : "rgba(var(--ff-fg), .04)",
                     border: `1px solid ${docFiles[doc.key] ? "rgba(var(--ff-accent-rgb), .4)" : "rgba(var(--ff-fg), .1)"}`,
-                    borderRadius:"8px", cursor:"pointer", transition:"all .2s",
+                    borderRadius:"8px", cursor:"pointer",
+                    transition:"background .2s var(--ff-ease-out), border-color .2s var(--ff-ease-out)",
                   }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={docFiles[doc.key] ? "var(--ff-c10)" : "rgba(var(--ff-muted), .5)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>

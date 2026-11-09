@@ -171,14 +171,86 @@ THE SIX CHECKS
     otherwise safe because var() substitution happens BEFORE shorthand
     parsing.)
 
-ALL SIX ARE SELF-CLEARING on the tree as written today, and the only way to
+(7) EVERY backdrop-filter PAINT SITE CARRIES THE -webkit- KEY. An absolute.
+
+    main.tsx:166 has stated this rule since the material tokens landed, and on
+    2026-11-08 FOUR of the eight paint sites broke it -- Home.tsx's three
+    before/after carousel chips, and JobChat's scrim. The two blanket KILL
+    rules at the end of main.tsx were correctly prefixed, which is the detail
+    that made it invisible: whoever wrote the rule down obeyed it in the place
+    they were looking at.
+
+    iOS Safari reads ONLY the prefixed property through 15.x, and the failure is
+    silent and invisible on a Mac: the surface simply renders as its flat
+    background colour. So the one platform the frost was designed for is the
+    one platform that never got it, and nothing anywhere reports that. This is
+    only survivable at all because --ff-glass carries legibility on its own
+    (see above .ffu-glass) -- the unprefixed sites did not look broken, they
+    looked unfinished.
+
+    Prefix FIRST, which is the house order: where both are understood the
+    standard property is meant to win. Matched per SITE rather than per file,
+    because a file with three prefixed and three unprefixed declarations would
+    pass a count.
+
+(8) FIXED CHROME ANCHORED TO THE BOTTOM EDGE NAMES safe-area-inset-bottom.
+    An absolute.
+
+    env(safe-area-inset-bottom) appeared exactly TWICE in all of src/ when
+    measured 2026-11-08, both inside ui/uiStyles.ts's bottom-sheet branch --
+    which is to say the modal primitive answered the home indicator and nothing
+    else on the site did. The cookie bar sat at .75rem, the chat bubble at
+    1.5rem and the overhaul notice at 0, all inside a ~34px strip where a tap
+    is a system gesture. Three of those four are what a brand-new mobile
+    visitor sees before anything else.
+
+    TWO SHAPES, AND THE DISTINCTION IS THE WHOLE RULE. A full-bleed strip or a
+    painted panel puts the inset on PADDING -- lifting it with `bottom` leaves
+    a transparent band of page content under the paint, which looks like a
+    rendering fault. A detached floating element (the chat bubble) puts it on
+    `bottom`, because there is nothing to leave a band under.
+
+    AND NEVER AS A SUM WHERE A MEASURED HEIGHT IS ALREADY INVOLVED.
+    --ff-fsb-h is FinishSignupBanner's real offsetHeight, which now INCLUDES
+    its own inset padding, so `calc(X + var(--ff-fsb-h) + env(...))` counts the
+    indicator twice and leaves a 34px hole under the chat panel whenever the
+    banner is up. The correct form is max(): whichever single obstacle is
+    taller. That is also the argument for measuring a height rather than
+    declaring one -- the inset is answered once, at the bar, and propagates to
+    every surface that reads the variable.
+
+    SCOPE: a LITERAL `bottom` value on a position:fixed element. Two exclusions,
+    both principled rather than convenient. A COMPUTED bottom (NotificationBell
+    sets `bottom: window.innerHeight - r.top + gap`) is measured against
+    another element, so the inset question belongs to that measurement, not to
+    this declaration. And a site that reads --ff-fsb-h has already consumed the
+    inset through the measured height, per the paragraph above.
+
+(9) `transition: all` STAYS GONE. An absolute, and it is here because
+    CLAUDE.md already asserted it -- "transition: all is gone from src/. Keep
+    it gone." -- while SIX live sites existed: ChatWidget twice, Login,
+    ContractorOnboarding twice, AuthCallback. Same class as the check_tokens.js
+    and .github/ claims this repo has already been bitten by: a rule written as
+    settled fact, enforced by nothing, believed by the next reader.
+
+    It is not a tidiness rule. `all` animates properties you did not choose,
+    including ones that change in the same state flip for a different reason.
+    ChatWidget's bubble swaps its glyph from 💬 to ✕ and its fontSize from
+    1.4rem to 1.2rem at the same moment, and `all` animated THAT -- the icon
+    visibly grew and shrank over a quarter second on every single press. The
+    curve was fine. The defect was that something moved which should not have.
+
+    Name the properties. The right-hand side is usually two of them.
+
+ALL NINE ARE SELF-CLEARING on the tree as written today, and the only way to
 make any of them go red is to introduce the defect.
 
 Note which laws got which SHAPE, because it is the reusable rule: the three
 that are populations with an irreducible remainder (orange, spacing, hairlines)
-are ratchets; the three that can genuinely be zero (the shared focus rule, the
-unringed outline, the display preferences) are absolutes. Don't ratchet
-something that can be zero, and don't demand zero of something that can't be.
+are ratchets; the six that can genuinely be zero (the shared focus rule, the
+unringed outline, the display preferences, the webkit prefix, the safe-area
+inset, transition:all) are absolutes. Don't ratchet something that can be zero,
+and don't demand zero of something that can't be.
 
 Usage:  python3 tools/check_ux.py        # exits 1 and prints every finding
 """
@@ -314,6 +386,37 @@ HAIRLINE_RAW = re.compile(r"1px\s+solid\s+(?:%s)" % HAIR_NEUTRAL)
 PREF_QUERIES = ("prefers-reduced-motion", "prefers-reduced-transparency", "prefers-contrast")
 PREF_SHEET = os.path.join("src", "main.tsx")
 
+# ── (7) the -webkit- key on every backdrop-filter paint site ───────────────
+# Two spellings because this repo paints in both: CSS inside a template
+# literal, and camelCase inside a React style object. The lookbehinds are
+# fixed-width (Python requires that) and exclude the prefixed form itself.
+#
+# LOOK-BACK WINDOW, not a per-file count. A file holding three prefixed and
+# three unprefixed declarations would satisfy a count while pairing none of
+# them. 200 chars is generous for "the line above" in both spellings and still
+# far short of the next rule.
+BDF_CSS = re.compile(r"(?<!-webkit-)backdrop-filter\s*:")
+BDF_JS = re.compile(r"(?<!Webkit)backdropFilter\s*:")
+BDF_PREFIX = re.compile(r"-webkit-backdrop-filter\s*:|WebkitBackdropFilter\s*:")
+BDF_LOOKBACK = 200
+
+# ── (8) the bottom safe-area inset ─────────────────────────────────────────
+# A LITERAL bottom value on a position:fixed element. See the docstring for why
+# a computed bottom and a --ff-fsb-h consumer are both excluded on principle
+# rather than for convenience.
+#
+# The window stops at the first `}` so one rule's declarations cannot borrow
+# the next rule's answer -- the same reason check (3) is scoped to a file
+# rather than to the tree.
+FIXED_POS = re.compile(r"position\s*:\s*[\"']?fixed")
+BOTTOM_LITERAL = re.compile(r"(?<!-)\bbottom\s*:\s*[\"']?-?[0-9.]")
+SAFE_BOTTOM = re.compile(r"safe-area-inset-bottom|--ff-fsb-h")
+FIXED_WINDOW = 700
+
+# ── (9) transition: all ────────────────────────────────────────────────────
+# Zero, and CLAUDE.md has claimed zero since long before it was true.
+TRANSITION_ALL = re.compile(r"transition\s*:\s*[\"']?\s*all\b")
+
 EXTS = (".ts", ".tsx", ".js", ".jsx")
 
 
@@ -443,6 +546,20 @@ def _doc_lines(lines):
                 break
         out.update(range(i, end + 1))
     return out
+
+
+def _line(text, offset):
+    """1-indexed line number of a byte offset into the COMMENT-STRIPPED text.
+
+    Safe to use that way because _strip_comments preserves line structure
+    exactly -- it blanks characters rather than removing them, which is the
+    whole reason it is a scanner that emits spaces instead of a sub().
+    """
+    return text.count("\n", 0, offset) + 1
+
+
+def _rel(path, repo):
+    return os.path.relpath(path, repo)
 
 
 def _count_hairlines(src, repo):
@@ -615,6 +732,64 @@ def check(repo=REPO):
                     "      injected stylesheet in %s." % (q, PREF_SHEET, PREF_SHEET)
                 )
 
+    # (7) every backdrop-filter paint site carries the -webkit- key
+    for path in _walk(src):
+        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+            body = _strip_comments(fh.read())
+        for rx in (BDF_CSS, BDF_JS):
+            for m in rx.finditer(body):
+                back = body[max(0, m.start() - BDF_LOOKBACK):m.start()]
+                if BDF_PREFIX.search(back):
+                    continue
+                problems.append(
+                    "%s:%d declares backdrop-filter with no -webkit- sibling.\n"
+                    "      iOS Safari reads ONLY the prefixed property through 15.x, so the\n"
+                    "      frost is absent on the platform it was designed for -- silently,\n"
+                    "      and invisibly on a Mac. Add the prefixed declaration FIRST:\n"
+                    "        -webkit-backdrop-filter: <same value>;\n"
+                    "      Rule is stated at main.tsx:166." % (_rel(path, repo), _line(body, m.start()))
+                )
+
+    # (8) fixed chrome anchored to the bottom edge answers the home indicator
+    for path in _walk(src):
+        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+            body = _strip_comments(fh.read())
+        for m in FIXED_POS.finditer(body):
+            window = body[m.start():m.start() + FIXED_WINDOW]
+            cut = window.find("}")
+            if cut > 0:
+                window = window[:cut]
+            if not BOTTOM_LITERAL.search(window):
+                continue
+            if SAFE_BOTTOM.search(window):
+                continue
+            problems.append(
+                "%s:%d is position:fixed with a literal bottom anchor and never\n"
+                "      names env(safe-area-inset-bottom).\n"
+                "      The home indicator is ~34px of the screen where a tap is a SYSTEM\n"
+                "      GESTURE, not a tap -- the control is simply unpressable there, with\n"
+                "      nothing thrown. A full-bleed strip or painted panel takes the inset\n"
+                "      on PADDING (lifting it with `bottom` leaves a transparent band under\n"
+                "      the paint); a detached floater takes it on `bottom`. And where a\n"
+                "      measured height like --ff-fsb-h is already in the calc, compose with\n"
+                "      max(), NEVER a sum -- that height already contains the inset."
+                % (_rel(path, repo), _line(body, m.start()))
+            )
+
+    # (9) transition: all
+    for path in _walk(src):
+        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+            body = _strip_comments(fh.read())
+        for m in TRANSITION_ALL.finditer(body):
+            problems.append(
+                "%s:%d uses `transition: all`.\n"
+                "      `all` animates properties you did not choose. ChatWidget's bubble\n"
+                "      flips its fontSize in the same state change as its background, and\n"
+                "      `all` animated that too -- the glyph grew and shrank on every press.\n"
+                "      Name the properties; it is usually two of them."
+                % (_rel(path, repo), _line(body, m.start()))
+            )
+
     return problems
 
 
@@ -632,7 +807,9 @@ def main():
         hair, _ = _count_hairlines(src, REPO)
         print("ok   ux laws (%d raw orange, ratchet %d; %d raw spacing, ratchet %d; "
               "%d neutral 1px borders, ratchet %d; shared focus rule present; "
-              "no unringed outline:none; all 3 display preferences answered)"
+              "no unringed outline:none; all 3 display preferences answered; "
+              "every backdrop-filter prefixed; every bottom-fixed surface insets; "
+              "no transition:all)"
               % (total, BASELINE, spacing, SPACING_BASELINE,
                  hair, HAIRLINE_BASELINE))
         return 0

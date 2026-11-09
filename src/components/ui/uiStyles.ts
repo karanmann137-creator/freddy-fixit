@@ -523,6 +523,11 @@ const CSS = `
   background: rgba(8,11,20,.56);
   -webkit-backdrop-filter: saturate(140%) blur(6px);
   backdrop-filter: saturate(140%) blur(6px);
+  /* isolation for the reason given above .ffu-glass. Every backdrop-filter in
+     this file now carries it, so "does this one need it?" stops being a
+     per-site judgement — the two that were missing it were missing it because
+     they were written separately, not because anyone decided they were fine. */
+  isolation: isolate;
   animation: ffu-scrim-in .22s var(--ff-ease-out) both;
 }
 @keyframes ffu-scrim-in{ from{ opacity:0; } to{ opacity:1; } }
@@ -671,6 +676,7 @@ const CSS = `
   background: var(--ff-glass);
   -webkit-backdrop-filter: var(--ff-glass-blur);
   backdrop-filter: var(--ff-glass-blur);
+  isolation: isolate;
   border-bottom: var(--ff-hair-w) solid var(--ff-hair);
   animation: ffu-ptitle-in .22s var(--ff-ease-out) both;
 }
