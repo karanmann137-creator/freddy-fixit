@@ -89,9 +89,17 @@ export default function ChatWidget() {
           // would count the home indicator twice and leave a 34px gap under
           // the panel whenever the banner is up. max() picks whichever single
           // obstacle is taller: the banner, or the gesture strip.
+          // ⚠️ position:"fixed" is LOAD-BEARING and was dropped by c12d446 (the
+          // mobile-edge pass) when this line was split to add the comment below.
+          // Without it bottom/right/zIndex are all inert, so the panel fell into
+          // normal flow at the top of the document and PUSHED THE WHOLE PAGE
+          // DOWN when opened. Nothing threw, nothing failed typecheck, and the
+          // offset properties still read as if they were doing something — which
+          // is why it shipped. Never split this declaration off from its offsets.
+          position: "fixed",
           bottom: "calc(5.5rem + max(var(--ff-fsb-h, 0px), env(safe-area-inset-bottom, 0px)))",
-          right: "1.5rem",
-          // 360px + the 1.5rem right offset overflowed a 360px-wide phone.
+          left: "1.5rem",
+          // 360px + the 1.5rem left offset overflowed a 360px-wide phone.
           width: "min(360px, calc(100vw - 3rem))", maxHeight: "min(520px, calc(100vh - 9rem))",
           background: "var(--ff-bg)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .12)",
           borderRadius: "16px", display: "flex", flexDirection: "column",
@@ -231,8 +239,12 @@ export default function ChatWidget() {
         style={{
           // max() for the same reason as the panel above — --ff-fsb-h already
           // contains the inset, so a sum would double-count it.
+          // ⚠️ Same dropped position:"fixed" as the panel above — see that
+          // comment. Unfixed, the bubble landed inline at the top of the page,
+          // overlapping the logo in the nav.
+          position: "fixed",
           bottom: "calc(1.5rem + max(var(--ff-fsb-h, 0px), env(safe-area-inset-bottom, 0px)))",
-          right: "1.5rem",
+          left: "1.5rem",
           width: 56, height: 56, borderRadius: "50%", border: "none",
           background: open ? "rgba(var(--ff-fg), .1)" : "linear-gradient(135deg, var(--ff-c10), var(--ff-accent-400))",
           color: "#fff", fontSize: open ? "1.2rem" : "1.4rem",

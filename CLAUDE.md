@@ -328,6 +328,19 @@ platform's traffic, so no crowd notices first. The layers are deliberately diffe
   wrong trigger, since a mount can be dropped by a hand edit or a bad merge. Membership
   test for a new entry: **its absence must be invisible at runtime.** Don't add a mount
   whose absence throws; the build already catches those.
+  **⚠️ The test is the membership rule, NOT the word "mount" — the table now holds a
+  positioning declaration (2026-11-08).** `c12d446` split ChatWidget's two style objects to
+  add a comment above the home-indicator calc and dropped **`position: "fixed"`** from each
+  in the process. **Everything downstream still LOOKED right**: `bottom`, `left` and
+  `zIndex` were all still there, reading as if they were doing something — but on a static
+  element all three are inert. The bubble rendered inline at the top of the document over
+  the nav logo, and opening the panel **pushed the whole homepage down**. Typecheck passed,
+  the build was clean, and **check (8) in `check_ux.py` was satisfied, because the `env()`
+  inset it looks for was present and correct on a property that no longer applied** — a
+  check can be green about a declaration that has stopped meaning anything. Hence also
+  **`MIN_COUNTS`**: a plain `in` test passes while one of two identical declarations is
+  gone, and these two were lost together. **When you split a style object to add a comment,
+  diff the properties, not the look of the result.**
 - **Neither workflow is a required status check, on purpose.** Work ships by pushing
   straight to `main` from `tools/ship.py`, which runs both gates locally first — so the
   deploy path is already gated, and branch protection would only risk blocking the owner's

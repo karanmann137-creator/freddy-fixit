@@ -119,6 +119,32 @@ INVARIANTS = {
     "src/lib/mfa.ts": ["export async function mfaOwed"],
     "src/App.tsx": ["<ChatWidget", "<GoogleReviewModal", "<FinishSignupBanner", "<ScrollToTop"],
     "src/main.tsx": ["initAnalytics"],
+    # 2026-11-08. NOT a mount -- a POSITIONING declaration, and the first entry
+    # in this table that is one. It earns its place by the membership test
+    # rather than by shape: its absence is invisible at build time and loud at
+    # runtime, which is exactly what nothing else catches.
+    #
+    # c12d446 split both of these style objects to add a comment above the
+    # bottom/inset calc, and dropped `position: "fixed"` from each in the
+    # process. Everything downstream still LOOKED right -- bottom, left and
+    # zIndex were all still there, reading as if they were doing something --
+    # but on a static element all three are inert. So the bubble rendered
+    # inline at the top of the document over the nav logo, and opening the
+    # panel pushed the entire homepage down. Nothing threw, typecheck passed,
+    # the build was clean, and check (8) in check_ux.py was satisfied because
+    # the env() inset it looks for was present and correct on a property that
+    # no longer applied.
+    #
+    # Two needles because the panel and the bubble are separate style objects
+    # and were broken independently by the same edit. Count them: 2.
+    "src/components/ChatWidget.tsx": ['position: "fixed"'],
+}
+
+# Needles that must appear a MINIMUM number of times rather than at least once.
+# A plain `in` test passes when one of two identical declarations survives, and
+# the ChatWidget bug was exactly two identical declarations lost together.
+MIN_COUNTS = {
+    ("src/components/ChatWidget.tsx", 'position: "fixed"'): 2,
 }
 
 
@@ -139,8 +165,11 @@ def check(repo=REPO):
             misses.append((rel, "<file is EMPTY -- truncated, see b1361b6>"))
             continue
         for needle in needles:
-            if needle not in body:
-                misses.append((rel, needle))
+            want = MIN_COUNTS.get((rel, needle), 1)
+            got = body.count(needle)
+            if got < want:
+                misses.append((rel, needle if want == 1 else
+                               "%s  (found %d, need %d)" % (needle, got, want)))
     return misses
 
 
