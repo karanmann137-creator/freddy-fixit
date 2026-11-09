@@ -860,10 +860,18 @@ const CSS = `
    (.85rem of vertical padding, no min-height) did not. That bar was a tap
    floor violation on every phone and was invisible on a Mac.
 
-   overflow-x on the strip, not on html/body -- CLAUDE.md forbids the latter
-   because it breaks position:sticky, which the sidebar depends on. The
-   scrollbar is hidden because a strip of six chips that fits on desktop and
-   scrolls on a phone should not grow a visible track on the phone. */
+   It WRAPS, it does not scroll, and this comment said the opposite for a day
+   (corrected 2026-11-09) -- it described an overflow-x strip with a hidden
+   scrollbar, neither of which is in the rule below. The code is the better of
+   the two answers and is the one that stays: a hidden horizontal scroller
+   puts tabs off-screen with no affordance that anything is off-screen, which
+   on a 48px chip strip is a Hick's-law decision the user cannot see the whole
+   of. Wrapping costs a second row on a phone and hides nothing. Noted rather
+   than quietly fixed because this is the exact failure the repo keeps paying
+   for -- prose beside code reads as authoritative and is checked by nothing.
+   If it ever does become a scroller, overflow-x goes on THIS strip and never
+   on html/body: CLAUDE.md forbids the latter because it breaks
+   position:sticky, which the sidebar depends on. */
 .ffd-tabs{
   display:flex; gap: var(--ff-s2);
   margin-bottom: var(--ff-s6);

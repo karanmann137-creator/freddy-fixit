@@ -223,8 +223,21 @@ THE TEN CHECKS
     both principled rather than convenient. A COMPUTED bottom (NotificationBell
     sets `bottom: window.innerHeight - r.top + gap`) is measured against
     another element, so the inset question belongs to that measurement, not to
-    this declaration. And a site that reads --ff-fsb-h has already consumed the
-    inset through the measured height, per the paragraph above.
+    this declaration.
+
+    ⚠️ THE SECOND EXCLUSION USED TO BE "reads --ff-fsb-h" AND THAT WAS WRONG,
+    which is how both dashboard toasts shipped inside the gesture strip
+    (found 2026-11-08, same sweep as the ChatWidget position:fixed drop).
+    The measured height consumes the inset ONLY WHILE THE BANNER IS UP. Its
+    fallback is 0px -- FinishSignupBanner literally writes "0px" when hidden --
+    so `calc(1.5rem + var(--ff-fsb-h, 0px))` is 1.5rem for every visitor who
+    has finished signing up, which is all of them except the ones mid-signup.
+    Reading the variable is not the answer; wrapping it in max() WITH env() is,
+    because max() is what picks whichever single obstacle is actually there.
+    So the needle is `safe-area-inset-bottom` and nothing else, and a site that
+    reads --ff-fsb-h gets no credit for it. Exactly the ChatWidget lesson from
+    the other side: a declaration can look like it answered the question while
+    answering it only in the state nobody is in.
 
 (9) `transition: all` STAYS GONE. An absolute, and it is here because
     CLAUDE.md already asserted it -- "transition: all is gone from src/. Keep
@@ -477,15 +490,27 @@ BDF_LOOKBACK = 200
 
 # ── (8) the bottom safe-area inset ─────────────────────────────────────────
 # A LITERAL bottom value on a position:fixed element. See the docstring for why
-# a computed bottom and a --ff-fsb-h consumer are both excluded on principle
-# rather than for convenience.
+# a COMPUTED bottom is excluded on principle rather than for convenience, and
+# for why reading --ff-fsb-h is NOT an answer.
+#
+# ⚠️ `calc(` IS IN THE PATTERN AND WAS NOT, which is the second half of how the
+# two dashboard toasts shipped inside the gesture strip. The old pattern needed
+# a DIGIT after the opening quote, so `bottom:"calc(1.5rem + ...)"` -- the exact
+# spelling every bottom-anchored surface in this tree uses once it has to add a
+# banner height -- was invisible to the check. The surfaces the check actually
+# caught on 2026-11-08 were the plain ones (`bottom: 0`, `bottom:".75rem"`), and
+# the fix for those then rewrote them INTO calc, which is the form the pattern
+# could not see. A check whose own remedy moves the code out of its scope is
+# worse than no check: it goes green at precisely the moment it stops looking.
+# An identifier still starts a computed value (NotificationBell's
+# `bottom: window.innerHeight - ...`), so that exclusion survives untouched.
 #
 # The window stops at the first `}` so one rule's declarations cannot borrow
 # the next rule's answer -- the same reason check (3) is scoped to a file
 # rather than to the tree.
 FIXED_POS = re.compile(r"position\s*:\s*[\"']?fixed")
-BOTTOM_LITERAL = re.compile(r"(?<!-)\bbottom\s*:\s*[\"']?-?[0-9.]")
-SAFE_BOTTOM = re.compile(r"safe-area-inset-bottom|--ff-fsb-h")
+BOTTOM_LITERAL = re.compile(r"(?<!-)\bbottom\s*:\s*[\"']?\s*(?:-?[0-9.]|calc\()")
+SAFE_BOTTOM = re.compile(r"safe-area-inset-bottom")
 FIXED_WINDOW = 700
 
 # ── (9) transition: all ────────────────────────────────────────────────────
