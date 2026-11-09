@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { myDashboardPath } from "@/lib/myProfile";
 import { Ic } from "@/components/Ic";
 import { SkCard, SkRow, StalledNotice } from "@/components/Skeleton";
 import FadeImg from "@/components/FadeImg";
@@ -41,6 +42,11 @@ export default function PickPro() {
    * scanners, corporate prefetchers, the Gmail image proxy. The choice stays a
    * deliberate tap on the green button, which POSTs accept_bid_by_token.
    */
+  // "Open my dashboard" resolves the signed-in role rather than assuming the
+  // login funnel — see myDashboardPath(). One handler for all four buttons so
+  // the next branch added here cannot quietly go back to /login.
+  const goDash = async () => setLocation(await myDashboardPath());
+
   const [focusBid] = useState(() => {
     try { return new URLSearchParams(window.location.search).get("bid") || ""; }
     catch { return ""; }
@@ -66,24 +72,41 @@ export default function PickPro() {
        * of those into account access. Either a session already exists, or the
        * tokenless page below is what you get.
        *
-       * Ownership is proved by RLS, not by the token: this select can only
-       * return a row if the signed-in user's own policy allows it. A DIFFERENT
-       * signed-in user (a contractor, or someone the link was forwarded to)
-       * matches nothing, isn't redirected, and keeps the pick page — exactly
-       * what a logged-out visitor gets. Any error falls through for the same
-       * reason: a failed read is not proof of ownership.
+       * ⚠️ OWNERSHIP IS PROVED BY COMPARING `user_id`, NOT BY RLS VISIBILITY.
+       * Until 2026-11-09 this block read "ownership is proved by RLS: this
+       * select can only return a row if the signed-in user's own policy allows
+       * it", and that was FALSE FOR THE ADMIN — the "Admin full access to
+       * client_requests" policy is `FOR ALL`, so the probe returned a row for
+       * EVERY token and the admin was bounced to /client-dashboard, which
+       * ProtectedRoute then sent on to /admin-dashboard's default tab. That is
+       * precisely what the owner reported as "the pick link goes back to the
+       * requests tab". The visible symptom was a broken button; the actual bug
+       * was a comment that reasoned about one role's policy as if it were
+       * everyone's.
+       *
+       * GENERALISE IT: an RLS-filtered read answers "may I see this row?", and
+       * that is NEVER the same question as "is this row mine?" — not wherever
+       * any policy grants a role blanket access. Compare the id.
+       *
+       * A different signed-in user (a contractor, the admin, or someone the
+       * link was forwarded to) keeps the pick page — exactly what a logged-out
+       * visitor gets. Any error falls through for the same reason: a failed
+       * read is not proof of ownership.
+       *
+       * THE TOKEN IS NEVER EXCHANGED FOR A SESSION (see above).
        */
       try {
         const { data: sess } = await supabase.auth.getSession();
         if (!alive) return;
-        if (sess?.session?.user) {
+        const uid = sess?.session?.user?.id;
+        if (uid) {
           const { data: own } = await supabase
             .from("client_requests")
-            .select("id")
+            .select("id, user_id")
             .eq("pick_token", token)
             .maybeSingle();
           if (!alive) return;
-          if (own?.id) { setLocation("/client-dashboard?tab=requests"); return; }
+          if (own?.user_id && own.user_id === uid) { setLocation("/client-dashboard?tab=requests"); return; }
         }
       } catch { /* not signed in, or couldn't tell — render the pick page */ }
 
@@ -185,7 +208,7 @@ export default function PickPro() {
             <Ic name="x-circle" size={40} color="#ef4444" />
             <h2>This link doesn't look right</h2>
             <p>Check that you copied the whole link from your email, or open your dashboard to see your estimates.</p>
-            <button className="ff-pk-link" onClick={() => setLocation("/login")}>Go to my dashboard</button>
+            <button className="ff-pk-link" onClick={() => void goDash()}>Go to my dashboard</button>
           </div>
         )}
 
@@ -203,7 +226,7 @@ export default function PickPro() {
             <Ic name="x-circle" size={40} color="#ef4444" />
             <h2>This link has expired</h2>
             <p>It may have already been used, or the request was closed. Log in to see where things stand.</p>
-            <button className="ff-pk-link" onClick={() => setLocation("/login")}>Go to my dashboard</button>
+            <button className="ff-pk-link" onClick={() => void goDash()}>Go to my dashboard</button>
           </div>
         )}
 
@@ -218,7 +241,7 @@ export default function PickPro() {
               We've let them know. They'll message you to confirm a time, and you'll get an email
               as soon as they do. Nothing is charged until you approve the visit and the price.
             </p>
-            <button className="ff-pk-link" onClick={() => setLocation("/login")}>Open my dashboard</button>
+            <button className="ff-pk-link" onClick={() => void goDash()}>Open my dashboard</button>
           </div>
         )}
 
@@ -227,7 +250,7 @@ export default function PickPro() {
             <Ic name="check-circle" size={40} color="#22c55e" />
             <h2>You've already chosen a pro</h2>
             <p>Your job is under way. Log in to message them, see the schedule, or check what's next.</p>
-            <button className="ff-pk-link" onClick={() => setLocation("/login")}>Open my dashboard</button>
+            <button className="ff-pk-link" onClick={() => void goDash()}>Open my dashboard</button>
           </div>
         )}
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
-import { clearMyProfile } from "@/lib/myProfile";
+import { clearMyProfile, dashboardFor } from "@/lib/myProfile";
 import { stashedReferralCode, applyReferralAtSignup } from "@/lib/referralCode";
 import { mfaOwed } from "@/lib/mfa";
 import VerifyCodeModal from "@/components/VerifyCodeModal";
@@ -32,11 +32,9 @@ export default function AuthCallback() {
   // dashboard with the fix on a screen he had no reason to visit.
   const [afterVerify, setAfterVerify] = useState<null | (() => void)>(null);
 
-  const routeByRole = (role: string | null | undefined) => {
-    if (role === "admin") setLocation("/admin-dashboard");
-    else if (role === "contractor") setLocation("/contractor-dashboard");
-    else setLocation("/client-dashboard");
-  };
+  // dashboardFor() is the one answer shared with ProtectedRoute, TopNav and
+  // Login — four independent copies of this ternary had been drifting.
+  const routeByRole = (role: string | null | undefined) => setLocation(dashboardFor(role));
 
   useEffect(() => {
     let cancelled = false;
@@ -59,8 +57,46 @@ export default function AuthCallback() {
       }
       if (cancelled) return;
 
+      // ⚠️ THE POLL ABOVE CAN TIME OUT, AND A ZERO-ROW UPDATE THROWS NOTHING
+      // (2026-11-09). Eight tries at 250ms is two seconds; the trigger that
+      // creates the profile row is normally instant, but on a cold start or a
+      // slow connection it isn't, and when it loses the race `profile` is null.
+      // Both role branches below then fire an `update … eq("id", user.id)`
+      // against a row that does not exist yet: PostgREST reports success with
+      // zero rows affected, so a real contractor's signup walked on to
+      // /contractor-onboarding while their role stayed at the trigger's default
+      // `client` — and the ONE surface that heals that is the client dashboard
+      // they were just redirected away from.
+      //
+      // ensure_profile() is the existing self-repair primitive for exactly
+      // this (ClientDashboard, ContractorDashboard and ContractorOnboarding all
+      // call it) and it RETURNS the resulting role, so one call both creates the
+      // row and tells us what it holds. Only on the poll-timeout path, so the
+      // normal case is untouched.
+      if (!profile) {
+        const { data: ensured } = await supabase.rpc("ensure_profile", {
+          p_role: wantedRole === "contractor" ? "contractor" : "client",
+        });
+        clearMyProfile();  // a profile row now exists where it didn't
+        if (cancelled) return;
+        if (ensured) profile = { role: ensured as string };
+      }
+
       // Form-initiated sign-in: honor the chosen role.
+      //
+      // ⚠️ THE CLAMP IS ON BOTH BRANCHES, AND IT USED TO BE ON ONLY ONE
+      // (2026-11-09). `?role=` is the intent of the PAGE someone started from,
+      // never a claim about who they are — so an established account must win
+      // over it. The `client` branch below has always returned early for an
+      // admin or contractor; this one unconditionally wrote `role:"contractor"`,
+      // so pressing "Continue with Google" from contractor onboarding silently
+      // DEMOTED whoever arrived, the admin included, and sent them to
+      // /contractor-onboarding. Nothing is thrown and the account looks fine;
+      // the next visit to /admin-dashboard just has no admin to find.
+      // An asymmetric guard between two sibling branches is a bug waiting for
+      // the one person who takes the unguarded path.
       if (wantedRole === "contractor") {
+        if (profile?.role === "admin") { routeByRole(profile.role); return; }
         await supabase.from("profiles").update({ role: "contractor" }).eq("id", user.id);
         clearMyProfile();  // role just changed — the shared cache must not answer with the old one
         const { data: c } = await supabase.from("contractors").select("id").eq("id", user.id).maybeSingle();

@@ -3,7 +3,7 @@ import { DashboardSkeleton, useEnterAnim } from "@/components/Skeleton";
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
-import { clearMyProfile } from "@/lib/myProfile";
+import { clearMyProfile, dashboardFor } from "@/lib/myProfile";
 import { getCommissionRate, getFeeRate } from "@/lib/platformRates";
 import { compressImage } from "@/lib/imageCompress";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
@@ -656,7 +656,10 @@ export default function ContractorDashboard() {
           const { data: role } = await supabase.rpc("ensure_profile", { p_role: "contractor" });
           clearMyProfile();  // a profile row now exists where it didn't
           if (role && role !== "contractor") {
-            setLocation(role === "admin" ? "/admin-dashboard" : "/client-dashboard");
+            // dashboardFor(), not a local ternary — see the twin comment in
+            // ClientDashboard. These two had drifted into mirror images of each
+            // other, each correct only because of the guard above it.
+            setLocation(dashboardFor(role));
             return;
           }
           const [{ data: p2 }, { data: c2 }] = await Promise.all([

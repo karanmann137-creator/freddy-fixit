@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import OAuthButtons from "@/components/OAuthButtons";
-import { mfaReason, type MfaStatus } from "@/lib/mfa";
+import { mfaReason, mfaOwed } from "@/lib/mfa";
+import { dashboardFor } from "@/lib/myProfile";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -51,20 +52,21 @@ export default function Login() {
       const { data, error: authErr } = await supabase.auth.signInWithPassword({ email, password });
       if (authErr) throw authErr;
       const { data: profile } = await supabase.from("profiles").select("role").eq("id", data.user.id).maybeSingle();
-      const to = profile?.role === "admin"      ? "/admin-dashboard"
-               : profile?.role === "contractor" ? "/contractor-dashboard"
-               :                                  "/client-dashboard";
+      const to = dashboardFor(profile?.role);
       setDest(to);
 
       // Two-step sign-in. Supabase issues the session the moment the password is
       // accepted, so this prompt gates the UI, not the API — which is exactly why
       // mfa_ok() also sits inside admin_guard(), on the RPCs that do irreversible
-      // things. Fail OPEN on a read error: failing closed would lock people out
-      // over a network blip and would buy nothing, because the server-side gate
-      // is the one that actually holds.
-      const { data: st, error: stErr } = await supabase.rpc("mfa_status");
-      const mfa = st as MfaStatus | null;
-      if (!stErr && mfa?.enabled && !mfa.verified_recently) {
+      // things. mfaOwed() fails OPEN on a read error: failing closed would lock
+      // people out over a network blip and would buy nothing, because the
+      // server-side gate is the one that actually holds.
+      //
+      // This read `mfa_status` and re-derived `enabled && !verified_recently`
+      // inline, which is the predicate mfaOwed() exists to be — and AuthCallback
+      // calls mfaOwed() for the same decision, so the two sign-in routes were one
+      // edit away from disagreeing about when a code is owed.
+      if (await mfaOwed()) {
         setOtpCode(""); setOtpErr(""); setOtpNote(""); setRecoveryMode(false);
         setOtpStage(true);
         sendLoginCode();

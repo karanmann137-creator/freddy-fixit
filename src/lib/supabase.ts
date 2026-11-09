@@ -9,9 +9,13 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // errors on zero rows — exactly what half-finished (orphaned) accounts hit. Every
 // live profile lookup uses `.maybeSingle()` plus the `ensure_profile` self-repair.
 
-export async function signOut() {
-  await supabase.auth.signOut();
-}
+// signOut() was removed too (2026-11-09): zero importers, and it was a TRAP
+// rather than dead weight. It called `signOut()` with no options, i.e. the
+// default GLOBAL scope, which revokes every refresh token for the user on
+// every device — while the one real sign-out in the app (TopNav) deliberately
+// passes `{ scope: "local" }`. Anyone who reached for the obviously-named
+// helper would have silently signed the user out of their phone as well.
+// Sign out through TopNav's handler, and call clearMyProfile() alongside it.
 
 export interface Profile {
   id: string; email: string; first_name: string; last_name: string; phone: string; role: string; created_at: string;

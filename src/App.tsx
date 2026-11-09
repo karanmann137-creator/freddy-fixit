@@ -1,7 +1,7 @@
 import { Switch, Route, Redirect, useLocation } from "wouter";
 import { useEffect, useState, lazy, Suspense } from "react";
 import { supabase } from "@/lib/supabase";
-import { getMyProfile } from "@/lib/myProfile";
+import { getMyProfile, clearMyProfile, dashboardFor } from "@/lib/myProfile";
 import type { UserRole } from "@/lib/supabase";
 import { trackPageView } from "@/lib/analytics";
 import { REF_CODE_KEY } from "@/lib/referralCode";
@@ -132,8 +132,9 @@ function ProtectedRoute({
   component: React.ComponentType;
   requiredRole?: UserRole;
 }) {
-  const [status, setStatus] = useState<"loading" | "ok" | "redirect">("loading");
+  const [status, setStatus] = useState<"loading" | "ok" | "redirect" | "unverified">("loading");
   const [redirectTo, setRedirectTo] = useState("/login");
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let settled = false;
@@ -159,11 +160,44 @@ function ProtectedRoute({
           // (ok:false) is treated the same way it was when this queried
           // directly: pass through rather than redirect on bad information.
           if (profile.ok && profile.exists && profile.role !== requiredRole) {
-            const dest =
-              profile.role === "admin" ? "/admin-dashboard" :
-              profile.role === "contractor" ? "/contractor-dashboard" :
-              "/client-dashboard";
-            setRedirectTo(dest);
+            setRedirectTo(dashboardFor(profile.role));
+            setStatus("redirect");
+            return;
+          }
+
+          /*
+           * ⚠️ THE PASS-THROUGH ABOVE IS CORRECT FOR THE TWO REPAIRABLE
+           * DASHBOARDS AND WRONG FOR THE ADMIN ONE (2026-11-09).
+           *
+           * Its justification is that the dashboard being entered calls
+           * `ensure_profile` and walks a half-finished signup through — true of
+           * the client and contractor dashboards, and false of the admin one,
+           * which nothing can repair you INTO. So on an unreadable or absent
+           * profile the admin route let a session RLS will give nothing to
+           * render the whole dashboard, and the result is the screen the owner
+           * reported: REQUESTS 0 / JOBS 0 / ACCOUNTS 0, "No requests yet", and
+           * a red banner naming accounts / re-signup flags / health.
+           *
+           * THAT BANNER WAS THE DIAGNOSIS SITTING IN PLAIN SIGHT AND IT READ AS
+           * A BUG LIST. Under a non-admin session PostgREST table selects come
+           * back `[]` with NO error, while an `is_admin()`-gated RPC raises —
+           * so "the counts are zero and exactly the three RPCs failed" is the
+           * signature of a wrong session, not of eight broken queries. All
+           * three RPCs were verified working for the real admin. A page that
+           * renders half of itself and blames its own data is worse than one
+           * that says who you are signed in as.
+           *
+           * So the admin route demands a POSITIVE `role === 'admin'`:
+           *   - couldn't read the profile (ok:false) → "unverified" + Retry.
+           *     NOT a redirect to /login: a network blip is not a sign-out, and
+           *     bouncing the owner to a password form over one would be a lie
+           *     about his session. A failed read is not an empty result.
+           *   - no profile row (ok, !exists) → /client-dashboard, where
+           *     ensure_profile actually repairs it.
+           */
+          if (requiredRole === "admin" && profile.role !== "admin") {
+            if (!profile.ok) { setStatus("unverified"); return; }
+            setRedirectTo("/client-dashboard");
             setStatus("redirect");
             return;
           }
@@ -181,7 +215,7 @@ function ProtectedRoute({
       }
     })();
     return () => clearTimeout(timeout);
-  }, [requiredRole]);
+  }, [requiredRole, attempt]);
 
   // Every ProtectedRoute gates a dashboard, so the auth check shows the SAME
   // shell the dashboard itself shows while it loads. The two phases then read
@@ -189,6 +223,34 @@ function ProtectedRoute({
   if (status === "loading") return (
     <div style={{ minHeight: "100vh", background: "var(--ff-bg)" }}>
       <DashboardSkeleton />
+    </div>
+  );
+
+  /*
+   * Admin route, signed in, but we could not read the profile that proves it.
+   * An honest dead end beats a dashboard that renders zeros and then blames
+   * its own queries — and it beats a redirect to /login, which would claim the
+   * session had ended when it has not. Retry clears the shared cache first;
+   * `getMyProfile` does not cache failures, but saying so here means the next
+   * person does not have to go and check.
+   */
+  if (status === "unverified") return (
+    <div style={{ minHeight: "100vh", background: "var(--ff-bg)", display: "flex", alignItems: "center", justifyContent: "center", padding: "clamp(1rem, 4vw, 1.5rem)" }}>
+      <div style={{ maxWidth: 420, textAlign: "center", color: "var(--ff-text)", fontFamily: "'DM Sans',sans-serif" }}>
+        <h1 style={{ fontFamily: "var(--ff-font-display)", fontWeight: "var(--ff-display-wght)" as any, fontSize: "1.6rem", lineHeight: 1.04, letterSpacing: "-0.028em", marginBottom: "var(--ff-s2)" }}>
+          We couldn't confirm your admin access
+        </h1>
+        <p style={{ fontSize: ".92rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .7)", marginBottom: "var(--ff-s6)" }}>
+          You're signed in, but the check that reads your role didn't answer — so this is a
+          connection problem, not a sign-out. Nothing is wrong with your account.
+        </p>
+        <button
+          onClick={() => { clearMyProfile(); setStatus("loading"); setAttempt(a => a + 1); }}
+          style={{ minHeight: "var(--ff-h-ctl)", padding: "0 1.25rem", borderRadius: 10, border: "1px solid var(--ff-c10)", background: "var(--ff-c10)", color: "var(--ff-bg)", fontFamily: "inherit", fontWeight: 600, cursor: "pointer" }}
+        >
+          Try again
+        </button>
+      </div>
     </div>
   );
 

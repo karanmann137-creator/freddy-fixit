@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
-import { getMyProfile } from "@/lib/myProfile";
+import { getMyProfile, dashboardFor } from "@/lib/myProfile";
 import NotificationBell from "@/components/NotificationBell";
 import SettingsModal from "@/components/SettingsModal";
 import { Ic } from "@/components/Ic";
@@ -228,10 +228,8 @@ export default function TopNav() {
     }
   };
 
-  const dashboardPath =
-    role === "admin" ? "/admin-dashboard" :
-    role === "contractor" ? "/contractor-dashboard" :
-    "/client-dashboard";
+  // One answer for all four readers of "which dashboard?" — see dashboardFor().
+  const dashboardPath = dashboardFor(role);
 
   return (
     // ff-on-dark: navy in dark mode (unchanged), off-white in light mode

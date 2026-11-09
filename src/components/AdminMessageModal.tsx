@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Ic } from "@/components/Ic";
 import { Sk } from "@/components/Skeleton";
+import VerifyCodeModal from "@/components/VerifyCodeModal";
+import { mfaOwed } from "@/lib/mfa";
 import { ensureUiStyles } from "./ui/uiStyles";
 
 // Admin compose box for emailing one or many contractors a custom message.
@@ -23,14 +25,31 @@ export default function AdminMessageModal({ recipients, onClose, onSent }: {
   const [err, setErr]         = useState("");
   const [showLog, setShowLog] = useState(false);
   const [log, setLog]         = useState<any[] | null>(null);
+  // A failed read is not an empty result: supabase.rpc() RESOLVES with
+  // {data,error}, so discarding the error here rendered "No messages sent yet."
+  // for a history we could not read — which on this surface reads as "that
+  // broadcast never went out" and invites sending it twice.
+  const [logFailed, setLogFailed] = useState(false);
+  // A lapsed two-step window turns the admin-message edge fn into a 403 whose
+  // remedy lived nowhere on this modal: it says "Verify your sign-in code
+  // first", and there was no code to verify. Same shape, same fix, same naming
+  // as AdminDashboard's `verifyGate` — `retry` resumes the send once the code
+  // lands, `what` names it so the ask never feels like it came out of nowhere.
+  const [verifyGate, setVerifyGate] = useState<{ retry: () => void; what: string } | null>(null);
 
   const withEmail = recipients.filter(r => r.email);
   const noEmail   = recipients.filter(r => !r.email);
 
   useEffect(() => {
-    if (showLog && log === null) {
-      supabase.rpc("admin_list_messages", { p_limit: 50 }).then(({ data }) =>
-        setLog(Array.isArray(data) ? data : []));
+    // `|| logFailed` so hiding and re-opening the history retries it. Without
+    // it the failure line would be permanent — log is [] rather than null after
+    // a failure, so nothing would ever ask again, and a warning with no way out
+    // is the dead end this file is being fixed for.
+    if (showLog && (log === null || logFailed)) {
+      supabase.rpc("admin_list_messages", { p_limit: 50 }).then(({ data, error }) => {
+        setLogFailed(!!error);
+        setLog(error ? [] : (Array.isArray(data) ? data : []));
+      });
     }
   }, [showLog]);
 
@@ -52,6 +71,12 @@ export default function AdminMessageModal({ recipients, onClose, onSent }: {
     } catch (e: any) {
       let msg = e?.message || String(e);
       try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
+      // Ask the SERVER whether a code is actually owed — never match on `msg`.
+      // admin_action_allowed's refusal string is not the state, and the state
+      // can answer for itself (see mfaOwed). On a genuine lapse the modal takes
+      // over and the send resumes by itself, so the refusal never has to be
+      // shown as an instruction the owner cannot act on.
+      if (await mfaOwed()) { setVerifyGate({ retry: () => { void send(); }, what: "sending this message" }); return; }
       setErr(msg);
     } finally { setSending(false); }
   };
@@ -84,6 +109,7 @@ export default function AdminMessageModal({ recipients, onClose, onSent }: {
   };
 
   return (
+    <>
     <div onClick={onClose} className="ffu-scrim">
       <div
         onClick={e => e.stopPropagation()}
@@ -172,7 +198,8 @@ export default function AdminMessageModal({ recipients, onClose, onSent }: {
                     <Sk h={26} /><Sk h={26} /><Sk h={26} />
                   </div>
                 )}
-                {log !== null && log.length === 0 && <div style={{ fontSize: ".8rem", color: "rgb(var(--ff-muted))" }}>No messages sent yet.</div>}
+                {logFailed && <div style={{ fontSize: ".8rem", color: "var(--ff-warn)" }}>Couldn&rsquo;t load the send history.</div>}
+                {!logFailed && log !== null && log.length === 0 && <div style={{ fontSize: ".8rem", color: "rgb(var(--ff-muted))" }}>No messages sent yet.</div>}
                 {log !== null && log.map((m: any) => (
                   <div key={m.id} style={{ padding: ".55rem 0", borderBottom: "var(--ff-hair-w) solid rgba(var(--ff-fg), .06)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: ".5rem" }}>
@@ -190,5 +217,18 @@ export default function AdminMessageModal({ recipients, onClose, onSent }: {
         )}
       </div>
     </div>
+    {/* Mounted as a SIBLING of the scrim, not inside it: the scrim closes this
+        modal on click, and a verify prompt that dismisses the compose box —
+        taking the typed message with it — is worse than the dead end it
+        replaces. Without this mount the Send button would silently do nothing
+        on a lapsed window, which is why check_mounts.py needles it. */}
+    {verifyGate && (
+      <VerifyCodeModal
+        what={verifyGate.what}
+        onDone={() => { const again = verifyGate.retry; setVerifyGate(null); again(); }}
+        onCancel={() => setVerifyGate(null)}
+      />
+    )}
+    </>
   );
 }

@@ -7,6 +7,7 @@ import PriceGrade from "@/components/PriceGrade";
 import VerifiedMarks from "@/components/VerifiedMarks";
 import type { Grade } from "@/lib/servicePricing";
 import FadeImg from "@/components/FadeImg";
+import { dashboardFor } from "@/lib/myProfile";
 
 export default function ContractorProfile() {
   const [, params]    = useRoute("/contractors/:id");
@@ -92,10 +93,12 @@ export default function ContractorProfile() {
   // no history, so send signed-in users to their own dashboard instead of home.
   const goBack = () => {
     if (window.history.length > 1) { window.history.back(); return; }
-    if (myRole === "admin") setLocation("/admin-dashboard");
-    else if (myRole === "contractor") setLocation("/contractor-dashboard");
-    else if (myRole === "client") setLocation("/client-dashboard");
-    else setLocation("/");
+    // dashboardFor() is the one answer shared with ProtectedRoute, TopNav,
+    // Login and AuthCallback. The `/` fallback is this page's own and stays:
+    // unlike the others, this route is PUBLIC, so a null role here genuinely
+    // means "not signed in" rather than "role unknown", and home is where a
+    // visitor belongs.
+    setLocation(myRole ? dashboardFor(myRole) : "/");
   };
 
   const pfUrl = (path: string) =>

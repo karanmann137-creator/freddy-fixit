@@ -110,6 +110,19 @@ INVARIANTS = {
         # follow-up himself. Exactly the shape this table is for.
         "draftLead(a)",
     ],
+    # 2026-11-09: the same lockout one surface further in. The admin-message
+    # edge fn asks admin_action_allowed(), so once the 12-hour window lapses it
+    # returns 403 with the literal "Verify your sign-in code first, then try
+    # again." -- which this modal correctly DISPLAYED and could not act on,
+    # because it had no verify gate at all. The owner read an instruction with
+    # no surface behind it and retried forever. Invisible in the ordinary way:
+    # the modal renders, the button works, the error is even accurate.
+    #
+    # Both needles, because they fail in opposite directions. Drop the mount and
+    # the gate still opens -- onto nothing, so Send silently does nothing at
+    # all, which is worse than the dead end. Drop `mfaOwed` and the gate never
+    # opens, and we are back to the dead end exactly.
+    "src/components/AdminMessageModal.tsx": ["<VerifyCodeModal", "mfaOwed"],
     # Same lockout reached from the other side: the OAuth route had no MFA
     # handling at all, so Google sign-in walked straight past the second factor
     # AND never refreshed the 12-hour window that admin_guard() reads.

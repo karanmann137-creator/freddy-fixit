@@ -93,6 +93,60 @@ export function getMyProfile(userId: string): Promise<MyProfile> {
 }
 
 /**
+ * ONE answer to "which dashboard does this role live on?".
+ *
+ * It was spelled out independently in four places — ProtectedRoute's redirect
+ * (App.tsx), TopNav's menu link, Login's post-sign-in hop and AuthCallback's
+ * routeByRole — which is the same one-predicate rule the money gates follow,
+ * reached from the routing side. An unknown or missing role lands on the
+ * client dashboard, which is what all four already did and is the right
+ * default: it is the only one of the three that calls `ensure_profile`, so a
+ * half-finished signup heals by arriving there.
+ */
+export function dashboardFor(role: string | null | undefined): string {
+  if (role === "admin") return "/admin-dashboard";
+  if (role === "contractor") return "/contractor-dashboard";
+  return "/client-dashboard";
+}
+
+/**
+ * Where "open my dashboard" should actually go for whoever is signed in right
+ * now — `/login` only when nobody is.
+ *
+ * ⚠️ `/login` IS NOT A DASHBOARD LINK. Four buttons on the pick page said
+ * "Open my dashboard" and navigated to `/login`, and the Login page has no
+ * already-signed-in branch at all, so a signed-in visitor pressing them got
+ * the password form. That is the second half of what the owner reported as
+ * "the pick link … sends me to the login page". A link whose label names a
+ * destination must resolve the destination, not guess at the funnel that
+ * usually leads there.
+ *
+ * ⚠️ `/login` IS THE ANSWER TO "NOBODY IS SIGNED IN", AND TO NOTHING ELSE.
+ * This fell toward `/login` whenever the *profile* read failed too, which is
+ * the same defect one layer in: somebody who IS signed in got the password
+ * form because we couldn't read their role — and a sign-in they've already
+ * completed is not a recoverable prompt, it's a dead end with no way forward.
+ * Only `!p.userId` means "sign in". An unreadable role falls through to
+ * `dashboardFor(null)` = `/client-dashboard`, which is the right failure
+ * target for the same reason it is the right default for an unknown role: it
+ * is the ONE dashboard that calls `ensure_profile`, so arriving there repairs
+ * the thing that couldn't be read. A client landing on the client dashboard is
+ * also the overwhelmingly likely correct answer, and the two other roles get a
+ * cross-role redirect from ProtectedRoute rather than a dead end.
+ */
+export async function myDashboardPath(): Promise<string> {
+  try {
+    const p = await loadMyProfile();
+    if (!p.userId) return "/login";
+    return dashboardFor(p.ok ? p.role : null);
+  } catch {
+    // The session itself couldn't be resolved, so we don't know that anyone is
+    // signed in. That IS the sign-in case.
+    return "/login";
+  }
+}
+
+/**
  * Resolve the session, then the profile. Returns `null` for the user id when
  * nobody is signed in (in which case the profile fields are all empty).
  */

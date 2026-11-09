@@ -20,7 +20,7 @@ import { DashboardSkeleton, useEnterAnim } from "@/components/Skeleton";
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
-import { clearMyProfile } from "@/lib/myProfile";
+import { clearMyProfile, dashboardFor } from "@/lib/myProfile";
 // The standalone review ask is no longer fired from this page — the completion
 // moment is the only one it had here, and that now goes through
 // `requestCompletionThanks`, which asks for the review AND the referral in one
@@ -560,7 +560,12 @@ export default function ClientDashboard() {
             const { data: role } = await supabase.rpc("ensure_profile", { p_role: "client" });
             clearMyProfile();  // a profile row now exists where it didn't
             if (role && role !== "client") {
-              setLocation(role === "admin" ? "/admin-dashboard" : "/contractor-dashboard");
+              // dashboardFor(), not a local ternary. The two are identical
+              // *because* of the guard one line up — but a ternary whose
+              // correctness depends on a neighbouring condition is the shape
+              // that drifts, and this one had already drifted into a mirror
+              // image of ContractorDashboard's copy.
+              setLocation(dashboardFor(role));
               return;
             }
             const { data: p2 } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();

@@ -126,16 +126,26 @@ const ADMIN_NAV: SidebarItem[] = [
  * the admin would be looking at the Disputes tab with nothing highlighted in
  * the rail and no way back to it. The filter decides what to OFFER; it must
  * never contradict where you already are.
+ *
+ * ⚠️ AND `failed` IS WHY A COUNT-DRIVEN RAIL NEEDS THE FAILURE FLAGS (2026-11-09).
+ * An earned tab is earned by `rows.length`, and a failed read produces a length
+ * of zero — so the three reads that can fail here would HIDE their own tab at
+ * exactly the moment it has something to say, taking the retry button with it
+ * and leaving the owner no route to the surface that could tell him anything.
+ * That is strictly worse than the confident-empty-state bug it accompanies: an
+ * empty state is a wrong answer, a missing tab is no question. Zero-because-we-
+ * could-not-tell is not zero, in the rail the same as in the body.
  */
 function visibleNav(opts: {
   active: string;
   picks: number; flagged: number; disputes: number; prepaid: number; leads: number;
+  failed: { picks: boolean; flagged: boolean; prepaid: boolean };
 }): SidebarItem[] {
   const show = new Set<string>(["requests", "jobs", "accounts", "health", "platform", "activity", "agents"]);
-  if (opts.picks > 0)    show.add("picks");
-  if (opts.flagged > 0)  show.add("flagged");
+  if (opts.picks > 0    || opts.failed.picks)   show.add("picks");
+  if (opts.flagged > 0  || opts.failed.flagged) show.add("flagged");
   if (opts.disputes > 0) show.add("disputes");
-  if (opts.prepaid > 0)  show.add("prepaid");
+  if (opts.prepaid > 0  || opts.failed.prepaid) show.add("prepaid");
   if (opts.leads > 0)    show.add("leads");
   show.add(opts.active);
   return ADMIN_NAV.filter(it => show.has(String(it.key)));
@@ -203,7 +213,12 @@ export default function AdminDashboard() {
   const [audit, setAudit] = useState<any[]>([]);
   const [auditFailed, setAuditFailed] = useState(false);
   const tabAnim = useEnterAnim(tab); // replays a 220ms fade+rise on tab change; nothing remounts
+  // `prepaysFailed` for the same reason as `auditFailed`: supabase.from()
+  // RESOLVES with {data,error} rather than throwing, so the try/catch around the
+  // read never fires and a broken query would otherwise render "No prepaid
+  // recurring plans yet" — a confident answer about money we could not read.
   const [prepays, setPrepays] = useState<any[]>([]);
+  const [prepaysFailed, setPrepaysFailed] = useState(false);
   const [busyRefund, setBusyRefund] = useState<string|null>(null);
   const [disputes, setDisputes] = useState<any[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
@@ -242,9 +257,14 @@ export default function AdminDashboard() {
   // Who got picked for what, newest first. Built from jobs (not bids) so it also
   // covers rehires and admin assignments, where no bid was ever accepted.
   const [picks, setPicks] = useState<any[]>([]);
+  const [picksFailed, setPicksFailed] = useState(false);
   // Messages the chat guard refused to deliver. The row still exists (that's the
   // evidence); RLS keeps it hidden from everyone but the sender and an admin.
+  // `chatFlagsFailed` is the worst of this family to get wrong: the empty state
+  // here reads "Nothing has been blocked. 🎉", which on a failed read is the
+  // dashboard congratulating the owner for something it never found out.
   const [chatFlags, setChatFlags] = useState<any[]>([]);
+  const [chatFlagsFailed, setChatFlagsFailed] = useState(false);
   const [flagMatches, setFlagMatches] = useState<Record<string, { fields: string[]; avg: number; count: number; date: string }>>({});
   const [accountQ, setAccountQ] = useState("");
   const [accountRole, setAccountRole] = useState<"all"|"client"|"contractor"|"admin"|"orphaned">("all");
@@ -257,7 +277,14 @@ export default function AdminDashboard() {
   // While the site is paused or in waitlist mode, new client requests are held
   // instead of dispatched. The DB trigger enforce_platform_pause is the real
   // gate; this tab is the switch and the review queue for what got held.
+  // `platFailed` matters more than the other three flags put together: this is
+  // the pause switch, and platMode defaults to "open". A failed platform_status
+  // read left the picker showing "Open — currently on" whatever the DB actually
+  // says, so the owner could read a stale mode off the one control he uses to
+  // decide whether the site is taking jobs. A failed read is not an empty
+  // result, and here it is not an "open" one either.
   const [platMode, setPlatMode] = useState<PlatformMode>("open");
+  const [platFailed, setPlatFailed] = useState(false);
   const [noticeDraft, setNoticeDraft] = useState<PlatformNotice>(DEFAULT_NOTICE);
   const [heldReqs, setHeldReqs] = useState<any[]>([]);
   const [waitlistRows, setWaitlistRows] = useState<any[]>([]);
@@ -365,23 +392,32 @@ export default function AdminDashboard() {
     setLeads(leadsData ?? []);
     setHealth(healthData ?? null);
     // Recurring prepay pools (admin RLS = read all) for the Prepaid tab.
+    // ⚠️ The next four reads keep `error` rather than destructuring `{ data }`
+    // alone. The try/catch is NOT what was protecting them: supabase.from() and
+    // supabase.rpc() RESOLVE with {data,error} and do not throw, so a broken
+    // query fell through the catch, set an empty array, and every one of these
+    // tabs rendered a confident "nothing here" for a question it never got an
+    // answer to. Same lesson as auditFailed, four more times.
     try {
-      const { data: pp } = await supabase.from("recurring_prepayments")
+      const { data: pp, error: ppErr } = await supabase.from("recurring_prepayments")
         .select("*, plan:client_requests!recurring_prepayments_plan_request_id_fkey(service_needed), client:profiles!recurring_prepayments_client_id_fkey(first_name,last_name)")
         .order("created_at", { ascending: false });
-      setPrepays(pp ?? []);
-    } catch { setPrepays([]); }
+      setPrepaysFailed(!!ppErr);
+      setPrepays(ppErr ? [] : (pp ?? []));
+    } catch { setPrepaysFailed(true); setPrepays([]); }
     // Picks feed. Its own try/catch so an older DB without the RPC still loads
     // every other tab instead of failing the whole dashboard.
     try {
-      const { data: pk } = await supabase.rpc("admin_list_picks", { p_limit: 200 });
-      setPicks((pk as any[]) ?? []);
-    } catch { setPicks([]); }
+      const { data: pk, error: pkErr } = await supabase.rpc("admin_list_picks", { p_limit: 200 });
+      setPicksFailed(!!pkErr);
+      setPicks(pkErr ? [] : ((pk as any[]) ?? []));
+    } catch { setPicksFailed(true); setPicks([]); }
     // Blocked chat messages, same defensive pattern.
     try {
-      const { data: cf } = await supabase.rpc("admin_list_chat_flags", { p_limit: 200 });
-      setChatFlags((cf as any[]) ?? []);
-    } catch { setChatFlags([]); }
+      const { data: cf, error: cfErr } = await supabase.rpc("admin_list_chat_flags", { p_limit: 200 });
+      setChatFlagsFailed(!!cfErr);
+      setChatFlags(cfErr ? [] : ((cf as any[]) ?? []));
+    } catch { setChatFlagsFailed(true); setChatFlags([]); }
     // Admin action trail. Own try/catch like the other newer tabs, and the
     // error is kept rather than swallowed into an empty array — see auditFailed.
     try {
@@ -406,9 +442,14 @@ export default function AdminDashboard() {
     // Platform mode + everything the pause is holding. Three separate try/catch
     // blocks so a DB that predates any one of them still renders the rest.
     try {
-      const { data: ps } = await supabase.rpc("platform_status");
+      const { data: ps, error: psErr } = await supabase.rpc("platform_status");
+      // An unrecognised mode is a failed read too, not a reason to keep the
+      // default: platMode starts at "open", so anything that leaves it untouched
+      // leaves the picker claiming the site is taking jobs.
       const m = (ps as any)?.mode;
-      if (m === "open" || m === "paused" || m === "waitlist") setPlatMode(m);
+      const known = m === "open" || m === "paused" || m === "waitlist";
+      setPlatFailed(!!psErr || !known);
+      if (known) setPlatMode(m);
       const n = (ps as any)?.notice;
       if (n && typeof n === "object") {
         setNoticeDraft({
@@ -421,7 +462,7 @@ export default function AdminDashboard() {
           details:  String(n.details  ?? DEFAULT_NOTICE.details),
         });
       }
-    } catch { /* leave the defaults — the tab still renders */ }
+    } catch { setPlatFailed(true); /* leave the defaults — the tab still renders */ }
     try {
       const { data: wl } = await supabase.rpc("admin_list_waitlisted", { p_limit: 200 });
       setHeldReqs((wl as any[]) ?? []);
@@ -894,7 +935,10 @@ export default function AdminDashboard() {
     if (error) throw error;
     clearPlatformStatusCache();
     const m = (data as any)?.mode;
-    if (m === "open" || m === "paused" || m === "waitlist") setPlatMode(m);
+    // This response IS an authoritative read of the mode, so it clears
+    // platFailed — otherwise the "couldn't read the mode" line would sit above a
+    // picker that has just been told the truth by the server.
+    if (m === "open" || m === "paused" || m === "waitlist") { setPlatMode(m); setPlatFailed(false); }
     const n = (data as any)?.notice;
     if (n && typeof n === "object") {
       setNoticeDraft({
@@ -1057,6 +1101,10 @@ export default function AdminDashboard() {
     disputes: openDisputes,
     prepaid: prepays.length,
     leads: leads.length,
+    // A read that failed keeps its tab reachable, so the Retry inside it is
+    // reachable too. The badge below still counts rows only — a badge is a
+    // count, and there is nothing to count.
+    failed: { picks: picksFailed, flagged: chatFlagsFailed, prepaid: prepaysFailed },
   }).map(it => ({
     ...it,
     badge: it.key === "health"   ? (healthAlerts || undefined)
@@ -1751,7 +1799,12 @@ export default function AdminDashboard() {
         {tab === "picks" && (
           <div>
             {tabNote("picks", "Every contractor a client has been matched with, newest first — who won, at what price, and how many bids they beat.")}
-            {picks.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No picks yet. This fills in as clients choose contractors.</p>}
+            {picksFailed && (
+              <p style={{ color:"var(--ff-warn)", fontSize:".9rem" }}>
+                Couldn&rsquo;t load the picks feed. <Button onClick={() => loadAll()}>Retry</Button>
+              </p>
+            )}
+            {!picksFailed && picks.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No picks yet. This fills in as clients choose contractors.</p>}
             {/* ── A genuine LIST OF ROWS, so it is a <Sheet> and not a stack of
                 cards. Each pick is one fact with no controls on it — the tab is
                 a record, not a workspace — which is exactly the shape Row was
@@ -1801,7 +1854,15 @@ export default function AdminDashboard() {
         {tab === "flagged" && (
           <div>
             {tabNote("flagged", "Messages the chat guard stopped before they reached the other person. The sender saw a note explaining why and could rewrite it. Nothing here was delivered — this is the record, kept so you can spot anyone who keeps trying to take a job off the platform.")}
-            {chatFlags.length === 0 && (
+            {/* The 🎉 below is why this one needed the flag most: on a failed
+                read it congratulated the owner for a clean record the dashboard
+                had never actually looked at. */}
+            {chatFlagsFailed && (
+              <p style={{ color:"var(--ff-warn)", fontSize:".9rem" }}>
+                Couldn&rsquo;t load the blocked messages, so this list may be missing some. <Button onClick={() => loadAll()}>Retry</Button>
+              </p>
+            )}
+            {!chatFlagsFailed && chatFlags.length === 0 && (
               <p style={{ color:"rgba(var(--ff-muted), .45)" }}>Nothing has been blocked. 🎉</p>
             )}
             {chatFlags.map(f => (
@@ -1847,7 +1908,12 @@ export default function AdminDashboard() {
 
         {tab === "prepaid" && (
           <div>
-            {prepays.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No prepaid recurring plans yet.</p>}
+            {prepaysFailed && (
+              <p style={{ color:"var(--ff-warn)", fontSize:".9rem" }}>
+                Couldn&rsquo;t load the prepaid plans. Don&rsquo;t treat this as &ldquo;no money on file&rdquo;. <Button onClick={() => loadAll()}>Retry</Button>
+              </p>
+            )}
+            {!prepaysFailed && prepays.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No prepaid recurring plans yet.</p>}
             {/* A genuine list of records with one control each, so a <Sheet> of
                 <Row>s rather than N cards. The `right` slot carries either the
                 refund Button or the reason there is nothing to refund — the two
@@ -2579,6 +2645,20 @@ export default function AdminDashboard() {
               Contractors can always sign up and look around, whichever mode you pick.
             </p>
 
+            {/* The one failure line on this page that is about safety rather
+                than tidiness. platMode defaults to "open", so a failed
+                platform_status read used to render "Open — currently on" — the
+                dashboard telling the owner the site is taking jobs on the
+                strength of a value it never received. The picker itself stays
+                live: pressing a mode re-reads the mode from set_platform_mode's
+                own response, so the control both works and repairs the display. */}
+            {platFailed && (
+              <p style={{ color:"var(--ff-warn)", fontSize:".9rem", marginBottom:"var(--ff-s5)" }}>
+                Couldn&rsquo;t read the current site mode, so none is shown as on below — don&rsquo;t assume the site is open.
+                {" "}<Button onClick={() => loadAll()}>Retry</Button>
+              </p>
+            )}
+
             {/* ── Mode picker ─────────────────────────────────────────────── */}
             {([
               { key:"open"     as PlatformMode, label:"Open",     tone:"var(--ff-success)",
@@ -2588,7 +2668,10 @@ export default function AdminDashboard() {
               { key:"paused"   as PlatformMode, label:"Paused",   tone:"var(--ff-warn)",
                 desc:"New client requests stop completely. The overhaul notice shows across the site." },
             ]).map(m => {
-              const on = platMode === m.key;
+              // `!platFailed` so an unread mode highlights nothing at all. An
+              // unselected picker says "I don't know"; the default-coloured
+              // "Open — currently on" said something false.
+              const on = !platFailed && platMode === m.key;
               return (
                 /* ⚠️ NOT a <DashCard>: this is a <button>, and DashCard renders a
                    div. It wears the card's LOOK by borrowing the class, which is

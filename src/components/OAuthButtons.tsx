@@ -19,7 +19,44 @@ export default function OAuthButtons({ role, label = "or continue with" }: { rol
       if (role) params.set("role", role);
       const qs = params.toString();
       const redirectTo = `${window.location.origin}/auth/callback${qs ? "?" + qs : ""}`;
-      const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
+      /*
+       * ⚠️ `prompt=select_account` IS LOAD-BEARING ON THE SIGN-IN SURFACE, AND
+       * IS DELIBERATELY NOT SET ON THE TWO SIGNUP FUNNELS (2026-11-09).
+       *
+       * Without it Google silently reuses whatever account the browser is
+       * already signed into when there is exactly one — no chooser, no
+       * indication, no error. That is not a hypothetical: the owner's browser
+       * sits on a personal Gmail that ALSO has a `client` account on this
+       * platform, so every press of "Continue with Google" signed him into the
+       * client account instead of the admin one and dropped him on
+       * /client-dashboard. The report that came back was "I cannot sign in
+       * using the Google sign-in for admin", because from the outside a
+       * successful sign-in to the wrong identity is indistinguishable from a
+       * failed one. Both accounts are real, both Google identities are linked
+       * correctly, and nothing anywhere was broken.
+       *
+       * GENERALISE IT: when one human legitimately holds two accounts on the
+       * same platform, an identity provider that picks for them is a bug in our
+       * flow, not a convenience.
+       *
+       * WHY IT IS KEYED ON `!role` RATHER THAN ON A NEW PROP. "No role" is
+       * already this component's definition of the sign-in surface (see the
+       * docblock above): the two onboarding funnels always pass one, Login
+       * never does. So the question "is this a sign-in or a signup?" is
+       * answered by data the component already has, and a future role-less
+       * surface gets the right behaviour without anyone remembering a flag.
+       *
+       * AND WHY THE FUNNELS ARE LEFT ALONE: on /login you are ASSERTING an
+       * identity you already have, so which one is the whole question. On a
+       * signup funnel you are CREATING one, and whichever Google account the
+       * browser is in is a perfectly good answer — so a chooser there is pure
+       * friction on the two highest-value conversion paths we have, inserted to
+       * fix a bug that cannot occur there. The asymmetry is the point; it is
+       * not an oversight to be tidied up later.
+       */
+      const options: Record<string, any> = { redirectTo };
+      if (!role) options.queryParams = { prompt: "select_account" };
+      const { error } = await supabase.auth.signInWithOAuth({ provider, options });
       if (error) throw error;
       // On success the browser is redirected away; nothing else to do here.
     } catch (e: any) {
