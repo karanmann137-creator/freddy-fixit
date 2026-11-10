@@ -20,6 +20,8 @@ import { isPerKmService, freqLabel, SLIDER_STOPS, SLIDER_SHORT } from "@/lib/rec
 import WaitlistForm from "@/components/WaitlistForm";
 import { usePlatformStatus, acceptingRequests } from "@/lib/platformStatus";
 import { detectFromText } from "@/lib/serviceTags";
+import { detectJobSplit, type SplitPart } from "@/lib/jobSplit";
+import SplitJobDialog from "@/components/SplitJobDialog";
 import { questionsFor, answerSummary, type JobAnswers } from "@/lib/jobQuestions";
 import { trackEvent } from "@/lib/analytics";
 import { useStoredDraft, useDraftAutosave, clearDraft, NEWREQUEST_DRAFT_KEY, dStr, dArr, dNum, dBool } from "@/lib/requestDraft";
@@ -263,6 +265,20 @@ export default function NewRequest() {
   }, []);
 
   /**
+   * The multi-trade split suggestion, non-null only while the dialog is open.
+   *
+   * ⚠️ This is state rather than a promise, DELIBERATELY, and it is the one
+   * difference from the askConfirm pattern used everywhere else. askConfirm only
+   * settles when <ConfirmDialog/> closes, so a page that forgets the mount hangs
+   * the button forever with no error — and the button this one hangs is Submit on
+   * the top of the funnel. Here, a missing <SplitJobDialog/> mount leaves
+   * `submitting` false and a request simply un-posted until the next press: the
+   * person is still on their fully typed form and nothing is half-created. Both
+   * failure modes are silent; only one of them loses the job.
+   */
+  const [splitSuggestion, setSplitSuggestion] = useState<SplitPart[] | null>(null);
+
+  /**
    * Pros this client has worked with or favourited, for the "book again" strip.
    *
    * This used to sit on the client dashboard home tab, where it competed with
@@ -471,13 +487,23 @@ export default function NewRequest() {
 
   // What the contractor actually reads. The answers and tags are folded into the
   // description text itself so pros see them today without a schema change.
-  const composedDescription = () => {
-    const parts = [description.trim()];
-    const sum = answerSummary(primaryService, answers);
-    if (sum) parts.push(sum);
-    if (tags.length) parts.push("Details: " + tags.join(", "));
+  //
+  // `withExtras` exists for the multi-trade split, where this is called once per
+  // part. The answers and tags belong to `primaryService`'s question set, so
+  // they ride on exactly ONE part rather than being copied onto all of them: a
+  // pro reading "Details: tiled walls, new build" at the bottom of the stone
+  // pathway half is being told something confident about a job that isn't
+  // theirs, and they price off that text.
+  const composedPart = (text: string, withExtras: boolean) => {
+    const parts = [text.trim()];
+    if (withExtras) {
+      const sum = answerSummary(primaryService, answers);
+      if (sum) parts.push(sum);
+      if (tags.length) parts.push("Details: " + tags.join(", "));
+    }
     return parts.join("\n\n");
   };
+  const composedDescription = () => composedPart(description, true);
 
   // Drop-off funnel. Distinct flow value so it can never be confused with the
   // signup funnel (see STEP_NAMES).
@@ -562,7 +588,17 @@ export default function NewRequest() {
     else { setStep(s => s - 1); window.scrollTo(0, 0); }
   };
 
-  const submit = async () => {
+  /**
+   * `split` is how the second pass tells the first one apart:
+   *   undefined   first press — run the multi-trade detector
+   *   "one"       the client chose "Keep as one job"
+   *   SplitPart[] the client accepted the split, with their edits
+   *
+   * ⚠️ Never pass this straight to onClick — React hands a click event to the
+   * first parameter, which would arrive here as a truthy non-array `split` and
+   * be read as an accepted split of zero parts. The call site wraps it.
+   */
+  const submit = async (split?: SplitPart[] | "one") => {
     if (!validate()) return;
     if (!agreedToTerms) { setSubmitError("Please agree to the User Agreement and Privacy Policy to continue."); return; }
     setSubmitting(true); setSubmitError("");
@@ -580,6 +616,44 @@ export default function NewRequest() {
         return;
       }
       const user = { id: who.userId, email: who.email };
+
+      /**
+       * ── Multi-trade split, offered here and NOWHERE else ──────────────────
+       *
+       * WHY BEFORE THE PHOTO UPLOAD. This branch returns to the screen so the
+       * dialog can open, and submit() then runs again from the top. Everything
+       * above this line is idempotent; the photo upload is not — it writes a new
+       * storage object under a fresh UUID every time, so detecting after it
+       * would leave an orphaned copy in `problem-photos` for every split the
+       * client accepts. The safety-scan branch below is allowed to return late
+       * because it is the END of its own flow, not a round trip.
+       *
+       * WHY `description` AND NOT composedDescription(). The composed text has
+       * the answer summary and the tag list appended, and those are generated
+       * prose — "Details: tiled walls, new build" contains commas and the answer
+       * summary can contain anything. Segmenting them would cut on our own
+       * formatting rather than on the client's list markers.
+       *
+       * WHY A PREFERRED PRO SUPPRESSES IT ENTIRELY. ?pro= means the client
+       * picked one specific person from My Pros. Splitting would either send
+       * that pro a part of the job they don't do, or quietly route half of it
+       * away from the only person they asked for. Both are worse than one
+       * imperfectly-matched request, and the client can post the second job
+       * themselves. Vehicle jobs are suppressed for the same shape of reason:
+       * `vehicle_details` is one vehicle, and it is shared by every row.
+       *
+       * FAILS OPEN, like the detector itself: detectJobSplit() never throws and
+       * returns null for every ambiguous case, and null means post unsplit.
+       */
+      if (split === undefined && !preferredPro && !isVehicle) {
+        const suggestion = await detectJobSplit(description);
+        if (suggestion && suggestion.length >= 2) {
+          setSplitSuggestion(suggestion);
+          setSubmitting(false);
+          return;
+        }
+      }
+      const splitParts = Array.isArray(split) ? split : null;
 
       let photoPath: string | null = null;
       if (photoFile) {
@@ -628,17 +702,23 @@ export default function NewRequest() {
         }
       }
 
-      const { error } = await supabase.from("client_requests").insert({
+      /**
+       * Everything every part of a split SHARES. One person, one address, one
+       * schedule, one photo — the split is about trade, and nothing else.
+       *
+       * `service_needed` and `job_description` are absent here because there is
+       * no sensible shared value for them; `budget_min` keeps the whole-request
+       * floor as its default and is overridden per part below.
+       */
+      const base = {
         user_id: user.id,
         first_name: profile?.first_name ?? null,
         last_name: profile?.last_name ?? null,
         email: profile?.email ?? user.email ?? null,
         phone: profile?.phone ?? null,
-        service_needed: selectedServices.join(", "),
         preferred_contractor_id: preferredPro,
         preferred_schedule: schedule,
         location,
-        job_description: composedDescription(),
         photo_path: photoPath,
         status: "pending",
         // The client states no budget at all any more (see BudgetPicker).
@@ -666,7 +746,51 @@ export default function NewRequest() {
         recurring_dates: recurringDates.length ? recurringDates : null,
         billing_preference: isBusiness ? (lastReq?.billing_preference ?? null) : null,
         vehicle_details: vehicleDetails,
-      });
+      };
+
+      /**
+       * ONE insert call carrying N rows, never a loop — and that is the whole
+       * reason this shape was chosen. A multi-row INSERT is a single statement
+       * in a single transaction, so the split either lands whole or not at all.
+       * A loop that failed on part 2 would leave the client looking at an error
+       * with part 1 already posted and dispatched, and `dispatched_to` is a
+       * PERMANENT "already told them" list — there is no undo for the half that
+       * went out.
+       *
+       * The per-part columns, and why each one has to be per-part:
+       *  · service_needed  — the single label this part detected, which is what
+       *    public.service_specialties() reads to decide who gets emailed. This
+       *    is the entire point of the split.
+       *  · job_description — the part's own words, with the step-3 answers and
+       *    tags folded onto exactly one part (see composedPart).
+       *  · budget_min      — the platform floor for THIS trade.
+       *  · preferred_contractor_id — forced null. A split is only offered when
+       *    no pro was requested (see the detector branch above), so this is
+       *    belt-and-braces against a future caller.
+       */
+      const extrasOn = splitParts
+        // The part that detected the service whose question set the step-3
+        // answers actually belong to. findIndex returns -1 when none matches —
+        // the client picked a service by hand that no part detected — and the
+        // answers then ride on part 1 rather than being dropped.
+        ? Math.max(0, splitParts.findIndex(p => p.service === primaryService))
+        : 0;
+
+      const rows = splitParts
+        ? splitParts.map((p, i) => ({
+            ...base,
+            service_needed: p.service,
+            job_description: composedPart(p.description, i === extrasOn),
+            budget_min: floorFor(p.service, pricing),
+            preferred_contractor_id: null,
+          }))
+        : [{
+            ...base,
+            service_needed: selectedServices.join(", "),
+            job_description: composedDescription(),
+          }];
+
+      const { error } = await supabase.from("client_requests").insert(rows);
       if (error) throw error;
       requestGoogleReview("job_posted");
       // The request row exists now, so the draft is no longer a half-finished
@@ -1291,12 +1415,21 @@ export default function NewRequest() {
           <button style={{ ...s.navBtn, background:"rgba(var(--ff-fg), .06)", color:"rgba(var(--ff-muted), .8)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)" }} onClick={back}>{step === 1 ? "← Dashboard" : "← Back"}</button>
           {step < TOTAL
             ? <button style={{ ...s.navBtn, background:"var(--ff-c10)", color:"#fff" }} onClick={next}>Next →</button>
-            : <button style={{ ...s.navBtn, background:"linear-gradient(135deg,var(--ff-c10),#f09020)", color:"#fff", opacity: submitting ? .6 : 1 }} onClick={submit} disabled={submitting}>
+            : <button style={{ ...s.navBtn, background:"linear-gradient(135deg,var(--ff-c10),#f09020)", color:"#fff", opacity: submitting ? .6 : 1 }} onClick={() => submit()} disabled={submitting}>
                 {submitting ? <><span className="ff-btn-spin" aria-hidden="true" />Submitting…</> : "Submit Request →"}
               </button>
           }
         </div>
       </div>
+
+      {/* The multi-trade split prompt. Both answers re-enter submit() with an
+          explicit verdict, so the detector cannot run a second time and the
+          dialog cannot re-open on the same press. */}
+      <SplitJobDialog
+        parts={splitSuggestion}
+        onKeepOne={() => { setSplitSuggestion(null); submit("one"); }}
+        onSplit={parts => { setSplitSuggestion(null); submit(parts); }}
+      />
     </div>
   );
 }

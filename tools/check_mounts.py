@@ -161,8 +161,33 @@ INVARIANTS = {
     # branch of the three-outcome auth read. NewRequest's is the failed-profile
     # -read retry. Both are terminal: nothing downstream of either renders, so
     # there is no second surface to notice the absence from.
-    "src/pages/ClientOnboarding.tsx": ["<DeadEnd"],
-    "src/components/NewRequest.tsx": ["<DeadEnd"],
+    #
+    # 2026-11-09: BOTH intake forms also carry the multi-trade split prompt, and
+    # on ClientOnboarding the absence is quieter than on NewRequest. It is the
+    # first-job signup form, so its request is inserted by `handle_new_user()`.
+    # Drop `detectJobSplit(` here and `split_jobs` never reaches the signup
+    # metadata, the trigger takes its single-row default -- which is exactly the
+    # fallback that makes a malformed split safe -- and the only trace anywhere
+    # is a contractor wondering why he was emailed a masonry job. A fallback
+    # designed to swallow a bad split swallows a missing one identically, which
+    # is precisely the membership test for this table.
+    "src/pages/ClientOnboarding.tsx": ["<DeadEnd", "<SplitJobDialog", "detectJobSplit("],
+    # The split prompt is here for a reason worth stating because it is the
+    # opposite of the ContractPanel case.
+    #
+    # submit() sets `splitSuggestion` and returns, having deliberately NOT used
+    # the askConfirm promise pattern -- so dropping the mount does not hang the
+    # button, it just means a multi-trade description silently posts as one
+    # request again. That is a quiet regression to the exact bug this feature
+    # exists to fix, on the one form at the top of the funnel, and the only
+    # person who could notice is a contractor wondering why he was emailed a
+    # masonry job. Nothing throws; typecheck is clean either way.
+    #
+    # `detectJobSplit(` is needled separately because the mount and the call
+    # fail in opposite directions: the dialog with no caller is a component that
+    # never opens, the caller with no dialog is a submit that quietly no-ops the
+    # split. Each looks fine on its own.
+    "src/components/NewRequest.tsx": ["<DeadEnd", "<SplitJobDialog", "detectJobSplit("],
     # The refusal surface for a role write that can never succeed. Drop this and
     # AuthCallback's `showBlocked(w.reason, ...)` has nowhere to put the reason,
     # which puts us back in the endless redirect the sentence exists to end --

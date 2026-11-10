@@ -1,6 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
+// v24 (2026-11-09): matching goes through public.service_specialties() instead
+// of an exact-match lookup on service_specialty_map. The post-a-job form
+// multi-selects services and stores them joined ("General Handyman, Other"),
+// which matched no row in a table keyed one label per row — so `required` came
+// back NULL and fell into the documented "unmapped label reaches everyone"
+// branch. Measured live before the fix: 25 of 25 active contractors emailed.
+// This read FAILS CLOSED; see the comment at the call site for why it is the
+// one read here that does.
+//
 // v23 (2026-11-03): every outcome is now recorded in public.dispatch_log —
 // one row per recipient, successes AND failures. Before this, a non-2xx from
 // Resend was dropped on the floor: the contractor was never added to
@@ -191,13 +200,31 @@ serve(async (req) => {
     const logRow = (contractor_id: string | null, ok: boolean, status_code: number | null, error: string | null) =>
       logRows.push({ request_id, contractor_id, ok, status_code, error, reserved });
 
-    // Same matcher as the feed + in-app notifier: map the client's service label
-    // to the required contractor specialties. No row -> passthrough (match all).
-    const { data: mapRow } = await admin
-      .from("service_specialty_map")
-      .select("specialties")
-      .eq("service", request.service_needed).maybeSingle();
-    const required: string[] | null = mapRow?.specialties ?? null;
+    // Same matcher as the feed + in-app notifier, and it must stay the same one:
+    // public.service_specialties() is the ONE answer to "which specialties does
+    // this service_needed reach", because service_needed may hold SEVERAL labels
+    // joined with ", ". Never look service_specialty_map up directly from a
+    // request row. NULL still means passthrough (some label is unmapped, which
+    // "Other" legitimately is).
+    const { data: specData, error: specErr } = await admin
+      .rpc("service_specialties", { p_service: request.service_needed });
+
+    // This read FAILS CLOSED — the only one in this function that does, and the
+    // reason is `dispatched_to`. It is a PERMANENT "already told them" list, not
+    // a cooldown: emailing the wrong set of pros cannot be undone, it burns the
+    // dispatch for everyone it touched and needs a manual refire_count bump in
+    // raw SQL to recover. Skipping costs nothing by comparison, because this
+    // function is idempotent on dispatched_to and the next re-fire picks the job
+    // up unharmed. A failed read is not an empty result, and an empty result
+    // here means EVERYONE — the most expensive possible way to be wrong.
+    if (specErr) {
+      logRow(null, false, null,
+        `map_error: service_specialties failed — ${String((specErr as any).message ?? specErr).slice(0, 400)}`);
+      await flushLog(logRows);
+      console.error("dispatch-job: service_specialties failed", specErr);
+      return new Response(JSON.stringify({ status: "map_error" }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+    const required: string[] | null = (specData as string[] | null) ?? null;
     const specialtyMatch = (c: any) =>
       required === null || (c.specialties ?? []).some((s: string) => required.includes(s));
 

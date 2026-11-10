@@ -27,6 +27,8 @@ import { questionsFor, answerSummary, type JobAnswers } from "@/lib/jobQuestions
 import { useStoredDraft, useDraftAutosave, clearDraft, ONBOARDING_DRAFT_KEY, dStr, dArr, dNum, dBool } from "@/lib/requestDraft";
 import { compressImage } from "@/lib/imageCompress";
 import { scanImage, shouldBlock, rejectMessage } from "@/lib/imageSafety";
+import { detectJobSplit, type SplitPart } from "@/lib/jobSplit";
+import SplitJobDialog from "@/components/SplitJobDialog";
 
 export const SERVICES = [
   { iconName: "wrench", label: "General Handyman" },
@@ -502,6 +504,13 @@ export default function ClientOnboarding() {
   const [errors, setErrors] = useState<Record<string,string>>({});
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  /**
+   * A description that reads as two or more unrelated trades, held while the
+   * dialog asks the client whether to post them separately. State rather than
+   * the `askConfirm` promise pattern because the answer is a list of edited
+   * parts, not a boolean. Null = nothing to ask.
+   */
+  const [splitSuggestion, setSplitSuggestion] = useState<SplitPart[] | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [newsletterOptIn, setNewsletterOptIn] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -628,13 +637,24 @@ export default function ClientOnboarding() {
   // What the contractor actually reads. The answers and tags are folded into the
   // description text itself so pros see them today without a schema change; the
   // structured copies also ride along in signup metadata for later use.
-  const composedDescription = () => {
-    const parts = [form.jobDescription.trim()];
-    const sum = answerSummary(primaryService, answers);
-    if (sum) parts.push(sum);
-    if (tags.length) parts.push("Details: " + tags.join(", "));
+  /**
+   * One request's description text. `withExtras` decides whether the answer
+   * summary and the tag list ride along — on a split they belong to exactly ONE
+   * part, because they were answered about the primary service and repeating
+   * them on a masonry job that never asked them would be noise a contractor
+   * prices against.
+   */
+  const composedPart = (text: string, withExtras: boolean) => {
+    const parts = [text.trim()];
+    if (withExtras) {
+      const sum = answerSummary(primaryService, answers);
+      if (sum) parts.push(sum);
+      if (tags.length) parts.push("Details: " + tags.join(", "));
+    }
     return parts.join("\n\n");
   };
+
+  const composedDescription = () => composedPart(form.jobDescription, true);
 
   const validate = () => {
     const errs: Record<string,string> = {};
@@ -781,13 +801,58 @@ export default function ClientOnboarding() {
     window.scrollTo(0,0);
   };
 
-  const handleSubmit = async () => {
+  /**
+   * `split` is how the dialog answers:
+   *   undefined   — first press, so run the detector and maybe ask
+   *   "one"       — asked and answered "keep it as one job"
+   *   SplitPart[] — asked and answered "post these separately"
+   *
+   * ⚠️ The call site MUST be `onClick={() => handleSubmit()}`. React passes the
+   * click event as the first argument to a bare `onClick={handleSubmit}`, which
+   * arrives here as a truthy non-array `split` and silently skips the detector
+   * on every press, with nothing thrown.
+   */
+  const handleSubmit = async (split?: SplitPart[] | "one") => {
     if (!validate()) return;
     if (!agreedToTerms) { setSubmitError("Please agree to the User Agreement and Privacy Policy to continue."); window.scrollTo(0,0); return; }
     setLoading(true); setSubmitError("");
+    setSplitSuggestion(null);
     // Name isn't collected any more — derive it from the email address.
     const derivedName = namesFromEmail(form.email);
     try {
+      /**
+       * Does this one description actually describe two or more unrelated
+       * trades? Ask before anything is created, because a request is DISPATCHED
+       * ON INSERT and `dispatched_to` is a permanent "already told them" list —
+       * so the wrong pros cannot be un-told afterwards. On the signup path the
+       * insert happens inside `handle_new_user()`, which is why an accepted
+       * split travels as `split_jobs` in the signup metadata rather than as a
+       * second insert from here: a follow-up insert that fails (offline, tab
+       * closed, or the email-confirm path where there is no session at all)
+       * would lose the client's second job silently.
+       *
+       * Placed BEFORE signUp() for the same reason NewRequest places it before
+       * the photo upload: this branch round-trips through the dialog and
+       * re-enters handleSubmit, and everything above it must be idempotent.
+       * Creating the auth user twice is not.
+       *
+       * WHY `form.jobDescription` AND NOT composedDescription(): the composed
+       * text has the answer summary and tag list appended, which are OUR
+       * generated prose. Segmenting that would cut on our own formatting rather
+       * than on the client's own list markers.
+       *
+       * FAILS OPEN, like the detector itself — detectJobSplit() never throws and
+       * returns null for every ambiguous case, and null means post unsplit.
+       */
+      if (split === undefined) {
+        const suggestion = await detectJobSplit(form.jobDescription);
+        if (suggestion && suggestion.length >= 2) {
+          setSplitSuggestion(suggestion);
+          setLoading(false);
+          return;
+        }
+      }
+      const splitParts = Array.isArray(split) ? split : null;
       // Pass the whole request as signup metadata so a DB trigger creates the
       // profile + client_request even when email confirmation is on (no session
       // is returned until the email is verified).
@@ -836,6 +901,36 @@ export default function ClientOnboarding() {
         recurring_dates: recurringDates,
         billing_preference: clientType === "business" ? form.billingPreference : "",
       };
+      /**
+       * An accepted split. `handle_new_user()` writes ONE `client_requests` row
+       * per element instead of its usual single row, in one statement, so all N
+       * land atomically.
+       *
+       * The trigger validates this before trusting it (2–4 parts, every part
+       * must name a service and carry words, `budget_min` regex-checked because
+       * signup metadata is user-controlled and a bad ::numeric cast inside the
+       * signup transaction is an unauthenticated way to break signup) and falls
+       * back to the single combined row on ANY problem. So the keys above are
+       * still sent in full and still describe the whole job — they are what the
+       * client gets if the split is refused, which must never be nothing.
+       *
+       * The answer summary and tag list ride on EXACTLY ONE part (`i === 0`):
+       * they were answered about the primary service, and repeating them on a
+       * masonry job that never asked them is noise a pro prices against.
+       *
+       * `budget_min` is per-part, from the price book for that part's own trade
+       * — a shared floor would quote the TV job's starting price on the pathway.
+       */
+      if (splitParts && splitParts.length >= 2) {
+        metadata.split_jobs = splitParts.map((p, i) => {
+          const floor = floorFor(p.service, pricing);
+          return {
+            service_needed: p.service,
+            job_description: composedPart(p.description, i === 0),
+            budget_min: floor == null ? "" : String(floor),
+          };
+        });
+      }
       // Block duplicate accounts: an email or phone already in use can't sign up again
       // (client or contractor). Pre-flight check; DB triggers are the hard backstop.
       try {
@@ -902,8 +997,21 @@ export default function ClientOnboarding() {
           if (shouldBlock(scan)) {
             setPhotoReject(rejectMessage(scan));
           } else {
-            const { data: reqRow } = await supabase.from("client_requests").select("id").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
-            if (reqRow) await supabase.from("client_requests").update({ photo_path: path }).eq("id", reqRow.id);
+            // ⚠️ Attaches to EVERY request this brand-new account has, not "the
+            // newest one". A split writes N rows in a single statement, so they
+            // share a `created_at` and `order(created_at).limit(1)` picks one of
+            // them arbitrarily — the photo would land on whichever row Postgres
+            // happened to return first. This account was created seconds ago and
+            // has no other requests, so "all of them" is exactly "the ones just
+            // made", and it is byte-equivalent to the old behaviour for the
+            // single-row case. The `is null` filter keeps it idempotent.
+            //
+            // The same photo on both parts is the right answer anyway: the
+            // client took one picture of one problem, and the pro reading the
+            // masonry half has as much use for it as the pro reading the TV
+            // half. NewRequest reaches the same place from the other direction —
+            // `photo_path` sits in the shared `base` object there.
+            await supabase.from("client_requests").update({ photo_path: path }).eq("user_id", userId).is("photo_path", null);
           }
         } else {
           setPhotoWarn(true); // surface on the success screen instead of failing silently
@@ -1706,7 +1814,7 @@ export default function ClientOnboarding() {
               on the run that skipped the confirm screen. */}
           {step !== S_ACCOUNT
             ? <button style={{ ...s.navBtn, background:"var(--ff-c10)", color:"#fff" }} onClick={next}>Next →</button>
-            : <button style={{ ...s.navBtn, background:"linear-gradient(135deg,var(--ff-c10),#f09020)", color:"#fff", opacity: loading ? .6 : 1 }} onClick={handleSubmit} disabled={loading}>
+            : <button style={{ ...s.navBtn, background:"linear-gradient(135deg,var(--ff-c10),#f09020)", color:"#fff", opacity: loading ? .6 : 1 }} onClick={() => handleSubmit()} disabled={loading}>
                 {loading ? <><span className="ff-btn-spin" aria-hidden="true" />Submitting…</> : "Submit Request →"}
               </button>
           }
@@ -1715,6 +1823,15 @@ export default function ClientOnboarding() {
           Already have an account? <button onClick={() => setLocation("/login")} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--ff-c10)", fontFamily:"inherit", fontSize:".82rem", padding:0 }}>Sign in</button>
         </p>
       </div>
+
+      {/* The multi-trade split prompt. Both answers re-enter handleSubmit with
+          an explicit verdict, so the detector cannot run a second time and the
+          dialog cannot re-open on the same press. */}
+      <SplitJobDialog
+        parts={splitSuggestion}
+        onKeepOne={() => { setSplitSuggestion(null); handleSubmit("one"); }}
+        onSplit={parts => { setSplitSuggestion(null); handleSubmit(parts); }}
+      />
     </div>
   );
 }
