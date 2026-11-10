@@ -340,8 +340,13 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!data.session) { setLocation("/login"); return; }
+    // Only a CLEAN "no session" answer is a sign-out — see the twin comment in
+    // ClientDashboard. A failed read also yields `data.session === null`, so the
+    // bare test bounced the signed-in owner to /login, which read the same valid
+    // session and sent him back here. ProtectedRoute owns the unreadable case
+    // and shows a Try again dead end for it. (2026-11-09)
+    supabase.auth.getSession().then(async ({ data, error }) => {
+      if (error || !data.session) { if (!error) setLocation("/login"); return; }
       const uid = data.session.user.id;
       const { data: prof } = await supabase.from("profiles").select("id, first_name").eq("id", uid).maybeSingle();
       setMe(prof ?? { id: uid });

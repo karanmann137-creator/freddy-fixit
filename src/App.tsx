@@ -2,6 +2,7 @@ import { Switch, Route, Redirect, useLocation } from "wouter";
 import { useEffect, useState, lazy, Suspense } from "react";
 import { supabase } from "@/lib/supabase";
 import { getMyProfile, clearMyProfile, dashboardFor } from "@/lib/myProfile";
+import { readAuthUser } from "@/lib/authRead";
 import type { UserRole } from "@/lib/supabase";
 import { trackPageView } from "@/lib/analytics";
 import { REF_CODE_KEY } from "@/lib/referralCode";
@@ -135,18 +136,70 @@ function ProtectedRoute({
   const [status, setStatus] = useState<"loading" | "ok" | "redirect" | "unverified">("loading");
   const [redirectTo, setRedirectTo] = useState("/login");
   const [attempt, setAttempt] = useState(0);
+  // The `unverified` dead end used to exist for exactly one case (admin, profile
+  // unreadable) and hardcoded that wording. It now serves every "we could not
+  // TELL" path, so the copy travels with the state instead of being baked into
+  // the markup. One rendered block, several reasons — which is also why the
+  // spacing literals below are not duplicated per case.
+  const [stuck, setStuck] = useState<{ title: string; body: string }>({ title: "", body: "" });
 
   useEffect(() => {
     let settled = false;
-    // Safety net: if any auth call ever hangs (e.g. an auth-lock deadlock),
-    // don't spin forever — give up after 8s and send the user to login.
+    /*
+     * ⚠️ A HANG IS NOT A SIGN-OUT, AND NEITHER IS A FAILED READ (2026-11-09).
+     *
+     * All three failure paths in this effect — this timeout, a `userError` from
+     * getUser(), and the catch at the bottom — used to `Redirect to="/login"`.
+     * That is the endless loop the owner reported: /login's own mount reads the
+     * session, finds it perfectly valid, and sends you back to the dashboard,
+     * which fails the same read again. Nothing is ever shown to the person, and
+     * no amount of waiting breaks the cycle because the page never admits that
+     * anything went wrong.
+     *
+     * THE DISTINCTION THAT DECIDES THE BRANCH is "no session" versus "no
+     * answer" — and ⚠️ IT IS NOT THE PRESENCE OF AN ERROR. A signed-out
+     * `getUser()` resolves WITH an error (`AuthSessionMissingError`), so
+     * `if (error) → "connection problem"` tells a plainly signed-out visitor
+     * they are still signed in and offers a refresh that can never work. That
+     * version of this fix was written and caught in review the same day;
+     * `readAuthUser()` exists so the three-way answer has one implementation
+     * rather than three call sites each guessing. Full reasoning in
+     * src/lib/authRead.ts.
+     *
+     * A timeout and a throw genuinely are "no answer", so they land on an
+     * honest dead end with a Try again button — the same treatment the admin
+     * branch below already got, generalised, for the same reason it was
+     * written: a failed read is not an empty result.
+     */
     const timeout = setTimeout(() => {
-      if (!settled) { setRedirectTo("/login"); setStatus("redirect"); }
+      if (!settled) {
+        setStuck({
+          title: "This is taking longer than it should",
+          body: "We couldn't finish checking your sign-in. You are still signed in and nothing has been lost — refresh the page to try again.",
+        });
+        setStatus("unverified");
+      }
     }, 8000);
     (async () => {
       try {
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError || !user) { setRedirectTo("/login"); setStatus("redirect"); return; }
+        /*
+         * THREE OUTCOMES, NOT TWO. `readAuthUser()` is the one place that
+         * separates "signed out" from "couldn't tell" — see src/lib/authRead.ts
+         * for why `if (error)` and `if (!user)` are BOTH wrong on their own.
+         * Signed out still redirects to /login, because /login is a way
+         * forward; only an identifiably transient fault earns the dead end.
+         */
+        const who = await readAuthUser();
+        if (who.kind === "signedOut") { setRedirectTo("/login"); setStatus("redirect"); return; }
+        if (who.kind === "unknown") {
+          setStuck({
+            title: "We couldn't reach the server",
+            body: "Your sign-in is fine — the check just couldn't get through. Refresh the page to try again.",
+          });
+          setStatus("unverified");
+          return;
+        }
+        const user = { id: who.userId };
 
         if (requiredRole) {
           // Shared, session-scoped read — TopNav and FinishSignupBanner mount
@@ -196,7 +249,14 @@ function ProtectedRoute({
            *     ensure_profile actually repairs it.
            */
           if (requiredRole === "admin" && profile.role !== "admin") {
-            if (!profile.ok) { setStatus("unverified"); return; }
+            if (!profile.ok) {
+              setStuck({
+                title: "We couldn't confirm your admin access",
+                body: "You're signed in, but the check that reads your role didn't answer — so this is a connection problem, not a sign-out. Nothing is wrong with your account. Refresh the page to try again.",
+              });
+              setStatus("unverified");
+              return;
+            }
             setRedirectTo("/client-dashboard");
             setStatus("redirect");
             return;
@@ -204,11 +264,15 @@ function ProtectedRoute({
         }
         setStatus("ok");
       } catch (err) {
-        // Never leave the route stuck on the loading spinner — on any
-        // unexpected error (network failure, auth throw, etc.) send to login.
+        // Never leave the route stuck on the loading spinner — but an
+        // unexpected error says nothing about whether the session is valid, so
+        // this is a dead end with a way out, not a bounce to /login.
         console.error("ProtectedRoute auth check failed:", err);
-        setRedirectTo("/login");
-        setStatus("redirect");
+        setStuck({
+          title: "Something interrupted the sign-in check",
+          body: "You are still signed in and nothing has been lost. Refresh the page to try again.",
+        });
+        setStatus("unverified");
       } finally {
         settled = true;
         clearTimeout(timeout);
@@ -227,29 +291,49 @@ function ProtectedRoute({
   );
 
   /*
-   * Admin route, signed in, but we could not read the profile that proves it.
-   * An honest dead end beats a dashboard that renders zeros and then blames
-   * its own queries — and it beats a redirect to /login, which would claim the
-   * session had ended when it has not. Retry clears the shared cache first;
-   * `getMyProfile` does not cache failures, but saying so here means the next
-   * person does not have to go and check.
+   * EVERY "WE COULD NOT TELL" PATH LANDS HERE — the 8s hang, a getUser()
+   * transport error, an unreadable admin profile, and any throw. An honest dead
+   * end beats a dashboard that renders zeros and then blames its own queries,
+   * and it beats a redirect to /login, which would claim the session had ended
+   * when it has not (and which /login then bounces straight back, which is the
+   * endless loop this replaced).
+   *
+   * Retry clears the shared cache first; `getMyProfile` does not cache
+   * failures, but saying so here means the next person does not have to check.
+   * The button bumps `attempt` rather than reloading the tab, so a retry costs
+   * one query instead of a whole bundle — the copy still says "refresh"
+   * because that is the instruction that works whichever way the person takes
+   * it, and a full browser refresh reaches the same code.
    */
   if (status === "unverified") return (
     <div style={{ minHeight: "100vh", background: "var(--ff-bg)", display: "flex", alignItems: "center", justifyContent: "center", padding: "clamp(1rem, 4vw, 1.5rem)" }}>
       <div style={{ maxWidth: 420, textAlign: "center", color: "var(--ff-text)", fontFamily: "'DM Sans',sans-serif" }}>
         <h1 style={{ fontFamily: "var(--ff-font-display)", fontWeight: "var(--ff-display-wght)" as any, fontSize: "1.6rem", lineHeight: 1.04, letterSpacing: "-0.028em", marginBottom: "var(--ff-s2)" }}>
-          We couldn't confirm your admin access
+          {stuck.title || "We couldn't finish checking your sign-in"}
         </h1>
         <p style={{ fontSize: ".92rem", lineHeight: 1.6, color: "rgba(var(--ff-muted), .7)", marginBottom: "var(--ff-s6)" }}>
-          You're signed in, but the check that reads your role didn't answer — so this is a
-          connection problem, not a sign-out. Nothing is wrong with your account.
+          {stuck.body || "This is a connection problem, not a sign-out. Nothing is wrong with your account — refresh the page to try again."}
         </p>
-        <button
-          onClick={() => { clearMyProfile(); setStatus("loading"); setAttempt(a => a + 1); }}
-          style={{ minHeight: "var(--ff-h-ctl)", padding: "0 1.25rem", borderRadius: 10, border: "1px solid var(--ff-c10)", background: "var(--ff-c10)", color: "var(--ff-bg)", fontFamily: "inherit", fontWeight: 600, cursor: "pointer" }}
-        >
-          Try again
-        </button>
+        {/* TWO WAYS OUT, because we are here precisely because we do not know
+            which one is needed. Try again is primary (the likely cause is
+            transient), and "Sign in instead" is the escape hatch for the case
+            where our reading of the error was wrong — without it this screen
+            would be the dead end it exists to replace. AuthCallback's blocked
+            phase pairs its buttons the same way. */}
+        <div style={{ display: "flex", gap: "var(--ff-s3)", justifyContent: "center", flexWrap: "wrap" }}>
+          <button
+            onClick={() => { clearMyProfile(); setStatus("loading"); setAttempt(a => a + 1); }}
+            style={{ minHeight: "var(--ff-h-ctl)", padding: "0 1.25rem", borderRadius: 10, border: "1px solid var(--ff-c10)", background: "var(--ff-c10)", color: "var(--ff-bg)", fontFamily: "inherit", fontWeight: 600, cursor: "pointer" }}
+          >
+            Try again
+          </button>
+          <button
+            onClick={() => { setRedirectTo("/login"); setStatus("redirect"); }}
+            style={{ minHeight: "var(--ff-h-ctl)", padding: "0 1.25rem", borderRadius: 10, border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .18)", background: "transparent", color: "rgba(var(--ff-muted), .85)", fontFamily: "inherit", fontWeight: 600, cursor: "pointer" }}
+          >
+            Sign in instead
+          </button>
+        </div>
       </div>
     </div>
   );

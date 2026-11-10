@@ -187,6 +187,31 @@ const CSS = `
   background: rgba(251,191,36,.14); color: var(--ff-warn);
   border:1px solid rgba(251,191,36,.26);
 }
+/* ═══ the dead-end screen ═════════════════════════════════════════════════
+   WHAT THIS EXISTS TO REPLACE: a full-page "we could not tell" state, hand
+   rolled wherever one was needed. NewRequest had one for a failed profile
+   read, ClientOnboarding needed one for the third outcome of the auth read,
+   and AuthCallback already had a third in its own card. Three answers to one
+   question, each with its own padding and its own gap, none of the three
+   differences ever decided — the shape this repo keeps finding.
+
+   IT IS A PRIMITIVE FOR A REASON BEYOND TIDINESS: every one of these screens
+   is the LAST thing a stuck person sees, so the sentence and the button must
+   always both be there. A hand-rolled copy is a copy that can be written
+   without the button, and a dead end with no way out is the complaint this
+   whole pass came from. Mounting the primitive is what makes the way out
+   structural. Spacing lives here rather than in a style object so the ratios
+   are decided once — see the proximity note in tools/check_ux.py. */
+.ffu-dead{
+  min-height:100vh; background:var(--ff-bg);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:var(--ff-s4); padding:var(--ff-s6);
+  font-family:'DM Sans', sans-serif; text-align:center;
+}
+.ffu-dead-msg{ margin:0; color:var(--ff-text); font-size:1rem; line-height:1.6; max-width:38ch; }
+/* The second line is the account's own dashboard or a sign-in link — smaller,
+   because it is an alternative, not the thing we are telling them to do. */
+.ffu-dead-alt{ margin:0; font-size:.85rem; color:rgba(var(--ff-muted), .7); }
 .ffu-sdot{ width:7px; height:7px; border-radius:99px; background:currentColor; flex:0 0 auto; }
 .ffu-sdot.ffu-pulse{ animation: ffu-pls 2.2s var(--ff-ease-in-out) infinite; }
 @keyframes ffu-pls{

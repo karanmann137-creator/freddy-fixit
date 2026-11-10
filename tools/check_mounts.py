@@ -151,6 +151,24 @@ INVARIANTS = {
     # Two needles because the panel and the bubble are separate style objects
     # and were broken independently by the same edit. Count them: 2.
     "src/components/ChatWidget.tsx": ['position: "fixed"'],
+    # 2026-11-09. The dead-end screens, and they belong here for the reason the
+    # whole table exists: a render branch that returns nothing renders NOTHING.
+    # React throws no error for a missing child, typecheck is happy, and the
+    # symptom is a blank page on the one screen whose entire job is to stop a
+    # blank page. That is the failure being fixed, reintroduced by the fix.
+    #
+    # ClientOnboarding's is the "we couldn't tell whether you're signed in"
+    # branch of the three-outcome auth read. NewRequest's is the failed-profile
+    # -read retry. Both are terminal: nothing downstream of either renders, so
+    # there is no second surface to notice the absence from.
+    "src/pages/ClientOnboarding.tsx": ["<DeadEnd"],
+    "src/components/NewRequest.tsx": ["<DeadEnd"],
+    # The refusal surface for a role write that can never succeed. Drop this and
+    # AuthCallback's `showBlocked(w.reason, ...)` has nowhere to put the reason,
+    # which puts us back in the endless redirect the sentence exists to end --
+    # and the account is in no worse state, so there is nothing in the data to
+    # find afterwards either.
+    "src/lib/roleWrite.ts": ["export async function setMyRole", "role_change_block"],
 }
 
 # Needles that must appear a MINIMUM number of times rather than at least once.

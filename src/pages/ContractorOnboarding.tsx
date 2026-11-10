@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { clearMyProfile } from "@/lib/myProfile";
+import { setMyRole } from "@/lib/roleWrite";
 import { compressImage } from "@/lib/imageCompress";
 import { AVAIL_DAYS, WEEKDAYS, TIME_OPTIONS, DEFAULT_START, DEFAULT_END } from "@/lib/availability";
 import { trackEvent } from "@/lib/analytics";
@@ -312,8 +313,19 @@ export default function ContractorOnboarding() {
         // one-tap creates the auth user but the trigger may not have made a
         // profile), then set their role + details.
         try { await supabase.rpc("ensure_profile", { p_role: "contractor" }); } catch {}
+        // ⚠️ THE ROLE IS WRITTEN SEPARATELY FROM THE DETAILS, ON PURPOSE.
+        // It used to be one `update({ role, first_name, last_name, phone })`
+        // whose error was thrown into the generic catch below, which shows
+        // `err.message` raw. Two problems: a refusal from the one-account-type
+        // guard reached the person as an unframed database error, and because
+        // the role shared a statement with their name and phone, the refusal
+        // discarded those too. setMyRole() owns the role write everywhere
+        // (AuthCallback's two paths included) so the reason shown here is the
+        // same sentence the trigger enforces.
+        const w = await setMyRole(userId, "contractor");
+        if (!w.ok) { setSubmitError(w.reason); window.scrollTo(0,0); setLoading(false); return; }
         const { error: profErr } = await supabase.from("profiles")
-          .update({ role: "contractor", first_name: form.firstName, last_name: form.lastName || null, phone: form.phone || null })
+          .update({ first_name: form.firstName, last_name: form.lastName || null, phone: form.phone || null })
           .eq("id", userId);
         if (profErr) throw profErr;
         // The row was just created and/or the role just changed — drop the
@@ -368,7 +380,10 @@ export default function ContractorOnboarding() {
       trackEvent("sign_up", { method: "contractor" });
       setSuccess(true); window.scrollTo(0,0);
     } catch (err: any) {
-      setSubmitError(err.message?.includes("already registered") ? "An account with this email already exists. Please sign in instead." : err.message ?? "Something went wrong.");
+      // "Something went wrong." with no next step is how someone ends up
+      // pressing Submit over and over: the form still holds everything they
+      // typed, so saying that is what turns a blank failure into a retry.
+      setSubmitError(err.message?.includes("already registered") ? "An account with this email already exists. Please sign in instead." : err.message ?? "Something went wrong. Nothing you typed has been lost — refresh the page to try again.");
     } finally { setLoading(false); }
   };
 

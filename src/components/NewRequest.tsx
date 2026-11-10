@@ -5,6 +5,8 @@ import { AREAS, areaToken, areasFromPostal, formatApproxLocation, fsaOf, isPosta
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { readAuthUser } from "@/lib/authRead";
+import { DeadEnd } from "@/components/ui";
 import { compressImage } from "@/lib/imageCompress";
 import { scanImage, shouldBlock, rejectMessage } from "@/lib/imageSafety";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
@@ -198,8 +200,16 @@ export default function NewRequest() {
     (async () => {
       try {
       setLoadError(false);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setLocation("/login"); return; }
+      // THREE OUTCOMES, NOT TWO. `getUser()` resolves WITH an error when the
+      // visitor is signed out, so `if (!user)` lumps a plainly-signed-out
+      // visitor together with a momentary network fault and sends both to
+      // /login — where the session reads as valid and sends them back here,
+      // which is the loop. Only a positive "signedOut" earns the redirect; a
+      // "couldn't tell" falls into `loadError`, which already offers Try again.
+      const who = await readAuthUser();
+      if (who.kind === "signedOut") { setLocation("/login"); return; }
+      if (who.kind !== "user") { setLoadError(true); setLoading(false); return; }
+      const user = { id: who.userId };
       // A PostgREST error resolves rather than throwing, so destructuring only
       // `data` let one failed read (say saved_vehicles) look like "you have no
       // saved vehicles" — the client re-types details they already gave us, and
@@ -557,8 +567,19 @@ export default function NewRequest() {
     if (!agreedToTerms) { setSubmitError("Please agree to the User Agreement and Privacy Policy to continue."); return; }
     setSubmitting(true); setSubmitError("");
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setLocation("/login"); return; }
+      // Same three-outcome read as the mount, and here the old two-way version
+      // did a second kind of damage: the bare `return` left `submitting` true
+      // (there is no `finally` on this try), so the Submit button stayed dead
+      // afterwards. A transient fault threw away a fully typed request, bounced
+      // the person to /login, and gave them a jammed button to come back to.
+      const who = await readAuthUser();
+      if (who.kind === "signedOut") { setSubmitting(false); setLocation("/login"); return; }
+      if (who.kind !== "user") {
+        setSubmitError("We couldn't confirm you're still signed in. Your answers are saved — refresh the page and submit again.");
+        setSubmitting(false);
+        return;
+      }
+      const user = { id: who.userId, email: who.email };
 
       let photoPath: string | null = null;
       if (photoFile) {
@@ -689,11 +710,16 @@ export default function NewRequest() {
       </div>
     </div>
   );
+  // Moved onto the shared DeadEnd on 2026-11-09. The retry is NOT the default
+  // reload: this one can re-run the reads in place, which keeps a part-typed
+  // request on screen, so it keeps its own handler. That is the reason DeadEnd
+  // takes `onRetry` rather than always reloading.
   if (loadError) return (
-    <div style={{ minHeight:"100vh", background:"var(--ff-bg)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"1rem", fontFamily:"'DM Sans', sans-serif", padding:"2rem", textAlign:"center" }}>
-      <p style={{ margin:0, color:"var(--ff-text)", fontSize:"1rem" }}>We couldn&rsquo;t load your details. Check your connection and try again.</p>
-      <button onClick={() => { setLoading(true); setLoadTick(t => t + 1); }} style={{ padding:".7rem 1.6rem", borderRadius:"8px", border:"none", background:"var(--ff-c10)", color:"#fff", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer" }}>Try again</button>
-    </div>
+    <DeadEnd
+      msg="We couldn't load your details. Check your connection and try again."
+      retryLabel="Try again"
+      onRetry={() => { setLoading(true); setLoadTick(t => t + 1); }}
+    />
   );
 
   // Waitlist / paused mode — a returning client is the person most likely to be

@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { clearMyProfile, dashboardFor } from "@/lib/myProfile";
 import { stashedReferralCode, applyReferralAtSignup } from "@/lib/referralCode";
 import { mfaOwed } from "@/lib/mfa";
+import { setMyRole } from "@/lib/roleWrite";
 import VerifyCodeModal from "@/components/VerifyCodeModal";
 
 // Lands here after (a) a Google/Apple OAuth round-trip, or (b) an email
@@ -18,9 +19,18 @@ import VerifyCodeModal from "@/components/VerifyCodeModal";
 //   - Established accounts skip the chooser and go straight to their dashboard.
 export default function AuthCallback() {
   const [, setLocation] = useLocation();
-  const [phase, setPhase] = useState<"loading" | "choose" | "error" | "verify">("loading");
+  const [phase, setPhase] = useState<"loading" | "choose" | "error" | "verify" | "blocked">("loading");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("Signing you in…");
+  // "blocked" is a DEAD END THAT EXPLAINS ITSELF, and it exists because the
+  // alternative on this page is a redirect. Every failure here used to resolve
+  // to setLocation(...) — to /login, or onward to a form that would fail the
+  // same way — and a redirect carries no message, so the person learned nothing
+  // and arrived somewhere that sent them back. `blockRole` is the role the
+  // account actually holds, when we know it, so the way out is a door to a
+  // dashboard that works rather than another lap.
+  const [blockMsg, setBlockMsg] = useState("");
+  const [blockRole, setBlockRole] = useState<string | null>(null);
   // The rest of the sign-in, parked while a two-step code is entered.
   //
   // Until 2026-11-04 this page had no MFA handling at all, so Google sign-in
@@ -35,6 +45,12 @@ export default function AuthCallback() {
   // dashboardFor() is the one answer shared with ProtectedRoute, TopNav and
   // Login — four independent copies of this ternary had been drifting.
   const routeByRole = (role: string | null | undefined) => setLocation(dashboardFor(role));
+
+  const showBlocked = (reason: string, role: string | null) => {
+    setBlockMsg(reason);
+    setBlockRole(role);
+    setPhase("blocked");
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -97,8 +113,17 @@ export default function AuthCallback() {
       // the one person who takes the unguarded path.
       if (wantedRole === "contractor") {
         if (profile?.role === "admin") { routeByRole(profile.role); return; }
-        await supabase.from("profiles").update({ role: "contractor" }).eq("id", user.id);
-        clearMyProfile();  // role just changed — the shared cache must not answer with the old one
+        // ⚠️ A REFUSED ROLE WRITE USED TO BE INVISIBLE HERE (2026-11-09).
+        // This was a bare `update(...)` whose `error` was discarded, so when the
+        // one-account-type guard refuses — an established homeowner pressing
+        // "Continue with Google" on contractor onboarding — the page walked on
+        // to /contractor-onboarding regardless, with the role still `client`.
+        // That form then can't save, sends them back here, and the loop has no
+        // end and no explanation anywhere in it. setMyRole() returns the reason;
+        // we show it, and we offer the dashboard they DO have.
+        const w = await setMyRole(user.id, "contractor");
+        if (cancelled) return;
+        if (!w.ok) { showBlocked(w.reason, profile?.role ?? null); return; }
         const { data: c } = await supabase.from("contractors").select("id").eq("id", user.id).maybeSingle();
         setLocation(c ? "/contractor-dashboard" : "/contractor-onboarding");
         return;
@@ -163,10 +188,28 @@ export default function AuthCallback() {
 
   const choose = async (role: "client" | "contractor") => {
     setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLocation("/login"); return; }
-    await supabase.from("profiles").update({ role }).eq("id", user.id);
-    clearMyProfile();  // role just changed — the shared cache must not answer with the old one
+    const { data: { user }, error: uErr } = await supabase.auth.getUser();
+    // A failed getUser() is not a signed-out user. Bouncing to /login on a
+    // network blip is the endless-redirect complaint in miniature: the session
+    // is fine, so /login sends them straight back here.
+    if (uErr || !user) {
+      setSaving(false);
+      setBlockMsg("We couldn't confirm your sign-in just now. Nothing has been lost — refresh the page to try again.");
+      setBlockRole(null);
+      setPhase("blocked");
+      return;
+    }
+    const w = await setMyRole(user.id, role);
+    if (!w.ok) {
+      // NOT setting ff_role_chosen on a failure is the point: that flag is what
+      // makes this page skip the chooser next time, so writing it after a
+      // refused write would strand the account on a role it never got.
+      setSaving(false);
+      setBlockMsg(w.reason);
+      setBlockRole(null);
+      setPhase("blocked");
+      return;
+    }
     localStorage.setItem("ff_role_chosen", "1");
     if (role === "contractor") setLocation("/contractor-onboarding");
     else setLocation("/client-dashboard");
@@ -230,8 +273,39 @@ export default function AuthCallback() {
         {phase === "error" && (
           <>
             <div style={s.h}>Sign-in didn't finish</div>
-            <p style={s.sub}>Something interrupted the sign-in. Please try again.</p>
-            <button style={{ ...s.opt, textAlign: "center", background: "var(--ff-c10)", borderColor: "var(--ff-c10)", fontWeight: 500 }} onClick={() => setLocation("/login")}>
+            {/* The refresh is named because this page cannot retry itself: the
+                one-time token in the URL has already been spent, so "please try
+                again" without saying where leaves someone staring at a spinner
+                that will never resolve. */}
+            <p style={s.sub}>Something interrupted the sign-in. Nothing has been lost — refresh the page to try again, or go back and sign in.</p>
+            <button style={{ ...s.opt, textAlign: "center", background: "var(--ff-c10)", borderColor: "var(--ff-c10)", fontWeight: 500 }} onClick={() => window.location.reload()}>
+              Refresh and try again
+            </button>
+            <button style={{ ...s.opt, textAlign: "center" }} onClick={() => setLocation("/login")}>
+              Back to sign in
+            </button>
+          </>
+        )}
+        {phase === "blocked" && (
+          <>
+            <div style={s.h}>We couldn't finish that</div>
+            {/* The reason comes from role_change_block() — the same predicate the
+                database trigger enforces — so what we say here and what actually
+                happened cannot disagree. It is written as a sentence for the
+                person, so it is shown verbatim. */}
+            <p style={s.sub}>{blockMsg}</p>
+            {blockRole
+              ? (
+                <button style={{ ...s.opt, textAlign: "center", background: "var(--ff-c10)", borderColor: "var(--ff-c10)", fontWeight: 500 }} onClick={() => routeByRole(blockRole)}>
+                  Go to my dashboard
+                </button>
+              )
+              : (
+                <button style={{ ...s.opt, textAlign: "center", background: "var(--ff-c10)", borderColor: "var(--ff-c10)", fontWeight: 500 }} onClick={() => window.location.reload()}>
+                  Refresh and try again
+                </button>
+              )}
+            <button style={{ ...s.opt, textAlign: "center" }} onClick={() => setLocation("/login")}>
               Back to sign in
             </button>
           </>

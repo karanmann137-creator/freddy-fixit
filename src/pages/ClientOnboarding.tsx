@@ -5,6 +5,8 @@ import PhotoPicker from "@/components/PhotoPicker";
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
+import { readAuthUser } from "@/lib/authRead";
+import { DeadEnd } from "@/components/ui";
 import OnboardingProgress from "@/components/OnboardingProgress";
 import OnboardingVideo from "@/components/OnboardingVideo";
 import { trackEvent } from "@/lib/analytics";
@@ -234,11 +236,18 @@ export default function ClientOnboarding() {
   const [, setLocation] = useLocation();
   // A signed-in user starting a new request gets the streamlined returning-user
   // flow (no re-signup); only logged-out visitors get the account-creation form.
-  const [mode, setMode] = useState<"loading"|"signup"|"new">("loading");
+  // "stalled" is the THIRD outcome of the auth read and it has to be a real
+  // mode, because the other two ways out are both wrong. `getUser()` resolves
+  // WITH an error for a signed-out visitor, so the old `user ? "new" : "signup"`
+  // sent a signed-in person whose network blipped into the account-creation
+  // form — which then refuses their own email as already registered, with no
+  // way forward. And staying in "loading" is the endless spinner. So: say so,
+  // and offer the refresh.
+  const [mode, setMode] = useState<"loading"|"signup"|"new"|"stalled">("loading");
   useEffect(() => {
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setMode(user ? "new" : "signup");
+      const who = await readAuthUser();
+      setMode(who.kind === "user" ? "new" : who.kind === "signedOut" ? "signup" : "stalled");
     })();
   }, []);
 
@@ -945,6 +954,9 @@ export default function ClientOnboarding() {
         <Ic name="refresh" size={40} color="var(--ff-c10)" style={{ animation:"ff-spin .8s linear infinite" }} />
       </div>
     </>
+  );
+  if (mode === "stalled") return (
+    <DeadEnd msg="We couldn't check whether you're signed in. Nothing is wrong with your account — refresh the page and you can carry on." />
   );
   if (mode === "new") return <NewRequest />;
 

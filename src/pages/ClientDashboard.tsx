@@ -21,6 +21,7 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { clearMyProfile, dashboardFor } from "@/lib/myProfile";
+import { readAuthUser } from "@/lib/authRead";
 // The standalone review ask is no longer fired from this page — the completion
 // moment is the only one it had here, and that now goes through
 // `requestCompletionThanks`, which asks for the review AND the referral in one
@@ -512,8 +513,16 @@ export default function ClientDashboard() {
     new Promise<boolean>(resolve => setConfirmState({ ...o, resolve }));
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) setLocation("/login");
+    // Only a CLEAN "no session" answer is a sign-out. `getSession()` resolves
+    // with { data, error }, and on a failed read `data.session` is null too —
+    // so the bare `!data.session` test here bounced a perfectly signed-in
+    // client to /login over a network blip, where /login reads the same session,
+    // finds it valid and sends them straight back. That is the endless loop.
+    // ProtectedRoute already gates this route and now shows a Try again dead
+    // end for the unreadable case, so falling through is correct here — not a
+    // second guess at the same question. (2026-11-09)
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!error && !data.session) setLocation("/login");
     });
   }, []);
 
@@ -530,8 +539,18 @@ export default function ClientDashboard() {
     const load = async () => {
       setLoadError(false);
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) { setLoading(false); return; }
+        /*
+         * THREE OUTCOMES, NOT TWO — see src/lib/authRead.ts. A signed-out
+         * getUser() resolves WITH an error, so testing for one would tell a
+         * signed-out visitor their requests are safe and offer them a refresh
+         * that can never work; testing only `!user` sends a signed-in client
+         * with live requests to the finish-setup screen, whose only button goes
+         * back into onboarding. Neither is acceptable, hence the predicate.
+         */
+        const who = await readAuthUser();
+        if (who.kind === "unknown") { setLoadError(true); return; }
+        if (who.kind === "signedOut") { setLoading(false); return; }
+        const user = { id: who.userId };
 
         // profile + requests have no inter-dependency — fetch them together.
         const [prof, reqs, myPros, ref, rate, planRows, dep] = await Promise.all([
@@ -568,7 +587,10 @@ export default function ClientDashboard() {
               setLocation(dashboardFor(role));
               return;
             }
-            const { data: p2 } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+            // The repair ran; if the re-read fails we do not know whether it
+            // worked, and "finish setting up" would be a guess dressed as a fact.
+            const { data: p2, error: e2 } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+            if (e2) { setLoadError(true); return; }
             profData = p2;
           } catch { /* fall through to the finish-setup screen */ }
         }
@@ -1691,7 +1713,7 @@ export default function ClientDashboard() {
     <DashShell style={{ display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ textAlign:"center", color:"rgba(var(--ff-muted), .7)", maxWidth:"320px", padding:"1.5rem" }}>
         <div style={{ marginBottom:".75rem", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".04em" }}>Couldn't load your dashboard</div>
-        <div style={{ fontSize:".9rem", marginBottom:"1.25rem" }}>Check your connection and try again.</div>
+        <div style={{ fontSize:".9rem", marginBottom:"1.25rem" }}>You are still signed in and nothing has been lost — your requests and jobs are all safe. Refresh the page to try again.</div>
         <button style={s.primaryBtn} onClick={() => window.location.reload()}>Retry</button>
       </div>
     </DashShell>

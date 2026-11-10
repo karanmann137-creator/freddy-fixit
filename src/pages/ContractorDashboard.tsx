@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { clearMyProfile, dashboardFor } from "@/lib/myProfile";
+import { readAuthUser } from "@/lib/authRead";
 import { getCommissionRate, getFeeRate } from "@/lib/platformRates";
 import { compressImage } from "@/lib/imageCompress";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
@@ -577,8 +578,13 @@ export default function ContractorDashboard() {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) setLocation("/login");
+    // Only a CLEAN "no session" answer is a sign-out — see the twin comment in
+    // ClientDashboard. A failed read also yields `data.session === null`, so the
+    // bare test bounced a signed-in pro to /login, which read the same valid
+    // session and sent them back. ProtectedRoute owns the unreadable case and
+    // now shows a Try again dead end for it. (2026-11-09)
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!error && !data.session) setLocation("/login");
     });
   }, []);
 
@@ -613,18 +619,58 @@ export default function ContractorDashboard() {
     const load = async () => {
       setLoadError(false);
       try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setLoading(false); return; }
+      /*
+       * ⚠️ EVERY READ IN THIS LOAD DISCARDED ITS `error`, WHICH MADE THE
+       * `loadError` SCREEN BELOW UNREACHABLE (2026-11-09).
+       *
+       * `supabase.from(...)` and `.rpc(...)` RESOLVE with `{ data, error }` —
+       * they do not throw — so the `catch` at the bottom of this effect, the
+       * only thing that ever called `setLoadError(true)`, could not fire for a
+       * failed query. Every failure therefore arrived as `data: null`, and
+       * `prof2`/`con2` ending up null falls through to the "You're almost
+       * there" screen 900 lines down, whose only button goes to
+       * /contractor-onboarding. So a verified contractor with jobs and money in
+       * flight was told to go and sign up again, on a transient network error.
+       * That is the endless loop the owner reported, reached from the data side
+       * rather than the routing side.
+       *
+       * WHICH ERRORS ARE FATAL IS A JUDGEMENT AND IT IS WRITTEN DOWN HERE.
+       * Fatal = the read decides which SCREEN you see, or hides money:
+       * `profiles`/`contractors` (identity — their absence routes to
+       * onboarding), `jobs` (the work and the balances), `disputes` (a claim
+       * against this pro's money), `list_open_jobs` (an empty Find Work tab is
+       * indistinguishable from no work available, which costs them income).
+       * Not fatal = portfolio, reviews, the bid count and the earnings rollup:
+       * each already has a `?? []` / `?? 0` fallback and none of them changes
+       * what the page claims about money. A flaky cosmetic read must not blank
+       * a dashboard someone is trying to get paid from.
+       */
+      /*
+       * THREE OUTCOMES, NOT TWO — `readAuthUser()` separates "signed out" from
+       * "couldn't tell"; a signed-out getUser() resolves WITH an error, so
+       * testing for one would tell a signed-out visitor their jobs are safe and
+       * offer a refresh that can never work. See src/lib/authRead.ts.
+       *
+       * Signed out falls through as before (ProtectedRoute and the getSession
+       * effect above both own that case). An unreadable session shows the
+       * error+Retry screen rather than the finish-setup screen, whose only
+       * button goes to /contractor-onboarding — which is what used to greet an
+       * established pro with jobs in flight after one bad network moment.
+       */
+      const who = await readAuthUser();
+      if (who.kind === "unknown") { setLoadError(true); setLoading(false); return; }
+      if (who.kind === "signedOut") { setLoading(false); return; }
+      const user = { id: who.userId };
       // All six reads key only off user.id, so fire them in parallel instead of
       // waiting on each round-trip in sequence.
       const [
-        { data: prof },
-        { data: con },
+        { data: prof, error: eProf },
+        { data: con, error: eCon },
         { data: pf },
-        { data: jobs },
-        { data: open },
+        { data: jobs, error: eJobs },
+        { data: open, error: eOpen },
         { data: revs },
-        { data: disp },
+        { data: disp, error: eDisp },
         { data: earnStats },
         { count: bidsCnt },
       ] = await Promise.all([
@@ -647,9 +693,15 @@ export default function ContractorDashboard() {
         supabase.from("bids").select("id", { count: "exact", head: true }).eq("contractor_id", user.id),
       ]);
 
+      // The five load-bearing reads, checked BEFORE the self-repair below —
+      // ensure_profile() repairs an account that is genuinely incomplete, and
+      // running it because a query timed out would be acting on a wrong answer.
+      if (eProf || eCon || eJobs || eDisp || eOpen) { setLoadError(true); setLoading(false); return; }
+
       // Half-finished signup (e.g. Google one-tap / email-only account): self-repair
       // the account so the dashboard loads and the rest can be completed from the
-      // Profile tab, instead of blocking them out.
+      // Profile tab, instead of blocking them out. Reaching here now means the
+      // rows are genuinely ABSENT, not unreadable.
       let prof2 = prof, con2 = con;
       if (!prof2 || !con2) {
         try {
@@ -662,10 +714,13 @@ export default function ContractorDashboard() {
             setLocation(dashboardFor(role));
             return;
           }
-          const [{ data: p2 }, { data: c2 }] = await Promise.all([
+          const [{ data: p2, error: e2 }, { data: c2, error: e3 }] = await Promise.all([
             supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
             supabase.from("contractors").select("*").eq("id", user.id).maybeSingle(),
           ]);
+          // The repair ran; if the re-read fails we do not know whether it
+          // worked, and "finish setting up" would be a guess. Say so instead.
+          if (e2 || e3) { setLoadError(true); setLoading(false); return; }
           prof2 = p2; con2 = c2;
         } catch { /* fall through to the finish-setup screen */ }
       }
@@ -1504,7 +1559,7 @@ export default function ContractorDashboard() {
     <DashShell style={{ display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ textAlign:"center", color:"rgba(var(--ff-muted), .7)", maxWidth:"320px", padding:"1.5rem" }}>
         <div style={{ marginBottom:".75rem", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".04em" }}>Couldn't load your dashboard</div>
-        <div style={{ fontSize:".9rem", marginBottom:"1.25rem" }}>Check your connection and try again.</div>
+        <div style={{ fontSize:".9rem", marginBottom:"1.25rem" }}>You are still signed in and nothing has been lost — your jobs, bids and earnings are all safe. Refresh the page to try again.</div>
         <button style={s.primaryBtn} onClick={() => window.location.reload()}>Retry</button>
       </div>
     </DashShell>

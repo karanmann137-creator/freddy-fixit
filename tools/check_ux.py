@@ -352,7 +352,18 @@ ORANGE = re.compile(r"#ea6b14|rgba\(\s*234\s*,\s*107\s*,\s*20\b", re.I)
 # replacement values live in ui/uiStyles.ts under "the dashboard shell", which
 # this checker does not count, for the reason stated at the 1486 fall: taxing
 # the one shared sheet would tax the only cure.
-SPACING_BASELINE = 1469
+# 1469 -> 1467 on 2026-11-09, SIXTH fall, same mechanism a sixth time — and
+# this one is worth reading, because the primitive did not exist yet and the
+# ratchet is what found it. A third full-page "we couldn't tell" screen was
+# about to be hand-rolled (NewRequest already had one for a failed profile
+# read, ClientOnboarding needed one for the third outcome of the auth read,
+# AuthCallback had a third inside its own card), so the count first ROSE by 2.
+# The fix was NOT to quantize the new screen's padding and gap: it was to
+# notice that three pages were answering one question, write .ffu-dead plus
+# ui/DeadEnd.tsx, and delete NewRequest's copy. A rise here is a prompt to go
+# looking for the missing primitive — not an instruction to token-swap the
+# literal you just typed.
+SPACING_BASELINE = 1467
 
 SPACING_PROP = (
     r"(?:gap|rowGap|columnGap|padding|paddingTop|paddingBottom|paddingLeft"

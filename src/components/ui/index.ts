@@ -51,3 +51,9 @@ export { DashShell, DashContent, DashCard } from "./Dash";
 // the one shared sheet — but see its ⚠️ note: mounting it on a dashboard is a
 // bug, because TopNav hides itself on scroll there and the bar would float.
 export { PageTitle } from "./PageTitle";
+// The dead-end screen. Neither a dashboard primitive nor a read-page one — it
+// is what ANY surface renders when it cannot answer the question it was asked.
+// It is here because the alternative is each page hand-rolling the last screen
+// a stuck person sees, and a hand-rolled copy is one that can be written
+// without the way out. See its docblock: the action is not optional.
+export { default as DeadEnd } from "./DeadEnd";
