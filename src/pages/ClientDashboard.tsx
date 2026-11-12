@@ -1043,7 +1043,7 @@ export default function ClientDashboard() {
       throw new Error(data?.error || "Could not start checkout");
     } catch (e: any) {
       let msg = e?.message || String(e);
-      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
+      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch { /* error body was not JSON; keep the default message */ }
       notify("Prepay couldn't start: " + msg);
       setBusyPlan(null);
     }
@@ -1199,7 +1199,7 @@ export default function ClientDashboard() {
       throw new Error(data?.error || "Could not start checkout");
     } catch (e: any) {
       let msg = e?.message || String(e);
-      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
+      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch { /* error body was not JSON; keep the default message */ }
       notify("Payment couldn't start: " + msg);
       setBusyPay(false);
     }
@@ -1235,7 +1235,7 @@ export default function ClientDashboard() {
       throw new Error(data?.error || "Could not start checkout");
     } catch (e: any) {
       let msg = e?.message || String(e);
-      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
+      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch { /* error body was not JSON; keep the default message */ }
       notify("Payment couldn't start: " + msg);
       setBusyBalance(false);
     }

@@ -99,7 +99,7 @@ function ScrollToTop() {
     try {
       const ref = new URLSearchParams(window.location.search).get("ref");
       if (ref && !localStorage.getItem(REF_CODE_KEY)) localStorage.setItem(REF_CODE_KEY, ref.trim().toUpperCase());
-    } catch {}
+    } catch { /* storage can be unavailable (private mode); best effort */ }
   }, [location]);
   return null;
 }

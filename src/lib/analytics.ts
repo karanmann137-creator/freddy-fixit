@@ -101,11 +101,11 @@ export function setConsent(choice: ConsentChoice): void {
     initAnalytics();
     // They've already landed on a page by the time they accept, so record it —
     // otherwise the first page of every accepted session is lost.
-    try { trackPageView(window.location.pathname + window.location.search); } catch {}
+    try { trackPageView(window.location.pathname + window.location.search); } catch { /* analytics must never break the page */ }
   } else {
     clearAnalyticsCookies();
   }
-  try { window.dispatchEvent(new CustomEvent(CONSENT_EVENT, { detail: choice })); } catch {}
+  try { window.dispatchEvent(new CustomEvent(CONSENT_EVENT, { detail: choice })); } catch { /* analytics must never break the page */ }
 }
 
 // Injects the gtag.js + PostHog scripts and configures them. Safe to call

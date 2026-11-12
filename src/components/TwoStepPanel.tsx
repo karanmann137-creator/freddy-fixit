@@ -245,7 +245,7 @@ export default function TwoStepPanel() {
             style={codeInput}
             value={code}
             onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); stage === "code" ? verifyEnroll() : verifyThenDisable(); } }}
+            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); if (stage === "code") verifyEnroll(); else verifyThenDisable(); } }}
             placeholder="000000"
             inputMode="numeric"
             autoComplete="one-time-code"

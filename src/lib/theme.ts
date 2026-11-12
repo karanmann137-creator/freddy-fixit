@@ -34,12 +34,12 @@ export function applyTextScale(scale: number) {
 }
 
 export function setTheme(theme: Theme) {
-  try { localStorage.setItem(THEME_KEY, theme); } catch {}
+  try { localStorage.setItem(THEME_KEY, theme); } catch { /* storage can be unavailable (private mode); best effort */ }
   applyTheme(theme);
   window.dispatchEvent(new CustomEvent("ff:prefs-changed"));
 }
 export function setTextScale(scale: number) {
-  try { localStorage.setItem(SCALE_KEY, String(scale)); } catch {}
+  try { localStorage.setItem(SCALE_KEY, String(scale)); } catch { /* storage can be unavailable (private mode); best effort */ }
   applyTextScale(scale);
   window.dispatchEvent(new CustomEvent("ff:prefs-changed"));
 }

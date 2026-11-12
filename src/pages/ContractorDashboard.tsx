@@ -413,7 +413,7 @@ export default function ContractorDashboard() {
     try { return localStorage.getItem("ff_seen_contractor_guide") === "1"; } catch { return false; }
   });
   const dismissGuide = () => {
-    try { localStorage.setItem("ff_seen_contractor_guide", "1"); } catch {}
+    try { localStorage.setItem("ff_seen_contractor_guide", "1"); } catch { /* storage can be unavailable (private mode); best effort */ }
     setGuideSeen(true);
   };
   // One payload behind the Messages tab, the sidebar badge and every per-job
@@ -1444,7 +1444,7 @@ export default function ContractorDashboard() {
       throw new Error(data?.error || "Could not start payout setup");
     } catch (e: any) {
       let msg = e?.message || String(e);
-      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
+      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch { /* error body was not JSON; keep the default message */ }
       notify("Payout setup failed: " + msg);
       setBusyStripe(false);
     }
@@ -2231,7 +2231,7 @@ export default function ContractorDashboard() {
               const steps = [
                 { key: "profile", label: "Complete your profile", done: contractorMissing(contractor).length === 0,
                   sub: contractorMissing(contractor).length > 0 ? "Missing: " + contractorMissing(contractor).join(", ") : "Done — clients can see your credentials.",
-                  onClick: () => { const g = contractorGaps(contractor); g.length ? focusProfileGap(g[0].anchor) : setActiveTab("profile"); }, skippable: false },
+                  onClick: () => { const g = contractorGaps(contractor); if (g.length) focusProfileGap(g[0].anchor); else setActiveTab("profile"); }, skippable: false },
                 { key: "payouts", label: "Set up payouts", done: !!contractor.stripe_payouts_enabled,
                   sub: contractor.stripe_payouts_enabled ? "Connected — you're ready to get paid." : "Connect a bank account so you can be paid.",
                   // Not skippable: without a payout account we cannot pay them at all.
@@ -3237,7 +3237,7 @@ export default function ContractorDashboard() {
                         const cur = nums[nums.length - 1], prev = nums[nums.length - 2];
                         const best = Math.max(...nums);
                         if (best <= 0) return null;
-                        let msg = "";
+                        let msg: string;
                         if (cur > 0 && cur >= best) msg = prev > 0 ? "Best week in 2 months — $" + cur.toFixed(0) + ", up " + Math.round(((cur - prev) / prev) * 100) + "% from last week." : "Best week in 2 months — $" + cur.toFixed(0) + ".";
                         else if (prev > 0 && cur > prev) msg = "Up " + Math.round(((cur - prev) / prev) * 100) + "% from last week — keep it rolling.";
                         else if (prev > 0 && cur < prev) msg = "$" + (prev - cur).toFixed(0) + " behind last week — one more job closes the gap.";

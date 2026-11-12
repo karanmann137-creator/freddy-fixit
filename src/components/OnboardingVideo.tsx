@@ -136,7 +136,6 @@ export default function OnboardingVideo({
         >
           <div className="ff-onbvid-panel">
             <span className="ff-onbvid-ttl" style={{ display: "block" }}>{title}</span>
-            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
             <video className="ff-onbvid-vid" src={src} controls autoPlay playsInline preload="auto" />
             <button type="button" className="ff-onbvid-hide" onClick={() => setOpen(false)}>
               <Ic name="x-circle" size={17} />

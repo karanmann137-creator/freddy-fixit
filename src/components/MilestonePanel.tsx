@@ -301,7 +301,9 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
   const btnPrimary: React.CSSProperties = { ...btn, background: "var(--ff-c10)", color: "#fff", border: "none" };
   const btnGreen: React.CSSProperties = { ...btn, background: "#22c55e", color: "#06210f", border: "none" };
 
-  const Banner = () => (
+  // A plain element, not a component: defining a component inside render makes
+  // React throw it away and rebuild it on every render.
+  const banner = (
     <>
       {err && <div style={{ fontSize: ".8rem", color: "#ef4444", marginBottom: ".5rem" }}>{err}</div>}
       {msg && <div style={{ fontSize: ".8rem", color: "#22c55e", marginBottom: ".5rem" }}>{msg}</div>}
@@ -317,7 +319,7 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
         <div style={{ fontSize: ".82rem", color: "rgba(var(--ff-muted), .8)", lineHeight: 1.5, marginBottom: ".8rem" }}>
           This job is over $2,000, so the client can pay in stages. Break the {money(total)} estimate into 2–5 stages — they fund each stage as it starts and you're paid as each is approved.
         </div>
-        <Banner />
+        {banner}
         {(showBuilder || !proposed) ? (
           <>
             <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
@@ -374,7 +376,7 @@ export default function MilestonePanel({ job, role, onUpdated, contractBlocked =
   return (
     <div style={wrap}>
       <div style={head}><Ic name="clipboard-list" size={13} />Milestone payments — {money(total)} in {milestones.length} stages</div>
-      <Banner />
+      {banner}
 
       {role === "client" && schedStatus === "proposed" && (
         <div style={{ marginBottom: "var(--ff-s4)", padding: ".7rem .8rem", borderRadius: "10px", background: "rgba(var(--ff-fg), .04)" }}>

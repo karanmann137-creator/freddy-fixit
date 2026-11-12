@@ -127,7 +127,7 @@ export function scorePassword(pw: string): PasswordScore {
 
   const clamped = Math.max(0, Math.min(4, score)) as 0 | 1 | 2 | 3 | 4;
 
-  let hint = "";
+  let hint: string;
   if (clamped <= 1) {
     hint = "A longer password is the single biggest improvement — try four random words.";
   } else if (clamped === 2) {

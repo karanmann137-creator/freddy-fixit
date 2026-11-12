@@ -81,7 +81,7 @@ jobs:
       - name: Lint ratchet
         if: always()
         env:
-          LINT_BASELINE: "162"
+          LINT_BASELINE: "98"
         run: |
           n=$(npx eslint . -f json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).reduce((a,f)=>a+f.errorCount,0)))')
           echo "eslint errors: $n (baseline $LINT_BASELINE)"

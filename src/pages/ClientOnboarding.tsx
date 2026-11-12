@@ -930,7 +930,7 @@ export default function ClientOnboarding() {
         const { data: avail } = await supabase.rpc("check_signup_availability", { p_email: form.email, p_phone: form.phone });
         if ((avail as any)?.email_taken) { setSubmitError("An account with this email already exists. Please sign in instead."); window.scrollTo(0,0); setLoading(false); return; }
         if ((avail as any)?.phone_taken) { setSubmitError("An account with this phone number already exists. Please sign in, or use a different number."); window.scrollTo(0,0); setLoading(false); return; }
-      } catch {}
+      } catch (e) { console.warn("[ff] check_signup_availability failed", e); }
       const { data: authData, error: authErr } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
@@ -943,7 +943,7 @@ export default function ClientOnboarding() {
       if (((authData.user.identities?.length) ?? 0) === 0) { setSubmitError("An account with this email already exists. Please sign in instead."); window.scrollTo(0,0); setLoading(false); return; }
       // Weekly-tips opt-in (CASL express consent — checkbox is never pre-checked).
       if (newsletterOptIn) {
-        try { await supabase.rpc("newsletter_subscribe", { p_email: form.email, p_audience: "client", p_name: derivedName.first, p_source: "signup_checkbox" }); } catch {}
+        try { await supabase.rpc("newsletter_subscribe", { p_email: form.email, p_audience: "client", p_name: derivedName.first, p_source: "signup_checkbox" }); } catch (e) { console.warn("[ff] newsletter_subscribe failed", e); }
       }
       const userId = authData.user.id;
       // A TYPED code has to survive the email-confirmation detour. There is no
@@ -1018,7 +1018,7 @@ export default function ClientOnboarding() {
       // dashboard prints it directly above the box that retries it.
       await applyReferralAtSignup(form.referralCode || stashedReferralCode());
       trackEvent("sign_up", { method: "client" }); trackEvent("post_job"); requestGoogleReview("signup"); requestGoogleReview("job_posted");
-      try { const { data: refData } = await supabase.rpc("get_my_referral"); const rc = Array.isArray(refData) ? (refData as { code?: string }[])[0]?.code : (refData as { code?: string } | null)?.code; if (rc) setReferral({ code: rc }); } catch {}
+      try { const { data: refData } = await supabase.rpc("get_my_referral"); const rc = Array.isArray(refData) ? (refData as { code?: string }[])[0]?.code : (refData as { code?: string } | null)?.code; if (rc) setReferral({ code: rc }); } catch (e) { console.warn("[ff] get_my_referral failed", e); }
       setSuccess(true); clearDraft(ONBOARDING_DRAFT_KEY); window.scrollTo(0,0);
     } catch (err: any) {
       setSubmitError(err.message?.includes("already registered") ? "An account with this email already exists. Please sign in instead." : err.message ?? "Something went wrong.");
@@ -1031,7 +1031,7 @@ export default function ClientOnboarding() {
     try {
       await navigator.clipboard.writeText(`Get your first Freddy Fix It service fee waived with my code ${code}: https://freddyfixit.ca/?ref=${code}`);
       setRefCopied(true); setTimeout(() => setRefCopied(false), 2000);
-    } catch {}
+    } catch { /* clipboard blocked by the browser; nothing to undo */ }
   };
 
   const inp = { width:"100%", padding:".75rem 1rem", background:"rgba(var(--ff-fg), .06)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .1)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".95rem", boxSizing:"border-box" as const };
