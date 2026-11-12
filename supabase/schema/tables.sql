@@ -1,7 +1,7 @@
 -- GENERATED from the live database on 2026-11-12. Do not edit by hand and do not apply.
 -- This is a read-only reference so the repo can show what production runs.
 -- The public anon key is replaced with <ANON_KEY>.
--- Regenerate after any DB change (see docs/infra-and-ops.md).
+-- Regenerate after any DB change: tools/write_schema_snapshot.py.
 
 -- 56 tables in schema public
 

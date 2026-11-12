@@ -1,7 +1,7 @@
 -- GENERATED from the live database on 2026-11-12. Do not edit by hand and do not apply.
 -- This is a read-only reference so the repo can show what production runs.
 -- The public anon key is replaced with <ANON_KEY>.
--- Regenerate after any DB change (see docs/infra-and-ops.md).
+-- Regenerate after any DB change: tools/write_schema_snapshot.py.
 
 -- 240 functions in schema public
 
@@ -599,7 +599,7 @@ begin
   return v_result;
 end; $function$;
 
--- admin_import_outreach(p_rows jsonb)   grants: {=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+-- admin_import_outreach(p_rows jsonb)   grants: {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
 CREATE OR REPLACE FUNCTION public.admin_import_outreach(p_rows jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -893,7 +893,7 @@ AS $function$
   limit greatest(1, least(p_limit, 50));
 $function$;
 
--- admin_queue_outreach(p_trade text, p_limit integer, p_request uuid)   grants: {=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+-- admin_queue_outreach(p_trade text, p_limit integer, p_request uuid)   grants: {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
 CREATE OR REPLACE FUNCTION public.admin_queue_outreach(p_trade text, p_limit integer DEFAULT 25, p_request uuid DEFAULT NULL::uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -1876,7 +1876,7 @@ begin
     'https://freddyfixit.ca/contractor-dashboard', 'Open the job');
 end; $function$;
 
--- assign_job(p_request_id uuid, p_contractor_id uuid)   grants: {postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+-- assign_job(p_request_id uuid, p_contractor_id uuid)   grants: {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
 CREATE OR REPLACE FUNCTION public.assign_job(p_request_id uuid, p_contractor_id uuid)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -2129,7 +2129,7 @@ AS $function$
   end
 $function$;
 
--- bid_thread_open(p_request_id uuid, p_contractor_id uuid)   grants: {postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+-- bid_thread_open(p_request_id uuid, p_contractor_id uuid)   grants: {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
 CREATE OR REPLACE FUNCTION public.bid_thread_open(p_request_id uuid, p_contractor_id uuid)
  RETURNS boolean
  LANGUAGE sql
@@ -3963,7 +3963,7 @@ begin
 end;
 $function$;
 
--- gen_referral_code()   grants: {=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+-- gen_referral_code()   grants: {postgres=X/postgres,service_role=X/postgres}
 CREATE OR REPLACE FUNCTION public.gen_referral_code()
  RETURNS text
  LANGUAGE plpgsql
@@ -4386,7 +4386,7 @@ begin
   return v_row;  -- null row when no contract yet
 end $function$;
 
--- get_job_fee(p_client uuid, p_job_id uuid)   grants: {=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+-- get_job_fee(p_client uuid, p_job_id uuid)   grants: {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
 CREATE OR REPLACE FUNCTION public.get_job_fee(p_client uuid, p_job_id uuid)
  RETURNS TABLE(base_amount numeric, fee_rate numeric, fee_amount numeric, total numeric, waived boolean)
  LANGUAGE plpgsql
@@ -4833,7 +4833,7 @@ exception when others then
   return null;
 end $function$;
 
--- job_money_block(p_job_id uuid)   grants: {postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+-- job_money_block(p_job_id uuid)   grants: {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
 CREATE OR REPLACE FUNCTION public.job_money_block(p_job_id uuid)
  RETURNS text
  LANGUAGE plpgsql
@@ -5017,7 +5017,8 @@ begin
         'Content-Type', 'application/json',
         'x-ff-internal', coalesce(v_token, '')
       ),
-      body    := jsonb_build_object('source', 'cron')
+      body    := jsonb_build_object('source', 'cron'),
+      timeout_milliseconds := 60000
     );
   exception when others then
     raise warning 'collect-balance-auto enqueue failed: %', sqlerrm;
@@ -5046,7 +5047,8 @@ begin
         'Content-Type',  'application/json',
         'x-ff-internal', coalesce(v_token, '')
       ),
-      body    := jsonb_build_object('source', 'cron')
+      body    := jsonb_build_object('source', 'cron'),
+      timeout_milliseconds := 60000
     );
   exception when others then
     raise warning 'meta-lead-scout enqueue failed: %', sqlerrm;
@@ -5108,7 +5110,8 @@ begin
         'Content-Type',  'application/json',
         'Authorization', 'Bearer ' || v_anon
       ),
-      body    := jsonb_build_object('source','cron')
+      body    := jsonb_build_object('source','cron'),
+      timeout_milliseconds := 60000
     );
   exception when others then
     raise warning 'reconcile-payouts enqueue failed: %', sqlerrm;
@@ -5137,7 +5140,8 @@ begin
         'Content-Type',  'application/json',
         'Authorization', 'Bearer ' || v_anon
       ),
-      body    := jsonb_build_object('source','cron')
+      body    := jsonb_build_object('source','cron'),
+      timeout_milliseconds := 60000
     );
   exception when others then
     raise warning 'visit-reminder enqueue failed: %', sqlerrm;
@@ -6979,7 +6983,7 @@ AS $function$
   end;
 $function$;
 
--- referral_waiver_eligible(p_client uuid, p_job_id uuid)   grants: {=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+-- referral_waiver_eligible(p_client uuid, p_job_id uuid)   grants: {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
 CREATE OR REPLACE FUNCTION public.referral_waiver_eligible(p_client uuid, p_job_id uuid)
  RETURNS boolean
  LANGUAGE plpgsql
@@ -8935,7 +8939,7 @@ begin
 end;
 $function$;
 
--- trg_notify_request_received()   grants: {postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+-- trg_notify_request_received()   grants: {postgres=X/postgres,service_role=X/postgres}
 CREATE OR REPLACE FUNCTION public.trg_notify_request_received()
  RETURNS trigger
  LANGUAGE plpgsql

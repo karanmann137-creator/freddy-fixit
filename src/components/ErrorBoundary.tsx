@@ -51,6 +51,19 @@ type Props = {
 };
 type State = { err: Error | null };
 
+/**
+ * True when the error is the browser failing to load a code file that a newer
+ * deploy has replaced. Every deploy renames the lazy page files, so a tab left
+ * open across a deploy asks for a file that no longer exists the next time it
+ * opens a page. Nothing is wrong with the account or the data — a refresh
+ * loads the new version — so the screen says exactly that instead of
+ * "something went wrong".
+ */
+function isStaleVersion(err: Error | null): boolean {
+  const m = String(err?.message || err || "");
+  return /dynamically imported module|Importing a module script failed|error loading dynamically imported|Loading chunk|Unable to preload CSS|ChunkLoadError/i.test(m);
+}
+
 export default class ErrorBoundary extends Component<Props, State> {
   state: State = { err: null };
 
@@ -126,12 +139,13 @@ export default class ErrorBoundary extends Component<Props, State> {
           </span>
 
           <div style={{ fontSize: "1.35rem", fontWeight: 700, marginBottom: ".6rem" }}>
-            Something went wrong
+            {isStaleVersion(this.state.err) ? "We've just updated the site" : "Something went wrong"}
           </div>
 
           <div style={{ fontSize: "1rem", lineHeight: 1.55, opacity: 0.9, marginBottom: "1.4rem" }}>
-            Refreshing the page almost always fixes this. Nothing has been lost —
-            your request, your messages and any payment are all safe.
+            {isStaleVersion(this.state.err)
+              ? "Refresh the page to load the new version. Nothing has been lost — your request, your messages and any payment are all safe."
+              : "Refreshing the page almost always fixes this. Nothing has been lost — your request, your messages and any payment are all safe."}
           </div>
 
           <button
