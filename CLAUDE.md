@@ -135,6 +135,16 @@ Fonts: **Archivo** (headlines on pages you read), **Bebas Neue** (dashboards, on
 - **Before touching any style, colour, spacing, motion or tap target, read `docs/brand-and-motion.md` and `docs/ux-laws.md`.** The rules that used to be summarised here (~39 KB) were moved to the end of those two files verbatim on 2026-11-11.
 - **The rules are mechanical, not memorised:** `python3 tools/check_tokens.py && python3 tools/check_ux.py` must pass. `tools/ship.py` and CI both run them. If a checker fails, read its message and the matching doc section — do not weaken the checker to get a ship through.
 
+# Product direction (owner, 2026-11-11)
+
+The product has exactly two sides, and every piece of work must serve one of them:
+1. **Customers** — finding them and keeping them satisfied (post a job, get estimates, pick, pay, review).
+2. **Contractors** — recruiting them and keeping them satisfied (sign up, get matched, bid, do the job, get paid).
+
+- **If a change serves neither side, do not build it.** Internal tooling, agents, dashboards-about-dashboards and speculative features need the owner to ask for them.
+- **Simple beats complete.** Prefer removing a step, a field, a tab or an option over adding one. When a screen needs explaining, shorten the screen. Fewer files, fewer functions, fewer rules.
+- **This will become a mobile app.** Build every screen phone-first (380 px wide, thumb reach, no hover-only actions, 48 px tap targets). Keep business logic in RPCs and edge functions, never in a page component, so an app can call the same backend. Do not add browser-only dependencies (anything that needs `window` at import time, desktop-only layouts, new routes that only work with a mouse).
+
 # Scope discipline (2026-11-11 audit)
 
 The audit found the platform at 39 accounts, 12 requests and 1 job, against 56 tables, 221 `SECURITY DEFINER` functions, 55 edge functions, 15 cron jobs and ~39 production deploys in 11 days. The breakage is change volume with no rehearsal, not load. These rules exist to stop adding surface faster than it is used.
