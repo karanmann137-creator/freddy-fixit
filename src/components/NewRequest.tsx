@@ -12,7 +12,7 @@ import { scanImage, shouldBlock, rejectMessage } from "@/lib/imageSafety";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
 import OnboardingProgress from "@/components/OnboardingProgress";
 import { SERVICES, SCHEDULES } from "@/pages/ClientOnboarding";
-import { useServicePricing, fromText, floorFor } from "@/lib/servicePricing";
+import { useServicePricing, floorFor } from "@/lib/servicePricing";
 import ServicePicker from "@/components/ServicePicker";
 import BudgetPicker from "@/components/BudgetPicker";
 import PhotoPicker from "@/components/PhotoPicker";

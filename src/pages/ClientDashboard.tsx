@@ -67,7 +67,7 @@ import type { Grade } from "@/lib/servicePricing";
 import DashboardSidebar, { type SidebarItem } from "@/components/DashboardSidebar";
 import { SettingsPanel } from "@/components/SettingsModal";
 import MessagesInbox, { partyName } from "@/components/MessagesInbox";
-import { useConversations, conversationKey, chatReadOnly, chatClosedReason, CHAT_AS_CLIENT, type Conversation } from "@/lib/chatUnread";
+import { useConversations, chatReadOnly, chatClosedReason, CHAT_AS_CLIENT, type Conversation } from "@/lib/chatUnread";
 import { useBidThreads, bidToConversation } from "@/lib/bidThreads";
 import FadeImg from "@/components/FadeImg";
 

@@ -8,7 +8,6 @@ import { ensureUiStyles } from "./ui/uiStyles";
 // mode="bug" reuses the same pipeline with bug-report copy + a subject prefix
 // so bug emails are easy to spot in the inbox.
 export default function RequestHelpModal({
-  userId,
   onClose,
   role = "contractor",
   mode = "help",

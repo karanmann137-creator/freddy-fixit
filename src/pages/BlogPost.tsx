@@ -38,36 +38,6 @@ function BarChart({ title, subtitle, data, unit, lowerBetter }: {
   );
 }
 
-function FeatureTable({ rows }: { rows: { feature: string; freddy: boolean | string; jiffy: boolean | string; homestars: boolean | string; taskrabbit: boolean | string; housecall: boolean | string; kijiji: boolean | string }[] }) {
-  const check = (v: boolean | string) =>
-    v === true ? <span style={{ color: "#22c55e", fontWeight: 700 }}>✓</span>
-    : v === false ? <span style={{ color: "#ef4444" }}>✗</span>
-    : <span style={{ color: "rgba(var(--ff-muted), .6)", fontSize: ".85rem" }}>{v}</span>;
-
-  const cols = ["Feature", "Freddy Fix It", "Jiffy", "HomeStars", "TaskRabbit", "HouseCall Pro", "Kijiji"];
-  const colColors = ["", "var(--ff-c10)", "#3b82f6", "#ef4444", "#a855f7", "#10b981", "#6b7280"];
-
-  return (
-    <div style={{ overflowX: "auto", margin: "2rem 0" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: ".88rem" }}>
-        <thead>
-          <tr>{cols.map((c, i) => (
-            <th key={c} style={{ padding: ".6rem 1rem", textAlign: i === 0 ? "left" : "center", color: colColors[i] || "rgba(var(--ff-muted), .5)", fontWeight: 600, fontSize: ".78rem", textTransform: "uppercase", letterSpacing: ".06em", borderBottom: "var(--ff-hair-w) solid rgba(var(--ff-fg), .1)" }}>{c}</th>
-          ))}</tr>
-        </thead>
-        <tbody>{rows.map((r, i) => (
-          <tr key={r.feature} style={{ background: i % 2 === 0 ? "transparent" : "rgba(var(--ff-fg), .025)" }}>
-            <td style={{ padding: ".65rem 1rem", color: "rgba(var(--ff-muted), .8)", borderBottom: "var(--ff-hair-w) solid rgba(var(--ff-fg), .05)" }}>{r.feature}</td>
-            {[r.freddy, r.jiffy, r.homestars, r.taskrabbit, r.housecall, r.kijiji].map((v, j) => (
-              <td key={j} style={{ padding: ".65rem 1rem", textAlign: "center", borderBottom: "var(--ff-hair-w) solid rgba(var(--ff-fg), .05)" }}>{check(v)}</td>
-            ))}
-          </tr>
-        ))}</tbody>
-      </table>
-    </div>
-  );
-}
-
 // ── Article content ──────────────────────────────────────────────────────────
 
 function ArticleComparison() {

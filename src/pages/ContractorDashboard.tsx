@@ -3507,7 +3507,7 @@ export default function ContractorDashboard() {
           claim={claimToAnswer}
           onClose={() => setClaimToAnswer(null)}
           onSubmitted={(resp) => {
-            const did = claimToAnswer.id, jid = claimToAnswer.job_id;
+            const jid = claimToAnswer.job_id;
             setDisputes(prev => ({ ...prev, [jid]: { ...prev[jid], contractor_response: resp, contractor_responded_at: new Date().toISOString() } }));
             setClaimToAnswer(null);
           }}
