@@ -768,7 +768,7 @@ export default function BlogPost() {
     return null;
   }
 
-  const Content = post ? post.content : () => <MdBody md={dbPost!.body_md} />;
+  const StaticContent = post ? post.content : null;
 
   return (
     <div style={{ fontFamily: "'DM Sans',sans-serif", background: "var(--ff-bg)", backgroundImage: "radial-gradient(ellipse 55% 30% at 22% -2%, rgba(var(--ff-accent-rgb), 0.26) 0%, transparent 66%), radial-gradient(ellipse 50% 34% at 82% -6%, rgba(var(--ff-accent-rgb), 0.16) 0%, transparent 70%), repeating-linear-gradient(45deg, transparent 0 27px, rgba(var(--ff-fg), 0.02) 27px, rgba(var(--ff-fg), 0.02) 28px), repeating-linear-gradient(-45deg, transparent 0 27px, rgba(var(--ff-fg), 0.016) 27px, rgba(var(--ff-fg), 0.016) 28px)", backgroundAttachment: "fixed", color: "var(--ff-text)", minHeight: "100vh", padding: "6rem clamp(1rem, 4vw, 1.5rem) 5rem" }}>
@@ -810,7 +810,7 @@ export default function BlogPost() {
           </div>
         </div>
 
-        <Content />
+        {StaticContent ? <StaticContent /> : <MdBody md={dbPost!.body_md} />}
 
         <div style={{ borderTop: "var(--ff-hair-w) solid rgba(var(--ff-fg), .07)", marginTop: "3rem", paddingTop: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
           <button className="back-btn" onClick={() => setLocation("/blog")}>← Back to Blog</button>

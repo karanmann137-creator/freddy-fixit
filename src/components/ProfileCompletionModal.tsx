@@ -50,9 +50,9 @@ export default function ProfileCompletionModal({
 
   useEffect(() => {
     if (!ready || items.length === 0) return;
-    try { if (localStorage.getItem(SEEN_KEY)) return; } catch {}
+    try { if (localStorage.getItem(SEEN_KEY)) return; } catch { /* storage can be unavailable (private mode); best effort */ }
     setOpen(true);
-    try { localStorage.setItem(SEEN_KEY, "1"); } catch {} // mark seen so it never re-pops
+    try { localStorage.setItem(SEEN_KEY, "1"); } catch { /* storage can be unavailable (private mode); best effort */ } // mark seen so it never re-pops
   }, [ready, items.length]);
 
   if (!open) return null;

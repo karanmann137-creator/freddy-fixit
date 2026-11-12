@@ -156,7 +156,7 @@ The audit found the platform at 39 accounts, 12 requests and 1 job, against 56 t
 - **A one-shot script is deleted in the ship that runs it.** Four `tools/migrate_*.py` (1,037 lines) outlived their single use by days and were removed 2026-11-11. The same goes for `.mcp.json` swarm configs: none belong in this repo.
 - **Do not add a doc, checker or always-loaded rule for a single incident.** Fix the fault; put the write-up in the area's `docs/` file. This file is loaded every turn — it was 97 KB before 2026-11-11 and must not grow back. A new always-loaded rule replaces an old one.
 - **The Supabase client is typed.** `src/lib/supabase.ts` uses the generated `Database` type, so a wrong table, column or RPC name, or a wrong RPC argument name, fails `npm run typecheck`. Do not cast around it with `as any` to get a ship through; regenerate the types instead.
-- **Lint is a ratchet.** CI fails if `eslint` errors exceed the baseline in `.github/workflows/typecheck.yml`. Lower the baseline when you fix errors; never raise it.
+- **Lint is a ratchet.** CI fails if `eslint` errors exceed the baseline in `.github/workflows/typecheck.yml` (98 as of 2026-11-12, all `react-hooks` findings in the big page files). Lower the baseline when you fix errors; never raise it. An empty `catch` must say why it is safe to ignore, or log.
 
 # Hard invariants
 

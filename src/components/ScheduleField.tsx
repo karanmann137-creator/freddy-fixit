@@ -50,7 +50,7 @@ export default function ScheduleField({ value, onChange }: Props) {
   const isPast = (day: number) => new Date(y, m, day) < today0;
 
   const changeMonth = (nm: number) => {
-    let yy = y, mm = nm;
+    const yy = y; let mm = nm;
     if (yy === now.getFullYear() && mm < now.getMonth()) mm = now.getMonth();
     setM(mm); setD(null); // reselect a day within the new month
   };

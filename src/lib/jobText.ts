@@ -20,7 +20,7 @@ const KEEP_CASE = /^(?:[A-Z0-9][A-Z0-9&/.'-]*)$/; // ALLCAPS / model numbers / "
 
 function tidyParagraph(p: string): string {
   // Collapse runs of spaces and stray spaces before punctuation.
-  let t = p.replace(/[ \t ]+/g, " ").replace(/\s+([,.;:!?])/g, "$1").trim();
+  let t = p.replace(/[ \t\u00a0]+/g, " ").replace(/\s+([,.;:!?])/g, "$1").trim();
   if (!t) return "";
 
   // Space after sentence punctuation when the writer forgot ("done.next is").

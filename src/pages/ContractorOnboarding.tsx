@@ -174,7 +174,7 @@ export default function ContractorOnboarding() {
         if (typeof d.step === "number" && d.step >= 1 && d.step <= TOTAL) setStep(d.step);
         setRestored(true);
       }
-    } catch {}
+    } catch { /* storage can be unavailable (private mode); best effort */ }
     setHydrated(true);
   }, []);
 
@@ -185,7 +185,7 @@ export default function ContractorOnboarding() {
         form: { ...form, password: "" }, selectedSpec, selectedArea, postalCode,
         availDays, availStart, availEnd, step,
       }));
-    } catch {}
+    } catch { /* storage can be unavailable (private mode); best effort */ }
   }, [hydrated, success, verifyEmail, form, selectedSpec, selectedArea, postalCode, availDays, availStart, availEnd, step]);
 
   const wt = WORK_TYPES.find(w => w.id === form.workType);
@@ -288,7 +288,7 @@ export default function ContractorOnboarding() {
           const { data: avail } = await supabase.rpc("check_signup_availability", { p_email: form.email, p_phone: form.phone });
           if ((avail as any)?.email_taken) { setSubmitError("An account with this email already exists. Please sign in instead."); window.scrollTo(0,0); setLoading(false); return; }
           if ((avail as any)?.phone_taken) { setSubmitError("An account with this phone number already exists. Please sign in, or use a different number."); window.scrollTo(0,0); setLoading(false); return; }
-        } catch {}
+        } catch (e) { console.warn("[ff] check_signup_availability failed", e); }
         const { data: authData, error: authErr } = await supabase.auth.signUp({
           email: form.email,
           password: form.password,
@@ -299,17 +299,17 @@ export default function ContractorOnboarding() {
         if (((authData.user.identities?.length) ?? 0) === 0) { setSubmitError("An account with this email already exists. Please sign in instead."); window.scrollTo(0,0); setLoading(false); return; }
         // Weekly pro-tips opt-in (CASL express consent — checkbox is never pre-checked).
         if (newsletterOptIn) {
-          try { await supabase.rpc("newsletter_subscribe", { p_email: form.email, p_audience: "contractor", p_name: form.firstName, p_source: "signup_checkbox" }); } catch {}
+          try { await supabase.rpc("newsletter_subscribe", { p_email: form.email, p_audience: "contractor", p_name: form.firstName, p_source: "signup_checkbox" }); } catch (e) { console.warn("[ff] newsletter_subscribe failed", e); }
         }
         userId = authData.user.id;
         // No session => email confirmation is required. The trigger has already
         // saved their profile + contractor details; show the verify screen.
-        if (!authData.session) { try { localStorage.removeItem("ff_contractor_draft"); } catch {} trackEvent("sign_up", { method: "contractor" }); setVerifyEmail(true); window.scrollTo(0,0); setLoading(false); return; }
+        if (!authData.session) { try { localStorage.removeItem("ff_contractor_draft"); } catch { /* storage can be unavailable (private mode); best effort */ } trackEvent("sign_up", { method: "contractor" }); setVerifyEmail(true); window.scrollTo(0,0); setLoading(false); return; }
       } else {
         // Already signed in (OAuth): make sure a profiles row exists (Google
         // one-tap creates the auth user but the trigger may not have made a
         // profile), then set their role + details.
-        try { await supabase.rpc("ensure_profile", { p_role: "contractor" }); } catch {}
+        try { await supabase.rpc("ensure_profile", { p_role: "contractor" }); } catch (e) { console.warn("[ff] ensure_profile failed", e); }
         // ⚠️ THE ROLE IS WRITTEN SEPARATELY FROM THE DETAILS, ON PURPOSE.
         // It used to be one `update({ role, first_name, last_name, phone })`
         // whose error was thrown into the generic catch below, which shows
@@ -331,7 +331,7 @@ export default function ContractorOnboarding() {
         clearMyProfile();
         // Weekly pro-tips opt-in (CASL express consent — checkbox is never pre-checked).
         if (newsletterOptIn) {
-          try { await supabase.rpc("newsletter_subscribe", { p_email: form.email, p_audience: "contractor", p_name: form.firstName, p_source: "signup_checkbox" }); } catch {}
+          try { await supabase.rpc("newsletter_subscribe", { p_email: form.email, p_audience: "contractor", p_name: form.firstName, p_source: "signup_checkbox" }); } catch (e) { console.warn("[ff] newsletter_subscribe failed", e); }
         }
       }
       let photoPublicUrl: string | null = null;
@@ -373,7 +373,7 @@ export default function ContractorOnboarding() {
         supabase.functions.invoke("review-contractor", { body: { contractor_id: userId } }).catch(() => {});
       }
 
-      try { localStorage.removeItem("ff_contractor_draft"); } catch {}
+      try { localStorage.removeItem("ff_contractor_draft"); } catch { /* storage can be unavailable (private mode); best effort */ }
       trackEvent("sign_up", { method: "contractor" });
       setSuccess(true); window.scrollTo(0,0);
     } catch (err: any) {
@@ -455,7 +455,7 @@ export default function ContractorOnboarding() {
         {restored && (
           <div style={{ display:"flex", alignItems:"center", gap:".75rem", background:"rgba(var(--ff-accent-rgb), .08)", border:"1px solid rgba(var(--ff-accent-rgb), .25)", borderRadius:"8px", padding:".7rem 1rem", marginBottom:"1.5rem", fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", lineHeight:1.5 }}>
             <span style={{ flex:1 }}>We saved your progress — pick up where you left off. You'll just need to re-attach any files.</span>
-            <button onClick={() => { try { localStorage.removeItem("ff_contractor_draft"); } catch {} window.location.reload(); }} style={{ background:"none", border:"none", color:"var(--ff-c10)", cursor:"pointer", fontFamily:"inherit", fontSize:".78rem", textDecoration:"underline", flexShrink:0 }}>Start over</button>
+            <button onClick={() => { try { localStorage.removeItem("ff_contractor_draft"); } catch { /* storage can be unavailable (private mode); best effort */ } window.location.reload(); }} style={{ background:"none", border:"none", color:"var(--ff-c10)", cursor:"pointer", fontFamily:"inherit", fontSize:".78rem", textDecoration:"underline", flexShrink:0 }}>Start over</button>
           </div>
         )}
 

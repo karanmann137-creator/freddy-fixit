@@ -202,5 +202,5 @@ export function clearDashNavFromUrl() {
     url.searchParams.delete("tab");
     url.searchParams.delete("job");
     window.history.replaceState({}, "", url.pathname + url.search + url.hash);
-  } catch {}
+  } catch { /* history API unavailable; the link still worked */ }
 }

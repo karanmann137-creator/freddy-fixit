@@ -657,7 +657,7 @@ export default function AdminDashboard() {
       });
       if (error) {
         let m = error.message || "Couldn't draft that one.";
-        try { const j = await (error as any).context?.json?.(); if (j?.error) m = j.error; } catch {}
+        try { const j = await (error as any).context?.json?.(); if (j?.error) m = j.error; } catch { /* error body was not JSON; keep the default message */ }
         setDraftErr(prev => ({ ...prev, [a.id]: m }));
         return;
       }
@@ -747,7 +747,7 @@ export default function AdminDashboard() {
       if (data && (data as any).warning) alert((data as any).warning);
     } catch (e: any) {
       let msg = e?.message || String(e);
-      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
+      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch { /* error body was not JSON; keep the default message */ }
       // The edge function checks `admin_action_allowed()`, which mirrors mfa_ok()
       // deliberately — so the same lapsed window refuses here too, and the same
       // modal is the remedy.
@@ -819,7 +819,7 @@ export default function AdminDashboard() {
       alert(`Sent ${sent} reminder${sent!==1?"s":""}${failed?`, ${failed} failed`:""}.`);
     } catch (e: any) {
       let msg = e?.message || String(e);
-      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
+      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch { /* error body was not JSON; keep the default message */ }
       alert("Couldn't send reminders: " + msg);
     } finally { setBusyNudge(false); }
   };
@@ -842,7 +842,7 @@ export default function AdminDashboard() {
       if (d.payouts_enabled) setAccounts(as => as.map(a => a.id === id ? { ...a, stripe_payouts_enabled: true } : a));
     } catch (e: any) {
       let msg = e?.message || String(e);
-      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
+      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch { /* error body was not JSON; keep the default message */ }
       setPayoutCheck(p => ({ ...p, [id]: { needs: [], pending: [], disabled: null, error: msg } }));
     } finally { setBusyPayoutCheck(null); }
   };
@@ -864,7 +864,7 @@ export default function AdminDashboard() {
       alert("Login email updated to " + next + ".");
     } catch (e: any) {
       let msg = e?.message || String(e);
-      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
+      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch { /* error body was not JSON; keep the default message */ }
       alert("Couldn't update email: " + msg);
     } finally { setBusyEmailEdit(null); }
   };
@@ -887,7 +887,7 @@ export default function AdminDashboard() {
       await loadAll();
     } catch (e: any) {
       let msg = e?.message || String(e);
-      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
+      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch { /* error body was not JSON; keep the default message */ }
       alert("Couldn't refund: " + msg);
     } finally { setBusyRefund(null); }
   };
@@ -911,7 +911,7 @@ export default function AdminDashboard() {
     setBusyResolve(null);
     if (error || data?.error) {
       let msg = error?.message || data?.error || "Unknown error";
-      try { if (error?.context?.json) { const b = await error.context.json(); if (b?.error) msg = b.error; } } catch {}
+      try { if (error?.context?.json) { const b = await error.context.json(); if (b?.error) msg = b.error; } } catch { /* error body was not JSON; keep the default message */ }
       // resolve-dispute holds a service-role client, so it asks
       // `admin_action_allowed()` rather than evaluating mfa_ok() itself. Same
       // lapsed window, same remedy. The retry re-confirms deliberately: this one
@@ -1172,7 +1172,7 @@ export default function AdminDashboard() {
   const selectedRecipients = () =>
     accounts.filter(a => selectedIds.has(a.id) && a.email).map(toRecipient);
   const toggleSelect = (id: string) =>
-    setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   // ── What needs an admin ────────────────────────────────────────────────────
   //

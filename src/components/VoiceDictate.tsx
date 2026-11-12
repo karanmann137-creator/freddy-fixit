@@ -54,7 +54,7 @@ export default function VoiceDictate({
     rec.onend = () => { setListening(false); setInterim(""); };
 
     recRef.current = rec;
-    return () => { try { rec.stop(); } catch (_) {} };
+    return () => { try { rec.stop(); } catch (_) { /* recognizer already stopped or unavailable */ } };
   }, [lang]);
 
   if (!supported) return null;
@@ -64,10 +64,10 @@ export default function VoiceDictate({
     if (!rec) return;
     setError("");
     if (listening) {
-      try { rec.stop(); } catch (_) {}
+      try { rec.stop(); } catch (_) { /* recognizer already stopped or unavailable */ }
       setListening(false);
     } else {
-      try { rec.start(); setListening(true); } catch (_) {}
+      try { rec.start(); setListening(true); } catch (_) { /* recognizer already stopped or unavailable */ }
     }
   };
 

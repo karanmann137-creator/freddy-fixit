@@ -22,6 +22,13 @@ on:
     types:
       - vercel.deployment.success
 
+# The last step writes a commit status for Vercel to read. The default token
+# cannot do that (the first real run, 2026-11-12, ran the tests and then failed
+# on exactly this step with "Resource not accessible by integration").
+permissions:
+  contents: read
+  statuses: write
+
 concurrency:
   group: deploy-check-${{ github.event.client_payload.url }}
   cancel-in-progress: true

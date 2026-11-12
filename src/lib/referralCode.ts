@@ -40,7 +40,7 @@ export function referralReasonText(reason: string): string {
 export function stashReferralCode(code: string): void {
   const c = (code || "").trim().toUpperCase();
   if (!c) return;
-  try { localStorage.setItem(REF_CODE_KEY, c); } catch {}
+  try { localStorage.setItem(REF_CODE_KEY, c); } catch { /* storage can be unavailable (private mode); best effort */ }
 }
 
 export function stashedReferralCode(): string {
@@ -90,8 +90,8 @@ export async function applyReferralAtSignup(code: string): Promise<void> {
     const { data, error } = await supabase.rpc("apply_referral_code", { p_code: c });
     if (error) return;
     if ((data as any)?.ok !== true) {
-      try { localStorage.setItem(REF_ERROR_KEY, referralReasonText(String((data as any)?.reason ?? ""))); } catch {}
+      try { localStorage.setItem(REF_ERROR_KEY, referralReasonText(String((data as any)?.reason ?? ""))); } catch { /* storage can be unavailable (private mode); best effort */ }
     }
   } catch { return; }
-  try { localStorage.removeItem(REF_CODE_KEY); } catch {}
+  try { localStorage.removeItem(REF_CODE_KEY); } catch { /* storage can be unavailable (private mode); best effort */ }
 }

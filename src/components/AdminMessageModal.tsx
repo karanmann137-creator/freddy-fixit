@@ -70,7 +70,7 @@ export default function AdminMessageModal({ recipients, onClose, onSent }: {
       onSent?.(data);
     } catch (e: any) {
       let msg = e?.message || String(e);
-      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch {}
+      try { if (e?.context?.json) { const b = await e.context.json(); if (b?.error) msg = b.error; } } catch { /* error body was not JSON; keep the default message */ }
       // Ask the SERVER whether a code is actually owed — never match on `msg`.
       // admin_action_allowed's refusal string is not the state, and the state
       // can answer for itself (see mfaOwed). On a genuine lapse the modal takes

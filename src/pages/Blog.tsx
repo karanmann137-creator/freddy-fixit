@@ -157,7 +157,7 @@ export default function Blog() {
     .map(p => ({
       slug: p.slug,
       title: p.title,
-      excerpt: p.description || p.body_md.replace(/[#*\-\[\]]/g, "").slice(0, 160) + "…",
+      excerpt: p.description || p.body_md.replace(/[#*\-[\]]/g, "").slice(0, 160) + "…",
       date: fmtDate(p.published_at),
       readTime: readTime(p.body_md),
       tag: p.tag || "Tips",
