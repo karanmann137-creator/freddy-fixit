@@ -1047,6 +1047,17 @@ export default function ContractorDashboard() {
     } catch (e: any) { notify("Couldn't add: " + (e.message || e)); }
     finally { setBusyPf(false); }
   };
+  // Opt in/out of jobs outside the pro's listed trades (the "Other" specialty).
+  const setOpenToOther = async (on: boolean) => {
+    const prev: string[] = contractor?.specialties ?? [];
+    const next = on ? Array.from(new Set([...prev, "Other"])) : prev.filter(sp => sp !== "Other");
+    setContractor((c: any) => ({ ...c, specialties: next })); // optimistic
+    const { error } = await supabase.from("contractors").update({ specialties: next }).eq("id", profile.id);
+    if (error) {
+      setContractor((c: any) => ({ ...c, specialties: prev })); // roll back on failure
+      notify("Couldn't save that — please try again.");
+    }
+  };
   const deletePortfolioItem = async (item: any) => {
     if (!window.confirm("Remove this portfolio item?")) return;
     const { error } = await supabase.from("portfolio_items").delete().eq("id", item.id);
@@ -3007,7 +3018,14 @@ export default function ContractorDashboard() {
                       action and the real one — whatever the state line is
                       saying — had to compete with them. A specialty is plain
                       metadata; see Pill's docblock on the accent budget. */}
-                  {contractor.specialties.map((sp: string) => <Pill key={sp} tone="neutral">{sp}</Pill>)}
+                  {contractor.specialties.filter((sp: string) => sp !== "Other").map((sp: string) => <Pill key={sp} tone="neutral">{sp}</Pill>)}
+                  {/* Opt-in to jobs outside the listed trades. Stored as the
+                      "Other" specialty, which service_specialty_map maps
+                      "Other" requests to — so matching needs no special case. */}
+                  <label style={{ display:"flex", alignItems:"center", gap:"var(--ff-s2)", marginTop:"var(--ff-s3)", minHeight:"var(--ff-h-ctl)", fontSize:".88rem", color:"var(--ff-text)", cursor:"pointer" }}>
+                    <input type="checkbox" checked={contractor.specialties.includes("Other")} onChange={e => setOpenToOther(e.target.checked)} />
+                    Also send me jobs outside my specialties
+                  </label>
                 </div>
               )}
               {(contractor?.service_area?.length ?? 0) > 0 && (

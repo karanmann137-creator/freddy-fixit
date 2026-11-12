@@ -14,7 +14,7 @@ import OnboardingVideo from "@/components/OnboardingVideo";
 import ServicePicker from "@/components/ServicePicker";
 import VoiceDictate from "@/components/VoiceDictate";
 import { AREAS, areasFromPostal, isPostalCode } from "@/lib/calgaryAreas";
-import { validateEmail, validatePhone } from "@/lib/emailValidation";
+import { validateEmail, validatePhone, fmtPhone } from "@/lib/emailValidation";
 
 const SPECIALTIES = [
   { iconName: "wrench", label: "General Repairs" },
@@ -90,12 +90,6 @@ function namesFromEmail(email: string): { first: string; last: string } {
 }
 
 // Format a North-American phone as the user types: 403-555-0100.
-function fmtPhone(v: string) {
-  const d = v.replace(/\D/g, "").slice(0, 10);
-  if (d.length <= 3) return d;
-  if (d.length <= 6) return d.slice(0,3) + "-" + d.slice(3);
-  return d.slice(0,3) + "-" + d.slice(3,6) + "-" + d.slice(6);
-}
 
 export default function ContractorOnboarding() {
   const [, setLocation] = useLocation();
@@ -209,6 +203,9 @@ export default function ContractorOnboarding() {
 
   const setF = (key: string, val: string | number) => { setForm(f => ({ ...f, [key]: val })); setErrors(e => ({ ...e, [key]: "" })); };
   const setFB = (key: string, val: boolean) => { setForm(f => ({ ...f, [key]: val })); };
+  // "Other" is the opt-in to jobs outside the pro's trades (see the checkbox
+  // under the picker), not a trade itself.
+  const realSpecs = selectedSpec.filter(x => x !== "Other");
   const toggleSpec  = (l: string) => { setSelectedSpec(prev  => prev.includes(l)  ? prev.filter(x => x !== l)  : [...prev, l]);  setErrors(e => ({ ...e, spec: "" })); };
   const toggleArea  = (z: string) => { setSelectedArea(prev  => prev.includes(z)  ? prev.filter(x => x !== z)  : [...prev, z]);  setErrors(e => ({ ...e, area: "" })); };
   const toggleDay = (d: string) => { setAvailDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]); setErrors(e => ({ ...e, avail: "" })); };
@@ -234,7 +231,7 @@ export default function ContractorOnboarding() {
       if (!form.firstName.trim()) errs.firstName = "Required";
       if (!form.lastName.trim())  errs.lastName  = "Required";
       if (!authedUserId) { const ev = validateEmail(form.email); if (!ev.ok) errs.email = ev.error!; }
-      { const pv = validatePhone(form.phone); if (!pv.ok) errs.phone = pv.error!; }
+      { const pv = validatePhone(form.phone, true); if (!pv.ok) errs.phone = pv.error!; }
       if (!authedUserId && form.password.length < 8) errs.password = "Minimum 8 characters";
       else if (!authedUserId && pwBreached) errs.password = "This password has appeared in public data breaches. Please choose a different one.";
     }
@@ -242,7 +239,7 @@ export default function ContractorOnboarding() {
     // answered here because it drives the credential copy on step 4 and the
     // per-document "needed before approval" flags on step 5.
     if (step === 2) {
-      if (selectedSpec.length === 0) errs.spec = "Select at least one service you offer";
+      if (realSpecs.length === 0) errs.spec = "Select at least one service you offer";
       if (!form.workType)            errs.workType = "Select what best describes your work";
     }
     // Step 3 merges the old Service Area + Availability screens.
@@ -509,7 +506,7 @@ export default function ContractorOnboarding() {
                 {errors.email && <p style={s.err}>{errors.email}</p>}
               </div>
               <div style={{ marginBottom:"1.2rem" }}>
-                <label style={s.label}>Phone <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
+                <label style={s.label}>Phone <span style={{ opacity:.5, fontWeight:400 }}>(so we can call you about jobs)</span></label>
                 <input autoComplete="tel" style={{ ...inp, borderColor: errors.phone ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="tel" placeholder="403-555-0100" value={form.phone} onChange={e => setF("phone",fmtPhone(e.target.value))} />
                 {errors.phone && <p style={s.err}>{errors.phone}</p>}
               </div>
@@ -545,10 +542,10 @@ export default function ContractorOnboarding() {
                   up to check — the client side solved this and the two screens now
                   behave the same way. Tapping a chip removes it, exactly as there. */}
               <p style={s.label}>Services You Offer</p>
-              {selectedSpec.length > 0 ? (
+              {realSpecs.length > 0 ? (
                 <>
                   <div style={{ display:"flex", gap:".5rem", flexWrap:"wrap" as const, marginBottom:".5rem" }}>
-                    {selectedSpec.map(sv => (
+                    {realSpecs.map(sv => (
                       <button key={sv} type="button" onClick={() => toggleSpec(sv)}
                         style={{ display:"inline-flex", alignItems:"center", gap:".5rem", padding:".55rem .9rem", borderRadius:"999px", fontFamily:"inherit", fontSize:".88rem", fontWeight:500, cursor:"pointer", background:"rgba(var(--ff-accent-rgb), .15)", border:"1px solid var(--ff-c10)", color:"var(--ff-text)" }}>
                         {sv}
@@ -557,7 +554,7 @@ export default function ContractorOnboarding() {
                     ))}
                   </div>
                   <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"1rem" }}>
-                    {selectedSpec.length} selected — tap one to remove it. Add more below.
+                    {realSpecs.length} selected — tap one to remove it. Add more below.
                   </p>
                 </>
               ) : (
@@ -576,6 +573,10 @@ export default function ContractorOnboarding() {
                 allowCustom={false}
                 placeholder="Search your trade (e.g. plumbing, drywall, snow)…"
               />
+              <label style={{ display:"flex", alignItems:"center", gap:"var(--ff-s2)", marginTop:"var(--ff-s4)", minHeight:"var(--ff-h-ctl)", fontSize:".88rem", color:"var(--ff-text)", cursor:"pointer" }}>
+                <input type="checkbox" checked={selectedSpec.includes("Other")} onChange={() => toggleSpec("Other")} />
+                Also send me jobs outside my specialties
+              </label>
 
               <div style={{ marginTop:"1.75rem", paddingTop:"1.5rem", borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)" }}>
                 <p style={s.label}>Your Line of Work</p>

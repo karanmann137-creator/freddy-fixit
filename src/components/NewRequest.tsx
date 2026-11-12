@@ -24,6 +24,7 @@ import { detectJobSplit, type SplitPart } from "@/lib/jobSplit";
 import SplitJobDialog from "@/components/SplitJobDialog";
 import { questionsFor, answerSummary, type JobAnswers } from "@/lib/jobQuestions";
 import { trackEvent } from "@/lib/analytics";
+import { validatePhone, fmtPhone } from "@/lib/emailValidation";
 import { useStoredDraft, useDraftAutosave, clearDraft, NEWREQUEST_DRAFT_KEY, dStr, dArr, dNum, dBool } from "@/lib/requestDraft";
 
 const TOTAL = 4;
@@ -115,6 +116,9 @@ export default function NewRequest() {
   const [vehModel, setVehModel] = useState(() => dStr(draft, "vehModel"));
   const [saveNewVehicle, setSaveNewVehicle] = useState(true);
   const [description, setDescription] = useState(() => dStr(draft, "description"));
+  // Only asked for when the account has no phone on file (Google sign-ins, and
+  // accounts made while the signup field was optional).
+  const [phone, setPhone] = useState("");
   // Describe-first scaffolding: which screen we're on, what the description
   // read as, and the answers to the follow-up questions.
   const [step, setStep] = useState(() => dNum(draft, "step", 1, 1, TOTAL));
@@ -518,6 +522,7 @@ export default function NewRequest() {
     // skippable) · 4 details.
     if (step === 1) {
       if (description.trim().length < 10) e.description = "Please add a few more details (min 10 characters)";
+      if (!profile?.phone) { const pv = validatePhone(phone, true); if (!pv.ok) e.phone = pv.error!; }
     }
     if (step === 2) {
       if (selectedServices.length === 0) e.services = "Please select at least one service";
@@ -547,7 +552,7 @@ export default function NewRequest() {
     setErrors(e);
     // Scroll the first problem into view — on a long form the submit button is
     // at the bottom and an error near the top is otherwise invisible.
-    const first = ["description", "services", "schedule", "location"].find(k => e[k]);
+    const first = ["phone", "description", "services", "schedule", "location"].find(k => e[k]);
     if (first) {
       setTimeout(() => {
         document.getElementById("nr-err-" + first)?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -715,7 +720,7 @@ export default function NewRequest() {
         first_name: profile?.first_name ?? null,
         last_name: profile?.last_name ?? null,
         email: profile?.email ?? user.email ?? null,
-        phone: profile?.phone ?? null,
+        phone: profile?.phone ?? (phone.trim() || null),
         preferred_contractor_id: preferredPro,
         preferred_schedule: schedule,
         location,
@@ -936,6 +941,15 @@ export default function NewRequest() {
               <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .55)", marginTop: "var(--ff-s1)" }}>
                 {[profile?.email, profile?.phone].filter(Boolean).join(" · ")}
               </div>
+              {!profile?.phone && (
+                <div style={{ marginTop:"var(--ff-s4)" }}>
+                  <label style={s.label} htmlFor="nr-phone">Phone <span style={{ opacity:.5, fontWeight:400 }}>(so we can text you when estimates arrive)</span></label>
+                  <input id="nr-phone" autoComplete="tel" type="tel" placeholder="403-555-0100" value={phone}
+                    style={{ ...inp, borderColor: errors.phone ? "var(--ff-danger)" : "rgba(var(--ff-fg), .1)" }}
+                    onChange={e => { setPhone(fmtPhone(e.target.value)); setErrors(er => ({ ...er, phone:"" })); }} />
+                  {errors.phone && <p id="nr-err-phone" style={s.err}>{errors.phone}</p>}
+                </div>
+              )}
               <p style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .4)", marginTop:".5rem" }}>Need to change your name or phone? Update it in your profile.</p>
             </div>
 

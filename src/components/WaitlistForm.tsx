@@ -66,7 +66,7 @@ export default function WaitlistForm({
       setErr(ec.suggestion ? `${ec.error} Did you mean ${ec.suggestion}?` : (ec.error || "Please enter a valid email."));
       return;
     }
-    const pc = validatePhone(phone, false);
+    const pc = validatePhone(phone, true);
     if (!pc.ok) { setErr(pc.error || "Please check that phone number."); return; }
 
     setBusy(true);
@@ -147,7 +147,7 @@ export default function WaitlistForm({
       </div>
 
       <div style={field}>
-        <label style={label} htmlFor="wl-phone">Phone <span style={{ fontWeight: 400 }}>(optional)</span></label>
+        <label style={label} htmlFor="wl-phone">Phone</label>
         <input id="wl-phone" style={input} type="tel" value={phone} onChange={e => setPhone(e.target.value)} autoComplete="tel" placeholder="403-555-0100" />
       </div>
 

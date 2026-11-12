@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
+// v25 (2026-11-12): the button opens the open-jobs tab
+// (?tab=available) instead of the dashboard home, where the pro had to find
+// the job themselves; the subject drops "URGENT", which every email carried.
+//
 // v24 (2026-11-09): matching goes through public.service_specialties() instead
 // of an exact-match lookup on service_specialty_map. The post-a-job form
 // multi-selects services and stores them joined ("General Handyman, Other"),
@@ -204,8 +208,9 @@ serve(async (req) => {
     // public.service_specialties() is the ONE answer to "which specialties does
     // this service_needed reach", because service_needed may hold SEVERAL labels
     // joined with ", ". Never look service_specialty_map up directly from a
-    // request row. NULL still means passthrough (some label is unmapped, which
-    // "Other" legitimately is).
+    // request row. NULL still means passthrough (some label is unmapped). "Other"
+    // is mapped as of 2026-11-12: it reaches the General Handyman trades plus any
+    // pro who opted in to jobs outside their specialties.
     const { data: specData, error: specErr } = await admin
       .rpc("service_specialties", { p_service: request.service_needed });
 
@@ -280,7 +285,7 @@ serve(async (req) => {
       : `New ${request.service_needed} job in ${area} 🔧`;
     const subject = reserved
       ? `A past client requested you — ${request.service_needed} job in ${area}`
-      : `URGENT — new ${request.service_needed} job in ${area}, bid now`;
+      : `New ${request.service_needed} job in ${area} — send your estimate`;
 
     for (const c of matched) {
       const email = c.profile?.email;
@@ -305,7 +310,7 @@ serve(async (req) => {
           <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;">TIMING</td><td style="padding:.5rem 0;">${request.preferred_schedule}</td></tr>
           <tr><td style="padding:.5rem 0;color:rgba(190,205,235,.5);font-size:.82rem;">DETAILS</td><td style="padding:.5rem 0;font-size:.9rem;">${scrubAddressText(request.job_description) ?? "—"}</td></tr>
         </table>
-        <a href="https://freddyfixit.ca/contractor-dashboard" style="display:inline-block;margin-top:.5rem;padding:.75rem 1.5rem;background:#ea6b14;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Go bid on this job →</a>
+        <a href="https://freddyfixit.ca/contractor-dashboard?tab=available" style="display:inline-block;margin-top:.5rem;padding:.75rem 1.5rem;background:#ea6b14;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Send your estimate →</a>
         <p style="margin-top:1.5rem;font-size:.82rem;color:rgba(190,205,235,.55);">New to bidding? The <a href="https://freddyfixit.ca/contractor-guide" style="color:#ea6b14;">contractor guide</a> walks through how bidding and payment work.</p>
         <p style="margin-top:1rem;font-size:.78rem;color:rgba(190,205,235,.35);">You're receiving this because you're an active Freddy Fix It contractor. Questions? hello@freddyfixit.ca</p>
       </div>`;

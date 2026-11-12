@@ -67,9 +67,10 @@ export default function ProfileBar({ role, onSaved }: { role: Role; onSaved?: ()
   const save = async () => {
     if (!userId) return;
     if (!form.firstName.trim()) { setError("First name is required."); return; }
-    // Phone is optional — only validate when something was entered.
-    const pv = validatePhone(form.phone);
-    if (!pv.ok) { setError(pv.error + " (or leave it blank)."); return; }
+    // Phone is required (2026-11-12): it is how the owner and the other side
+    // reach this person when email goes unread.
+    const pv = validatePhone(form.phone, true);
+    if (!pv.ok) { setError(pv.error!); return; }
     setSaving(true); setError(""); setSaved(false);
     try {
       const { error: pErr } = await supabase.from("profiles")
