@@ -120,7 +120,10 @@ begin
            format('SITE — %s failing: %s.',
                   case when count(*) = 1 then '1 health check is' else count(*) || ' health checks are' end,
                   string_agg(check_name, ', '))
-      from public.platform_health_check() where not ok
+      -- admin_can_act is left out on the owner's instruction (2026-11-12): it only
+      -- means the two-step window lapsed, which the owner clears by signing in with
+      -- the emailed code. run_platform_health_check() still alerts on it.
+      from public.platform_health_check() where not ok and check_name <> 'admin_can_act'
   )
   select (select count(*) from items where n > 0),
          string_agg(line, E'\n' order by ord) filter (where n > 0 or ord = 6)

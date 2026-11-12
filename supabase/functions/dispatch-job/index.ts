@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
-// v25 (2026-11-12, NOT YET DEPLOYED): the button opens the open-jobs tab
+// v25 (2026-11-12): the button opens the open-jobs tab
 // (?tab=available) instead of the dashboard home, where the pro had to find
 // the job themselves; the subject drops "URGENT", which every email carried.
 //
@@ -208,8 +208,9 @@ serve(async (req) => {
     // public.service_specialties() is the ONE answer to "which specialties does
     // this service_needed reach", because service_needed may hold SEVERAL labels
     // joined with ", ". Never look service_specialty_map up directly from a
-    // request row. NULL still means passthrough (some label is unmapped, which
-    // "Other" legitimately is).
+    // request row. NULL still means passthrough (some label is unmapped). "Other"
+    // is mapped as of 2026-11-12: it reaches the General Handyman trades plus any
+    // pro who opted in to jobs outside their specialties.
     const { data: specData, error: specErr } = await admin
       .rpc("service_specialties", { p_service: request.service_needed });
 

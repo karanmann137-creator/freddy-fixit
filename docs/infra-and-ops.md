@@ -6,6 +6,8 @@
 
 **Pick-page view stamp (2026-11-12).** `get_bids_by_token` now records `client_requests.pick_first_viewed_at`, `pick_last_viewed_at` and `pick_views` each time a client's browser opens `/pick/<token>` (not when `send-bid-email` calls it as service_role). The digest uses it to say who opened their estimates and who never did.
 
+**"Other" is a handyman job (2026-11-12).** `service_specialty_map` now has an `Other` row: the General Handyman specialties plus the tag `Other`. A contractor opts in to jobs outside their trades with a checkbox on their dashboard profile, which adds `Other` to `contractors.specialties` — so matching needs no special case. Before this, any request that included "Other" reached every active contractor.
+
 `run_reminders()` steps: 0 recurring generation · 1 recurring-due nudges · 2 seasonal nudges (one per engaged client per season, `reminder_log` dedupe) · 3 day-before visit confirm · 4–7 48h stall nudges (bids waiting / approval owed / price change pending / contractor estimate owed) · 8 balance owed after completion (24h → 3d → 7d, then stops).
 
 **Storage buckets:** `contractor-docs` (private; admin SELECT via `contractor_docs_admin_select`), `completion-photos` (private, job-party), `problem-photos` (private, dispute parties), `message-media` (private, job-party), `contracts` (private, job-party), `contractor-photos` + `portfolio-photos` (public objects, **but no longer listable** — see Security model). Every upload is rate-limited by the `ff_upload_rate_guard` trigger, and **objects cannot be deleted in SQL** (`storage.protect_delete()`) — removal needs the Storage API from a service-role edge function.
