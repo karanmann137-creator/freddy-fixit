@@ -55,7 +55,7 @@ export async function getFeeRate(): Promise<CommissionRate> {
 }
 
 /** Shared body: read an RPC that returns a rate, validate it, cache only success. */
-async function read(fn: string, store: (r: CommissionRate) => void): Promise<CommissionRate> {
+async function read(fn: "platform_commission_rate" | "platform_fee_rate", store: (r: CommissionRate) => void): Promise<CommissionRate> {
   try {
     const { data, error } = await supabase.rpc(fn);
     const n = Number(data);

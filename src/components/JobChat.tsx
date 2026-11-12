@@ -317,7 +317,7 @@ export default function JobChat({
    * One-tap actions only. Anything that moves money or closes a job stays on
    * the job card, where the confirm dialogs and the warning copy live.
    */
-  const runAction = async (rpc: string, patch: Record<string, any>, ok: string) => {
+  const runAction = async (rpc: "contractor_on_my_way" | "confirm_visit", patch: Record<string, any>, ok: string) => {
     if (acting) return;
     setActing(true);
     setErr("");

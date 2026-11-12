@@ -3,6 +3,9 @@ import { supabase } from "@/lib/supabase";
 import { Ic } from "@/components/Ic";
 import { mfaReason, type MfaStatus } from "@/lib/mfa";
 
+/** Shape of the jsonb the mfa_* RPCs return. */
+type MfaResult = { ok?: boolean; reason?: string; attempts_left?: number; recovery_codes?: string[] };
+
 // Two-step sign-in (email OTP).
 //
 // Codes are delivered by Resend through the `mfa-code` edge function, NOT by
@@ -47,7 +50,8 @@ export default function TwoStepPanel() {
   async function requestCode(purpose: "enroll" | "disable") {
     setErr(""); setNote(""); setBusy(true);
     try {
-      const { data, error } = await supabase.rpc("mfa_request_code", { p_purpose: purpose });
+      const { data: raw, error } = await supabase.rpc("mfa_request_code", { p_purpose: purpose });
+      const data = raw as MfaResult | null;
       if (error) throw error;
       if (!data?.ok) { setErr(mfaReason(data?.reason)); return false; }
       setNote("Code sent — check your email.");
@@ -63,7 +67,8 @@ export default function TwoStepPanel() {
   async function verifyEnroll() {
     setErr(""); setNote(""); setBusy(true);
     try {
-      const { data, error } = await supabase.rpc("mfa_verify", { p_code: code, p_purpose: "enroll" });
+      const { data: raw, error } = await supabase.rpc("mfa_verify", { p_code: code, p_purpose: "enroll" });
+      const data = raw as MfaResult | null;
       if (error) throw error;
       if (!data?.ok) { setErr(mfaReason(data?.reason, data?.attempts_left)); return; }
       setRecovery((data.recovery_codes ?? []) as string[]);
@@ -86,7 +91,8 @@ export default function TwoStepPanel() {
   async function verifyThenDisable() {
     setErr(""); setBusy(true);
     try {
-      const { data, error } = await supabase.rpc("mfa_verify", { p_code: code, p_purpose: "disable" });
+      const { data: raw, error } = await supabase.rpc("mfa_verify", { p_code: code, p_purpose: "disable" });
+      const data = raw as MfaResult | null;
       if (error) throw error;
       if (!data?.ok) { setErr(mfaReason(data?.reason, data?.attempts_left)); return; }
       await doDisable();
@@ -98,7 +104,8 @@ export default function TwoStepPanel() {
   async function doDisable() {
     setBusy(true);
     try {
-      const { data, error } = await supabase.rpc("mfa_disable");
+      const { data: raw, error } = await supabase.rpc("mfa_disable");
+      const data = raw as MfaResult | null;
       if (error) throw error;
       if (!data?.ok) { setErr(mfaReason(data?.reason)); return; }
       setStage("idle"); setCode(""); setRecovery([]);

@@ -31,8 +31,9 @@ export default function JobExpenses({ jobId, items, jobAmount, onAdd, onDelete, 
     if (!(amt > 0)) { onError("Enter the amount you spent."); return; }
     setBusy(true);
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setBusy(false); onError("You've been signed out — sign in again to add an expense."); return; }
     const { data, error } = await supabase.from("job_expenses")
-      .insert({ job_id: jobId, contractor_id: user?.id, label: label.trim(), amount: amt })
+      .insert({ job_id: jobId, contractor_id: user.id, label: label.trim(), amount: amt })
       .select().single();
     setBusy(false);
     if (error || !data) { onError("Couldn't save the expense: " + (error?.message ?? "unknown error")); return; }

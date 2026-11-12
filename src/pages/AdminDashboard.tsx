@@ -349,7 +349,7 @@ export default function AdminDashboard() {
       if (error || !data.session) { if (!error) setLocation("/login"); return; }
       const uid = data.session.user.id;
       const { data: prof } = await supabase.from("profiles").select("id, first_name").eq("id", uid).maybeSingle();
-      setMe(prof ?? { id: uid });
+      setMe(prof ? { id: prof.id, first_name: prof.first_name ?? undefined } : { id: uid });
       // Only applied when the read succeeded — see the `dismissed` docblock.
       const d = await getDismissals(uid);
       if (d.ok) setDismissed(new Set(d.keys));

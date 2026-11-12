@@ -47,6 +47,14 @@ export default defineConfig({
     ...devices["Desktop Chrome"],
 
     baseURL: process.env.FF_SMOKE_BASE_URL || "https://freddyfixit.ca",
+    // Only set by deploy-check.yml, and only when the owner has created a Vercel
+    // "Protection Bypass for Automation" secret: it lets the suite load a
+    // deployment URL that Vercel otherwise hides behind its own login. The
+    // header goes on every request the page makes, third-party ones included;
+    // the secret only unlocks viewing a build of a site that is public anyway.
+    ...(process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      ? { extraHTTPHeaders: { "x-vercel-protection-bypass": process.env.VERCEL_AUTOMATION_BYPASS_SECRET } }
+      : {}),
     // Named so the owner can recognise it in Vercel analytics and allowlist it
     // if the firewall ever starts challenging automated traffic.
     userAgent:

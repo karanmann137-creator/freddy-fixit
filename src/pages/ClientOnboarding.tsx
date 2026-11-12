@@ -1018,7 +1018,7 @@ export default function ClientOnboarding() {
       // dashboard prints it directly above the box that retries it.
       await applyReferralAtSignup(form.referralCode || stashedReferralCode());
       trackEvent("sign_up", { method: "client" }); trackEvent("post_job"); requestGoogleReview("signup"); requestGoogleReview("job_posted");
-      try { const { data: refData } = await supabase.rpc("get_my_referral"); const rc = Array.isArray(refData) ? refData[0]?.code : (refData as any)?.code; if (rc) setReferral({ code: rc }); } catch {}
+      try { const { data: refData } = await supabase.rpc("get_my_referral"); const rc = Array.isArray(refData) ? (refData as { code?: string }[])[0]?.code : (refData as { code?: string } | null)?.code; if (rc) setReferral({ code: rc }); } catch {}
       setSuccess(true); clearDraft(ONBOARDING_DRAFT_KEY); window.scrollTo(0,0);
     } catch (err: any) {
       setSubmitError(err.message?.includes("already registered") ? "An account with this email already exists. Please sign in instead." : err.message ?? "Something went wrong.");

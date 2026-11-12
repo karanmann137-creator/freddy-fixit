@@ -1,0 +1,94 @@
+name: Deploy check
+
+# Runs the browser smoke test against each new Vercel deployment as soon as it
+# is built, instead of once a day against production after the fact.
+#
+# Vercel sends a repository_dispatch event when a deployment succeeds; the URL
+# of that build is in client_payload.url. The last step reports the result back
+# to Vercel under the check name below.
+#
+# This is observe-only until two things are done in Vercel (owner, one time):
+#   1. Settings -> Deployment Protection -> Protection Bypass for Automation:
+#      create a secret, and add it to this repo's GitHub secrets as
+#      VERCEL_AUTOMATION_BYPASS_SECRET. Without it the build URL sits behind
+#      Vercel's login and this workflow skips.
+#   2. Settings -> Deployment Checks: add "Smoke test" as a required check.
+#      From then on a production build is not put on freddyfixit.ca until this
+#      passes.
+# Do step 2 only after a few green runs here.
+
+on:
+  repository_dispatch:
+    types:
+      - vercel.deployment.success
+
+concurrency:
+  group: deploy-check-${{ github.event.client_payload.url }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: tests/smoke
+    env:
+      DEPLOY_URL: ${{ github.event.client_payload.url }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # A protected build answers with a redirect to vercel.com/login. Testing
+      # that page would fail for a reason that has nothing to do with the site,
+      # so find out first and skip cleanly.
+      - name: Can the build be reached?
+        id: reach
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            ${VERCEL_AUTOMATION_BYPASS_SECRET:+-H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET"} \
+            "$DEPLOY_URL/")
+          echo "HTTP $code from $DEPLOY_URL"
+          if [ "$code" = "200" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "Skipped: $DEPLOY_URL answered HTTP $code, so it is behind Vercel's login. Add the VERCEL_AUTOMATION_BYPASS_SECRET secret (see the top of deploy-check.yml)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.reach.outputs.ok == 'true'
+        with:
+          node-version: "20"
+
+      - name: Install Playwright
+        if: steps.reach.outputs.ok == 'true'
+        run: npm install && npx playwright install --with-deps chromium
+
+      - name: Run smoke test against this build
+        if: steps.reach.outputs.ok == 'true'
+        env:
+          FF_SMOKE_BASE_URL: ${{ github.event.client_payload.url }}
+          FF_SMOKE_EMAIL: ${{ secrets.FF_SMOKE_EMAIL }}
+          FF_SMOKE_PASSWORD: ${{ secrets.FF_SMOKE_PASSWORD }}
+        run: npm run smoke
+
+      - name: Upload report
+        if: always() && steps.reach.outputs.ok == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-check-report
+          path: |
+            tests/smoke/playwright-report/
+            tests/smoke/smoke-results.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+      # Reports this job's result to Vercel. Not sent when the run was skipped,
+      # so a skip can never be read as a pass.
+      - name: Notify Vercel
+        if: always() && steps.reach.outputs.ok == 'true'
+        uses: vercel/repository-dispatch/actions/status@v1
+        with:
+          name: "Smoke test"
