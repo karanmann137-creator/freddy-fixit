@@ -95,3 +95,11 @@ export function validatePhone(raw: string, required = false): PhoneCheck {
 
   return { ok: true };
 }
+
+// Format a North-American phone as the user types: 403-555-0100.
+export function fmtPhone(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 10);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return d.slice(0,3) + "-" + d.slice(3);
+  return d.slice(0,3) + "-" + d.slice(3,6) + "-" + d.slice(6);
+}

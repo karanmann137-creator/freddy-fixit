@@ -36,7 +36,8 @@ begin
              where b.request_id = r.id and b.status = 'pending') as pending_bids,
            (select max(b.created_at) from public.bids b
              where b.request_id = r.id and b.status = 'pending') as newest_bid,
-           public.trade_reach(r.service_needed) as reach
+           public.trade_reach(r.service_needed) as reach,
+           r.pick_first_viewed_at is not null as opened
       from public.client_requests r
      where coalesce(r.waitlisted, false) = false
        and r.status not in ('completed', 'cancelled')
@@ -48,11 +49,15 @@ begin
       from base where assigned_contractor_id is not null and job_ct = 0
     union all
     select 2, count(*),
-           format('CUSTOMERS — %s not picked a pro. The oldest has waited since %s. Call or text them their pick link: %s.',
+           -- "opened" comes from the pick-page view stamp (20261112_pick_view_stamp.sql).
+           -- Requests older than that stamp read as not opened; the count says so.
+           format('CUSTOMERS — %s not picked a pro. %s opened their pick link (tracked since Nov 12). The oldest has waited since %s. Call or text them their pick link: %s.',
                   case when count(*) = 1 then '1 client has estimates and has'
                        else count(*) || ' clients have estimates and have' end,
+                  count(*) filter (where opened) || ' of ' || count(*),
                   public.ff_local_ts(min(newest_bid)),
-                  left(string_agg(coalesce(fname, 'client') || ' (' || coalesce(service_needed, 'request') || ')',
+                  left(string_agg(coalesce(fname, 'client') || ' (' || coalesce(service_needed, 'request')
+                                  || case when opened then ', OPENED' else '' end || ')',
                                   '; ' order by newest_bid desc), 600))
       from base
      where status = 'pending' and assigned_contractor_id is null

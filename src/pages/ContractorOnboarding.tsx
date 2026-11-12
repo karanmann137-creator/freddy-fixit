@@ -14,7 +14,7 @@ import OnboardingVideo from "@/components/OnboardingVideo";
 import ServicePicker from "@/components/ServicePicker";
 import VoiceDictate from "@/components/VoiceDictate";
 import { AREAS, areasFromPostal, isPostalCode } from "@/lib/calgaryAreas";
-import { validateEmail, validatePhone } from "@/lib/emailValidation";
+import { validateEmail, validatePhone, fmtPhone } from "@/lib/emailValidation";
 
 const SPECIALTIES = [
   { iconName: "wrench", label: "General Repairs" },
@@ -90,12 +90,6 @@ function namesFromEmail(email: string): { first: string; last: string } {
 }
 
 // Format a North-American phone as the user types: 403-555-0100.
-function fmtPhone(v: string) {
-  const d = v.replace(/\D/g, "").slice(0, 10);
-  if (d.length <= 3) return d;
-  if (d.length <= 6) return d.slice(0,3) + "-" + d.slice(3);
-  return d.slice(0,3) + "-" + d.slice(3,6) + "-" + d.slice(6);
-}
 
 export default function ContractorOnboarding() {
   const [, setLocation] = useLocation();

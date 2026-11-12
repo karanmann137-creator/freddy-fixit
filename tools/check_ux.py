@@ -778,7 +778,7 @@ def check(repo=REPO):
             "      (4/8/12/16/20/24/32/40px). NOTE the scale is in px and call sites are\n"
             "      in rem with --ff-font-scale 1.1, so a round rem value never lands on\n"
             "      the grid -- that is WHY the token is the right spelling, not the\n"
-            "      literal. Run tools/migrate_spacing.py to see what is mechanical.\n"
+            "      literal.\n"
             "      Heaviest files: %s"
             % (spacing, SPACING_BASELINE,
                ", ".join("%s (%d)" % (f, n) for f, n in worst))

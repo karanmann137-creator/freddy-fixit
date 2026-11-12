@@ -18,7 +18,7 @@ import OAuthButtons from "@/components/OAuthButtons";
 import { AREAS, areaToken, areasFromPostal, formatApproxLocation, fsaOf, isPostalCode, normalizePostal } from "@/lib/calgaryAreas";
 import ServicePicker from "@/components/ServicePicker";
 import BudgetPicker from "@/components/BudgetPicker";
-import { validateEmail, validatePhone } from "@/lib/emailValidation";
+import { validateEmail, validatePhone, fmtPhone } from "@/lib/emailValidation";
 import { stashReferralCode, stashedReferralCode, applyReferralAtSignup } from "@/lib/referralCode";
 import WaitlistForm from "@/components/WaitlistForm";
 import { usePlatformStatus, acceptingRequests } from "@/lib/platformStatus";
@@ -134,13 +134,6 @@ const HOME_TO_SERVICE: Record<string,string> = {
   "Drywall & Flooring": "Drywall / Flooring",
 };
 
-// Format a North-American phone as the user types: 403-555-0100.
-function fmtPhone(v: string) {
-  const d = v.replace(/\D/g, "").slice(0, 10);
-  if (d.length <= 3) return d;
-  if (d.length <= 6) return d.slice(0,3) + "-" + d.slice(3);
-  return d.slice(0,3) + "-" + d.slice(3,6) + "-" + d.slice(6);
-}
 
 // A referral code can arrive two ways: in the ?ref= link, or typed in by hand
 // because the friend was told it in person. App.tsx stashes the link version to
@@ -704,7 +697,7 @@ export default function ClientOnboarding() {
     }
     if (step === S_ACCOUNT) {
       { const ev = validateEmail(form.email); if (!ev.ok) errs.email = ev.error!; }
-      { const pv = validatePhone(form.phone); if (!pv.ok) errs.phone = pv.error!; }
+      { const pv = validatePhone(form.phone, true); if (!pv.ok) errs.phone = pv.error!; }
       if (form.password.length < 8) errs.password = "Minimum 8 characters";
       else if (pwBreached) errs.password = "This password has appeared in public data breaches. Please choose a different one.";
     }
@@ -1244,7 +1237,7 @@ export default function ClientOnboarding() {
                 {errors.email && <p id="co-err-email" style={s.err}>{errors.email}</p>}
               </div>
               <div style={{ marginBottom:"1.2rem" }}>
-                <label style={s.label}>Phone <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
+                <label style={s.label}>Phone <span style={{ opacity:.5, fontWeight:400 }}>(so we can text you when estimates arrive)</span></label>
                 <input autoComplete="tel" style={{ ...inp, borderColor: errors.phone ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="tel" placeholder="403-555-0100" value={form.phone} onChange={e => set("phone",fmtPhone(e.target.value))} />
                 {errors.phone && <p id="co-err-phone" style={s.err}>{errors.phone}</p>}
               </div>
