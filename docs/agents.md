@@ -85,6 +85,8 @@ detail with no way to get the fresh version.
 
 ## The declared roster (2026-11-05)
 
+> **Measured 2026-11-11.** Only `lead-response` has ever run: 7 runs, 10 proposals, 9 still pending, 1 rejected, 0 approved. The other seven rows have 0 runs and no harness. Per the *Scope discipline* rules in the root `CLAUDE.md`, do not build any of them until the owner is working the `lead-response` queue; `contractor-supply` should become a finding kind inside `lead-response` (it is the same `trade_reach = 0` join), and `ops-watchdog` duplicates the watchdog skill, the health-check cron and the smoke workflow.
+
 Seven of eight are `enabled = false`. `enabled` means **"a harness exists and this agent is
 expected to run"** — it is step one of wiring each harness, and until it is true `stale`
 cannot fire for an agent nobody claimed was running.

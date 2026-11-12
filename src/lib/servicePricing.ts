@@ -176,22 +176,6 @@ export function targetBid(
   return t;
 }
 
-// Budget grade — shown to CONTRACTORS. Higher budget vs market = better grade.
-// Mirrors public.budget_grade() in SQL; keep the thresholds in sync.
-export function gradeBudget(budgetMid: number | null, benchmark: number | null): Grade | null {
-  if (budgetMid == null || benchmark == null || benchmark <= 0) return null;
-  if (budgetMid >= benchmark * 1.15) return "A+";
-  if (budgetMid >= benchmark * 0.90) return "A";
-  return "A-";
-}
-
-export function budgetMid(min: number | null | undefined, max: number | null | undefined): number | null {
-  const lo = min == null ? null : Number(min);
-  const hi = max == null ? null : Number(max);
-  if (lo == null && hi == null) return null;
-  return ((lo ?? hi)! + (hi ?? lo)!) / 2;
-}
-
 // What the grade means depends on who's reading it, so the copy is split.
 // "budget" = contractor reading a job. "pro" = client reading a contractor.
 export function gradeLabel(g: Grade | null, kind: "budget" | "pro"): string {

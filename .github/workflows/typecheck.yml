@@ -72,3 +72,17 @@ jobs:
       - name: UX laws
         if: always()
         run: python3 tools/check_ux.py
+
+      # Lint ratchet, added 2026-11-11. ESLint had 164 errors and was in no
+      # gate at all; 44 were set-state-in-effect and 43 were empty catch blocks,
+      # which are the stale-state and silent-failure classes. Fixing them all at
+      # once is a refactor, so this only stops the number going UP. When you fix
+      # errors, lower LINT_BASELINE to the new count. Never raise it.
+      - name: Lint ratchet
+        if: always()
+        env:
+          LINT_BASELINE: "162"
+        run: |
+          n=$(npx eslint . -f json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).reduce((a,f)=>a+f.errorCount,0)))')
+          echo "eslint errors: $n (baseline $LINT_BASELINE)"
+          [ "$n" -le "$LINT_BASELINE" ] || { echo "::error::lint errors rose from $LINT_BASELINE to $n"; exit 1; }

@@ -108,13 +108,6 @@ export function setConsent(choice: ConsentChoice): void {
   try { window.dispatchEvent(new CustomEvent(CONSENT_EVENT, { detail: choice })); } catch {}
 }
 
-/** Wipe the stored choice so the banner asks again (used by Settings). */
-export function resetConsent(): void {
-  try { localStorage.removeItem(CONSENT_KEY); } catch {}
-  clearAnalyticsCookies();
-  try { window.dispatchEvent(new CustomEvent(CONSENT_EVENT, { detail: null })); } catch {}
-}
-
 // Injects the gtag.js + PostHog scripts and configures them. Safe to call
 // multiple times; only the first call does anything. No-op when analytics is
 // disabled OR the visitor hasn't accepted cookies.

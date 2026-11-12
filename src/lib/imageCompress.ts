@@ -140,8 +140,3 @@ export async function compressImage(file: File, profile: CompressProfile = "phot
     return file;
   }
 }
-
-/** Same contract, for the call sites that upload several photos at once. */
-export function compressImages(files: File[], profile: CompressProfile = "photo"): Promise<File[]> {
-  return Promise.all(files.map(f => compressImage(f, profile)));
-}

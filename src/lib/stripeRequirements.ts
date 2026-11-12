@@ -151,14 +151,6 @@ export function needsFor(codes: string[] | null | undefined): StripeNeed[] {
   return out;
 }
 
-/** One-line summary for tight spots (admin lists, toasts). */
-export function needsSummary(codes: string[] | null | undefined): string {
-  const n = needsFor(codes);
-  if (n.length === 0) return "";
-  if (n.length === 1) return n[0].label;
-  return n[0].label + " + " + (n.length - 1) + " more";
-}
-
 /**
  * Stripe is reviewing something — the contractor has nothing to do but wait.
  * Worth saying out loud, otherwise "not connected yet" reads like a failure.

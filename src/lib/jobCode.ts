@@ -6,11 +6,3 @@ export function jobCode(id?: string | null): string {
   const hex = id.replace(/[^a-f0-9]/gi, "").slice(0, 5).toUpperCase();
   return hex ? `FFX-${hex}` : "";
 }
-
-// True when a typed code loosely matches a job id (case/format tolerant).
-export function codeMatches(code: string, id?: string | null): boolean {
-  if (!id) return false;
-  const want = code.replace(/[^a-z0-9]/gi, "").toUpperCase().replace(/^FFX/, "");
-  const have = id.replace(/[^a-f0-9]/gi, "").slice(0, 5).toUpperCase();
-  return want.length >= 4 && have.startsWith(want.slice(0, 5));
-}

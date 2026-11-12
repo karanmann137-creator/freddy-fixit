@@ -24,9 +24,6 @@ export type CommissionRate = { ok: true; rate: number } | { ok: false };
 let inflight: Promise<CommissionRate> | null = null;
 let cached: CommissionRate | null = null;
 
-/** Drop the cached rate. Only needed if the platform rate is changed mid-session. */
-export function clearPlatformRates() { inflight = null; cached = null; }
-
 export async function getCommissionRate(): Promise<CommissionRate> {
   if (cached) return cached;
   if (inflight) return inflight;
@@ -49,9 +46,6 @@ export async function getCommissionRate(): Promise<CommissionRate> {
 // ---------------------------------------------------------------------------
 let feeInflight: Promise<CommissionRate> | null = null;
 let feeCached: CommissionRate | null = null;
-
-/** Drop both cached rates. Only needed if a platform rate changes mid-session. */
-export function clearAllPlatformRates() { clearPlatformRates(); feeInflight = null; feeCached = null; }
 
 export async function getFeeRate(): Promise<CommissionRate> {
   if (feeCached) return feeCached;

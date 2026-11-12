@@ -89,16 +89,3 @@ supabase.auth.onAuthStateChange((_event, session) => {
   const uid = session?.user?.id ?? null;
   if (uid !== cachedUser) clearDismissals();
 });
-
-/** Undo a dismissal (used by the "show these again" control in Settings). */
-export async function undismiss(userId: string | null | undefined, prefix: string): Promise<boolean> {
-  if (!userId) return false;
-  const { error } = await supabase
-    .from("ui_dismissals")
-    .delete()
-    .eq("user_id", userId)
-    .like("key", prefix + "%");
-  if (error) return false;
-  if (keys) for (const k of Array.from(keys)) if (k.startsWith(prefix)) keys.delete(k);
-  return true;
-}

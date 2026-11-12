@@ -152,8 +152,3 @@ export function usePlatformStatus(): { status: PlatformStatus; ready: boolean; r
 export function acceptingRequests(mode: PlatformMode): boolean {
   return mode === "open";
 }
-
-/** True when we should show a waitlist capture form instead of the request form. */
-export function capturingWaitlist(mode: PlatformMode): boolean {
-  return mode === "waitlist";
-}

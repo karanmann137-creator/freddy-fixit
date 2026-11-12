@@ -24,10 +24,6 @@ export const TIME_OPTIONS: { value: string; label: string }[] = (() => {
 export const DEFAULT_START = "08:00";
 export const DEFAULT_END   = "17:00";
 
-export function timeLabel(v: string): string {
-  return TIME_OPTIONS.find(t => t.value === v)?.label ?? v;
-}
-
 // Normalize whatever is stored into { days, start, end }.
 export function readAvailability(a: any): { days: string[]; start: string; end: string } {
   if (a && Array.isArray(a.days)) {
@@ -43,14 +39,4 @@ export function readAvailability(a: any): { days: string[]; start: string; end: 
     ? AVAIL_DAYS
     : (a && Array.isArray(a.windows) && a.windows.length ? WEEKDAYS : []);
   return { days: legacyDays, start: DEFAULT_START, end: DEFAULT_END };
-}
-
-// Human summary, e.g. "Mon–Fri, 8:00 AM – 5:00 PM".
-export function availabilitySummary(a: any): string {
-  const { days, start, end } = readAvailability(a);
-  if (!days.length) return "Not set";
-  const isWeekdays = days.length === 5 && WEEKDAYS.every(d => days.includes(d));
-  const isEvery = days.length === 7;
-  const dayText = isEvery ? "Every day" : isWeekdays ? "Mon–Fri" : days.map(d => d.slice(0, 3)).join(", ");
-  return dayText + ", " + timeLabel(start) + " – " + timeLabel(end);
 }

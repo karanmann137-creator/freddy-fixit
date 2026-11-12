@@ -140,12 +140,6 @@ export function formatApproxLocation(postal: string, area: string): string {
   return [pc, token].filter(Boolean).join(" · ");
 }
 
-/** Plain-English label for a stored approximate location, for read-only display. */
-export function approxLabel(v: string): string {
-  const s = (v || "").trim();
-  return s || "Calgary area";
-}
-
 /**
  * Read an approximate location back OUT of a stored string.
  *

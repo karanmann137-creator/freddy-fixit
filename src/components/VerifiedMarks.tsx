@@ -34,11 +34,6 @@ export type VerifyFlags = {
   wcb_on_file?: boolean | null;
 };
 
-export function hasAnyMark(f: VerifyFlags | null | undefined): boolean {
-  if (!f) return false;
-  return !!(f.id_verified || f.insurance_on_file || f.wcb_on_file);
-}
-
 // Green = we checked. Blue = we hold it. The colour split is the honesty
 // hierarchy made visible, so the two never read as the same claim.
 const CHECKED = "#22c55e";

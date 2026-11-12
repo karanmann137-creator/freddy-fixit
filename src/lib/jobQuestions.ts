@@ -248,11 +248,6 @@ export function questionsFor(service?: string | null): JobQuestion[] {
   return JOB_QUESTIONS[service] || GENERIC_QUESTIONS;
 }
 
-/** True when we have questions written specifically for this service. */
-export function hasSpecificQuestions(service?: string | null): boolean {
-  return !!service && !!JOB_QUESTIONS[service];
-}
-
 export type JobAnswers = Record<string, string | string[]>;
 
 /**

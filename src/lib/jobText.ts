@@ -52,10 +52,3 @@ export function tidyDescription(raw: string | null | undefined): string[] {
     .map(p => tidyParagraph(p.replace(/\n/g, " ")))
     .filter(Boolean);
 }
-
-/** Single-line form, for snippets and card subtitles. */
-export function tidyOneLine(raw: string | null | undefined, max = 140): string {
-  const t = tidyDescription(raw).join(" ");
-  if (t.length <= max) return t;
-  return t.slice(0, max).replace(/\s+\S*$/, "") + "…";
-}

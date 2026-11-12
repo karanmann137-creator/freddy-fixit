@@ -18,8 +18,6 @@ export const CONTRACTOR_GUIDE_TITLE = "The Freddy Fix It Contractor Guide";
 export const CONTRACTOR_GUIDE_PREHEADER =
   "How bidding works, how you get paid, and the one step that releases your money.";
 
-export const CONTRACTOR_GUIDE_URL = "https://freddyfixit.ca/contractor-guide";
-
 export const CONTRACTOR_GUIDE_MD = `Welcome to Freddy Fix It. This guide covers everything worth knowing before your first job — how work reaches you, how bidding works, how and when you get paid, and the one step that a lot of new pros miss.
 
 It takes about five minutes to read. It is worth the five minutes. You can come back to it any time from **Settings** in your dashboard.
