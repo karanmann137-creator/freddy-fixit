@@ -64,3 +64,7 @@ Two seed contractors exist (statuses pending / inactive) with null company_name 
 
 ## CLI one-liners the owner runs
 `supabase db dump --schema public -f supabase/schema.sql` (baseline) · `supabase gen types typescript --linked > src/lib/database.types.ts`.
+
+## Shared edge-function code (`supabase/functions/_shared/`)
+
+`_shared/cors.ts` (CORS headers) and `_shared/resend.ts` (`sendEmail`) exist as of 2026-11-12. `dispatch-job` v26 is the first function to import them, deployed by passing the two files alongside `index.ts` as `../_shared/cors.ts` and `../_shared/resend.ts`. **Convert a function to the shared helpers only when you are already redeploying it for another reason** — never as a sweep. 26 functions still carry their own copies; 13 of those handle money, and a mass redeploy for tidiness is not worth the risk.
