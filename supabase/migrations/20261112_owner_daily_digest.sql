@@ -79,21 +79,51 @@ begin
      where status = 'pending' and assigned_contractor_id is null
        and pending_bids = 0 and reach = 0
     union all
+    -- Recent requests (1-21 days old) that went out and still have fewer than
+    -- three estimates, with the pros who were sent it and have not answered.
+    select 5, count(*),
+           format('CONTRACTORS — %s still short of estimates: %s. Nudge those pros.',
+                  case when count(*) = 1 then '1 recent request is' else count(*) || ' recent requests are' end,
+                  left(string_agg(format('%s (posted %s) went to %s pros, %s quoted, no answer from %s',
+                             coalesce(q.service_needed, 'request'), public.ff_local_ts(q.created_at),
+                             q.sent, q.quoted, coalesce(q.silent, 'nobody else')),
+                           '; ' order by q.created_at desc), 900))
+      from (
+        select r.service_needed, r.created_at, cardinality(r.dispatched_to) as sent,
+               (select count(*) from public.bids b where b.request_id = r.id) as quoted,
+               (select string_agg(nm, ', ') from (
+                  select coalesce(nullif(btrim(c.company_name), ''), nullif(btrim(p.first_name), ''), 'a pro') as nm
+                    from unnest(r.dispatched_to) d(id)
+                    join public.profiles p on p.id = d.id
+                    left join public.contractors c on c.id = d.id
+                   where not exists (select 1 from public.bids b
+                                      where b.request_id = r.id and b.contractor_id = d.id)
+                   limit 8) s) as silent
+          from public.client_requests r
+         where coalesce(r.waitlisted, false) = false
+           and r.status = 'pending' and r.assigned_contractor_id is null
+           and r.created_at < now() - interval '1 day'
+           and r.created_at > now() - interval '21 days'
+           and coalesce(cardinality(r.dispatched_to), 0) > 0
+           and (select count(*) from public.bids b
+                 where b.request_id = r.id and b.status = 'pending') < 3
+      ) q
+    union all
     -- Informational only (n = 0): never makes the digest send on its own.
-    select 5, 0,
+    select 6, 0,
            format('CONTRACTORS — %s signed up in the last 7 days.',
                   case when count(*) = 1 then '1 new pro' else count(*) || ' new pros' end)
       from public.contractors where created_at > now() - interval '7 days'
     having count(*) > 0
     union all
-    select 6, count(*),
+    select 7, count(*),
            format('SITE — %s failing: %s.',
                   case when count(*) = 1 then '1 health check is' else count(*) || ' health checks are' end,
                   string_agg(check_name, ', '))
       from public.platform_health_check() where not ok
   )
   select (select count(*) from items where n > 0),
-         string_agg(line, E'\n' order by ord) filter (where n > 0 or ord = 5)
+         string_agg(line, E'\n' order by ord) filter (where n > 0 or ord = 6)
     into v_need, v_body
     from items;
 
