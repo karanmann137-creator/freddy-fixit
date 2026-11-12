@@ -744,7 +744,7 @@ export default function ContractorDashboard() {
           setExpensesFailed(false);
           setExpenses((data ?? []) as JobExpense[]);
         });
-      setGoalInput(earnStats?.weekly_goal ? String(earnStats.weekly_goal) : "");
+      { const wg = (earnStats as { weekly_goal?: number | null } | null)?.weekly_goal; setGoalInput(wg ? String(wg) : ""); }
       setGoogleUrl(con2?.google_reviews_url ?? "");
       // Sync live Stripe payout status (no account.updated webhook needed) and
       // capture what Stripe is still waiting on, so the banner can name the

@@ -651,7 +651,7 @@ export default function ClientDashboard() {
       // changed, which is where the notification was pointing anyway.
       (async () => {
         try {
-          const { data } = await supabase.from("jobs").select("request_id").eq("id", d.jobId).maybeSingle();
+          const { data } = await supabase.from("jobs").select("request_id").eq("id", d.jobId!).maybeSingle();
           if (data?.request_id) setSelectedReqId(data.request_id as string);
         } catch { /* the tab switch already landed them close enough */ }
       })();
