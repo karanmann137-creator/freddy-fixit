@@ -33,11 +33,10 @@ export default function GetQuote() {
   const validate = () => {
     const e: Record<string, string> = {};
     if (name.trim().length < 2) e.name = "Please enter your name";
-    const hasEmail = email.trim().length > 0, hasPhone = phone.trim().length > 0;
-    const ev = validateEmail(email), pv = validatePhone(phone);
-    if (!hasEmail && !hasPhone) e.contact = "Add a valid email or phone so we can reach you";
+    const hasEmail = email.trim().length > 0;
+    const ev = validateEmail(email), pv = validatePhone(phone, true);
+    if (!pv.ok) e.contact = pv.error!;
     else if (hasEmail && !ev.ok) e.contact = ev.error!;
-    else if (!hasEmail && hasPhone && !pv.ok) e.contact = pv.error!;
     if (!service) e.service = "Pick the service you need";
     if (details.trim().length < 10) e.details = "Tell us a little more (min 10 characters)";
     setErrors(e);
@@ -149,7 +148,7 @@ export default function GetQuote() {
           <label style={s.label}>Email</label>
           <input autoComplete="email" type="email" style={{ ...inp, borderColor: errors.contact ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="you@email.com" value={email} onChange={e => { setEmail(e.target.value); setErrors(x => ({ ...x, contact:"" })); }} />
 
-          <label style={s.label}>Phone <span style={{ opacity:.5, textTransform:"none", letterSpacing:0 }}>(optional if email given)</span></label>
+          <label style={s.label}>Phone</label>
           <input autoComplete="tel" type="tel" style={{ ...inp, borderColor: errors.contact ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} placeholder="(403) 555-0123" value={phone} onChange={e => { setPhone(e.target.value); setErrors(x => ({ ...x, contact:"" })); }} />
           {errors.contact && <p style={s.err}>{errors.contact}</p>}
 

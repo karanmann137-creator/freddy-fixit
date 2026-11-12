@@ -231,7 +231,7 @@ export default function ContractorOnboarding() {
       if (!form.firstName.trim()) errs.firstName = "Required";
       if (!form.lastName.trim())  errs.lastName  = "Required";
       if (!authedUserId) { const ev = validateEmail(form.email); if (!ev.ok) errs.email = ev.error!; }
-      { const pv = validatePhone(form.phone); if (!pv.ok) errs.phone = pv.error!; }
+      { const pv = validatePhone(form.phone, true); if (!pv.ok) errs.phone = pv.error!; }
       if (!authedUserId && form.password.length < 8) errs.password = "Minimum 8 characters";
       else if (!authedUserId && pwBreached) errs.password = "This password has appeared in public data breaches. Please choose a different one.";
     }
@@ -506,7 +506,7 @@ export default function ContractorOnboarding() {
                 {errors.email && <p style={s.err}>{errors.email}</p>}
               </div>
               <div style={{ marginBottom:"1.2rem" }}>
-                <label style={s.label}>Phone <span style={{ opacity:.5, fontWeight:400 }}>(optional)</span></label>
+                <label style={s.label}>Phone <span style={{ opacity:.5, fontWeight:400 }}>(so we can call you about jobs)</span></label>
                 <input autoComplete="tel" style={{ ...inp, borderColor: errors.phone ? "rgba(239,68,68,.6)" : "rgba(var(--ff-fg), .1)" }} type="tel" placeholder="403-555-0100" value={form.phone} onChange={e => setF("phone",fmtPhone(e.target.value))} />
                 {errors.phone && <p style={s.err}>{errors.phone}</p>}
               </div>
