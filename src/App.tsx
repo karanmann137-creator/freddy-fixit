@@ -53,7 +53,7 @@ const AreaLanding          = lazy(() => import("@/pages/AreaLanding"));
 // Internal design review surface for src/components/ui. Unlinked and noindexed
 // (see the page's own header), lazy so it is never in the main bundle. Delete
 // the page and this line together once the three dashboards are ported.
-const UiLab                = lazy(() => import("@/pages/UiLab"));
+const UiLab                = import.meta.env.DEV ? lazy(() => import("@/pages/UiLab")) : null;
 
 // Shown briefly while a lazily-loaded page chunk downloads. PageSkeleton paints
 // nothing for its first 120ms, so a cached chunk -- which is most of them after
@@ -394,7 +394,8 @@ export default function App() {
       <Route path="/contractor-guide" component={ContractorGuide} />
       <Route path="/areas" component={AreasIndex} />
       <Route path="/areas/:slug" component={AreaLanding} />
-      <Route path="/ui-lab" component={UiLab} />
+      {/* Dev-only swatch sheet for the shared UI primitives; not served in production. */}
+      {UiLab && <Route path="/ui-lab" component={UiLab} />}
 
       {/* Protected */}
       <Route path="/client-dashboard">
