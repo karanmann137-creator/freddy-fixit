@@ -7,18 +7,12 @@ name: Deploy check
 # of that build is in client_payload.url. The last step reports the result back
 # to Vercel under the check name below.
 #
-# Step 1 below is done (2026-11-12). The GitHub "checks" job (typecheck,
-# checkers, lint ratchet) is already a required Deployment Check. The smoke test
-# itself is observe-only until step 2:
-#   1. Settings -> Deployment Protection -> Protection Bypass for Automation:
-#      create a secret, and add it to this repo's GitHub secrets as
-#      VERCEL_AUTOMATION_BYPASS_SECRET. Without it the build URL sits behind
-#      Vercel's login and this workflow skips.
-#   2. Settings -> Build and Deployment -> Deployment Checks: add
-#      "Vercel - freddy-fixit: smoke-test" as a required check.
-#      From then on a production build is not put on freddyfixit.ca until this
-#      passes.
-# Do step 2 only after a few green runs here.
+# Both one-time Vercel steps are done (2026-11-12): the bypass secret exists in
+# Vercel and in this repo's GitHub secrets, and this check plus the "checks"
+# job are required under Settings -> Build and Deployment -> Deployment Checks.
+# A production build is not put on freddyfixit.ca until both pass. If the
+# bypass secret is ever rotated in Vercel, update the GitHub secret too, or
+# this workflow skips and deploys wait.
 
 on:
   repository_dispatch:
