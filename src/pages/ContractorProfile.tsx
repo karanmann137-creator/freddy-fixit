@@ -103,8 +103,6 @@ export default function ContractorProfile() {
 
   const pfUrl = (path: string) =>
     supabase.storage.from("portfolio-photos").getPublicUrl(path).data.publicUrl;
-  const avatarUrl = (path: string) =>
-    supabase.storage.from("profile-photos").getPublicUrl(path).data.publicUrl;
 
   // ── Admin-only helpers ────────────────────────────────────────────────────
   const DOC_LABELS: Record<string, string> = {

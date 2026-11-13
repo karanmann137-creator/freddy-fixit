@@ -11,7 +11,7 @@ import {
   Hero, HeroSub, PassMeta, PassMetaItem,
   JobSwitcher,
   Group, Sheet, Row, type RowTone,
-  Pill, type PillTone,
+  Pill, 
   Button,
   AttentionCard,
   DashShell, DashContent, DashCard,
@@ -56,7 +56,6 @@ import { sendContractCopy, CONTRACT_COPY_FAILED } from "@/lib/contractCopy";
 import ConfirmDialog, { type ConfirmState } from "@/components/ConfirmDialog";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 import FreddyRewind from "@/components/FreddyRewind";
-import { freqLabel } from "@/lib/recurrence";
 import { respText } from "@/lib/respTime";
 import { jobIsLive } from "@/lib/jobStage";
 import { DASH_NAV_EVENT, readDashNavFromUrl, clearDashNavFromUrl, type DashNavDetail } from "@/lib/notificationRoutes";
@@ -67,11 +66,14 @@ import type { Grade } from "@/lib/servicePricing";
 import DashboardSidebar, { type SidebarItem } from "@/components/DashboardSidebar";
 import { SettingsPanel } from "@/components/SettingsModal";
 import MessagesInbox, { partyName } from "@/components/MessagesInbox";
-import { useConversations, conversationKey, chatReadOnly, chatClosedReason, CHAT_AS_CLIENT, type Conversation } from "@/lib/chatUnread";
+import { useConversations, chatReadOnly, chatClosedReason, CHAT_AS_CLIENT, type Conversation } from "@/lib/chatUnread";
 import { useBidThreads, bidToConversation } from "@/lib/bidThreads";
 import FadeImg from "@/components/FadeImg";
+import ClientProsTab from "./client/ClientProsTab";
+import ClientRecurringTab from "./client/ClientRecurringTab";
+import { reqSearchFields, STATUS_META, canRemoveRequest, type ClientTab } from "./client/shared";
+import ClientHistoryTab from "./client/ClientHistoryTab";
 
-type ClientTab = "requests" | "messages" | "pros" | "recurring" | "history" | "profile" | "settings";
 
 /**
  * CLIENT_NAV is the ROUTING truth and must stay complete.
@@ -139,85 +141,6 @@ function QuoteBreakdownView({ row, assumptionsKey = "assumptions" }: { row: any;
   );
 }
 
-
-/*
- * calcJobScore + VEHICLE_SERVICES were removed on 2026-08-28 along with the
- * "6/8 Good listing" chip they fed.
- *
- * The score was computed AFTER the request was already submitted, and the
- * dashboard offered no way to edit a description or add a location — so the
- * only actionable half of it was "add a photo", which RequestPhotoQuote
- * already prompts for directly underneath. What was left was a grade on
- * something the client can no longer change, sitting on the screen where they
- * are supposed to be choosing a contractor. If a listing-quality nudge comes
- * back it belongs on the REQUEST FORM, where the fields still exist.
- */
-
-/**
- * `tone` was added 2026-10-30 so the status chips can render as the shared
- * <Pill>. `color` is kept because the switcher chips and a couple of inline
- * icons still read it directly; the pill reads `tone` only.
- *
- * ── Why in_progress is NOT accent, and matched is not blue ───────────────
- * The old chips were five different literal hexes, so every status on the page
- * shouted equally and none of them meant anything. The pill tones map to
- * MEANING, not to decoration, and the only two states that carry meaning here
- * are "settled" and "went wrong":
- *
- *   pending     → warn     we're still reviewing it; it is pending US
- *   matched     → neutral  a pro is attached. Nothing is on the client.
- *   in_progress → neutral  work is happening. Nothing is on the client either.
- *   completed   → good
- *   cancelled   → danger
- *
- * `in_progress` losing its orange is the deliberate, visible part. Orange is on
- * the same budget as the pass's state line — if the pass is already orange
- * because the client owes a balance, a second orange chip saying "Work In
- * Progress" spends a signal that was already spoken for, and if the pass is
- * NOT orange then the chip is claiming urgency the screen doesn't have. The
- * icon (link vs wrench) carries matched-vs-in_progress; it does not need colour
- * to do it. Don't promote either back to accent without a reason the client
- * would recognise as "this is on me".
- *
- * `matched`'s blue is dropped rather than re-homed because there is no blue in
- * the brand. There never was — the hex was ad-hoc.
- *
- * ── Why rowTone is a SECOND field and not derived from tone ──────────────
- * `RowTone` has no "danger" — a row is the frame around content, and a red
- * frame on a cancelled request states an error where there is only an ending.
- * So `cancelled` is `danger` as a pill (the word itself is the news) and
- * `neutral` as a row. Collapsing the two into one field would force that
- * disagreement to be resolved by whichever surface was written last.
- */
-const STATUS_META: Record<string, { icon: string; label: string; color: string; tone: PillTone; rowTone: RowTone }> = {
-  pending:     { icon: "clock", label: "Pending Review",     color: "var(--ff-warn)", tone: "warn",    rowTone: "warn" },
-  matched:     { icon: "link", label: "Contractor Matched", color: "var(--ff-info)", tone: "neutral", rowTone: "neutral" },
-  in_progress: { icon: "wrench", label: "Work In Progress",   color: "var(--ff-c10)", tone: "neutral", rowTone: "neutral" },
-  completed:   { icon: "check-circle", label: "Completed",          color: "var(--ff-success)", tone: "good",    rowTone: "good" },
-  cancelled:   { icon: "x-circle", label: "Cancelled",          color: "var(--ff-danger)", tone: "danger",  rowTone: "neutral" },
-};
-
-// Can the client actually delete this request? `remove_client_request` is guarded
-// server-side by `job_money_block()`, so on a paid job the button could only ever
-// raise — and it was rendered on every request that wasn't already cancelled.
-//
-// A COMPLETED request is the sharp case and the reason this exists. The RPC's
-// assigned branch skips completed jobs when it cancels them, but still writes
-// `client_requests.status = 'cancelled'` — so on a finished job that was never
-// charged, the button doesn't fail loudly, it quietly relabels a completed job in
-// the client's own history as cancelled. Hiding it is the fix; the RPC is right to
-// keep its guard.
-//
-// `job` is the loaded job for this request, or null where we don't have it (the
-// history list). Status alone answers those rows.
-const canRemoveRequest = (r: any, job: any): boolean => {
-  if (!r || r.status === "cancelled" || r.status === "completed") return false;
-  if (!job) return true;
-  if (["held", "released", "disputed", "processing"].includes(job.payment_status ?? "unpaid")) return false;
-  if (job.is_milestone || job.prepayment_id) return false;
-  return !["in_progress", "pending_confirmation", "completed"].includes(job.status);
-};
-
 // Scroll target for the open-request switcher, so changing request always
 // lands in the same place. Module-level for the same reason CONTRACT_ANCHOR is:
 // an id typed twice is an id that drifts, and a missed one scrolls to nothing.
@@ -248,29 +171,6 @@ const REQ_SWITCH_ANCHOR = "ffc-requests";
  * has to wave away twice; the cost of the other mistake is a hidden bill.
  */
 const PERMANENT_ATTN = new Set(["photo", "bids"]);
-
-/**
- * What a client can search their own requests by.
- *
- * The status LABEL is included rather than the raw enum, because "waiting on
- * estimates" is what the screen says and "pending" is what the column holds —
- * searching for the word you can see is the only behaviour that isn't a
- * surprise. The date is formatted for the same reason.
- *
- * Deliberately NO job code. The code is derived from the JOB's uuid, and this
- * dashboard only ever loads the job for the request currently selected, so a
- * code typed here could match at most one row and would silently miss every
- * other. Adding it would mean a job read per request on every load — a new
- * query for a search that is otherwise free. The contractor and admin
- * dashboards hold their jobs already, and match on the code there.
- */
-function reqSearchFields(r: any): (string | number | null | undefined)[] {
-  return [
-    r?.service_needed, r?.location, r?.preferred_schedule, r?.description,
-    STATUS_META[r?.status]?.label ?? r?.status,
-    r?.created_at ? new Date(r.created_at).toLocaleDateString() : null,
-  ];
-}
 
 export default function ClientDashboard() {
   const [, setLocation] = useLocation();
@@ -1039,7 +939,7 @@ export default function ClientDashboard() {
         body: { plan_request_id: plan.request_id, occurrences: n },
       });
       if (error) throw error;
-      if (data?.url) { window.location.href = data.url; return; }
+      if (data?.url) { window.location.assign(data.url); return; }
       throw new Error(data?.error || "Could not start checkout");
     } catch (e: any) {
       let msg = e?.message || String(e);
@@ -1195,7 +1095,7 @@ export default function ClientDashboard() {
     try {
       const { data, error } = await supabase.functions.invoke("create-payment-intent", { body: { job_id: activeJob.id } });
       if (error) throw error;
-      if (data?.url) { window.location.href = data.url; return; }
+      if (data?.url) { window.location.assign(data.url); return; }
       throw new Error(data?.error || "Could not start checkout");
     } catch (e: any) {
       let msg = e?.message || String(e);
@@ -1231,7 +1131,7 @@ export default function ClientDashboard() {
     try {
       const { data, error } = await supabase.functions.invoke("create-balance-payment", { body: { job_id: activeJob.id } });
       if (error) throw error;
-      if (data?.url) { window.location.href = data.url; return; }
+      if (data?.url) { window.location.assign(data.url); return; }
       throw new Error(data?.error || "Could not start checkout");
     } catch (e: any) {
       let msg = e?.message || String(e);
@@ -2284,71 +2184,7 @@ export default function ClientDashboard() {
           </>
         )}
 
-        {activeTab === "pros" && (pros.length > 0 ? (
-          /* ── My Pros, ported off the horizontal card rail ──────────────────
-             This was a `overflowX:"auto"` strip of fixed 210px cards. Two
-             things were wrong with that and neither was cosmetic:
-
-             1. A horizontal scroller inside a vertically-scrolling page hides
-                its own contents. With four pros, pro #3 onward was off-screen
-                with no affordance saying so — the same "no way to reach the
-                rest" defect the owner reported about multi-job access, just
-                on a different axis.
-             2. 210px could not hold a company name, so the card needed its own
-                minWidth:0 + ellipsis dance (the comment that used to live here
-                existed only to explain that workaround). A full-width row has
-                room, so the clipping question stops existing.
-
-             The favourite heart is the ONE orange thing on this tab, and it
-             earns it: there is no "turn" state on My Pros at all, so the
-             accent budget is unspent, and a filled heart means "mine" — which
-             is the only thing on the tab the client themselves set. It reads
-             `--ff-accent-500`, not the literal, so it re-themes in light mode.
-
-             `♥`/`♡` stay as text glyphs rather than becoming an <Ic>: there is
-             no heart in Ic's hand-copied Lucide set, and a missing glyph
-             renders BLANK with no error rather than failing loudly. */
-          <Group
-            label="Your pros"
-            action={<span style={{ opacity:.7 }}>{pros.length}</span>}
-          >
-            <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"var(--ff-s3)" }}>Rebook someone you trust — they&rsquo;ll be requested directly.</div>
-            <Sheet>
-              {pros.map(pro => (
-                <Row
-                  key={pro.contractor_id}
-                  icon="user-check"
-                  tone="neutral"
-                  title={pro.company_name || pro.name || "Your pro"}
-                  sub={
-                    (pro.rating ? `⭐ ${Number(pro.rating).toFixed(1)}` : "New")
-                    + (pro.jobs_together ? ` · ${pro.jobs_together} job${pro.jobs_together===1?"":"s"} together` : "")
-                    + (pro.last_service ? ` · last: ${pro.last_service}` : "")
-                  }
-                  right={
-                    <>
-                      <Button
-                        variant="ghost"
-                        aria-label={pro.is_favorite ? "Remove favourite" : "Add favourite"}
-                        onClick={() => toggleFav(pro.contractor_id)}
-                        style={{ fontSize:"1.05rem", lineHeight:1, padding:".25rem .4rem", color: pro.is_favorite ? "var(--ff-accent-500)" : "rgba(var(--ff-muted), .4)" }}
-                      >
-                        {pro.is_favorite ? "♥" : "♡"}
-                      </Button>
-                      <Button variant="primary" onClick={() => rehire(pro)}>Book again</Button>
-                    </>
-                  }
-                />
-              ))}
-            </Sheet>
-          </Group>
-        ) : (
-          <div style={{ textAlign:"center", padding:"3.5rem 2rem" }}>
-            <div style={{ marginBottom:"1rem" }}><Ic name="user-check" size={44} color="var(--ff-c10)" /></div>
-            <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".03em", lineHeight:1.1, marginBottom:".4rem" }}>No pros yet</h2>
-            <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".9rem" }}>Once you've worked with a contractor, they'll show up here so you can rebook them in one tap.</p>
-          </div>
-        ))}
+        {activeTab === "pros" && <ClientProsTab pros={pros} toggleFav={toggleFav} rehire={rehire} />}
 
         {/* The referral card used to live here. It moved to Settings on
             2026-09-01 (`src/components/ReferralCard.tsx`), because this tab is
@@ -2363,97 +2199,7 @@ export default function ClientDashboard() {
             the code and its status to decide whether that prompt may fire at
             all, and a retired code must never be offered for sharing. */}
 
-        {activeTab === "recurring" && (plans.length > 0 ? (
-          /* ── Recurring plans ──────────────────────────────────────────────
-             ⚠️ MONEY SURFACE, PRESENTATION-ONLY PORT. `prepayPlan(pl, n)` and
-             `togglePlan(pl)` are called with identical arguments, and all four
-             derivations below (`paused`, `cadence`, `hasPool`, `remaining`)
-             are byte-identical to what they replaced. **Touches none of the
-             four payout guards** — pool money lives on
-             `recurring_prepayments`, never on `funded_amount`, so nothing here
-             can move `fully_funded`. Verified by diffing the block against
-             HEAD rather than by eye.
-
-             ── Why ONE SHEET PER PLAN and not one sheet of plan rows ────────
-             A plan carries up to three actions (Prepay 2, Prepay 3, Pause) and
-             an optional prepaid-balance line. `.ffu-rr` is `white-space:nowrap`
-             with no wrap, and the row grid is `gut / minmax(0,1fr) / auto` — so
-             cramming three buttons into `right` crushes the service name to
-             nothing on a 372px phone. A plan genuinely IS a card, so each gets
-             its own Sheet: the win over v1 is not fewer boxes, it is that the
-             box's inset, radius and hairline now come from the token scale
-             instead of a hand-rolled `12px` + `1rem` + `.03` alpha per card.
-
-             `ButtonRow` is deliberately NOT used — it is exactly two columns
-             and there can be three buttons here.
-
-             The subtitle keeps the consumer-facing wording "held securely" —
-             CLAUDE.md names the banned alternative; don't reintroduce it, and
-             don't write it into this file even as a comment, because a
-             repo-wide grep for it is a real audit and a comment is a false
-             positive in it. */
-          <Group
-            label="Recurring plans"
-            action={<span style={{ opacity:.7 }}>{plans.length}</span>}
-          >
-            <div style={{ fontSize:".8rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"var(--ff-s3)" }}>We&rsquo;ll line up each visit automatically. Prepay ahead to lock it in — held securely, released one visit at a time.</div>
-            <div style={{ display:"flex", flexDirection:"column" as const, gap:"var(--ff-s3)" }}>
-              {plans.map(pl => {
-                const paused = pl.recurring_plan_status !== "active";
-                const cadence = pl.recurring_frequency === "per_km"
-                  ? (pl.recurring_interval_km ? `Every ~${Number(pl.recurring_interval_km).toLocaleString()} km` : "By distance")
-                  : (freqLabel(pl.recurring_frequency) || "Recurring");
-                const hasPool = pl.prepay_id && (pl.prepay_status === "held" || pl.prepay_status === "partially_released");
-                const remaining = hasPool ? Math.max(0, Number(pl.prepay_total || 0) - Number(pl.prepay_released || 0)) : 0;
-                return (
-                  <Sheet key={pl.request_id}>
-                    {/* tone follows the pill: warn when paused, good when
-                        running. Neither is accent — a recurring plan ticking
-                        along is the opposite of "this is on you". */}
-                    <Row
-                      icon="calendar"
-                      tone={paused ? "warn" : "good"}
-                      title={pl.service_needed}
-                      sub={
-                        <>
-                          {cadence}{pl.contractor_company ? ` · ${pl.contractor_company}` : ""}{pl.next_due ? ` · next ${new Date(pl.next_due).toLocaleDateString()}` : ""}
-                          {hasPool && (
-                            <span style={{ display:"block", color:"var(--ff-success)", marginTop:".3rem" }}>
-                              <Ic name="check-circle" size={12} style={{ marginRight:4 }} />
-                              {remaining} of {pl.prepay_total} prepaid visit{Number(pl.prepay_total)===1?"":"s"} remaining.
-                            </span>
-                          )}
-                        </>
-                      }
-                      right={<Pill tone={paused ? "warn" : "good"}>{paused ? "Paused" : "Active"}</Pill>}
-                    />
-                    {/* The strip sits outside the Row, inside the Sheet. It
-                        gets the sheet's own inset (--ff-s4) so the buttons
-                        line up with the row's text column above them, and a
-                        hairline above it so it reads as the row's footer
-                        rather than as a second, unexplained row. */}
-                    <div style={{ display:"flex", gap:"var(--ff-s2)", flexWrap:"wrap" as const, padding:"var(--ff-s3) var(--ff-s4)", borderTop:"var(--ff-hair-w) solid var(--ff-hair)" }}>
-                      {!hasPool && !paused && [2,3].map(n => (
-                        <Button key={n} variant="primary" loading={busyPlan===pl.request_id} onClick={() => prepayPlan(pl, n)}>
-                          Prepay {n} visits
-                        </Button>
-                      ))}
-                      <Button disabled={busyPlan===pl.request_id} onClick={() => togglePlan(pl)}>
-                        {paused ? "Resume plan" : "Pause plan"}
-                      </Button>
-                    </div>
-                  </Sheet>
-                );
-              })}
-            </div>
-          </Group>
-        ) : (
-          <div style={{ textAlign:"center", padding:"3.5rem 2rem" }}>
-            <div style={{ marginBottom:"1rem" }}><Ic name="repeat" size={44} color="var(--ff-c10)" /></div>
-            <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:".03em", lineHeight:1.1, marginBottom:".4rem" }}>No recurring plans</h2>
-            <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".9rem" }}>Book a job as recurring and we'll line up each visit automatically — you can manage and prepay them here.</p>
-          </div>
-        ))}
+        {activeTab === "recurring" && <ClientRecurringTab plans={plans} busyPlan={busyPlan} prepayPlan={prepayPlan} togglePlan={togglePlan} />}
 
         {activeTab === "requests" && (
         <>
@@ -3329,155 +3075,7 @@ export default function ClientDashboard() {
         </>
         )}
 
-        {activeTab === "history" && (() => {
-                  // Include every request (the active one too) so History is the complete record.
-                  const histAll = requests;
-                  if (histAll.length === 0) return (
-                    <Group label="Request history">
-                      <Sheet style={{ padding:"var(--ff-s5)" }}>
-                        <p style={{ fontSize:".88rem", color:"rgba(var(--ff-muted), .55)", margin:0 }}>Nothing here yet — your past requests will show up once you&rsquo;ve posted one.</p>
-                      </Sheet>
-                    </Group>
-                  );
-                  const matches = (r: any) =>
-                    histFilter === "all" ? true :
-                    histFilter === "completed" ? r.status === "completed" :
-                    histFilter === "cancelled" ? r.status === "cancelled" :
-                    (r.status !== "completed" && r.status !== "cancelled");
-                  // Search narrows WITHIN the chosen status filter rather than
-                  // replacing it, so the two controls compose instead of one
-                  // silently overriding the other.
-                  const histTokens = searchTokens(search);
-                  const filtered = histAll.filter(r => matches(r) && matchesSearch(histTokens, reqSearchFields(r)));
-                  const shown = filtered.slice(0, histLimit);
-                  const FILTERS: { key: typeof histFilter; label: string }[] = [
-                    { key: "all", label: "All" },
-                    { key: "active", label: "Active" },
-                    { key: "completed", label: "Completed" },
-                    { key: "cancelled", label: "Cancelled" },
-                  ];
-                  return (
-                    /* <Group> rather than a card: the caption is the Bebas label
-                       above an inset sheet, so History stops being "a box with a
-                       title inside it" and starts matching every other grouped
-                       list on the redesigned dashboards. The count moves into the
-                       caption's `action` slot, which is what that slot is for —
-                       it used to be absent, so you had to count the rows.
-
-                       The filter chips and the search box sit BETWEEN the caption
-                       and the sheet, outside both, because they act on the sheet
-                       rather than belonging to it. */
-                    <Group
-                      label="Request history"
-                      action={<span style={{ opacity:.7 }}>{filtered.length} of {histAll.length}</span>}
-                    >
-                      {/* ⚠️ The shared `.ffd-tab` LOOK but NOT <DashTabs>, and
-                          the refusal is semantic rather than cosmetic — same
-                          call Admin made for its Accounts role chips and its
-                          Agents filter. DashTabs renders role="tablist" with
-                          aria-selected, which claims these switch between
-                          SECTIONS of the page. These FILTER one list: the tab is
-                          still "history" whichever chip is lit, so announcing
-                          them as a tablist would tell a screen reader the page
-                          changed when it did not. `aria-pressed` says what
-                          actually happened.
-
-                          The `.4rem .85rem` / `.8rem` override is gone with
-                          `s.tab`: it was shrinking these chips below the 48px
-                          thumb floor that the pointer:coarse block in main.tsx
-                          promises, and `.ffd-tab` reads --ff-h-ctl so it clears
-                          the floor by construction. That was invisible on a Mac. */}
-                      <div className="ffd-tabs" style={{ marginBottom:"var(--ff-s3)" }}>
-                        {FILTERS.map(f => (
-                          <button key={f.key} type="button" onClick={() => { setHistFilter(f.key); setHistLimit(5); }} aria-pressed={histFilter === f.key} className={histFilter === f.key ? "ffd-tab ffd-on" : "ffd-tab"}>{f.label}</button>
-                        ))}
-                      </div>
-                      {histAll.length > 3 && (
-                        <DashSearch
-                          value={search}
-                          onChange={v => { setSearch(v); setHistLimit(5); }}
-                          placeholder="Search your history"
-                          resultText={filtered.length + " of " + histAll.filter(matches).length + " shown"}
-                        />
-                      )}
-                      {shown.length === 0 ? (
-                        <div style={{ fontSize:".85rem", color:"rgba(var(--ff-muted), .5)", padding:".5rem 0" }}>
-                          {searchTokens(search).length > 0
-                            ? "Nothing matches that."
-                            : "No " + (histFilter === "all" ? "" : histFilter + " ") + "requests to show."}
-                        </div>
-                      ) : (
-                        /* One <Sheet> with hairline-separated <Row>s, replacing the
-                           hand-rolled flex row with its own padding and its own
-                           borderBottom. The win is not that it looks nicer in
-                           isolation — it is that the row's icon column and the
-                           hairline under it both read --ff-gut, so the separator
-                           starts exactly where the text does and can never drift
-                           from the column above it. The old markup had no icon
-                           column at all, so the status was carried entirely by a
-                           chip at the far right of the row, which on a phone wrapped
-                           onto its own line about half the time. */
-                        <Sheet>
-                          {shown.map(r => (
-                            <Row
-                              key={r.id}
-                              icon={(STATUS_META[r.status]?.icon as IconName) ?? "clipboard-list"}
-                              tone={STATUS_META[r.status]?.rowTone ?? "neutral"}
-                              title={r.service_needed}
-                              sub={new Date(r.created_at).toLocaleDateString()}
-                              right={
-                                <>
-                                  {/* No icon inside the pill any more — the Row's own
-                                      icon column already carries it, and the same
-                                      glyph twice on one row is noise. */}
-                                  <Pill tone={STATUS_META[r.status]?.tone ?? "neutral"}>
-                                    {STATUS_META[r.status]?.label ?? r.status}
-                                  </Pill>
-                                  {/* ⚠️ `completed` is deliberately INCLUDED here, and
-                                      the exclusion it replaces is why zero reviews
-                                      exist. The rating form renders only when the
-                                      completed job is the ACTIVE job, but `openReqs`
-                                      filters completed out, `activeReq` falls back to
-                                      `requests[0]` only when there are no open
-                                      requests at all, and the switcher lists
-                                      `openReqs` alone — so this button was the one
-                                      and only thing on the platform that could make a
-                                      finished job active, and it was hidden on
-                                      exactly the status that needs it. The review ask
-                                      then survived solely as the one-shot completion
-                                      modal: miss or dismiss it and the rating was
-                                      unreachable forever. `cancelled` stays hidden —
-                                      there is nothing to do on it. The job read at
-                                      `activeReq.id` already excludes only cancelled
-                                      jobs, so a completed request loads its job
-                                      normally, and the form self-gates on
-                                      `activeJob.status === "completed"` and
-                                      `hasReviewed`. The label says so, because "View"
-                                      gives a client no reason to press it. */}
-                                  {r.status !== "cancelled" && (
-                                    <Button onClick={() => { setSelectedReqId(r.id); setActiveTab("requests"); window.scrollTo({ top: 0 }); }}>
-                                      {r.status === "completed" ? "View & rate" : "View"}
-                                    </Button>
-                                  )}
-                                  {canRemoveRequest(r, null) && (
-                                    <Button variant="danger" aria-label="Delete this request" disabled={busyReq} onClick={() => removeRequest(r)}>
-                                      <Ic name="trash" size={13} />
-                                    </Button>
-                                  )}
-                                </>
-                              }
-                            />
-                          ))}
-                        </Sheet>
-                      )}
-                      {filtered.length > histLimit && (
-                        <Button full style={{ marginTop:"var(--ff-s3)" }} onClick={() => setHistLimit(l => l + 5)}>
-                          Show more ({filtered.length - histLimit})
-                        </Button>
-                      )}
-                    </Group>
-                  );
-                })()}
+        {activeTab === "history" && <ClientHistoryTab requests={requests} histFilter={histFilter} search={search} histLimit={histLimit} setHistFilter={setHistFilter} setHistLimit={setHistLimit} setSearch={setSearch} setSelectedReqId={setSelectedReqId} setActiveTab={setActiveTab} busyReq={busyReq} removeRequest={removeRequest} />}
       </DashContent>
         </div>
       </div>

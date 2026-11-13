@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
+import { cors } from "../_shared/cors.ts";
+import { sendEmail } from "../_shared/resend.ts";
 
+// v26 (2026-11-12): CORS headers and the Resend call come from ../_shared, the
+// first function to use it. No behaviour change.
+//
 // v25 (2026-11-12): the button opens the open-jobs tab
 // (?tab=available) instead of the dashboard home, where the pro had to find
 // the job themselves; the subject drops "URGENT", which every email carried.
@@ -39,16 +44,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 // re-invoking this function is idempotent) and send-notification's
 // EMAIL_HANDLED_ELSEWHERE suppression of `job_in_field` + `rehire_request`.
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const SUPABASE_URL   = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const FROM_EMAIL     = "noreply@freddyfixit.ca";
 
 // Keep in step with place_bid()'s v_cap and the /7 counters on the dashboards.
 const BID_CAP = 7;
 
 const admin = createClient(SUPABASE_URL, SERVICE_KEY);
-const cors  = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
 
 const RESERVE_MS = 48 * 60 * 60 * 1000; // preferred-pro reservation window
 
@@ -317,16 +319,7 @@ serve(async (req) => {
 
       let res: Response | null = null;
       try {
-        res = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${RESEND_API_KEY}` },
-          body: JSON.stringify({
-            from: `Freddy Fix It <${FROM_EMAIL}>`,
-            to: email,
-            subject,
-            html,
-          }),
-        });
+        res = await sendEmail({ to: email, subject, html });
       } catch (e) {
         // A thrown fetch used to abort the whole loop, taking the remaining
         // recipients with it. Record it and carry on to the next pro.

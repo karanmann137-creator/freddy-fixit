@@ -108,6 +108,15 @@ INVARIANTS = {
         # keep existing and throw nothing, the lead cards still render, and the
         # only symptom is that the owner silently goes back to writing every
         # follow-up himself. Exactly the shape this table is for.
+        # 2026-11-12: the tab bodies moved to src/pages/admin/. The handler is
+        # still defined here and the button lives in AdminAgentsTab, so the
+        # guard is now three needles across two files: the handler, the tab
+        # mount that passes it down, and (below) the button that calls it.
+        "const draftLead",
+        "<AdminAgentsTab",
+        "draftLead={draftLead}",
+    ],
+    "src/pages/admin/AdminAgentsTab.tsx": [
         "draftLead(a)",
     ],
     # 2026-11-09: the same lockout one surface further in. The admin-message

@@ -11,7 +11,7 @@ import OnboardingProgress from "@/components/OnboardingProgress";
 import OnboardingVideo from "@/components/OnboardingVideo";
 import { trackEvent } from "@/lib/analytics";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
-import { useServicePricing, fromText, floorFor } from "@/lib/servicePricing";
+import { useServicePricing, floorFor } from "@/lib/servicePricing";
 import { isPerKmService, freqLabel, SLIDER_STOPS, SLIDER_SHORT } from "@/lib/recurrence";
 import NewRequest from "@/components/NewRequest";
 import OAuthButtons from "@/components/OAuthButtons";

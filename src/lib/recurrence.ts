@@ -31,29 +31,6 @@ export function isPerKmService(service: string): boolean {
   return VEHICLE_SERVICES.has(service);
 }
 
-// Per-service cadence menus. Anything not listed falls back to DEFAULT_OPTIONS.
-const OPTION_MAP: Record<string, Freq[]> = {
-  // Vehicle — mileage OR time based.
-  "Oil Change":            ["per_km", "quarterly", "semiannual", "annual"],
-  "Tire Swap / Rotation":  ["seasonal", "per_km", "semiannual", "annual"],
-  "Battery / Brakes":      ["per_km", "semiannual", "annual"],
-  "Vehicle Maintenance":   ["per_km", "quarterly", "semiannual", "annual"],
-  // Seasonal / weather-driven.
-  "Snow Removal":          ["weekly", "biweekly", "seasonal"],
-  "Landscaping":           ["weekly", "biweekly", "monthly", "seasonal"],
-  "Gutters":               ["quarterly", "seasonal", "semiannual", "annual"],
-  "Air Conditioning":      ["seasonal", "semiannual", "annual"],
-  "HVAC Maintenance":      ["quarterly", "seasonal", "semiannual", "annual"],
-  // Frequent household upkeep.
-  "Cleaning Services":     ["weekly", "biweekly", "monthly", "quarterly"],
-  "General Handyman":      ["monthly", "quarterly", "semiannual", "annual"],
-  "Solar":                 ["seasonal", "semiannual", "annual"],
-};
-
-const DEFAULT_OPTIONS: Freq[] = [
-  "weekly", "biweekly", "monthly", "quarterly", "seasonal", "semiannual", "annual",
-];
-
 // ── Slider cadence (1 week → 3 months) ───────────────────────────────────────
 // The booking picker is a slider whose stops step weekly, then monthly. These
 // tokens are understood by the DB `freq_interval()` (every_N_weeks / every_N_months).
