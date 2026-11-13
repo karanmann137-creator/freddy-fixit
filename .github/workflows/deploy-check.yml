@@ -14,9 +14,17 @@ name: Deploy check
 # bypass secret is ever rotated in Vercel, update the GitHub secret too, or
 # this workflow skips and deploys wait.
 
+# TRIGGER: "ready" (built), not only "success". Once this check is REQUIRED,
+# Vercel does not report a production deployment as a success until the check
+# passes, so a workflow that waits for "success" never starts and the deploy
+# waits on it forever. That happened on the first gated deploy (264ff60,
+# 2026-11-12). "success" stays listed so the check still runs if the
+# requirement is ever removed; when both fire, the second run is redundant
+# and harmless.
 on:
   repository_dispatch:
     types:
+      - vercel.deployment.ready
       - vercel.deployment.success
 
 # The last step writes a commit status for Vercel to read. The default token
@@ -28,7 +36,9 @@ permissions:
 
 concurrency:
   group: deploy-check-${{ github.event.client_payload.url }}
-  cancel-in-progress: true
+  # false: a second event for the same build must not cancel a run that is
+  # about to report its result to Vercel.
+  cancel-in-progress: false
 
 jobs:
   smoke:
