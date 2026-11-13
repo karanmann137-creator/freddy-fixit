@@ -164,28 +164,35 @@ const CSS = `
    when the answer is "you". A screen where the client is waiting on a pro has
    no orange on it anywhere — which is what makes the orange mean something on
    the screens that do. */
+/* 2026-11-12 (owner): the state was a 26px pill and read as a label, not as
+   the answer to "whose move is it". It is now a full-width strip, the first
+   thing under the job tabs. "turn" is the one solid-orange block on the screen
+   (still the only orange), so "your turn" cannot be missed; "wait" is a calm
+   outlined strip so the difference between the two is visible at a glance,
+   not only readable. */
 .ffu-stateline{
-  display:inline-flex; align-items:center; gap:var(--ff-s2);
-  height:26px; padding:0 var(--ff-s3);
-  border-radius:99px;
-  font-family:'Bebas Neue', sans-serif; font-size:.78rem; letter-spacing:.1em;
-  margin-bottom: var(--ff-s3);
+  display:flex; align-items:center; gap:var(--ff-s3);
+  min-height:var(--ff-h-ctl); padding:0 var(--ff-s4);
+  border-radius:12px;
+  font-family:'Bebas Neue', sans-serif; font-size:1.1rem; letter-spacing:.09em;
+  margin-bottom: var(--ff-s4);
 }
+.ffu-stateline .ffu-sdot{ width:10px; height:10px; }
 .ffu-stateline.ffu-turn{
-  background: var(--ff-accent-soft); color: var(--ff-accent-400);
-  border:1px solid var(--ff-accent-line);
+  background: var(--ff-accent-400); color: rgb(var(--ff-bg-rgb));
 }
 .ffu-stateline.ffu-wait{
-  background: rgba(var(--ff-fg), .07); color: rgba(var(--ff-muted), .95);
-  border:var(--ff-hair-w) solid var(--ff-hair);
+  background: rgba(var(--ff-fg), .06); color: var(--ff-text);
+  box-shadow: inset 3px 0 0 rgba(var(--ff-muted), .55);
 }
+.ffu-stateline.ffu-wait .ffu-sdot{ background:transparent; box-shadow: inset 0 0 0 2px rgba(var(--ff-muted), .8); }
 .ffu-stateline.ffu-ok{
   background: rgba(134,239,172,.14); color: var(--ff-success);
-  border:1px solid rgba(134,239,172,.26);
+  box-shadow: inset 3px 0 0 var(--ff-success);
 }
 .ffu-stateline.ffu-rev{
   background: rgba(251,191,36,.14); color: var(--ff-warn);
-  border:1px solid rgba(251,191,36,.26);
+  box-shadow: inset 3px 0 0 var(--ff-warn);
 }
 /* ═══ the dead-end screen ═════════════════════════════════════════════════
    WHAT THIS EXISTS TO REPLACE: a full-page "we could not tell" state, hand
@@ -261,28 +268,33 @@ const CSS = `
    both edges of the pass so a half-visible chip signals "scrollable"; without
    it the last chip stops flush at the padding and the rail reads as complete.
    The padding puts the first chip back on the text grid. */
+/* 2026-11-12 (owner): these were rounded bubbles and read as filters or tags.
+   They are tabs, so they now look like tabs: plain labels on one hairline, the
+   open job marked by an underline in the text colour (not orange; orange stays
+   reserved for "your turn"). The state dot keeps its job. */
 .ffu-jobsw{
-  display:flex; gap:var(--ff-s2);
+  display:flex; gap:var(--ff-s6);
   overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch;
   margin:0 calc(var(--ff-s4) * -1) var(--ff-s4);
-  padding:0 var(--ff-s4) var(--ff-s1);
+  padding:0 var(--ff-s4);
+  box-shadow: inset 0 calc(var(--ff-hair-w) * -1) 0 var(--ff-hair);
 }
 .ffu-jobsw::-webkit-scrollbar{ display:none; }
 .ffu-jobchip{
-  flex:0 0 auto; height:36px;
+  flex:0 0 auto; height:var(--ff-h-ctl);
   display:inline-flex; align-items:center; gap:var(--ff-s2);
-  padding:0 var(--ff-s3); border-radius:99px; cursor:pointer;
-  background: rgba(var(--ff-fg), .05);
-  border:var(--ff-hair-w) solid var(--ff-hair);
-  font-family:'Bebas Neue', sans-serif; font-size:.8rem; letter-spacing:.07em;
-  color: rgba(var(--ff-muted), .88);
+  padding:0; border-radius:0; cursor:pointer;
+  background:none; border:0;
+  box-shadow: inset 0 -2px 0 transparent;
+  font-family:'Bebas Neue', sans-serif; font-size:.95rem; letter-spacing:.07em;
+  color: rgba(var(--ff-muted), .75);
   white-space:nowrap;
-  transition: background .16s var(--ff-ease-out), color .16s var(--ff-ease-out), transform .34s var(--ff-ease-spring);
+  transition: box-shadow .16s var(--ff-ease-out), color .16s var(--ff-ease-out), transform .34s var(--ff-ease-spring);
 }
 .ffu-jobchip:active{ transform:scale(0.97); transition-duration:.1s; transition-timing-function: var(--ff-ease-out); }
 .ffu-jobchip.ffu-on{
-  background: rgba(var(--ff-fg), .13); color: var(--ff-text);
-  border-color: rgba(var(--ff-fg), .18);
+  color: var(--ff-text);
+  box-shadow: inset 0 -2px 0 var(--ff-text);
 }
 /* The per-job state dot. This is the whole value of the rail: you can see
    WHICH job wants you without opening any of them. */
@@ -293,7 +305,7 @@ const CSS = `
 }
 .ffu-jobchip i.ffu-turn{ background: var(--ff-accent-400); border-color: var(--ff-accent-400); }
 .ffu-jobchip i.ffu-ok{ background: var(--ff-success); border-color: var(--ff-success); }
-.ffu-jobchip.ffu-add{ color: rgba(var(--ff-muted), .7); border-style:dashed; }
+.ffu-jobchip.ffu-add{ color: rgba(var(--ff-muted), .6); }
 
 /* ═══ grouped sheet + rows ════════════════════════════════════════════════ */
 .ffu-grp{ margin-top: var(--ff-s6); }
