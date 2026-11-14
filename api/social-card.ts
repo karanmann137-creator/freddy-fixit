@@ -1,9 +1,13 @@
 // Draws a Freddy Fix It social graphic (1080x1350 PNG) for one row of
 // public.social_cards. Text comes only from that table, so nobody can make a
 // branded image with their own words by editing the URL.
+// Pinned to 0.6.8: 1.x pulls in a Node module the edge runtime rejects.
 import { ImageResponse } from "@vercel/og";
 
 export const config = { runtime: "edge" };
+
+// Edge runtime: no Node types here, only the env object.
+declare const process: { env: Record<string, string | undefined> };
 
 const NAVY = "#1a2236", DEEP = "#111827", ORANGE = "#ea6b14", TEXT = "#f0f4ff";
 
