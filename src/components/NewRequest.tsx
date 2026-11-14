@@ -801,6 +801,9 @@ export default function NewRequest() {
       // The request row exists now, so the draft is no longer a half-finished
       // request — it's a duplicate waiting to happen. Cleared before navigating,
       // while `submitting` still has autosave switched off.
+      // Same event name the first-job signup flow sends, so "requests posted"
+      // counts both paths in analytics.
+      trackEvent("post_job", { flow: "returning_client" });
       clearDraft(NEWREQUEST_DRAFT_KEY);
       setLocation("/client-dashboard");
     } catch (err: any) {
