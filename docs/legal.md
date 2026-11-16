@@ -8,7 +8,19 @@ Company entity **Freddy FixIt Contractors Inc.** Pages: `/user-agreement` (incl.
 
 **⚠️ STILL OPEN, not resolvable by wording:** prepaid contracting is a **licensing** obligation. Contractors may each need a Service Alberta licence + ~$10k bond, and **the platform itself may qualify as a prepaid contracting business needing its own licence.** Needs a lawyer + Service Alberta.
 
-**Privacy Policy** — Alberta PIPA + PIPEDA; discloses Stripe, Supabase, Vercel, Resend, Google (sign-in + GA4) and Komoot GmbH (Photon, Germany); GA4 cookies + opt-out; 7-year payment retention; job media kept with transaction records up to 7 years, profile media best-effort 90 days; OIPC Alberta rights.
+**Privacy Policy** — Alberta PIPA + PIPEDA; GA4 cookies + opt-out; 7-year payment retention; job media kept with transaction records up to 7 years, profile media best-effort 90 days; OIPC Alberta rights.
+
+## Third-party processors — §6.2 is the ONE list (widened 2026-11-16)
+
+**UA §16.1 points at Privacy Policy §6.2 rather than copying it**: two copies of a processor list drift, and §6.2 is the document a regulator reads. Widened **7 → 11 rows** after an inventory of every external host in `src/` and `supabase/functions/` — added **Anthropic PBC**, **Cloudflare, Inc.**, **Have I Been Pwned (Pwned Passwords)** and **Unsplash**, and folded Google Fonts into the existing Google LLC row (fonts load from `fonts.googleapis.com` on *every* page, so the visitor's IP reaches Google **before and regardless of analytics consent** — that is the part worth saying out loud). New **§6.5** covers the Facebook/Reddit lead scouts as a one-way *read* of public posts; old 6.5 Business Transfers → **6.6**, safe only because nothing cross-references it by number (checked). §7's country list gained Australia and "global network".
+
+New: UA **§16** (Third-Party Services and Automated Processing) and Contractor Terms **§1.f** (How Your Documents Are Verified). **§16 is numbered 16 deliberately — §§5, 6.4, 6.9, 6.10 and 13 are cross-referenced by number from both Parts and from the Privacy Policy, so an inserted mid-document section would silently break every one of them.** §16 uses `className="sec"` against two new rules in the page's injected `<style>` instead of inline `marginBottom`, because `check_ux.py`'s raw-spacing ratchet is at 1467 and two more inline rem literals would have raised it.
+
+**⚠️ The gap that mattered was Anthropic, and its SHAPE generalises: `review-contractor` posts business licences, certificates of insurance, WCB clearances, trade certs and GOVERNMENT PHOTO ID to `api.anthropic.com`, and no legal page said so.** Six more edge functions send user content there too (`scan-image`, `analyze-repair`, `chat`, `newsletter-ai-draft`, `agent-draft-lead`, `social-bot-brain`). **A processor added by writing an edge function is invisible to the legal pages — nothing in the ship path asks "did this add a third party?".** When you add an outbound call to a new host, add the §6.2 row in the same ship. Both new clauses promise the AI is **advisory only, never an automated decision**, which is now a promise the code must keep: `review-contractor` is already ADVISORY ONLY and never touches `contractors.status`. Keep it that way or the policy becomes false.
+
+**Two entity names are unverified** and should be confirmed before a lawyer reviews this: the legal operator of Pwned Passwords (listed as "Have I Been Pwned (Pwned Passwords)", Australia) and Unsplash's post-Getty corporate name (listed bare as "Unsplash", United States). Both are accurate by *function*; only the corporate name is soft.
+
+**⚠️ UA §12 requires 14 days' email notice before an amendment takes effect.** Both pages now read "Last Updated: November 16, 2026", which is a *publication* date, not notice. **Shipping these pages does not send the notice** — that is an owner action.
 
 Consumer-facing wording: say **"held securely"**, never "escrow" — the Stripe held balance is not a trust account.
 
