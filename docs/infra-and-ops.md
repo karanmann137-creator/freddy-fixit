@@ -26,3 +26,7 @@
 ## Social cards (2026-11-13)
 
 `public.social_cards` holds one row per social post (text, caption, tagged-link id, where it went). `api/social-card.ts` is a Vercel edge function that draws the 1080x1350 graphic for a row: `https://freddyfixit.ca/api/social-card?id=<uuid>`. It only draws text that is in the table, so the URL cannot be edited to put other words on a Freddy Fix It image. Rows are written through the Supabase MCP by the scheduled post maker; Metricool publishes. The playbook the post maker follows is a Google Doc owned by the owner, not a repo file.
+
+## Seasonal checklist PDF and story cards (2026-11-16)
+
+`public/guides/calgary-winter-home-checklist.pdf` is the free one-page checklist offered in social posts (served at `https://freddyfixit.ca/guides/calgary-winter-home-checklist.pdf`). It is built by `python3 tools/make_checklist_pdf.py public/guides/<name>.pdf` (needs `reportlab`); edit the lists in that script and rerun it for the next season. Its links carry `utm_source=checklist` so visits from the PDF can be counted. `/api/social-card?id=<uuid>&fmt=story` draws the same card at 1080x1920 for Instagram and Facebook stories.

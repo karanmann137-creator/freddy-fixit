@@ -16,14 +16,14 @@ type El = { type: string; props: Record<string, unknown> };
 const el = (type: string, style: Record<string, unknown>, children?: unknown): El =>
   ({ type, props: { style: { display: "flex", ...style }, children } });
 
-export function cardElement(c: Card): El {
+export function cardElement(c: Card, story = false): El {
   const hl = c.headline.length;
   const hSize = hl <= 28 ? 124 : hl <= 48 ? 100 : hl <= 75 ? 82 : 68;
   const lines = c.body.split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 5);
   const bSize = lines.join(" ").length > 220 ? 38 : 44;
   return el("div", {
     width: "100%", height: "100%", flexDirection: "column", justifyContent: "space-between",
-    padding: "84px 80px 72px", color: TEXT, fontFamily: "sans-serif",
+    padding: story ? "330px 80px 300px" : "84px 80px 72px", color: TEXT, fontFamily: "sans-serif",
     backgroundImage: `linear-gradient(165deg, ${NAVY} 0%, ${DEEP} 100%)`,
   }, [
     el("div", { flexDirection: "column" }, [
@@ -49,7 +49,10 @@ export function cardElement(c: Card): El {
 }
 
 export default async function handler(req: Request): Promise<Response> {
-  const id = new URL(req.url).searchParams.get("id") ?? "";
+  const params = new URL(req.url).searchParams;
+  const id = params.get("id") ?? "";
+  // fmt=story draws the same card at 1080x1920 with room for the app's own buttons top and bottom
+  const story = params.get("fmt") === "story";
   if (!/^[0-9a-f-]{36}$/i.test(id)) return new Response("Bad id", { status: 400 });
   const base = process.env.VITE_SUPABASE_URL, key = process.env.VITE_SUPABASE_ANON_KEY;
   if (!base || !key) return new Response("Not configured", { status: 500 });
@@ -58,8 +61,8 @@ export default async function handler(req: Request): Promise<Response> {
   });
   const rows = r.ok ? ((await r.json()) as Card[]) : [];
   if (!rows.length) return new Response("Not found", { status: 404 });
-  return new ImageResponse(cardElement(rows[0]) as never, {
-    width: 1080, height: 1350,
+  return new ImageResponse(cardElement(rows[0], story) as never, {
+    width: 1080, height: story ? 1920 : 1350,
     headers: { "Cache-Control": "public, max-age=31536000, immutable" },
   });
 }
