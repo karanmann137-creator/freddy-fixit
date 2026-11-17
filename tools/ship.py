@@ -56,6 +56,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # ended up byte-identical across six SEO routes and then drifted.
 # ---------------------------------------------------------------------------
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import check_legal  # noqa: E402
 import check_mounts  # noqa: E402
 import check_tokens  # noqa: E402
 import check_ux  # noqa: E402
@@ -238,13 +239,23 @@ def check_invariants(paths):
 # off-white ground. Nothing throws, the build is clean, and you find out by
 # looking at the site, which on this platform means the owner finds out.
 #
-# Both modules own their own rules in ONE copy and are imported here rather
-# than reimplemented, exactly as check_mounts is. CI runs the same two files
+# Each module owns its own rules in ONE copy and is imported here rather
+# than reimplemented, exactly as check_mounts is. CI runs the same files
 # standalone (.github/workflows/typecheck.yml) to cover the pushes that do not
 # come through this script.
+#
+# check_legal rides here for the same reason: a new third-party host reaching
+# out of src/ or supabase/functions/ with no row covering it in the Privacy
+# Policy is an UNDISCLOSED PROCESSOR, and that failure class is an absence --
+# invisible to typecheck, to the build, to platform_health_check() (it is not a
+# row) and to the smoke tests. It is also only cheap to catch BEFORE the push:
+# afterwards the undisclosed collection has already happened to real visitors.
+# It never edits a legal page; it refuses the ship and names the host.
 # ---------------------------------------------------------------------------
 def check_style_guards():
-    for mod, label in ((check_tokens, "theme tokens"), (check_ux, "ux laws")):
+    for mod, label in ((check_tokens, "theme tokens"),
+                       (check_ux, "ux laws"),
+                       (check_legal, "legal disclosure")):
         problems = mod.check(REPO)
         if problems:
             die("%s: %d problem(s).\n%s\n"
@@ -253,7 +264,8 @@ def check_style_guards():
                    "\n".join("  - " + p.replace("\n      ", "\n    ") for p in problems),
                    mod.__name__))
     ok("theme tokens in parity; ux laws hold (focus rule present, orange ratchet "
-       "not risen, no unringed outline:none)")
+       "not risen, no unringed outline:none); every outbound host declared and "
+       "both legal pages at the current terms version")
 
 
 # ---------------------------------------------------------------------------

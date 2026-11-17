@@ -16,7 +16,7 @@ Company entity **Freddy FixIt Contractors Inc.** Pages: `/user-agreement` (incl.
 
 New: UA **§16** (Third-Party Services and Automated Processing) and Contractor Terms **§1.f** (How Your Documents Are Verified). **§16 is numbered 16 deliberately — §§5, 6.4, 6.9, 6.10 and 13 are cross-referenced by number from both Parts and from the Privacy Policy, so an inserted mid-document section would silently break every one of them.** §16 uses `className="sec"` against two new rules in the page's injected `<style>` instead of inline `marginBottom`, because `check_ux.py`'s raw-spacing ratchet is at 1467 and two more inline rem literals would have raised it.
 
-**⚠️ The gap that mattered was Anthropic, and its SHAPE generalises: `review-contractor` posts business licences, certificates of insurance, WCB clearances, trade certs and GOVERNMENT PHOTO ID to `api.anthropic.com`, and no legal page said so.** Six more edge functions send user content there too (`scan-image`, `analyze-repair`, `chat`, `newsletter-ai-draft`, `agent-draft-lead`, `social-bot-brain`). **A processor added by writing an edge function is invisible to the legal pages — nothing in the ship path asks "did this add a third party?".** When you add an outbound call to a new host, add the §6.2 row in the same ship. Both new clauses promise the AI is **advisory only, never an automated decision**, which is now a promise the code must keep: `review-contractor` is already ADVISORY ONLY and never touches `contractors.status`. Keep it that way or the policy becomes false.
+**⚠️ The gap that mattered was Anthropic, and its SHAPE generalises: `review-contractor` posts business licences, certificates of insurance, WCB clearances, trade certs and GOVERNMENT PHOTO ID to `api.anthropic.com`, and no legal page said so.** Six more edge functions send user content there too (`scan-image`, `analyze-repair`, `chat`, `newsletter-ai-draft`, `agent-draft-lead`, `social-bot-brain`). **A processor added by writing an edge function was invisible to the legal pages — nothing in the ship path asked "did this add a third party?". `tools/check_legal.py` is now that question** (see the last section of this file); it refuses a ship that reaches a host no clause covers. When you add an outbound call to a new host, add the §6.2 row **and** the `DECLARED` entry in the same ship. Both new clauses promise the AI is **advisory only, never an automated decision**, which is now a promise the code must keep: `review-contractor` is already ADVISORY ONLY and never touches `contractors.status`. Keep it that way or the policy becomes false.
 
 **Two entity names are unverified** and should be confirmed before a lawyer reviews this: the legal operator of Pwned Passwords (listed as "Have I Been Pwned (Pwned Passwords)", Australia) and Unsplash's post-Getty corporate name (listed bare as "Unsplash", United States). Both are accurate by *function*; only the corporate name is soft.
 
@@ -57,6 +57,36 @@ Before this, **nothing recorded that anyone had ever accepted anything.** The si
 **What this does not have, and the honest limitation:** acceptance has never been recorded before, so every one of the ~40 existing accounts reads as owing one, with no baseline to compare against. The first weeks of `admin_terms_tail` are therefore a record of *this* rollout, not of historical consent — and nothing retroactively evidences the ticks already thrown away.
 
 **When you publish new terms:** update the page text, `update platform_settings set value = '"YYYY-MM-DD"' where key = 'terms_version'`, and send the **UA §12 14-day email notice** — the gate collects acceptance, it does not give notice. **And when you add a new consequential action, add a gate to it and a needle to `check_mounts.py` in the same ship.** The three rows above are the whole list; a fourth consequential action with no gate is invisible from every surface at once.
+
+---
+
+## Keeping the terms legally current — the gate and the weekly pass (built 2026-11-17)
+
+The owner asked for terms that "auto update based on if there is anything that has changed", reviewed weekly. It was split in two, because the question has a mechanical half and a judgement half and they want opposite treatment.
+
+### The mechanical half — `tools/check_legal.py`, the fifth ship gate
+
+**The failure class named in §6.2's own write-up above is the one being closed:** *"a processor added by writing an edge function is invisible to the legal pages — nothing in the ship path asks 'did this add a third party?'"*. So the ask now lives in the ship path. `tools/check_legal.py` scans every `https?://host` in `src/**/*.{ts,tsx}`, `supabase/functions/**/*.ts` and `index.html` against a **`DECLARED` dict** that maps each host to the clause covering it, and refuses the ship on a host it cannot place. It also asserts both legal pages still read the `Last Updated` date matching `TERMS_VERSION_PRETTY`. `tools/ship.py` imports it alongside `check_tokens` / `check_ux`; CI runs it standalone with `if: always()`.
+
+**Why a declared list and not a scrape of the §6.2 `<table>`.** A scraper has to guess which cell names which host — `Google LLC` covers five subdomains, `Stripe` four, and `deno.land` is covered by the no-PII *footnote* rather than any row. A gate that guesses is a gate that cries wolf, and "if you cannot name the clause that covers a host, that IS the finding" is the behaviour worth having. The list is deliberately **one-directional**: Cloudflare and Vercel are real §6.2 rows with no URL anywhere in the code, and that is fine — this gate catches an undeclared host, never an unused row.
+
+**What it cannot see**, written down so nobody mistakes a green run for compliance: a host assembled at runtime from parts, a host inside a vendor SDK rather than our source, whether a §6.2 *description* is still true of what the code now sends, and whether the §12 notice was ever sent. Those are the weekly pass.
+
+**It never edits a legal page.** On a finding it prints the host and refuses; the clause is written by a human. Two reasons, both concrete rather than cautious: **UA §12 promises 14 days' email notice before an amendment takes effect**, so an auto-published edit would breach the very terms it just amended, and these pages are what a regulator reads in a complaint.
+
+### The judgement half — the weekly legal pass
+
+Run as part of `freddy-weekly-review`. **Propose, never publish.** Five questions, in the order a gap gets expensive:
+
+1. **Does `platform_settings.terms_version` match `TERMS_VERSION` in `check_legal.py` and the `Last Updated` on both pages?** The checker only ties the two *pages* to its own constant; the DB value is the third leg and it is reachable from SQL alone, so nothing mechanical can close the triangle. A DB version ahead of the pages means every account is being asked to accept wording nobody published.
+2. **Has the §12 14-day notice gone out for the current version?** Publication is not notice. A version live with no notice sent is the one finding here that is already a breach rather than a risk.
+3. **Did anything shipped since the last review add or change what a third party receives?** Read the week's commits for new outbound hosts (the gate has this covered), and for changed *payloads* to existing ones (it does not — sending government ID to a host already listed for "image scanning" needs new wording, and nothing mechanical will say so).
+4. **Do features shipped this week need wording that doesn't exist?** The standing example is the AI promise: both new clauses say the AI is advisory only and never an automated decision, so the day anything AI-derived gates a `contractors.status` the policy becomes false.
+5. **What does `admin_terms_tail` show?** Acceptances arriving with a plausible spread of surfaces is the gate working. All `reaccept` and no `signup-*` means the signup stash path has broken and new accounts are leaving no evidence.
+
+### Open question, recorded rather than nagged
+
+`ClientSuccess.tsx` offers a **"WhatsApp us"** button (`wa.me`, click-to-chat to our own business number). The visitor chooses it and we send nothing — but the destination is Meta, and §6.5 covers Meta only as a one-way *read* of public posts, which is not this. It sits in `DECLARED` as a user-followed link with the reasoning next to it, **as a comment and not as a red check**: a permanently-red gate is one someone learns to skip, and that would undo the gate's whole value. Owner decision pending on whether a contact-channel mention is warranted.
 
 ---
 

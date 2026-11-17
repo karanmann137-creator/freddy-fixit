@@ -133,7 +133,8 @@ Navy `#1a2236` · section navy `#151d2e` · footer `#111827` · orange `#ea6b14`
 Fonts: **Archivo** (headlines on pages you read), **Bebas Neue** (dashboards, onboarding, auth, forms, and all small labels/chips/numerals/buttons/logo), **DM Sans** (body).
 
 - **Before touching any style, colour, spacing, motion or tap target, read `docs/brand-and-motion.md` and `docs/ux-laws.md`.** The rules that used to be summarised here (~39 KB) were moved to the end of those two files verbatim on 2026-11-11.
-- **The rules are mechanical, not memorised:** `python3 tools/check_tokens.py && python3 tools/check_ux.py` must pass. `tools/ship.py` and CI both run them. If a checker fails, read its message and the matching doc section — do not weaken the checker to get a ship through.
+- **The rules are mechanical, not memorised:** `python3 tools/check_tokens.py && python3 tools/check_ux.py && python3 tools/check_legal.py` must pass. `tools/ship.py` and CI both run them. If a checker fails, read its message and the matching doc section — do not weaken the checker to get a ship through.
+- **`check_legal.py` is the ship-path answer to "did this add a third party?"** (2026-11-17). Every `https?://host` in `src/`, `supabase/functions/` and `index.html` must map to a clause in its `DECLARED` dict; an unplaceable host refuses the ship, because an undisclosed processor is an **absence** — it typechecks, it builds, and it is not a row so `platform_health_check()` cannot see it. **Adding an outbound host means adding the Privacy Policy §6.2 row and the `DECLARED` entry in the same ship.** It never edits a legal page: UA §12 promises 14 days' notice before an amendment takes effect, so an auto-publish would breach the terms it just amended. The judgement calls it cannot reach — a changed payload to an already-listed host, whether the §12 notice went out, whether `platform_settings.terms_version` still matches both pages — are the weekly legal pass in `docs/legal.md`.
 
 # Product direction (owner, 2026-11-11)
 
@@ -305,7 +306,7 @@ platform's traffic, so no crowd notices first. The layers are deliberately diffe
 | layer | reads | blind to |
 |---|---|---|
 | `platform_health_check()` — 9 checks, pg_cron 15:00 UTC, emails every admin | the **data** | anything that isn't a row. A missing button is not a row |
-| `.github/workflows/typecheck.yml` (`checks`) — push/PR + 14:40 UTC | the **tree** — `npm run typecheck` + `tools/check_mounts.py` | whether the tree that passed is the tree that got deployed |
+| `.github/workflows/typecheck.yml` (`checks`) — push/PR + 14:40 UTC | the **tree** — `npm run typecheck` + `tools/check_mounts.py` + tokens/ux/legal | whether the tree that passed is the tree that got deployed |
 | `.github/workflows/smoke.yml` (`smoke`) — 13:30 UTC, `tests/smoke/` | the **live site**, in a real browser | anything behind auth without the optional secrets, and any surface needing a job (ContractPanel) |
 | `freddy-watchdog` skill — scheduled daily, read-only | **all three of the above, plus Vercel deploy state and real visitors' runtime errors** | nothing new — it exists because none of the three reports to anybody unless someone reads it |
 

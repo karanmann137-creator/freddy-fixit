@@ -73,6 +73,17 @@ jobs:
         if: always()
         run: python3 tools/check_ux.py
 
+      # Legal disclosure, added 2026-11-17. An outbound host with no clause
+      # covering it in the Privacy Policy is an UNDISCLOSED PROCESSOR, and that
+      # is an absence: it typechecks, it builds, it is not a row so
+      # platform_health_check() cannot see it, and the smoke tests cannot tell a
+      # declared vendor from an undeclared one. Scheduled runs matter here more
+      # than for the other steps -- a dependency bump can add a host without
+      # anyone editing a file, so the tree that was clean last week may not be.
+      - name: Legal disclosure
+        if: always()
+        run: python3 tools/check_legal.py
+
       # Lint ratchet, added 2026-11-11. ESLint had 164 errors and was in no
       # gate at all; 44 were set-state-in-effect and 43 were empty catch blocks,
       # which are the stale-state and silent-failure classes. Fixing them all at
