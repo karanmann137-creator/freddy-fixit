@@ -57,7 +57,7 @@ const CSS =
   + ".ff-onbvid-btn{display:flex;align-items:center;gap:.7rem;width:100%;background:none;border:none;padding:0;cursor:pointer;font-family:inherit;color:var(--ff-text);text-align:left;}"
   + ".ff-onbvid-play{flex-shrink:0;display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:var(--ff-c10);}"
   + ".ff-onbvid-ttl{font-size:.92rem;font-weight:500;line-height:1.3;}"
-  + ".ff-onbvid-sub{font-size:.76rem;color:rgba(var(--ff-muted), .65);margin-top:.15rem;}"
+  + ".ff-onbvid-sub{font-size:.76rem;color:var(--ff-ink-3);margin-top:.15rem;}"
   + ".ff-onbvid-vid{width:100%;display:block;border-radius:8px;margin-top:.85rem;background:#000;}"
   // Slightly larger than the sub-label it sits under: it is a control, not a
   // caption, and at .78rem it read as fine print on a panel whose only other

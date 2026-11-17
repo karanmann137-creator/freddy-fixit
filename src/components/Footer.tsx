@@ -43,7 +43,7 @@ function NewsletterSignup() {
         fontFamily: "'DM Sans', sans-serif",
         background: audience === v ? "rgba(var(--ff-accent-rgb), .15)" : "transparent",
         border: audience === v ? "1px solid rgba(var(--ff-accent-rgb), .5)" : "1px solid rgba(var(--ff-fg), .12)",
-        color: audience === v ? "var(--ff-c10)" : "rgba(var(--ff-muted), .5)",
+        color: audience === v ? "var(--ff-c10)" : "var(--ff-ink-3)",
       }}
     >
       {label}
@@ -52,10 +52,10 @@ function NewsletterSignup() {
 
   return (
     <div style={{ maxWidth: "440px", margin: "0 auto 1.5rem", padding: "1rem 1.1rem", background: "rgba(var(--ff-fg), .03)", border: "var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius: "10px", textAlign: "left" }}>
-      <div style={{ fontSize: ".85rem", fontWeight: 600, color: "rgba(var(--ff-muted), .75)", marginBottom: "var(--ff-s1)" }}>
-        Free weekly Calgary tips 🛠️
+      <div style={{ fontSize: ".85rem", fontWeight: 600, color: "var(--ff-text)", marginBottom: "var(--ff-s1)" }}>
+        Free weekly Calgary tips
       </div>
-      <div style={{ fontSize: ".72rem", color: "rgba(var(--ff-muted), .45)", lineHeight: 1.55, marginBottom: ".65rem" }}>
+      <div style={{ fontSize: ".72rem", color: "var(--ff-ink-3)", lineHeight: 1.55, marginBottom: ".65rem" }}>
         One useful email a week — home &amp; vehicle care for homeowners, business tips for pros. Unsubscribe anytime.
       </div>
       <div style={{ display: "flex", gap: ".4rem", marginBottom: ".55rem" }}>
@@ -102,11 +102,11 @@ export default function Footer() {
     padding: "2rem 1.5rem",
     textAlign: "center",
     fontSize: "0.75rem",
-    color: "rgba(var(--ff-muted), 0.25)",
+    color: "var(--ff-ink-3)",
     letterSpacing: "0.05em",
     fontFamily: "'DM Sans', sans-serif",
   };
-  const link: React.CSSProperties = { color: "rgba(var(--ff-muted), .45)", textDecoration: "underline" };
+  const link: React.CSSProperties = { color: "var(--ff-ink-3)", textDecoration: "underline" };
 
   return (
     // Navy in dark mode (ff-on-dark re-points --ff-surface-2 at #111827,
@@ -117,7 +117,7 @@ export default function Footer() {
     <div className="ff-on-dark" style={bar}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       {!onOnboarding && <NewsletterSignup />}
-      <div style={{ fontSize: "1rem", fontWeight: 500, color: "rgba(var(--ff-muted), 0.6)", marginBottom: "0.5rem", display: "flex", flexWrap: "wrap", gap: ".2rem .55rem", justifyContent: "center", alignItems: "center" }}>
+      <div style={{ fontSize: "1rem", fontWeight: 500, color: "var(--ff-ink-3)", marginBottom: "0.5rem", display: "flex", flexWrap: "wrap", gap: ".2rem .55rem", justifyContent: "center", alignItems: "center" }}>
         <a href="tel:+18255618331" style={{ color: "var(--ff-c10)", textDecoration: "none" }}>Call (825) 561-8331</a>
         <span style={{ color: "rgba(var(--ff-muted), 0.35)" }}>·</span>
         <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("ff:open-chat"))} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--ff-c10)", fontFamily: "inherit", fontSize: "1rem", fontWeight: 500 }}>Chat with us</button>
@@ -126,7 +126,7 @@ export default function Footer() {
         <span style={{ color: "rgba(var(--ff-muted), 0.35)" }}>·</span>
         <a href={"mailto:hello@freddyfixit.ca?subject=" + encodeURIComponent("🐞 Bug report — Freddy Fix It")} style={{ color: "var(--ff-c10)", textDecoration: "none" }}>Report a bug</a>
       </div>
-      <div style={{ fontSize: ".72rem", color: "rgba(var(--ff-muted), 0.4)", marginBottom: "0.75rem" }}>Questions before you book? Call, chat or email — no signup needed.</div>
+      <div style={{ fontSize: ".72rem", color: "var(--ff-ink-3)", marginBottom: "0.75rem" }}>Questions before you book? Call, chat or email — no signup needed.</div>
       <div>Home Repairs · Vehicle Maintenance · Trusted Tradespeople</div>
       {!onOnboarding && <div style={{ marginTop: "0.85rem", fontSize: "0.72rem", maxWidth: "760px", margin: "0.85rem auto 0", lineHeight: 1.9 }}>
         {[
@@ -142,7 +142,7 @@ export default function Footer() {
         ))}
         {" · "}<a href="/services" style={link}>All services</a>{" · "}<a href="/areas" style={link}>Service areas</a>{" · "}<a href="/for-contractors" style={link}>For Contractors</a>{" · "}<a href="/about" style={link}>About us</a>{" · "}<a href="/blog" style={link}>Blog</a>
       </div>}
-      <div style={{ marginTop: "0.75rem", fontSize: "0.65rem", color: "rgba(var(--ff-muted), 0.2)", maxWidth: "700px", margin: "0.75rem auto 0", lineHeight: 1.6 }}>
+      <div style={{ marginTop: "0.75rem", fontSize: "0.65rem", color: "var(--ff-ink-3)", maxWidth: "700px", margin: "0.75rem auto 0", lineHeight: 1.6 }}>
         Freddy Fix It is a platform that connects clients with independent contractors. We are not liable for any damages, defects, injury, or loss arising from services booked through this platform. All contractors are independent professionals. Use of this platform constitutes acceptance of our{" "}
         <a href="/user-agreement" target="_blank" rel="noopener noreferrer" style={link}>User Agreement</a>,{" "}
         <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" style={link}>Privacy Policy</a>,{" "}and{" "}

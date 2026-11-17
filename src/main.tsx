@@ -309,7 +309,8 @@ style.textContent = `
     --ff-accent-rgb: 214,95,16;
     --ff-c10: #d65f10;
     --ff-ink-2: rgba(var(--ff-fg), 0.86);
-    --ff-ink-3: rgba(var(--ff-muted), 0.78);
+    /* 0.78 measured 3.9:1 on the light ground, under the 4.5:1 body-text floor. */
+    --ff-ink-3: rgba(var(--ff-muted), 0.92);
     --ff-ink-4: rgba(var(--ff-muted), 0.58);
     --ff-hair: rgba(var(--ff-fg), 0.12);
     --ff-card-bg: #dfe6f3;

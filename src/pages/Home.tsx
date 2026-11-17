@@ -824,7 +824,7 @@ export default function Home() {
         /* A notch larger than the contractor line's neighbours, so a tradesperson
            scanning the page actually registers it — but still well under the
            subheading, so it never competes with the orange button. */
-        .ff-hero-alt { font-size: 0.95rem; color: var(--ff-ink-4); }
+        .ff-hero-alt { font-size: 0.95rem; color: var(--ff-ink-3); }
         .ff-hero-alt button { background: none; border: none; padding: 0; cursor: pointer; font: inherit;
           color: var(--ff-ink-2); font-weight: 500; text-decoration: underline; text-underline-offset: 3px;
           transition: color 0.18s; }
@@ -876,9 +876,9 @@ export default function Home() {
             repeating-linear-gradient(-45deg, transparent 0 28px, rgba(var(--ff-fg), 0.016) 28px, rgba(var(--ff-fg), 0.016) 29px);
         }
         .ff-services-inner { max-width: 1000px; margin: 0 auto; padding: clamp(3rem, 9vw, 6rem) clamp(1rem, 4vw, 2rem); position: relative; z-index: 1; }
-        .ff-services-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; margin-top: 3rem; }
-        @media (max-width: 900px) { .ff-services-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-        @media (max-width: 500px) { .ff-services-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        .ff-services-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--ff-s3); margin-top: 3rem; }
+        @media (max-width: 900px) { .ff-services-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 339px) { .ff-services-grid { grid-template-columns: minmax(0, 1fr); } }
         /* Mobile-only reorder: trust strip moves below the "Why Freddy Fix It" (About)
            section, ahead of Freddy Verified. Desktop is untouched — no order is set
            outside this media query, so ties resolve by source order there. */
@@ -892,11 +892,10 @@ export default function Home() {
         /* Named properties, not the all keyword: :hover below changes exactly
            three things, and a blanket transition would also animate whatever a
            future edit adds. See CLAUDE.md, Brand tokens. */
-        .ff-service-card { background: rgba(var(--ff-fg), 0.04); border: var(--ff-hair-w) solid rgba(var(--ff-fg), 0.08); border-radius: 12px; padding: 1.5rem 1rem; text-align: center; transition: border-color 0.25s var(--ff-ease-out), transform 0.25s var(--ff-ease-out), box-shadow 0.25s var(--ff-ease-out); width: 100%; }
-        .ff-service-card:hover { border-color: rgba(var(--ff-accent-rgb), 0.4); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
-        .ff-service-icon { font-size: 2rem; margin-bottom: 0.75rem; }
-        .ff-service-label { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.06em; color: var(--ff-text); margin-bottom: 0.4rem; }
-        .ff-service-desc { font-size: 0.72rem; color: rgba(var(--ff-muted), 0.5); font-weight: 300; line-height: 1.5; }
+        .ff-service-card { background: rgba(var(--ff-fg), 0.04); border: var(--ff-hair-w) solid rgba(var(--ff-fg), 0.08); border-radius: 12px; padding: var(--ff-s3) var(--ff-s4); min-height: 3.25rem; display: flex; align-items: center; gap: var(--ff-s3); text-align: left; transition: border-color 0.25s var(--ff-ease-out), transform 0.25s var(--ff-ease-out), box-shadow 0.25s var(--ff-ease-out); width: 100%; }
+        .ff-service-card:hover { border-color: rgba(var(--ff-accent-rgb), 0.4); }
+        .ff-service-icon { flex-shrink: 0; display: flex; }
+        .ff-service-label { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.06em; color: var(--ff-text); line-height: 1.15; min-width: 0; }
 
         /* ── How it works ── */
         /* The page alternates ground / surface band by band so the eye gets a
@@ -911,10 +910,10 @@ export default function Home() {
         .ff-how-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2rem; margin-top: 3rem; }
         @media (max-width: 700px) { .ff-how-grid { grid-template-columns: minmax(0, 1fr); } }
         .ff-how-card { background: rgba(var(--ff-fg), 0.03); border: var(--ff-hair-w) solid rgba(var(--ff-fg), 0.07); border-radius: 14px; padding: 1.25rem 1.5rem; position: relative; }
-        .ff-how-step { font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem; letter-spacing: 0.06em; color: rgba(var(--ff-accent-rgb), 0.2); line-height: 1; margin-bottom: 0.5rem; }
+        .ff-how-step { font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem; letter-spacing: 0.06em; color: rgba(var(--ff-accent-rgb), 0.55); line-height: 1; margin-bottom: 0.5rem; }
         .ff-how-icon { font-size: 1.6rem; margin-bottom: 0.5rem; }
         .ff-how-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 0.06em; color: var(--ff-text); margin-bottom: 0.75rem; }
-        .ff-how-desc { font-size: 0.85rem; color: rgba(var(--ff-muted), 0.6); font-weight: 300; line-height: 1.7; }
+        .ff-how-desc { font-size: 0.85rem; color: var(--ff-ink-3); font-weight: 400; line-height: 1.7; }
         .ff-how-connector { display: none; }
         @media (min-width: 700px) { .ff-how-connector { display: block; position: absolute; top: 2.5rem; right: -1rem; width: 2rem; height: 2px; background: linear-gradient(90deg, rgba(var(--ff-accent-rgb), 0.3), transparent); } }
 
@@ -934,7 +933,7 @@ export default function Home() {
            than the -0.015em that was right for Fraunces. */
         .ff-about-headline { font-family: var(--ff-font-display); font-weight: var(--ff-display-wght); font-size: clamp(2.8rem, 7vw, 5rem); letter-spacing: -0.028em; line-height: 1.02; color: var(--ff-text); margin-bottom: 2rem; }
         .ff-about-headline span { color: var(--ff-c10); }
-        .ff-about-body { font-size: 1.1rem; color: rgba(var(--ff-muted), 0.7); font-weight: 300; line-height: 1.8; max-width: 680px; margin-bottom: 3rem; }
+        .ff-about-body { font-size: 1.1rem; color: var(--ff-ink-3); font-weight: 400; line-height: 1.8; max-width: 680px; margin-bottom: 3rem; }
         .ff-about-body strong { color: var(--ff-text); font-weight: 500; }
         /* A pull-quote, so weight stays 500 rather than --ff-display-wght for
            the same reason .ff-panel-label does: at 2rem it is set BELOW the
@@ -942,17 +941,13 @@ export default function Home() {
            shout. letter-spacing comes off "normal" only slightly — a grotesque
            set loose at quote size looks accidental, set tight it looks like a
            heading, and this is neither. */
-        .ff-about-tagline { font-family: var(--ff-font-display); font-weight: 500; font-size: clamp(1.4rem, 4vw, 2rem); letter-spacing: -0.012em; color: rgba(var(--ff-accent-rgb), 0.85); border-left: 3px solid var(--ff-c10); padding-left: 1.25rem; line-height: 1.3; margin-bottom: 4rem; }
-        .ff-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; }
-        @media (max-width: 600px) { .ff-stats { grid-template-columns: minmax(0, 1fr); } }
-        .ff-stat { background: rgba(var(--ff-fg), 0.03); border: var(--ff-hair-w) solid rgba(var(--ff-fg), 0.07); border-radius: 12px; padding: 1.75rem; }
-        .ff-stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; letter-spacing: 0.06em; color: var(--ff-c10); line-height: 1; margin-bottom: 0.4rem; }
-        .ff-stat-label { font-size: 0.82rem; color: rgba(var(--ff-muted), 0.5); font-weight: 300; line-height: 1.4; }
+        .ff-about-tagline { font-family: var(--ff-font-display); font-weight: 500; font-size: clamp(1.4rem, 4vw, 2rem); letter-spacing: -0.012em; color: var(--ff-text); line-height: 1.3; margin-bottom: 0; }
 
         /* ── Video showcase ── */
         .ff-video-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.75rem; }
         @media (max-width: 760px) { .ff-video-grid { grid-template-columns: minmax(0, 1fr); } }
         .ff-video-grid > div { min-width: 0; }
+        .ff-how-videos-intro { margin: var(--ff-s10) 0 var(--ff-s5); text-align: center; font-size: 0.95rem; color: var(--ff-ink-3); }
 
         /* ── Before / After ── */
         .ff-ba-dots { display: flex; justify-content: center; gap: 0.4rem; margin-bottom: 1.25rem; }
@@ -975,7 +970,7 @@ export default function Home() {
         .ff-ba-vbtn:hover { opacity: 1; background: rgba(var(--ff-accent-rgb), 0.25); border-color: rgba(var(--ff-accent-rgb), 0.5); }
         .ff-ba-handle { position: absolute; top: 0; bottom: 0; width: 3px; background: rgba(var(--ff-fg), 0.9); transform: translateX(-50%); pointer-events: none; box-shadow: 0 0 12px rgba(0,0,0,0.5); }
         .ff-ba-knob { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 44px; height: 44px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; gap: 1px; box-shadow: 0 2px 12px rgba(0,0,0,0.4); }
-        .ff-ba-note { text-align: center; margin-top: 1.25rem; font-size: 0.8rem; color: rgba(var(--ff-muted), 0.45); font-weight: 300; letter-spacing: 0.02em; }
+        .ff-ba-note { text-align: center; margin-top: 1.25rem; font-size: 0.8rem; color: var(--ff-ink-3); font-weight: 400; letter-spacing: 0.02em; }
 
         /* ── The two carousel arrows on touch (2026-11-08) ──
            These are real buttons, and at 30px square they were well under the
@@ -1221,7 +1216,7 @@ export default function Home() {
             </div>
           ))}
         </div>
-        <p style={{ maxWidth:"620px", margin:"1.15rem auto 0", textAlign:"center" as const, fontSize:".88rem", lineHeight:1.6, color:"rgba(var(--ff-muted), .7)" }}>
+        <p style={{ maxWidth:"620px", margin:"1.15rem auto 0", textAlign:"center" as const, fontSize:".88rem", lineHeight:1.6, color:"var(--ff-ink-3)" }}>
           We're not a directory that sells your details to the highest bidder. We match you with vetted local pros — and your payment's held until you approve the work.
         </p>
       </div>
@@ -1230,7 +1225,6 @@ export default function Home() {
       <div className="ff-how">
         <div className="ff-how-inner">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
-            <p className="ff-about-eyebrow" style={{ textAlign:"center" }}>See the Difference</p>
             <h2 className="ff-about-headline" style={{ textAlign:"center", marginBottom:"3rem" }}>Before &amp; <span>After.</span></h2>
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
@@ -1252,20 +1246,6 @@ export default function Home() {
             <p className="ff-about-tagline">
               Honest local pros, fair prices, and work you can count on.
             </p>
-          </motion.div>
-          <motion.div className="ff-stats" initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7, delay: 0.2 }}>
-            <div className="ff-stat">
-              <div className="ff-stat-num">24/7</div>
-              <div className="ff-stat-label">Post your job request online anytime — no phone tag</div>
-            </div>
-            <div className="ff-stat">
-              <div className="ff-stat-num">100%</div>
-              <div className="ff-stat-label">Vetted and verified local tradespeople</div>
-            </div>
-            <div className="ff-stat">
-              <div className="ff-stat-num">$0</div>
-              <div className="ff-stat-label">No booking fees — pay only for the work done</div>
-            </div>
           </motion.div>
         </div>
       </div>
@@ -1291,7 +1271,7 @@ export default function Home() {
         <div style={{ maxWidth:"960px", margin:"0 auto", position:"relative" as const, zIndex:1 }}>
           <p style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".2em", color:"var(--ff-c10)", marginBottom:"1.5rem", textAlign:"center" as const }}>Our Vetting Standard</p>
           <h2 style={{ fontFamily:"var(--ff-font-display)", fontWeight:"var(--ff-display-wght)" as any, fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:"-0.028em", color:"var(--ff-text)", textAlign:"center" as const, marginBottom:"1rem" }}>The Freddy <span style={{ color:"var(--ff-c10)" }}>Verified</span> Promise.</h2>
-          <p style={{ textAlign:"center" as const, fontSize:"1rem", color:"rgba(var(--ff-muted), .7)", fontWeight:300, maxWidth:"620px", margin:"0 auto 3rem", lineHeight:1.7 }}>
+          <p style={{ textAlign:"center" as const, fontSize:"1rem", color:"var(--ff-ink-3)", fontWeight:400, maxWidth:"620px", margin:"0 auto 3rem", lineHeight:1.7 }}>
             Anyone can call themselves a handyman. Before a pro can take a single job on Freddy, they clear our verification checklist — and every job is payment-protected on top of it.
           </p>
           <div style={{ display:"flex", justifyContent:"center" as const, marginBottom:"3rem" }}>
@@ -1334,12 +1314,12 @@ export default function Home() {
                 <span style={{ flexShrink:0, marginTop:"1px" }}><Ic name="check-circle" size={22} color="var(--ff-c10)" /></span>
                 <div>
                   <div style={{ fontSize:".96rem", fontWeight:500, color:"var(--ff-text)", marginBottom: "var(--ff-s1)" }}>{it.t}</div>
-                  <div style={{ fontSize:".84rem", color:"rgba(var(--ff-muted), .65)", fontWeight:300, lineHeight:1.55 }}>{it.d}</div>
+                  <div style={{ fontSize:".84rem", color:"var(--ff-ink-3)", fontWeight:400, lineHeight:1.55 }}>{it.d}</div>
                 </div>
               </div>
             ))}
           </div>
-          <p style={{ textAlign:"center" as const, marginTop:"2.5rem", fontSize:".9rem", color:"rgba(var(--ff-muted), .6)", fontWeight:300 }}>
+          <p style={{ textAlign:"center" as const, marginTop:"2.5rem", fontSize:".9rem", color:"var(--ff-ink-3)", fontWeight:400 }}>
             A verified badge means our review process was completed — not a guarantee of outcome. You always pick your own pro.
           </p>
         </div>
@@ -1352,7 +1332,6 @@ export default function Home() {
       <div className="ff-how ff-how-surface">
         <div className="ff-how-inner">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
-            <p className="ff-about-eyebrow" style={{ textAlign:"center" }}>The Process</p>
             <h2 className="ff-about-headline" style={{ textAlign:"center" }}>How It <span>Works</span></h2>
           </motion.div>
           <div className="ff-how-grid">
@@ -1368,67 +1347,12 @@ export default function Home() {
               </motion.div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* ── FAQ ── */}
-      <div style={{ background:"var(--ff-bg)", padding:"6rem 2rem" }}>
-        <style>{"details.ff-faq>summary::-webkit-details-marker{display:none}details.ff-faq>summary{list-style:none}details.ff-faq .ff-faq-icon{transition:transform .2s ease;display:inline-block}details.ff-faq[open] .ff-faq-icon{transform:rotate(45deg)}details.ff-faq[open]{border-color:rgba(var(--ff-accent-rgb), .3)}"}</style>
-        <div style={{ maxWidth:"800px", margin:"0 auto" }}>
-          <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"var(--ff-c10)", marginBottom:"1.5rem", textAlign:"center" }}>Good to Know</p>
-          <h2 style={{ fontFamily:"var(--ff-font-display)", fontWeight:"var(--ff-display-wght)" as any, fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:"-0.028em", color:"var(--ff-text)", textAlign:"center", marginBottom:"3rem" }}>Frequently Asked <span style={{ color:"var(--ff-c10)" }}>Questions.</span></h2>
-          <div style={{ display:"flex", flexDirection:"column", gap:".75rem" }}>
-            {FAQS.map((f, i) => (
-              <details key={i} className="ff-faq" style={{ background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.2rem 1.5rem" }}>
-                <summary style={{ cursor:"pointer", fontSize:".98rem", fontWeight:500, color:"var(--ff-text)", display:"flex", justifyContent:"space-between", alignItems:"center", gap:"1rem" }}>
-                  <span>{f.q}</span>
-                  <span className="ff-faq-icon" style={{ color:"var(--ff-c10)", fontSize:"1.4rem", lineHeight:1, fontWeight:300 }}>+</span>
-                </summary>
-                <p style={{ fontSize:".9rem", color:"rgba(var(--ff-muted), .75)", fontWeight:300, lineHeight:1.7, marginTop:"1rem", marginBottom:0 }}>{f.a}</p>
-              </details>
-            ))}
-          </div>
-          <p style={{ textAlign:"center", marginTop:"2.5rem", fontSize:".9rem", color:"rgba(var(--ff-muted), .6)", fontWeight:300 }}>Still have questions? <a href="mailto:hello@freddyfixit.ca" style={{ color:"var(--ff-c10)", textDecoration:"none" }}>Get in touch.</a></p>
-        </div>
-      </div>
-
-      {/* ── Services ── */}
-      <div className="ff-services">
-        <div className="ff-services-inner">
-          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
-            <p className="ff-about-eyebrow" style={{ textAlign:"center" }}>What We Cover</p>
-            <h2 className="ff-about-headline" style={{ textAlign:"center" }}>Every Fix. <span>Every Time.</span></h2>
-          </motion.div>
-          <div className="ff-services-grid">
-            {SERVICES.map((s, i) => (
-              <motion.div key={s.label} className="ff-service-card" onClick={() => window.location.href="/client-onboarding?service=" + encodeURIComponent(s.label)} style={{ cursor:"pointer" }}
-                initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.05 }}>
-                <div className="ff-service-icon"><Ic name={s.iconName as any} size={28} color="var(--ff-c10)" /></div>
-                <div className="ff-service-label">{s.label}</div>
-                <div className="ff-service-desc">{s.desc}</div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Footer ── */}
-
-      {/* ── Video showcase ──
-           Ground, so the last band before the navy footer is not the same tone
-           as About directly above it. Replaces the old "Built On Trust" reviews
-           block — same slot in the band-rhythm stack, same background token. */}
-      <div style={{ background:"var(--ff-bg)", padding:"6rem 2rem" }}>
-        <div style={{ maxWidth:"900px", margin:"0 auto" }}>
-          <p style={{ fontSize:".72rem", textTransform:"uppercase", letterSpacing:".2em", color:"var(--ff-c10)", marginBottom:"1.5rem", textAlign:"center" }}>See It In Action</p>
-          <h2 style={{ fontFamily:"var(--ff-font-display)", fontWeight:"var(--ff-display-wght)" as any, fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:"-0.028em", color:"var(--ff-text)", textAlign:"center", marginBottom: "var(--ff-s4)" }}>How Freddy <span style={{ color:"var(--ff-c10)" }}>Works.</span></h2>
-          <p style={{ textAlign:"center", color:"rgba(var(--ff-muted), .6)", fontSize:".95rem", marginBottom:"3rem", maxWidth:"560px", marginLeft:"auto", marginRight:"auto" }}>Two short walkthroughs — one for homeowners booking a job, one for pros signing up to take them.</p>
-
-          <div className="ff-video-grid">
-            <div style={{ background:"rgba(var(--ff-fg), .04)", border:"1px solid rgba(var(--ff-accent-rgb), .2)", borderRadius:"14px", padding:"1.75rem" }}>
+          <p className="ff-how-videos-intro">Prefer to watch? Two short walkthroughs: one for homeowners booking a job, one for pros signing up.</p>
+          <div className="ff-video-grid ff-how-videos">
+            <div style={{ background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"1.75rem" }}>
               <div style={{ marginBottom:"1rem" }}><Ic name="user-check" size={26} color="var(--ff-c10)" /></div>
               <div style={{ fontSize:"1.05rem", fontWeight:600, color:"var(--ff-text)", marginBottom:".6rem" }}>For Homeowners</div>
-              <p style={{ fontSize:".9rem", color:"rgba(var(--ff-muted), .75)", fontWeight:300, lineHeight:1.7, marginBottom:"1.25rem" }}>Post a job, compare estimates, and pay securely — see the whole flow in under 30 seconds.</p>
+              <p style={{ fontSize:".9rem", color:"var(--ff-ink-3)", fontWeight:400, lineHeight:1.7, marginBottom:"1.25rem" }}>Post a job, compare estimates, and pay securely — see the whole flow in under 30 seconds.</p>
               <OnboardingVideo
                 src="/onboarding-videos/freddy-client-onboarding.mp4"
                 title="Booking a job on Freddy"
@@ -1438,7 +1362,7 @@ export default function Home() {
             <div style={{ background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"14px", padding:"1.75rem" }}>
               <div style={{ marginBottom:"1rem" }}><Ic name="hammer" size={26} color="var(--ff-c10)" /></div>
               <div style={{ fontSize:"1.05rem", fontWeight:600, color:"var(--ff-text)", marginBottom:".6rem" }}>For Contractors</div>
-              <p style={{ fontSize:".9rem", color:"rgba(var(--ff-muted), .75)", fontWeight:300, lineHeight:1.7, marginBottom:"1.25rem" }}>Sign up, get vetted, and start bidding on local jobs — here's what to expect.</p>
+              <p style={{ fontSize:".9rem", color:"var(--ff-ink-3)", fontWeight:400, lineHeight:1.7, marginBottom:"1.25rem" }}>Sign up, get vetted, and start bidding on local jobs — here's what to expect.</p>
               <OnboardingVideo
                 src="/onboarding-videos/freddy-contractor-onboarding.mp4"
                 title="Joining Freddy as a pro"
@@ -1448,6 +1372,46 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* ── FAQ ── */}
+      <div style={{ background:"var(--ff-bg)", padding:"6rem 2rem" }}>
+        <style>{"details.ff-faq>summary::-webkit-details-marker{display:none}details.ff-faq>summary{list-style:none}details.ff-faq .ff-faq-icon{transition:transform .2s ease;display:inline-block}details.ff-faq[open] .ff-faq-icon{transform:rotate(45deg)}details.ff-faq[open]{border-color:rgba(var(--ff-accent-rgb), .3)}"}</style>
+        <div style={{ maxWidth:"800px", margin:"0 auto" }}>
+          <h2 style={{ fontFamily:"var(--ff-font-display)", fontWeight:"var(--ff-display-wght)" as any, fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:"-0.028em", color:"var(--ff-text)", textAlign:"center", marginBottom:"3rem" }}>Frequently Asked <span style={{ color:"var(--ff-c10)" }}>Questions.</span></h2>
+          <div style={{ display:"flex", flexDirection:"column", gap:".75rem" }}>
+            {FAQS.map((f, i) => (
+              <details key={i} className="ff-faq" style={{ background:"rgba(var(--ff-fg), .04)", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .08)", borderRadius:"12px", padding:"1.2rem 1.5rem" }}>
+                <summary style={{ cursor:"pointer", fontSize:".98rem", fontWeight:500, color:"var(--ff-text)", display:"flex", justifyContent:"space-between", alignItems:"center", gap:"1rem" }}>
+                  <span>{f.q}</span>
+                  <span className="ff-faq-icon" style={{ color:"var(--ff-c10)", fontSize:"1.4rem", lineHeight:1, fontWeight:300 }}>+</span>
+                </summary>
+                <p style={{ fontSize:".9rem", color:"var(--ff-ink-3)", fontWeight:400, lineHeight:1.7, marginTop:"1rem", marginBottom:0 }}>{f.a}</p>
+              </details>
+            ))}
+          </div>
+          <p style={{ textAlign:"center", marginTop:"2.5rem", fontSize:".9rem", color:"var(--ff-ink-3)", fontWeight:400 }}>Still have questions? <a href="mailto:hello@freddyfixit.ca" style={{ color:"var(--ff-c10)", textDecoration:"none" }}>Get in touch.</a></p>
+        </div>
+      </div>
+
+      {/* ── Services ── */}
+      <div className="ff-services">
+        <div className="ff-services-inner">
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
+            <h2 className="ff-about-headline" style={{ textAlign:"center" }}>Every Fix. <span>Every Time.</span></h2>
+          </motion.div>
+          <div className="ff-services-grid">
+            {SERVICES.map((s, i) => (
+              <motion.div key={s.label} className="ff-service-card" title={s.desc} onClick={() => window.location.href="/client-onboarding?service=" + encodeURIComponent(s.label)} style={{ cursor:"pointer" }}
+                initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.05 }}>
+                <div className="ff-service-icon"><Ic name={s.iconName as any} size={20} color="var(--ff-c10)" /></div>
+                <div className="ff-service-label">{s.label}</div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Footer ── */}
 
     </div>
   );
