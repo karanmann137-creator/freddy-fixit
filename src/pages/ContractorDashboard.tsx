@@ -5,6 +5,7 @@ import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { clearMyProfile, dashboardFor } from "@/lib/myProfile";
 import { readAuthUser } from "@/lib/authRead";
+import { ensureTermsAccepted } from "@/lib/terms";
 import { getCommissionRate, getFeeRate } from "@/lib/platformRates";
 import { compressImage } from "@/lib/imageCompress";
 import RequestPhotoQuote from "@/components/RequestPhotoQuote";
@@ -914,6 +915,11 @@ export default function ContractorDashboard() {
     } else if (lo != null && hi != null && hi < lo) {
       notify("Your estimated range high can't be below the low."); return;
     }
+    // Terms gate LAST, after every piece of this form's own validation, so a pro
+    // who is about to be told "enter your bid amount" isn't handed a terms sheet
+    // first. Fails open — see src/lib/terms.ts. A false here means they saw the
+    // sheet and declined; abandon quietly, no notify().
+    if (!(await ensureTermsAccepted("bid"))) return;
     setBusyBid(r.id);
     const msg = f.message !== undefined ? f.message : (r.my_message ?? "");
     const { error } = await supabase.rpc("place_bid", {

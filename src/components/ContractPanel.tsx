@@ -13,6 +13,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Ic } from "@/components/Ic";
 import { Sk, SkText } from "@/components/Skeleton";
 import { supabase } from "@/lib/supabase";
+import { ensureTermsAccepted } from "@/lib/terms";
 
 type Role = "contractor" | "client" | "admin";
 type Contract = {
@@ -171,6 +172,11 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
     if (!consent) { setErr("Please confirm you agree to sign electronically."); return; }
     if (source === "uploaded" && !file && !contract?.uploaded_path) { setErr("Choose the document you want to send, or switch to the standard agreement."); return; }
     if (source === "uploaded" && !uploadAck) { setErr("Please confirm your uploaded document doesn't shift liability onto Freddy Fix It."); return; }
+    // Terms gate after this form's own validation, and BEFORE setBusy — not
+    // inside invokeSign, which in this branch runs after save_contract_draft has
+    // already written. Fails open; see src/lib/terms.ts. A false means they saw
+    // the sheet and declined, so abandon without setErr.
+    if (!(await ensureTermsAccepted("sign-contract"))) return;
     setBusy(true); setErr(null); setMsg(null);
     try {
       let uploadedPath = contract?.uploaded_path || null;
@@ -202,6 +208,7 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
   const clientSign = async () => {
     if (sigName.trim().length < 2) { setErr("Type your full legal name to sign."); return; }
     if (!consent) { setErr("Please confirm you agree to sign electronically."); return; }
+    if (!(await ensureTermsAccepted("sign-contract"))) return; // see contractorSign
     setBusy(true); setErr(null); setMsg(null);
     try {
       await invokeSign("client_sign");

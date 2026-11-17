@@ -2,8 +2,14 @@
 -- This is a read-only reference so the repo can show what production runs.
 -- The public anon key is replaced with <ANON_KEY>.
 -- Regenerate after any DB change: tools/write_schema_snapshot.py.
+-- HAND-PATCHED 2026-11-16: the four terms-acceptance functions (accept_terms,
+-- admin_terms_tail, current_terms_version, terms_status) and the
+-- terms_acceptances table were inserted by hand, in the generator's exact
+-- format and at their generated sort positions, because the full snapshot
+-- query's result is far too large to pass through an assistant context.
+-- Everything else is generator output. Regenerate to normalise.
 
--- 56 tables in schema public
+-- 57 tables in schema public
 
 -- table admin_audit_log   (RLS on)
 --   id  bigint  not null  default nextval('admin_audit_log_id_seq'::regclass)
@@ -704,6 +710,13 @@
 --   meta  jsonb  not null  default '{}'::jsonb
 --   created_at  timestamp with time zone  not null  default now()
 
+-- table terms_acceptances   (RLS on)
+--   id  bigint  not null  default nextval('terms_acceptances_id_seq'::regclass)
+--   user_id  uuid  not null
+--   version  text  not null
+--   surface  text  not null  default 'unknown'::text
+--   accepted_at  timestamp with time zone  not null  default now()
+
 -- table ui_dismissals   (RLS on)
 --   user_id  uuid  not null
 --   key  text  not null
@@ -893,6 +906,8 @@
 --   social_messages.social_messages_conversation_id_fkey: FOREIGN KEY (conversation_id) REFERENCES social_conversations(id) ON DELETE CASCADE
 --   social_messages.social_messages_direction_check: CHECK ((direction = ANY (ARRAY['in'::text, 'out'::text])))
 --   social_messages.social_messages_pkey: PRIMARY KEY (id)
+--   terms_acceptances.terms_acceptances_pkey: PRIMARY KEY (id)
+--   terms_acceptances.terms_acceptances_user_id_fkey: FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE
 --   ui_dismissals.ui_dismissals_key_len: CHECK (((length(key) >= 1) AND (length(key) <= 80)))
 --   ui_dismissals.ui_dismissals_pkey: PRIMARY KEY (user_id, key)
 --   ui_dismissals.ui_dismissals_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
@@ -1050,6 +1065,9 @@ CREATE UNIQUE INDEX social_leads_platform_external_id_key ON public.social_leads
 CREATE INDEX social_messages_convo_idx ON public.social_messages USING btree (conversation_id, created_at DESC);
 CREATE UNIQUE INDEX social_messages_dedupe_idx ON public.social_messages USING btree (conversation_id, external_message_id) WHERE (external_message_id IS NOT NULL);
 CREATE UNIQUE INDEX social_messages_pkey ON public.social_messages USING btree (id);
+CREATE UNIQUE INDEX terms_acceptances_pkey ON public.terms_acceptances USING btree (id);
+CREATE INDEX terms_acceptances_user_idx ON public.terms_acceptances USING btree (user_id, accepted_at DESC);
+CREATE UNIQUE INDEX terms_acceptances_user_version_key ON public.terms_acceptances USING btree (user_id, version);
 CREATE UNIQUE INDEX ui_dismissals_pkey ON public.ui_dismissals USING btree (user_id, key);
 CREATE UNIQUE INDEX user_mfa_pkey ON public.user_mfa USING btree (user_id);
 CREATE UNIQUE INDEX waitlist_email_key ON public.waitlist USING btree (lower(email));
@@ -1411,6 +1429,9 @@ UNION
 --     check: None
 --   social_messages / social_messages_admin [SELECT] roles={authenticated}
 --     using: ( SELECT is_admin() AS is_admin)
+--     check: None
+--   terms_acceptances / Users read own terms acceptances [SELECT] roles={public}
+--     using: ((auth.uid() = user_id) OR is_admin())
 --     check: None
 --   ui_dismissals / ui_dismissals_own_delete [DELETE] roles={authenticated}
 --     using: (( SELECT auth.uid() AS uid) = user_id)

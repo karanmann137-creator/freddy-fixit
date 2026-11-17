@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { clearMyProfile, dashboardFor } from "@/lib/myProfile";
 import { stashedReferralCode, applyReferralAtSignup } from "@/lib/referralCode";
+import { redeemStashedTermsConsent } from "@/lib/terms";
 import { mfaOwed } from "@/lib/mfa";
 import { setMyRole } from "@/lib/roleWrite";
 import VerifyCodeModal from "@/components/VerifyCodeModal";
@@ -97,6 +98,20 @@ export default function AuthCallback() {
         if (cancelled) return;
         if (ensured) profile = { role: ensured as string };
       }
+
+      // Redeem a terms acceptance ticked at signup, which couldn't be recorded
+      // then because email-confirmation mode hands back no session.
+      //
+      // ⚠️ THIS IS STASH-DRIVEN, NOT UNCONDITIONAL, AND THAT IS THE WHOLE
+      // POINT. This page also serves Google sign-ins, where no checkbox was
+      // ever shown — recording an acceptance there would be forging consent
+      // nobody gave. With no stash it does nothing at all. Awaited but never
+      // allowed to throw, for the same reason the referral code below isn't
+      // shown: there is nowhere on a redirect page to put a message, and a
+      // sign-in must never be held up by it. If it fails they simply meet the
+      // blocking gate at their first consequential action.
+      await redeemStashedTermsConsent().catch(() => { /* covered by the gate */ });
+      if (cancelled) return;
 
       // Form-initiated sign-in: honor the chosen role.
       //

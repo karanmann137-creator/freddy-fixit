@@ -26,3 +26,37 @@ Consumer-facing wording: say **"held securely"**, never "escrow" — the Stripe 
 
 ---
 
+## Terms acceptance — the dated record and the blocking gate (built 2026-11-16)
+
+Before this, **nothing recorded that anyone had ever accepted anything.** The signup checkbox was validated in the browser and then thrown away, so the platform had no answer to "which version did this person agree to, and when" — the one question a PIPA complaint or a disputed job actually turns on. That gap is now closed in two halves, and the halves answer different questions: the **record** is the evidence, the **gate** is how a version change reaches the ~40 accounts that signed up under the old wording.
+
+**The version is a DB value, not a constant in the bundle.** `platform_settings.terms_version` (seeded `"2026-11-16"`), read by `current_terms_version()`. Publishing new terms is one `update` — no deploy — and because `accept_terms()` stamps the version **itself**, server-side, the browser cannot claim an acceptance of a version it made up. `terms_status()` returns `{version, accepted_version, accepted_at, needed}` where `needed` is `(accepted_version is distinct from current)`. Rows live in `public.terms_acceptances` (user_id, version, surface, accepted_at), unique on `(user_id, version)` so a re-tick is idempotent, RLS on with **exactly one policy — SELECT** (`auth.uid() = user_id or is_admin()`): there is no INSERT policy anywhere, so the only way a row appears is through `accept_terms()`, the same append-only shape as `admin_audit_log`. `admin_terms_tail(p_limit)` is the owner-visible read. All four functions test `auth.uid() is null` **first** and pin `search_path to 'public','extensions','pg_temp'`.
+
+**`surface` is the whole point of the record being more than a boolean.** It says *where the person was standing* when they agreed — `signup-client`, `signup-contractor`, `new-request`, `bid`, `pay`, `sign-contract`, `reaccept` — which is what turns a row into evidence rather than a timestamp.
+
+**The gate blocks the ACTION, never the arrival.** Owner decision, and it is a product decision not a technical one: a returning user browses the whole site freely and meets the sheet only when they try to do something consequential. Deliberately **not** a dismissible banner (a banner collects nothing) and deliberately **not** a block on first page load (that is a wall in front of a marketplace).
+
+**`ensureTermsAccepted(surface)` in `src/lib/terms.ts` is the ONE asker, and it FAILS OPEN — twice over.** A failed `terms_status()` read returns `needed:false`, and so does finding **no sheet mounted**. That is the opposite of `askConfirm`, whose promise only settles when `<ConfirmDialog>` closes — "forget to mount it and the button hangs forever with no error." Hanging a bid, a payment or a signature on a consent sheet is a far worse failure than missing one acceptance, so this gate cannot hang by construction. **The price of failing open is that a dropped mount is SILENT** — it does not throw, does not fail the build and shows no blank screen; it just quietly stops asking anyone. That is textbook `tools/check_mounts.py` membership, which is why `<TermsSheet` is a needle there alongside the three call sites.
+
+**Three gated call sites, and `check_mounts.py` is the list that must stay true:**
+
+| surface | file | placed |
+|---|---|---|
+| `bid` | `src/pages/ContractorDashboard.tsx` | last in `placeBid`, immediately before `setBusyBid` |
+| `pay` | `src/pages/ClientDashboard.tsx` | in `payForJob`, after the `contractBlocked` / `addressMissing` gates, before `askConfirm` |
+| `sign-contract` | `src/components/ContractPanel.tsx` | **twice** — once in `contractorSign`, once in `clientSign` |
+
+**The gate always goes AFTER the action's own validation.** Nobody should be handed a terms sheet instead of the "enter your bid amount" error they were about to get, and nobody should read "Pay $740?" and then get a second sheet on top of it. A `false` means they saw the sheet and declined, so every call site abandons **quietly** — no `notify()`, no `setErr`.
+
+**⚠️ `ContractPanel` carries two gates rather than one, on purpose, and `MIN_COUNTS` holds it at 2.** `invokeSign` is the obvious single choke point, but in `contractorSign` it runs *after* `save_contract_draft` has already written — a gate there would leave a partial write behind a refusal. Two sibling functions, one gate each, pre-empts the asymmetric-sibling shape that bit `AuthCallback`'s `?role=` clamp, where one branch guarded and its twin did not. A plain `in` test passes while one of two identical needles is gone; `MIN_COUNTS` is what makes losing one visible.
+
+**Four recording surfaces, which RECORD rather than gate.** `NewRequest` calls `acceptTerms("new-request")` directly — the form's own checkbox *is* the acceptance, so gating there would ask for a tick just given. It is fire-and-forget after the insert has already succeeded: the request must not be held up, and a failed write just means the gate catches them later.
+
+**Signup needed a detour, because `accept_terms()` needs `auth.uid()` and both onboarding flows return early with NO SESSION on the email-confirmation path.** So the tick is stashed in `localStorage` (`ff_terms_pending`, 7-day expiry, carrying the surface) by `stashTermsConsent()` and redeemed by `redeemStashedTermsConsent()` — immediately on the session path, otherwise by `AuthCallback` when the person clicks the link. **⚠️ `AuthCallback` redeems the STASH; it must never record unconditionally.** That page also serves Google sign-ins, where no checkbox was ever shown — recording there would be **forging consent nobody gave**. With no stash it does nothing at all. The stash is per-browser, so a confirmation link opened on a different device loses it; that is not a bug, the person then meets the blocking gate at their first consequential action, which is the designed fallback. Redeeming follows the welcome-email rule — **never worth an account** — so it is fire-and-forget, the stash survives a failed write for the next callback to retry, and it is cleared only on success or expiry.
+
+**What this does not have, and the honest limitation:** acceptance has never been recorded before, so every one of the ~40 existing accounts reads as owing one, with no baseline to compare against. The first weeks of `admin_terms_tail` are therefore a record of *this* rollout, not of historical consent — and nothing retroactively evidences the ticks already thrown away.
+
+**When you publish new terms:** update the page text, `update platform_settings set value = '"YYYY-MM-DD"' where key = 'terms_version'`, and send the **UA §12 14-day email notice** — the gate collects acceptance, it does not give notice. **And when you add a new consequential action, add a gate to it and a needle to `check_mounts.py` in the same ship.** The three rows above are the whole list; a fourth consequential action with no gate is invisible from every surface at once.
+
+---
+

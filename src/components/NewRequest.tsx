@@ -10,6 +10,7 @@ import { DeadEnd } from "@/components/ui";
 import { compressImage } from "@/lib/imageCompress";
 import { scanImage, shouldBlock, rejectMessage } from "@/lib/imageSafety";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
+import { acceptTerms } from "@/lib/terms";
 import OnboardingProgress from "@/components/OnboardingProgress";
 import { SERVICES, SCHEDULES } from "@/pages/ClientOnboarding";
 import { useServicePricing, floorFor } from "@/lib/servicePricing";
@@ -798,6 +799,12 @@ export default function NewRequest() {
       const { error } = await supabase.from("client_requests").insert(rows);
       if (error) throw error;
       requestGoogleReview("job_posted");
+      // This form's own checkbox IS the acceptance, so it RECORDS rather than
+      // gating — `ensureTermsAccepted("new-request")` here would hand someone a
+      // second sheet asking for a tick they just gave. Fire and forget: the
+      // request is already written and must not be held up, and if this write
+      // fails the gate catches them at their next consequential action.
+      acceptTerms("new-request").catch(() => { /* covered by the gate */ });
       // The request row exists now, so the draft is no longer a half-finished
       // request — it's a duplicate waiting to happen. Cleared before navigating,
       // while `submitting` still has autosave switched off.

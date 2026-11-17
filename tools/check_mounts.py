@@ -68,6 +68,11 @@ INVARIANTS = {
         # Nothing throws, nothing renders red, and the pro never gets paid.
         "approvePriceChange",
         "declinePriceChange",
+        # 2026-11-16: the terms gate on the payment path. Its absence is
+        # invisible in the ordinary way -- the checkout still opens and the
+        # money still moves, under terms this client never accepted. One of
+        # three call sites; keep them in step with docs/legal.md.
+        'ensureTermsAccepted("pay")',
     ],
     "src/pages/ContractorDashboard.tsx": [
         "<ContractPanel", "STAGE_MATCH", "JobsCalendar", "<DashShell",
@@ -78,6 +83,9 @@ INVARIANTS = {
         # records the wrong thing. Invisible: the RPC, the grant and the banner
         # all keep existing.
         "withdrawPriceChange",
+        # 2026-11-16: the terms gate on the bid path. See the ClientDashboard
+        # entry above.
+        'ensureTermsAccepted("bid")',
     ],
     "src/pages/AdminDashboard.tsx": [
         "<ContractPanel", "<DashShell",
@@ -139,7 +147,22 @@ INVARIANTS = {
     # One predicate behind every "you need to verify" surface. If this export
     # disappears the two mounts above go with it.
     "src/lib/mfa.ts": ["export async function mfaOwed"],
-    "src/App.tsx": ["<ChatWidget", "<GoogleReviewModal", "<FinishSignupBanner", "<ScrollToTop"],
+    # 2026-11-16: <TermsSheet/> is the asking half of the terms-acceptance gate.
+    # ensureTermsAccepted() counts sheet mounts and returns TRUE when none is
+    # listening, deliberately -- the alternative is askConfirm's failure mode,
+    # where a missing mount hangs the button forever with no error. The price of
+    # that choice is paid here: with this line gone, typecheck passes, the build
+    # is clean, every gated action still works, and the platform silently stops
+    # asking anybody to accept the terms. The only symptom is an evidentiary
+    # record that quietly stops filling, discovered whenever someone next asks
+    # "prove this person agreed, and to which version". Textbook membership.
+    "src/App.tsx": ["<ChatWidget", "<GoogleReviewModal", "<FinishSignupBanner", "<ScrollToTop", "<TermsSheet"],
+    # 2026-11-16: the terms gate on the signing path, needled twice because it
+    # guards two sibling functions -- contractorSign and clientSign -- and an
+    # asymmetric guard between siblings is the bug shape that bit AuthCallback's
+    # ?role= clamp. A plain `in` test passes while one of the two is gone, so
+    # MIN_COUNTS below carries the count. See the ClientDashboard entry.
+    "src/components/ContractPanel.tsx": ['ensureTermsAccepted("sign-contract")'],
     "src/main.tsx": ["initAnalytics"],
     # 2026-11-08. NOT a mount -- a POSITIONING declaration, and the first entry
     # in this table that is one. It earns its place by the membership test
@@ -210,6 +233,10 @@ INVARIANTS = {
 # the ChatWidget bug was exactly two identical declarations lost together.
 MIN_COUNTS = {
     ("src/components/ChatWidget.tsx", 'position: "fixed"'): 2,
+    # Two sibling signing functions, one gate each. Losing one leaves the other
+    # passing a plain `in` test while half the signatures on the platform go
+    # ungated -- the asymmetric-sibling shape, pre-empted rather than suffered.
+    ("src/components/ContractPanel.tsx", 'ensureTermsAccepted("sign-contract")'): 2,
 }
 
 

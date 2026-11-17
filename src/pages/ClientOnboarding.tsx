@@ -20,6 +20,7 @@ import ServicePicker from "@/components/ServicePicker";
 import BudgetPicker from "@/components/BudgetPicker";
 import { validateEmail, validatePhone, fmtPhone } from "@/lib/emailValidation";
 import { stashReferralCode, stashedReferralCode, applyReferralAtSignup } from "@/lib/referralCode";
+import { stashTermsConsent, redeemStashedTermsConsent } from "@/lib/terms";
 import WaitlistForm from "@/components/WaitlistForm";
 import { usePlatformStatus, acceptingRequests } from "@/lib/platformStatus";
 import { detectFromText } from "@/lib/serviceTags";
@@ -952,6 +953,12 @@ export default function ClientOnboarding() {
       // localStorage. Without this line a code entered by hand is silently lost
       // for exactly the people who take the long way round.
       stashReferralCode(form.referralCode);
+      // Same detour, same problem: `agreedToTerms` was validated above and would
+      // otherwise be thrown away, and `accept_terms()` needs a session that may
+      // not exist for another few minutes. Stash it either way — the session
+      // branch below redeems it immediately, AuthCallback redeems it after the
+      // email link. See src/lib/terms.ts.
+      stashTermsConsent("signup-client");
       // No session => email confirmation required. The trigger saved their
       // request already; show the verify screen.
       // The request row exists now (the signup trigger wrote it), so the draft is
@@ -959,6 +966,12 @@ export default function ClientOnboarding() {
       // Cleared at BOTH terminal points, and only after the state flag that
       // disables autosave, so a pending debounce timer can't write it back.
       if (!authData.session) { trackEvent("sign_up", { method: "client" }); trackEvent("post_job"); requestGoogleReview("signup"); requestGoogleReview("job_posted"); setVerifyEmail(true); clearDraft(ONBOARDING_DRAFT_KEY); window.scrollTo(0,0); setLoading(false); return; }
+
+      // Session exists, so the acceptance can be recorded right now. Fire and
+      // forget: a welcome-email-shaped rule applies — this must never be worth
+      // an account, and if it fails they meet the blocking gate at their first
+      // consequential action. `redeem` clears the stash only on success.
+      redeemStashedTermsConsent().catch(() => { /* retried by AuthCallback / covered by the gate */ });
 
       // Session exists: attach the optional photo to the request the trigger made.
       //

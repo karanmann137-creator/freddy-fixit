@@ -22,6 +22,7 @@ import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { clearMyProfile, dashboardFor } from "@/lib/myProfile";
 import { readAuthUser } from "@/lib/authRead";
+import { ensureTermsAccepted } from "@/lib/terms";
 // The standalone review ask is no longer fired from this page — the completion
 // moment is the only one it had here, and that now goes through
 // `requestCompletionThanks`, which asks for the review AND the referral in one
@@ -1079,6 +1080,11 @@ export default function ClientDashboard() {
       focusAddress();
       return;
     }
+    // Terms gate AFTER this action's own gates (contract, address) and BEFORE
+    // the confirm, so nobody reads "Pay $X?" and then gets a second sheet on top
+    // of it. Fails open — see src/lib/terms.ts. A false means they saw the sheet
+    // and declined; abandon quietly, no notify().
+    if (!(await ensureTermsAccepted("pay"))) return;
     const dueNow = jobDueNow(activeJob);
     const total = jobTotal(activeJob);
     const split = total - dueNow > 0.005;

@@ -24,6 +24,7 @@ import CompletionThanksModal from "@/components/CompletionThanksModal";
 import FinishSignupBanner from "@/components/FinishSignupBanner";
 import CookieConsent from "@/components/CookieConsent";
 import OverhaulNotice from "@/components/OverhaulNotice";
+import TermsSheet from "@/components/TermsSheet";
 import Footer from "@/components/Footer";
 
 // Lazy: heavy pages are split into their own chunks and fetched on demand,
@@ -363,6 +364,12 @@ export default function App() {
       <FinishSignupBanner />
       <CookieConsent />
       <OverhaulNotice />
+      {/* ⚠️ The ONE mount of the terms gate's asking half. `ensureTermsAccepted()`
+          fails OPEN when nothing is listening, so dropping this line does not
+          throw, does not fail the build, and does not show a blank screen — it
+          silently stops asking anyone to accept the terms. Guarded in
+          tools/check_mounts.py. See src/lib/terms.ts. */}
+      <TermsSheet />
       <RouteFade>
       <ErrorBoundary label="this page" resetKey={appLoc}>
       <Suspense fallback={<PageLoader />}>

@@ -2,8 +2,14 @@
 -- This is a read-only reference so the repo can show what production runs.
 -- The public anon key is replaced with <ANON_KEY>.
 -- Regenerate after any DB change: tools/write_schema_snapshot.py.
+-- HAND-PATCHED 2026-11-16: the four terms-acceptance functions (accept_terms,
+-- admin_terms_tail, current_terms_version, terms_status) and the
+-- terms_acceptances table were inserted by hand, in the generator's exact
+-- format and at their generated sort positions, because the full snapshot
+-- query's result is far too large to pass through an assistant context.
+-- Everything else is generator output. Regenerate to normalise.
 
--- 240 functions in schema public
+-- 244 functions in schema public
 
 -- _accept_bid_internal(p_bid_id uuid)   grants: {postgres=X/postgres,service_role=X/postgres}
 CREATE OR REPLACE FUNCTION public._accept_bid_internal(p_bid_id uuid)
@@ -161,6 +167,30 @@ begin
 
   return public._accept_bid_internal(p_bid_id);
 end; $function$;
+
+-- accept_terms(p_surface text)   grants: {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+CREATE OR REPLACE FUNCTION public.accept_terms(p_surface text DEFAULT 'reaccept'::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'extensions', 'pg_temp'
+AS $function$
+declare
+  v_uid uuid := auth.uid();
+  v_cur text := public.current_terms_version();
+begin
+  if v_uid is null then
+    raise exception 'Sign in to accept the terms.';
+  end if;
+
+  insert into public.terms_acceptances (user_id, version, surface)
+  values (v_uid, v_cur, coalesce(nullif(trim(p_surface), ''), 'unknown'))
+  on conflict (user_id, version) do nothing;
+
+  return jsonb_build_object('version', v_cur, 'accepted', true);
+end;
+$function$
+;
 
 -- admin_action_allowed(p_user_id uuid)   grants: {postgres=X/postgres,service_role=X/postgres}
 CREATE OR REPLACE FUNCTION public.admin_action_allowed(p_user_id uuid)
@@ -1187,6 +1217,22 @@ begin
   update contractors set status = p_status where id = p_id;
 end;
 $function$;
+
+-- admin_terms_tail(p_limit integer)   grants: {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+CREATE OR REPLACE FUNCTION public.admin_terms_tail(p_limit integer DEFAULT 200)
+ RETURNS TABLE(accepted_at timestamp with time zone, email text, role text, version text, surface text)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'extensions', 'pg_temp'
+AS $function$
+  select t.accepted_at, p.email, p.role, t.version, t.surface
+    from public.terms_acceptances t
+    join public.profiles p on p.id = t.user_id
+   where public.is_admin()
+   order by t.accepted_at desc
+   limit greatest(1, least(coalesce(p_limit, 200), 1000));
+$function$
+;
 
 -- agent_expire_stale_actions()   grants: {postgres=X/postgres,service_role=X/postgres}
 CREATE OR REPLACE FUNCTION public.agent_expire_stale_actions()
@@ -3355,6 +3401,20 @@ begin
    where id = v_request;
 end;
 $function$;
+
+-- current_terms_version()   grants: {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+CREATE OR REPLACE FUNCTION public.current_terms_version()
+ RETURNS text
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'extensions', 'pg_temp'
+AS $function$
+  select coalesce(
+    (select value #>> '{}' from public.platform_settings where key = 'terms_version'),
+    '2026-11-16'
+  );
+$function$
+;
 
 -- decline_bid(p_bid_id uuid)   grants: {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
 CREATE OR REPLACE FUNCTION public.decline_bid(p_bid_id uuid)
@@ -8818,6 +8878,40 @@ begin
   perform public._notify(v_contractor, 'review_received', 'You received a rating',
     'A client rated your completed job. Open your dashboard to see your updated score.', p_job_id);
 end; $function$;
+
+-- terms_status()   grants: {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+CREATE OR REPLACE FUNCTION public.terms_status()
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'extensions', 'pg_temp'
+AS $function$
+declare
+  v_cur  text := public.current_terms_version();
+  v_uid  uuid := auth.uid();
+  v_ver  text;
+  v_at   timestamptz;
+begin
+  if v_uid is null then
+    return jsonb_build_object('version', v_cur, 'accepted_version', null,
+                              'accepted_at', null, 'needed', false);
+  end if;
+
+  select t.version, t.accepted_at into v_ver, v_at
+    from public.terms_acceptances t
+   where t.user_id = v_uid
+   order by t.accepted_at desc
+   limit 1;
+
+  return jsonb_build_object(
+    'version',          v_cur,
+    'accepted_version', v_ver,
+    'accepted_at',      v_at,
+    'needed',           (v_ver is distinct from v_cur)
+  );
+end;
+$function$
+;
 
 -- tg_job_contracts_touch()   grants: {postgres=X/postgres,service_role=X/postgres}
 CREATE OR REPLACE FUNCTION public.tg_job_contracts_touch()

@@ -5,6 +5,7 @@ import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { clearMyProfile } from "@/lib/myProfile";
 import { setMyRole } from "@/lib/roleWrite";
+import { stashTermsConsent, redeemStashedTermsConsent } from "@/lib/terms";
 import { compressImage } from "@/lib/imageCompress";
 import { AVAIL_DAYS, WEEKDAYS, TIME_OPTIONS, DEFAULT_START, DEFAULT_END } from "@/lib/availability";
 import { trackEvent } from "@/lib/analytics";
@@ -302,10 +303,20 @@ export default function ContractorOnboarding() {
           try { await supabase.rpc("newsletter_subscribe", { p_email: form.email, p_audience: "contractor", p_name: form.firstName, p_source: "signup_checkbox" }); } catch (e) { console.warn("[ff] newsletter_subscribe failed", e); }
         }
         userId = authData.user.id;
+        // `agreedToTerms` was validated above and would otherwise be thrown
+        // away. `accept_terms()` needs a session, which the branch below shows
+        // may not exist for another few minutes — so stash it and let either
+        // the redeem after this if/else or AuthCallback record it. See
+        // src/lib/terms.ts.
+        stashTermsConsent("signup-contractor");
         // No session => email confirmation is required. The trigger has already
         // saved their profile + contractor details; show the verify screen.
         if (!authData.session) { try { localStorage.removeItem("ff_contractor_draft"); } catch { /* storage can be unavailable (private mode); best effort */ } trackEvent("sign_up", { method: "contractor" }); setVerifyEmail(true); window.scrollTo(0,0); setLoading(false); return; }
       } else {
+        // Already signed in (OAuth): the checkbox was still shown and still
+        // validated, so there IS a tick to record here. Stashed rather than
+        // written directly so there is one redeem call for both branches.
+        stashTermsConsent("signup-contractor");
         // Already signed in (OAuth): make sure a profiles row exists (Google
         // one-tap creates the auth user but the trigger may not have made a
         // profile), then set their role + details.
@@ -334,6 +345,10 @@ export default function ContractorOnboarding() {
           try { await supabase.rpc("newsletter_subscribe", { p_email: form.email, p_audience: "contractor", p_name: form.firstName, p_source: "signup_checkbox" }); } catch (e) { console.warn("[ff] newsletter_subscribe failed", e); }
         }
       }
+      // Both branches above reach here with a session, so the stashed tick can
+      // be recorded now. Never worth an account: on failure the stash survives
+      // for AuthCallback, and failing that they meet the blocking gate.
+      redeemStashedTermsConsent().catch(() => { /* retried by AuthCallback / covered by the gate */ });
       let photoPublicUrl: string | null = null;
       const failedUploads: string[] = [];
       if (photoFile) {
