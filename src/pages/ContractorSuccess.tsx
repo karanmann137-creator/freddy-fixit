@@ -58,13 +58,6 @@ export default function ContractorSuccess() {
         .ff-btn-secondary:hover { background: rgba(var(--ff-fg), 0.1); }
         .ff-btn-primary { background: var(--ff-c10); color: #fff; }
         .ff-btn-primary:hover { background: #f07a28; box-shadow: 0 4px 20px rgba(var(--ff-accent-rgb), 0.35); }
-        .ff-whatsapp { display: flex; align-items: center; justify-content: center; gap: 0.5rem;
-          background: rgba(37,211,102,0.1); border: 1px solid rgba(37,211,102,0.25); border-radius: 8px;
-          padding: 0.85rem 1.5rem; color: #25d366; font-size: 0.9rem; font-weight: 500;
-          cursor: pointer; text-decoration: none; margin-bottom: 1rem; width: 100%; box-sizing: border-box;
-          transition: background-color 0.2s var(--ff-ease-out), border-color 0.2s var(--ff-ease-out), transform 0.16s var(--ff-ease-out); }
-        .ff-whatsapp:hover { background: rgba(37,211,102,0.18); }
-        .ff-whatsapp:active { transform: scale(0.97); }
         .ff-footer { text-align: center; font-size: 0.78rem; color: rgba(var(--ff-muted), 0.3); margin-top: 2rem; }
       `}</style>
 

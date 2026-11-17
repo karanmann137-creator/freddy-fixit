@@ -84,9 +84,13 @@ Run as part of `freddy-weekly-review`. **Propose, never publish.** Five question
 4. **Do features shipped this week need wording that doesn't exist?** The standing example is the AI promise: both new clauses say the AI is advisory only and never an automated decision, so the day anything AI-derived gates a `contractors.status` the policy becomes false.
 5. **What does `admin_terms_tail` show?** Acceptances arriving with a plausible spread of surfaces is the gate working. All `reaccept` and no `signup-*` means the signup stash path has broken and new accounts are leaving no evidence.
 
-### Open question, recorded rather than nagged
+### The first thing it found: WhatsApp, removed rather than disclosed (2026-11-17)
 
-`ClientSuccess.tsx` offers a **"WhatsApp us"** button (`wa.me`, click-to-chat to our own business number). The visitor chooses it and we send nothing — but the destination is Meta, and §6.5 covers Meta only as a one-way *read* of public posts, which is not this. It sits in `DECLARED` as a user-followed link with the reasoning next to it, **as a comment and not as a red check**: a permanently-red gate is one someone learns to skip, and that would undo the gate's whole value. Owner decision pending on whether a contact-channel mention is warranted.
+`ClientSuccess.tsx` carried a **"Message us on WhatsApp"** button (`wa.me`, click-to-chat to our own business number). We transmitted nothing — the visitor chose it — but the destination is Meta, and §6.5 covers Meta only as a one-way *read* of public posts, which is not a support channel. **The owner's answer was to remove the button, not to write a clause for it**, and that is the cheaper answer whenever a third party is there for a convenience rather than a capability: a clause is a permanent obligation to keep a sentence true, a deletion is finished the day it ships.
+
+So `wa.me` is **deliberately absent from `DECLARED`**, with the reasoning written where the entry used to be. A `wa.me` link reappearing anywhere now refuses the ship — which is a more reliable memory than a comment saying "we decided against this".
+
+`ContractorSuccess.tsx` had the `.ff-whatsapp` CSS but never the button; both copies went, because these two pages are twins and the orphan is how one drifts from the other. **Still live and NOT removed: four edge functions (`notify-accepted` ×3, `profile-updated`, `notify-admin`) and the AI chat system prompt still offer WhatsApp at the business number in their text.** They are the same digits as the phone line, so the fix is wording ("text us") rather than a feature, but it is an edge-function deploy and is queued, not done.
 
 ---
 

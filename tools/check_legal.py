@@ -126,13 +126,15 @@ DECLARED = {
     # Their browser goes there; we transmit nothing. Still declared, because
     # following a link does put the visitor's IP in someone else's log.
     "www.oipc.ab.ca":             "user-followed link -- the Alberta regulator the policy names for complaints",
-    # OPEN QUESTION, raised with the owner 2026-11-17 and recorded here rather
-    # than as a permanently-red check: ClientSuccess.tsx offers a "WhatsApp us"
-    # button, which is click-to-chat to OUR OWN business number. The visitor
-    # chooses it and we send nothing -- but the destination is Meta, and 6.5
-    # covers Meta only as a one-way read of public posts, which is not this.
-    # It is a contact channel, in the same family as a phone number.
-    "wa.me":                      "user-followed link -- click-to-chat to our own WhatsApp business number",
+
+    # DELIBERATELY ABSENT: wa.me. ClientSuccess.tsx used to carry a "Message us
+    # on WhatsApp" button -- click-to-chat to our own business number, so we
+    # transmitted nothing, but the destination was Meta and 6.5 covers Meta only
+    # as a one-way READ of public posts, which is not a contact channel. The
+    # first finding this checker surfaced; the owner chose to remove the button
+    # (2026-11-17) rather than write a clause for it. Not re-declaring it is the
+    # point: a wa.me link reappearing anywhere now refuses the ship, which is
+    # cheaper than remembering the decision.
 }
 
 SCAN = [("src", (".ts", ".tsx")),
