@@ -119,9 +119,9 @@ export default function ProfileBar({ role, onSaved }: { role: Role; onSaved?: ()
             {displayName}
             <span style={{ fontSize: ".62rem", textTransform: "uppercase", letterSpacing: ".08em", background: "rgba(var(--ff-accent-rgb), .15)", color: "var(--ff-c10)", borderRadius: "4px", padding: ".12rem .4rem", marginLeft: ".5rem", verticalAlign: "middle" }}>{roleLabel}</span>
           </div>
-          <div style={{ fontSize: ".8rem", color: "rgba(var(--ff-muted), .5)" }}>{email}{form.phone ? " · " + form.phone : ""}</div>
+          <div style={{ fontSize: ".8rem", color: "var(--ff-ink-3)" }}>{email}{form.phone ? " · " + form.phone : ""}</div>
         </div>
-        <button style={open ? ghostBtn : primaryBtn} onClick={() => { setOpen(o => !o); setSaved(false); setError(""); }}>
+        <button style={ghostBtn} onClick={() => { setOpen(o => !o); setSaved(false); setError(""); }}>
           {open ? "Close" : "Edit profile"}
         </button>
       </div>

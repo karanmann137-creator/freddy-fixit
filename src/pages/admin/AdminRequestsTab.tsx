@@ -36,11 +36,11 @@ export default function AdminRequestsTab(props: {
                 resultText={shown.length + " of " + requests.length + " on this page (searches the page you're on, not all " + counts.requests + ")"}
               />
             )}
-            {requests.length === 0 && <p style={{ color:"rgba(var(--ff-muted), .45)" }}>No requests yet.</p>}
+            {requests.length === 0 && <p style={{ color:"var(--ff-ink-3)" }}>No requests yet.</p>}
             {/* A query that empties the list is a different fact from an empty
                 page, and the pager is the fix for one and not the other. */}
             {requests.length > 0 && shown.length === 0 && (
-              <p style={{ color:"rgba(var(--ff-muted), .45)", fontSize:".9rem" }}>
+              <p style={{ color:"var(--ff-ink-3)", fontSize:".9rem" }}>
                 Nothing on this page matches “{search}”. Try the next page, or{" "}
                 <button type="button" onClick={() => setSearch("")} style={{ background:"none", border:"none", color:"var(--ff-c10)", fontFamily:"inherit", fontSize:".9rem", fontWeight:600, cursor:"pointer", padding:0 }}>clear the search</button>.
               </p>
@@ -63,7 +63,7 @@ export default function AdminRequestsTab(props: {
                   const picked = bids.find((b: any) => b.status === "accepted");
                   return (
                     <div style={{ marginTop:".75rem" }}>
-                      <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"rgba(var(--ff-muted), .45)", marginBottom:".4rem" }}>
+                      <div style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".1em", color:"var(--ff-ink-3)", marginBottom:".4rem" }}>
                         {r.status === "pending" ? `Bids (${bids.length}/7)` : `Bids (${bids.length})`}
                       </div>
                       {bids.map((b: any) => {
@@ -79,14 +79,14 @@ export default function AdminRequestsTab(props: {
                             <div style={{ fontSize:".85rem", color:"var(--ff-text)", display:"flex", alignItems:"center", gap:".4rem", flexWrap:"wrap" as const }}>
                               <span>{nameFor(b.contractor_id)}{b.amount != null ? " — $" + b.amount : (b.walkthrough_requested ? " — walkthrough first" : "")}</span>
                               {won && <span style={{ fontSize:".65rem", background:"rgba(var(--ff-success-rgb), .18)", color:"var(--ff-success)", border:"1px solid rgba(var(--ff-success-rgb), .4)", borderRadius:"4px", padding:".1rem .4rem", letterSpacing:".04em" }}>✓ PICKED</span>}
-                              {lost && <span style={{ fontSize:".65rem", color:"rgba(var(--ff-muted), .5)", letterSpacing:".04em" }}>not picked</span>}
+                              {lost && <span style={{ fontSize:".65rem", color:"var(--ff-ink-3)", letterSpacing:".04em" }}>not picked</span>}
                             </div>
-                            {b.message && <div style={{ fontSize:".75rem", color:"rgba(var(--ff-muted), .6)" }}>{b.message}</div>}
+                            {b.message && <div style={{ fontSize:".75rem", color:"var(--ff-ink-3)" }}>{b.message}</div>}
                           </div>
                         );
                       })}
                       {r.status === "pending"
-                        ? <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .4)" }}>The client picks a bid from their dashboard.</div>
+                        ? <div style={{ fontSize:".72rem", color:"var(--ff-ink-3)" }}>The client picks a bid from their dashboard.</div>
                         : picked
                           ? <div style={{ fontSize:".72rem", color:"var(--ff-success)" }}>The client picked {nameFor(picked.contractor_id)}{picked.amount != null ? " at $" + picked.amount : ""}.</div>
                           : null}
@@ -113,10 +113,10 @@ export default function AdminRequestsTab(props: {
                       {busyRefire === r.id ? "Sending…" : "Re-send to contractors"}
                     </Button>
                   )}
-                  <Button variant="danger" disabled={busyDelete} onClick={() => deleteRequest(r)}><Ic name="trash" size={13} style={{ marginRight:4 }} />Delete request</Button>
+                  <Button variant="danger" disabled={busyDelete} onClick={() => deleteRequest(r)} style={{ marginLeft:"auto" }}><Ic name="trash" size={13} style={{ marginRight:4 }} />Delete request</Button>
                 </div>
                 {r.status === "pending" && Number(r.refire_count ?? 0) > 0 && (
-                  <div style={{ fontSize:".72rem", color:"rgba(var(--ff-muted), .45)", marginTop:".4rem" }}>
+                  <div style={{ fontSize:".72rem", color:"var(--ff-ink-3)", marginTop:".4rem" }}>
                     Re-sent {r.refire_count} time{Number(r.refire_count) === 1 ? "" : "s"}
                     {Number(r.refire_count) >= 2 ? " — automatic nudges are used up, but you can still re-send by hand." : "."}
                   </div>

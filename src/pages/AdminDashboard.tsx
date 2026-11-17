@@ -1069,7 +1069,7 @@ export default function AdminDashboard() {
   // disabled state. That is why the pager's hand-written `opacity` is gone.
   const s = {
     title: { fontSize:".95rem", fontWeight:500, color:"var(--ff-text)", marginBottom:".35rem" },
-    meta: { fontSize:".78rem", color:"rgba(var(--ff-muted), .5)", marginBottom: "var(--ff-s1)" },
+    meta: { fontSize:".78rem", color:"var(--ff-ink-3)", marginBottom: "var(--ff-s1)" },
   };
 
   // Shaped like the ported chrome: the nav spacer, then the shared content
@@ -1241,7 +1241,9 @@ export default function AdminDashboard() {
     if (n > 0) return {
       state: "turn" as const,
       label: n === 1 ? "1 THING NEEDS YOU" : n + " THINGS NEED YOU",
-      hero: adminAttn[0].title + " — " + adminAttn[0].sub,
+      // Title only: the card directly below repeats the item with its detail
+      // line and its button, so the detail here was the same sentence twice.
+      hero: adminAttn[0].title,
       sub: n > 1 ? "The rest are listed below." : "",
     };
     if (platMode !== "open") return {
