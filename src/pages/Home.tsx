@@ -875,7 +875,7 @@ export default function Home() {
             repeating-linear-gradient(45deg, transparent 0 28px, rgba(var(--ff-fg), 0.02) 28px, rgba(var(--ff-fg), 0.02) 29px),
             repeating-linear-gradient(-45deg, transparent 0 28px, rgba(var(--ff-fg), 0.016) 28px, rgba(var(--ff-fg), 0.016) 29px);
         }
-        .ff-services-inner { max-width: 1000px; margin: 0 auto; padding: clamp(3rem, 9vw, 6rem) clamp(1rem, 4vw, 2rem); position: relative; z-index: 1; }
+        .ff-services-inner { max-width: 56.8rem; margin: 0 auto; padding: clamp(3rem, 9vw, 6rem) clamp(1rem, 4vw, 2rem); position: relative; z-index: 1; }
         .ff-services-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--ff-s3); margin-top: 3rem; }
         @media (max-width: 900px) { .ff-services-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
         @media (max-width: 339px) { .ff-services-grid { grid-template-columns: minmax(0, 1fr); } }
@@ -906,7 +906,7 @@ export default function Home() {
         .ff-how { background: var(--ff-bg); position: relative; overflow: hidden; }
         .ff-how-surface { background: var(--ff-surface); }
         .ff-how::before { content: ''; position: absolute; inset: 0; background-image: repeating-linear-gradient(0deg, transparent, transparent 60px, rgba(var(--ff-fg), 0.01) 60px, rgba(var(--ff-fg), 0.01) 61px), repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(var(--ff-fg), 0.01) 60px, rgba(var(--ff-fg), 0.01) 61px); pointer-events: none; }
-        .ff-how-inner { max-width: 1000px; margin: 0 auto; padding: clamp(2.5rem, 7vw, 4rem) clamp(1rem, 4vw, 2rem); position: relative; z-index: 1; }
+        .ff-how-inner { max-width: 56.8rem; margin: 0 auto; padding: clamp(2.5rem, 7vw, 4rem) clamp(1rem, 4vw, 2rem); position: relative; z-index: 1; }
         .ff-how-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2rem; margin-top: 3rem; }
         @media (max-width: 700px) { .ff-how-grid { grid-template-columns: minmax(0, 1fr); } }
         .ff-how-card { background: rgba(var(--ff-fg), 0.03); border: var(--ff-hair-w) solid rgba(var(--ff-fg), 0.07); border-radius: 14px; padding: 1.25rem 1.5rem; position: relative; }
@@ -926,14 +926,14 @@ export default function Home() {
             repeating-linear-gradient(45deg, transparent 0 28px, rgba(var(--ff-fg), 0.022) 28px, rgba(var(--ff-fg), 0.022) 29px),
             repeating-linear-gradient(-45deg, transparent 0 28px, rgba(var(--ff-fg), 0.018) 28px, rgba(var(--ff-fg), 0.018) 29px);
         }
-        .ff-about-inner { max-width: 900px; margin: 0 auto; padding: clamp(3rem, 9vw, 6rem) clamp(1rem, 4vw, 2rem); position: relative; z-index: 1; }
+        .ff-about-inner { max-width: 51.1rem; margin: 0 auto; padding: clamp(3rem, 9vw, 6rem) clamp(1rem, 4vw, 2rem); position: relative; z-index: 1; }
         .ff-about-eyebrow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ff-c10); margin-bottom: 1.5rem; }
         /* The largest display type on the site (up to 5rem), so it is the site
            where under-tracking shows first — hence the full -0.028em rather
            than the -0.015em that was right for Fraunces. */
         .ff-about-headline { font-family: var(--ff-font-display); font-weight: var(--ff-display-wght); font-size: clamp(2.8rem, 7vw, 5rem); letter-spacing: -0.028em; line-height: 1.02; color: var(--ff-text); margin-bottom: 2rem; }
         .ff-about-headline span { color: var(--ff-c10); }
-        .ff-about-body { font-size: 1.1rem; color: var(--ff-ink-3); font-weight: 400; line-height: 1.8; max-width: 680px; margin-bottom: 3rem; }
+        .ff-about-body { font-size: 1.1rem; color: var(--ff-ink-3); font-weight: 400; line-height: 1.8; max-width: 38.6rem; margin-bottom: 3rem; }
         .ff-about-body strong { color: var(--ff-text); font-weight: 500; }
         /* A pull-quote, so weight stays 500 rather than --ff-display-wght for
            the same reason .ff-panel-label does: at 2rem it is set BELOW the
@@ -1199,7 +1199,7 @@ export default function Home() {
 
       {/* ── Trust proof bar ── */}
       <div className="ff-trust-strip" style={{ background:"rgba(var(--ff-fg), .03)", borderTop:"var(--ff-hair-w) solid rgba(var(--ff-fg), .07)", borderBottom:"var(--ff-hair-w) solid rgba(var(--ff-fg), .07)", padding:"1.4rem 1rem" }}>
-        <div style={{ maxWidth:"1000px", margin:"0 auto", display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(min(200px, 100%), 1fr))", gap:"1rem" }}>
+        <div style={{ maxWidth:"56.8rem", margin:"0 auto", display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(min(200px, 100%), 1fr))", gap:"1rem" }}>
           {[
             /* Same correction as the hero tick row: we cannot say every pro is
                licensed, insured and WCB-verified, because most have not filed
@@ -1216,7 +1216,7 @@ export default function Home() {
             </div>
           ))}
         </div>
-        <p style={{ maxWidth:"620px", margin:"1.15rem auto 0", textAlign:"center" as const, fontSize:".88rem", lineHeight:1.6, color:"var(--ff-ink-3)" }}>
+        <p style={{ maxWidth:"35.2rem", margin:"1.15rem auto 0", textAlign:"center" as const, fontSize:".88rem", lineHeight:1.6, color:"var(--ff-ink-3)" }}>
           We're not a directory that sells your details to the highest bidder. We match you with vetted local pros — and your payment's held until you approve the work.
         </p>
       </div>
@@ -1268,10 +1268,10 @@ export default function Home() {
            the "why us" story lead the page, ahead of the process/FAQ/services
            detail bands. */}
       <div className="ff-on-dark" style={{ background:"var(--ff-bg)", padding:"6rem 2rem", position:"relative" as const, overflow:"hidden" as const }}>
-        <div style={{ maxWidth:"960px", margin:"0 auto", position:"relative" as const, zIndex:1 }}>
+        <div style={{ maxWidth:"54.5rem", margin:"0 auto", position:"relative" as const, zIndex:1 }}>
           <p style={{ fontSize:".72rem", textTransform:"uppercase" as const, letterSpacing:".2em", color:"var(--ff-c10)", marginBottom:"1.5rem", textAlign:"center" as const }}>Our Vetting Standard</p>
           <h2 style={{ fontFamily:"var(--ff-font-display)", fontWeight:"var(--ff-display-wght)" as any, fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:"-0.028em", color:"var(--ff-text)", textAlign:"center" as const, marginBottom:"1rem" }}>The Freddy <span style={{ color:"var(--ff-c10)" }}>Verified</span> Promise.</h2>
-          <p style={{ textAlign:"center" as const, fontSize:"1rem", color:"var(--ff-ink-3)", fontWeight:400, maxWidth:"620px", margin:"0 auto 3rem", lineHeight:1.7 }}>
+          <p style={{ textAlign:"center" as const, fontSize:"1rem", color:"var(--ff-ink-3)", fontWeight:400, maxWidth:"35.2rem", margin:"0 auto 3rem", lineHeight:1.7 }}>
             Anyone can call themselves a handyman. Before a pro can take a single job on Freddy, they clear our verification checklist — and every job is payment-protected on top of it.
           </p>
           <div style={{ display:"flex", justifyContent:"center" as const, marginBottom:"3rem" }}>
@@ -1301,7 +1301,7 @@ export default function Home() {
               <span style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:"1.4rem", letterSpacing:".08em", color:"var(--ff-c10)" }}>Freddy Verified</span>
             </div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(min(250px, 100%), 1fr))", gap:"1rem", maxWidth:"820px", margin:"0 auto" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(min(250px, 100%), 1fr))", gap:"1rem", maxWidth:"46.6rem", margin:"0 auto" }}>
             {[
               { t:"Licence & trade certification", d:"We confirm the right trade licence or certification for the work they do." },
               { t:"Liability insurance", d:"Active coverage on file, so you're protected if something goes wrong." },
@@ -1376,7 +1376,7 @@ export default function Home() {
       {/* ── FAQ ── */}
       <div style={{ background:"var(--ff-bg)", padding:"6rem 2rem" }}>
         <style>{"details.ff-faq>summary::-webkit-details-marker{display:none}details.ff-faq>summary{list-style:none}details.ff-faq .ff-faq-icon{transition:transform .2s ease;display:inline-block}details.ff-faq[open] .ff-faq-icon{transform:rotate(45deg)}details.ff-faq[open]{border-color:rgba(var(--ff-accent-rgb), .3)}"}</style>
-        <div style={{ maxWidth:"800px", margin:"0 auto" }}>
+        <div style={{ maxWidth:"45.5rem", margin:"0 auto" }}>
           <h2 style={{ fontFamily:"var(--ff-font-display)", fontWeight:"var(--ff-display-wght)" as any, fontSize:"clamp(2.5rem, 6vw, 4rem)", letterSpacing:"-0.028em", color:"var(--ff-text)", textAlign:"center", marginBottom:"3rem" }}>Frequently Asked <span style={{ color:"var(--ff-c10)" }}>Questions.</span></h2>
           <div style={{ display:"flex", flexDirection:"column", gap:".75rem" }}>
             {FAQS.map((f, i) => (

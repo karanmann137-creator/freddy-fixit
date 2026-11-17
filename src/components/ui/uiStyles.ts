@@ -867,10 +867,10 @@ const CSS = `
    wide prop rather than Admin keeping its own column. An opt-out with a
    stated reason is a different thing from three defaults nobody chose. */
 .ffd-col{
-  max-width: 800px; margin: 0 auto;
+  max-width: 45.5rem; margin: 0 auto;
   padding: clamp(1rem, 4vw, 1.5rem);
 }
-.ffd-col.ffd-wide{ max-width: 1040px; }
+.ffd-col.ffd-wide{ max-width: 59.1rem; }
 
 /* The card. Client's geometry. This is the surface a page uses when its
    content is NOT a list of rows -- a list of rows is a Sheet, and reaching

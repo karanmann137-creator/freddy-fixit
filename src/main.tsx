@@ -10,6 +10,11 @@ const style = document.createElement("style");
 style.textContent = `
   :root {
     --ff-font-scale: 1.1;
+    /* Added to the scale on desktop only (see the media block beside the html
+       font-size rule). 0.15 lifts the default 1.1 to 1.25, the size Settings
+       calls Large, and moves the other three steps up by the same amount, so
+       a saved choice keeps its label. Zero on phones and tablets. */
+    --ff-font-bump: 0;
 
     /* ── The display face ──────────────────────────────────────────
        Every band headline on every page you *read* resolves through
@@ -490,7 +495,8 @@ style.textContent = `
   }
 
   *, *::before, *::after { box-sizing: border-box; }
-  html { font-size: calc(100% * var(--ff-font-scale, 1)); }
+  html { font-size: calc(100% * (var(--ff-font-scale, 1) + var(--ff-font-bump, 0))); }
+  @media (min-width: 1024px) and (pointer: fine) { :root { --ff-font-bump: 0.15; } }
   html, body { margin: 0; padding: 0; background: var(--ff-bg); }
 
   /* THE FONT FLOOR. Until this line existed there was no global font-family
