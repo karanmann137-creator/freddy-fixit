@@ -447,6 +447,9 @@
 --   stripe_session_id  text
 --   service_address  text
 --   service_address_at  timestamp with time zone
+--   refunded_total  numeric  not null  default 0
+--   last_refund_at  timestamp with time zone
+--   last_refund_reason  text
 
 -- table message_email_log   (RLS on)
 --   job_id  uuid  not null

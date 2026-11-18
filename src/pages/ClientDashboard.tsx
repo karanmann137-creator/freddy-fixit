@@ -47,7 +47,7 @@ import FileClaimModal, { type ClaimJob } from "@/components/FileClaimModal";
 import RequestHelpModal from "@/components/RequestHelpModal";
 import { jobCode } from "@/lib/jobCode";
 import { openDocument, money, docDate, type DocLine } from "@/lib/printDoc";
-import { jobFullyFunded } from "@/lib/jobFunding";
+import { jobFullyFunded, jobRefunded } from "@/lib/jobFunding";
 import { priceChangeMath, pcMoney, pcRateLabel } from "@/lib/priceChange";
 import { getDismissals, dismiss as dismissKey } from "@/lib/dismissals";
 import { searchTokens, matchesSearch } from "@/lib/dashSearch";
@@ -964,8 +964,18 @@ export default function ClientDashboard() {
     // What we've actually collected — on an unpaid job that's nothing, and on a
     // deposit-only job it's the deposit, not the whole quote.
     const unpaid = j?.payment_status === "unpaid" || j?.payment_status === "failed" || j?.payment_status === "processing";
-    const paid = unpaid ? 0 : Math.min(jobFunded(j) || total, total);
-    const balance = Math.max(r2(total - paid), 0);
+    // `jobFunded(j) || total` covers a job stamped before `funded_amount` existed,
+    // where a 0 means "we don't track it here", not "nothing arrived". A REFUNDED
+    // job is the one case where that zero is REAL — `refunded_total` is non-zero
+    // only because money came back OUT of `funded_amount` — so the fallback must
+    // not fire there, or a fully-refunded job prints the whole amount as received.
+    const refunded = jobRefunded(j);
+    const paid = unpaid ? 0 : refunded > 0 ? jobFunded(j) : Math.min(jobFunded(j) || total, total);
+    // A refund SETTLES the job. Without this a dispute refund leaves
+    // total_charged untouched and funded_amount at 0, so the arithmetic below
+    // would print "Balance owing $X" to the one client who owes nothing.
+    const settled = j?.payment_status === "refunded";
+    const balance = settled ? 0 : Math.max(r2(total - paid), 0);
     const service = activeReq?.service_needed ?? "Home service";
 
     // Accepted add-ons are already inside jobs.amount, so the agreed price line is
@@ -984,10 +994,20 @@ export default function ClientDashboard() {
     });
     charges.push({ label: "Total", value: money(total), kind: "total" });
 
+    // What ARRIVED is what is still held PLUS whatever has since gone back out.
+    // Both refund paths decrement funded_amount, so `paid` on its own silently
+    // understates the charges — the client sees a smaller number than their card
+    // statement with nothing on the page accounting for the difference.
+    const gross = r2(paid + refunded);
+
     const payments: DocLine[] = [];
-    if (j?.deposit_paid_at) payments.push({ label: "Deposit received", value: money(Math.min(paid, total)), note: docDate(j.deposit_paid_at) });
-    if (j?.paid_at && balance <= 0.005) payments.push({ label: "Paid in full", value: money(paid), note: docDate(j.paid_at) });
-    if (payments.length === 0) payments.push({ label: "Received to date", value: money(paid) });
+    if (j?.deposit_paid_at) payments.push({ label: "Deposit received", value: money(Math.min(gross, total)), note: docDate(j.deposit_paid_at) });
+    if (j?.paid_at && balance <= 0.005 && refunded <= 0) payments.push({ label: "Paid in full", value: money(gross), note: docDate(j.paid_at) });
+    if (payments.length === 0) payments.push({ label: "Received to date", value: money(gross) });
+    if (refunded > 0) {
+      payments.push({ label: "Refunded to you", value: "−" + money(refunded), note: j?.last_refund_at ? docDate(j.last_refund_at) : undefined });
+      payments.push({ label: "Net received", value: money(paid), kind: "sub" });
+    }
     payments.push({ label: balance > 0.005 ? "Balance owing" : "Amount owing", value: money(balance), kind: "total" });
 
     const details: DocLine[] = [
@@ -1034,7 +1054,9 @@ export default function ClientDashboard() {
           kind: "lines",
           title: "Payments",
           lines: payments,
-          note: balance > 0.005
+          note: refunded > 0
+            ? "A refund of " + money(refunded) + " has been returned to the card you paid with. See the separate credit note for the reason and the date."
+            : balance > 0.005
             ? "This job is part-paid. Your deposit is held securely and the balance is due once the work is finished. Nothing is released to your pro until you confirm the job is complete."
             : "Payment is held securely and released to your pro after you confirm the work is complete.",
         },
@@ -1045,6 +1067,112 @@ export default function ClientDashboard() {
       ],
     });
     if (!ok) notify("Please allow pop-ups to view your receipt.");
+  };
+
+  // CREDIT NOTE — the document that says money went back, and why.
+  //
+  // Until 2026-11-17 a refund existed only at Stripe: both refund paths called
+  // stripe.refunds.create and decremented funded_amount, and recorded the amount,
+  // the date and the reason NOWHERE. So the client's own invoice kept showing the
+  // full amount paid with no credit anywhere against it, and there was nothing a
+  // credit note could be rendered from. `jobs.refunded_total` /
+  // `last_refund_at` / `last_refund_reason` are that record, written by
+  // adjust-payment (an approved price DECREASE below what we hold) and
+  // resolve-dispute (a full or partial dispute refund) in the SAME update that
+  // writes funded_amount down, so this document and the money can never end up
+  // one failure apart.
+  //
+  // It carries its OWN number (…-C), because a credit note and the invoice it
+  // credits are two documents and a bookkeeper matching them by number must not
+  // find the same number on both.
+  //
+  // MONEY: reads only. `jobRefunded` is a RECORD, never a gate — none of the four
+  // payout guards reads these columns and nothing here can move money.
+  const openCreditNote = (j: any) => {
+    const refunded = jobRefunded(j);
+    // The button is gated on the same predicate, so this is the pop-up-blocked
+    // sibling case: a stale card re-read between render and click.
+    if (refunded <= 0) { notify("There's no refund recorded on this job yet."); return; }
+
+    const total = jobTotal(j);
+    const held = jobFunded(j);
+    const service = activeReq?.service_needed ?? "Home service";
+    // Full vs partial is a statement about the money, not about the status: a
+    // price decrease leaves the job live and still holding the new total.
+    const full = held <= 0.005;
+
+    const credit: DocLine[] = [
+      { label: "Originally charged", value: money(r2(held + refunded)) },
+      { label: "Credited back to you", value: "−" + money(refunded) },
+      { label: "Still held for this job", value: money(held), kind: "sub" },
+      { label: "Total credit", value: money(refunded), kind: "total" },
+    ];
+
+    const details: DocLine[] = [
+      { label: "Credit note", value: jobCode(j?.id) + "-C" },
+      { label: "Against invoice", value: jobCode(j?.id) },
+      { label: "Service", value: service },
+      { label: "Current job total", value: money(total) },
+    ];
+    if (j?.last_refund_at) details.push({ label: "Refund issued", value: docDate(j.last_refund_at) });
+    if (j?.service_address) details.push({ label: "Service address", value: String(j.service_address) });
+
+    const reason = String(j?.last_refund_reason ?? "").trim();
+
+    const proName = contractor
+      ? (contractor.company_name || [contractor.first_name, contractor.last_name].filter(Boolean).join(" ") || "Your pro")
+      : "Your pro";
+
+    const ok = openDocument({
+      docType: "CREDIT NOTE",
+      docNumber: jobCode(j?.id) + "-C",
+      issued: docDate(j?.last_refund_at),
+      subtitle: service + " · credit against " + jobCode(j?.id),
+      blocks: [
+        {
+          kind: "parties",
+          items: [
+            {
+              title: "Credited to",
+              lines: [
+                [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Client",
+                profile?.email ?? "",
+                profile?.phone ?? "",
+                j?.service_address ?? "",
+              ],
+            },
+            {
+              title: "Issued by",
+              lines: ["Freddy Fix It", "Calgary, Alberta", "hello@freddyfixit.ca", "freddyfixit.ca"],
+            },
+          ],
+        },
+        { kind: "lines", title: "What this credits", lines: details },
+        {
+          kind: "lines",
+          title: "Credit",
+          lines: credit,
+          note: full
+            ? "Everything held for this job has been returned to you. Nothing further is owed."
+            : "The remaining amount is still held securely against this job and is released to your pro only after you confirm the work is complete.",
+        },
+        {
+          kind: "text",
+          title: "Reason for this credit",
+          // A refund with no stamped reason is only possible on a job refunded
+          // before these columns existed, and those read refunded_total = 0 so
+          // they never reach this document. Said plainly anyway rather than
+          // printing an empty section.
+          body: reason || "A refund was issued on this job. Contact us quoting " + jobCode(j?.id) + " and we'll confirm the details.",
+        },
+      ],
+      footNotes: [
+        "Refunds are returned to the original card. Your bank can take a further 5–10 business days to show it.",
+        "No GST was collected on this job, so none is credited back here. The amount above is exactly what was returned to your card.",
+        "Work carried out by " + proName + ", booked through Freddy Fix It. Questions about this credit: hello@freddyfixit.ca, quoting " + jobCode(j?.id) + ".",
+      ],
+    });
+    if (!ok) notify("Please allow pop-ups to view your credit note.");
   };
 
   const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -2927,7 +3055,34 @@ export default function ClientDashboard() {
                                 ) : (
                                   <div style={{ fontSize:".82rem", color:"var(--ff-success)", marginBottom:".6rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Payment secured — we'll release it to your contractor once you confirm the work is done.</div>
                                 )}
-                                <button style={s.btn} onClick={() => downloadReceipt(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Invoice / receipt</button>
+                                <div style={{ display:"flex", gap:"var(--ff-s3)", flexWrap:"wrap" as const }}>
+                                  <button style={s.btn} onClick={() => downloadReceipt(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Invoice / receipt</button>
+                                  {jobRefunded(activeJob) > 0 && (
+                                    <button style={s.btn} onClick={() => openCreditNote(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Credit note</button>
+                                  )}
+                                </div>
+                              </>
+                            ) : activeJob.payment_status === "refunded" ? (
+                              /* A REFUNDED job used to fall straight through this
+                                 test into the `activeJob.amount` branch below and
+                                 render "Pay $X (held until you confirm)" — telling
+                                 a client who had just been refunded to pay for the
+                                 job again, with the invoice button unreachable from
+                                 the one screen where they most need it. Nothing in
+                                 this file read `payment_status === "refunded"` at
+                                 all before 2026-11-17. */
+                              <>
+                                <div style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .8)", marginBottom:"var(--ff-s3)", lineHeight:1.5 }}>
+                                  <Ic name="check-circle" size={13} style={{ marginRight:4 }} />{jobRefunded(activeJob) > 0
+                                    ? "A refund of $" + jobRefunded(activeJob).toFixed(2) + " has been returned to the card you paid with. Nothing further is owed on this job — your bank can take another 5–10 business days to show it."
+                                    : "This job has been refunded. Nothing further is owed. Your bank can take 5–10 business days to show it."}
+                                </div>
+                                <div style={{ display:"flex", gap:"var(--ff-s3)", flexWrap:"wrap" as const }}>
+                                  <button style={s.btn} onClick={() => downloadReceipt(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Invoice / receipt</button>
+                                  {jobRefunded(activeJob) > 0 && (
+                                    <button style={s.btn} onClick={() => openCreditNote(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Credit note</button>
+                                  )}
+                                </div>
                               </>
                             ) : activeJob.amount ? (
                               <>
@@ -2992,6 +3147,9 @@ export default function ClientDashboard() {
                                 <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                                   <button style={{ ...s.primaryBtn, background:"var(--ff-success)", color:"var(--ff-bg)" }} disabled={busyReq || !!activeJob.price_change_pending || (activeJob.payment_status === "held" && !jobFullyFunded(activeJob))} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm & release payment"}</button>
                                   <button style={s.btn} onClick={() => downloadReceipt(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Invoice / receipt</button>
+                                  {jobRefunded(activeJob) > 0 && (
+                                    <button style={s.btn} onClick={() => openCreditNote(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Credit note</button>
+                                  )}
                                 </div>
                                 {/* Demoted from a third equal-weight button to a
                                     quiet link, NOT removed. This is the client's

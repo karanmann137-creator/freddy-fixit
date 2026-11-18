@@ -25,7 +25,7 @@ import ProfileCompleteCelebration from "@/components/ProfileCompleteCelebration"
 import DashboardSidebar, { type SidebarItem } from "@/components/DashboardSidebar";
 import RequestHelpModal from "@/components/RequestHelpModal";
 import { jobCode } from "@/lib/jobCode";
-import { openDocument, money, docDate, type DocLine } from "@/lib/printDoc";
+import { openDocument, money, docDate, type DocLine, type DocBlock } from "@/lib/printDoc";
 import { jobBalanceDue, jobAwaitingBalance, jobFullyFunded } from "@/lib/jobFunding";
 import { priceChangeMath, pcMoney, pcRateLabel } from "@/lib/priceChange";
 import JobsCalendar from "@/components/JobsCalendar";
@@ -1482,6 +1482,115 @@ export default function ContractorDashboard() {
     });
     if (!ok) notify("Please allow pop-ups to open your summary.");
   };
+
+  // PRINTABLE QUOTE for a bid the pro has already placed.
+  //
+  // Deliberately renders from the bid row that already exists — there is no quote
+  // table, no quote form and no new permission. `bids` carries everything a quote
+  // needs (amount, the labour/parts/call-out split, assumptions, a walkthrough
+  // range, subject_to_inspection) and `bids contractor read own` is already
+  // `contractor_id = auth.uid()`, so this is one extra read on click and nothing
+  // else. The alternative — widening `list_open_jobs` — would be a DROP + CREATE
+  // of a fixed TABLE return plus re-issuing its grants, for a document that is
+  // printed rarely and read never by us.
+  //
+  // VALIDITY IS A STATED POLICY, NOT A COLUMN. `bids` has no `expires_at`, and
+  // adding one to print a date on a page would put a number in the database that
+  // nothing enforces. 30 days from the bid date is said on the page as the pro's
+  // own term, which is what a quote's validity line actually is.
+  //
+  // The client is NOT named. At bid stage the platform masks client identity and
+  // only the approximate location is known, so the quote is addressed to the
+  // area. Printing a name we don't have would be the only dishonest line on it.
+  const [quoteBusy, setQuoteBusy] = useState<string | null>(null);
+  const openQuote = async (r: any) => {
+    const me = contractor?.id;
+    if (!me) { notify("We couldn't tell which account you're signed in as — refresh the page and try again."); return; }
+    setQuoteBusy(r.id);
+    try {
+      const { data: b, error } = await supabase.from("bids")
+        .select("id, amount, labour_amount, parts_amount, callout_fee, assumptions, message, price_low, price_high, subject_to_inspection, walkthrough_requested, created_at, status")
+        .eq("request_id", r.id).eq("contractor_id", me).maybeSingle();
+      // A failed read is not an empty result. "We couldn't tell" and "there is no
+      // bid" are different sentences, and only one of them is fixed by refreshing.
+      if (error) { notify("We couldn't load your bid just now — refresh the page and try again."); return; }
+      if (!b) { notify("We couldn't find your bid on this job. If you just placed it, refresh the page."); return; }
+
+      const wt = !!b.walkthrough_requested;
+      const labour = b.labour_amount == null ? null : Number(b.labour_amount);
+      const parts = b.parts_amount == null ? null : Number(b.parts_amount);
+      const callout = b.callout_fee == null ? null : Number(b.callout_fee);
+      const total = b.amount == null ? null : Number(b.amount);
+
+      const valid = b.created_at ? new Date(new Date(b.created_at).getTime() + 30 * 24 * 60 * 60 * 1000) : null;
+
+      const details: DocLine[] = [
+        { label: "Work", value: r.service_needed ?? "Job" },
+        { label: "Area", value: r.location || "Calgary" },
+        { label: "Quote date", value: docDate(b.created_at) },
+      ];
+      if (valid) details.push({ label: "Valid until", value: docDate(valid.toISOString()) });
+      if (r.preferred_schedule) details.push({ label: "Client's preferred timing", value: r.preferred_schedule });
+      if (r.is_recurring && r.recurring_frequency) details.push({ label: "Recurring", value: freqLabel(r.recurring_frequency) });
+
+      // A walkthrough bid has no firm price by design — printing one as if it were
+      // firm is the one way this document could cost the pro money.
+      const price: DocLine[] = [];
+      if (wt) {
+        price.push({ label: "Estimated range, pending a walkthrough", value: money(b.price_low) + " – " + money(b.price_high), kind: "total" });
+      } else {
+        const itemised = labour != null || parts != null || callout != null;
+        if (itemised) {
+          if (callout != null) price.push({ label: "Call-out", value: money(callout) });
+          if (labour != null) price.push({ label: "Labour", value: money(labour) });
+          if (parts != null) price.push({ label: "Materials and parts", value: money(parts) });
+        }
+        price.push({ label: "Total price for this work", value: money(total), kind: itemised ? "total" : "row" });
+      }
+
+      const blocks: DocBlock[] = [
+        {
+          kind: "parties",
+          items: [
+            { title: "Quote from", lines: proIdentity() },
+            { title: "Prepared for", lines: ["Prospective client", r.location || "Calgary", "Posted " + docDate(r.created_at), "Through Freddy Fix It"] },
+          ],
+        },
+        { kind: "lines", title: "The job", lines: details },
+        {
+          kind: "lines",
+          title: "Price",
+          lines: price,
+          note: wt
+            ? "A range, not a firm price. The exact figure is confirmed in writing after a free walkthrough."
+            : (b.subject_to_inspection ? "Subject to inspection — if the work on site differs from what was described, a revised price is agreed with the client before anything starts." : undefined),
+        },
+      ];
+      if (r.job_description) blocks.push({ kind: "text", title: "What the client asked for", body: r.job_description });
+      if (b.assumptions) blocks.push({ kind: "text", title: "What this price assumes", body: b.assumptions });
+
+      const ok = openDocument({
+        docType: "QUOTE",
+        docNumber: jobCode(b.id),
+        issued: docDate(b.created_at),
+        subtitle: b.status === "accepted"
+          ? "Accepted by the client. This is the quote the job was booked on."
+          : b.status === "pending"
+            ? "Submitted through Freddy Fix It and awaiting the client's decision."
+            : "Submitted through Freddy Fix It. Status: " + String(b.status).replace("_", " ") + ".",
+        blocks,
+        footNotes: [
+          "This is a quote, not a contract. Work is booked through Freddy Fix It and the binding terms are the Service Agreement both sides e-sign before any money moves.",
+          "Booked through Freddy Fix It, the client also pays a platform service fee on top of the price above. It is charged to the client, not deducted from this quote.",
+          "Freddy Fix It does not collect or remit GST. Whether GST applies to your work, and how you account for it, is between you and your accountant.",
+          "Printed " + docDate() + ".",
+        ],
+      });
+      if (!ok) notify("Please allow pop-ups to open your quote.");
+    } finally {
+      setQuoteBusy(null);
+    }
+  };
   // Jobs are collected in two charges — a deposit that books the pro, and the
   // balance once the work is done — so a job sitting at payment_status='held'
   // is not necessarily paid in full. This is what stands between the pro and
@@ -2667,7 +2776,7 @@ export default function ContractorDashboard() {
           />
         )}
 
-        {activeTab === "available" && <ContractorAvailableTab search={search} availableJobs={availableJobs} contractor={contractor} setActiveTab={setActiveTab} s={s} setSearch={setSearch} priceFor={priceFor} pricing={pricing} bidOpen={bidOpen} setBidOpen={setBidOpen} bid={bid} setBidChat={setBidChat} bidForm={bidForm} setBid={setBid} busyBid={busyBid} placeBid={placeBid} hideJob={hideJob} hiding={hiding} />}
+        {activeTab === "available" && <ContractorAvailableTab search={search} availableJobs={availableJobs} contractor={contractor} setActiveTab={setActiveTab} s={s} setSearch={setSearch} priceFor={priceFor} pricing={pricing} bidOpen={bidOpen} setBidOpen={setBidOpen} bid={bid} setBidChat={setBidChat} bidForm={bidForm} setBid={setBid} busyBid={busyBid} placeBid={placeBid} hideJob={hideJob} hiding={hiding} openQuote={openQuote} quoteBusy={quoteBusy} />}
 
         {activeTab === "profile" && <ContractorProfileTab contractor={contractor} profile={profile} pulseAnchor={pulseAnchor} setShowProfileCongrats={setShowProfileCongrats} setContractor={setContractor} setOpenToOther={setOpenToOther} pricingForm={pricingForm} setPricingForm={setPricingForm} s={s} busyPricing={busyPricing} savePricing={savePricing} googleUrl={googleUrl} setGoogleUrl={setGoogleUrl} busyPf={busyPf} saveGoogleUrl={saveGoogleUrl} portfolio={portfolio} pfUrl={pfUrl} deletePortfolioItem={deletePortfolioItem} pfForm={pfForm} setPfForm={setPfForm} addPortfolioItem={addPortfolioItem} avail={avail} showCustomAvail={showCustomAvail} setShowCustomAvail={setShowCustomAvail} setAvailDays={setAvailDays} dayIsOn={dayIsOn} toggleDay={toggleDay} setAvailStart={setAvailStart} setAvailEnd={setAvailEnd} />}
 

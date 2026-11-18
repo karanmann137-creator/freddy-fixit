@@ -73,6 +73,15 @@ INVARIANTS = {
         # money still moves, under terms this client never accepted. One of
         # three call sites; keep them in step with docs/legal.md.
         'ensureTermsAccepted("pay")',
+        # 2026-11-17: the client's only route to a CREDIT NOTE -- the one
+        # document that says money came back and why. Its absence is invisible
+        # in the worst way: the refund itself still happened, the three columns
+        # on `jobs` still hold the record, typecheck and the build are clean,
+        # and the only symptom is a client with money back on their card and
+        # nothing on paper accounting for it. There is no second surface: the
+        # invoice points at this document by name, and a refund is exactly the
+        # moment a client goes looking for paperwork.
+        "openCreditNote(activeJob)",
     ],
     "src/pages/ContractorDashboard.tsx": [
         "<ContractPanel", "STAGE_MATCH", "JobsCalendar", "<DashShell",
@@ -237,6 +246,13 @@ MIN_COUNTS = {
     # passing a plain `in` test while half the signatures on the platform go
     # ungated -- the asymmetric-sibling shape, pre-empted rather than suffered.
     ("src/components/ContractPanel.tsx", 'ensureTermsAccepted("sign-contract")'): 2,
+    # 2026-11-17: three branches of the client's job card can be the one a
+    # refunded job lands on -- held/released, the new `refunded` branch, and
+    # pending_confirmation -- and which one it is depends on payment_status and
+    # status, not on anything the client chose. A credit note reachable from two
+    # of the three is a credit note that is missing exactly when the job sits in
+    # the third, which is the state nobody tests.
+    ("src/pages/ClientDashboard.tsx", "openCreditNote(activeJob)"): 3,
 }
 
 

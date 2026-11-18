@@ -30,8 +30,10 @@ export default function ContractorAvailableTab(props: {
   placeBid: (r: any) => Promise<void>;
   hideJob: (r: any) => Promise<void>;
   hiding: string | null;
+  openQuote: (r: any) => Promise<void>;
+  quoteBusy: string | null;
 }) {
-  const { search, availableJobs, contractor, setActiveTab, s, setSearch, priceFor, pricing, bidOpen, setBidOpen, bid, setBidChat, bidForm, setBid, busyBid, placeBid, hideJob, hiding } = props;
+  const { search, availableJobs, contractor, setActiveTab, s, setSearch, priceFor, pricing, bidOpen, setBidOpen, bid, setBidChat, bidForm, setBid, busyBid, placeBid, hideJob, hiding, openQuote, quoteBusy } = props;
   return (
     (() => {
           const openTokens = searchTokens(search);
@@ -232,7 +234,24 @@ export default function ContractorAvailableTab(props: {
                               ? (r.my_price_low != null && r.my_price_high != null ? ("Walkthrough first · $" + r.my_price_low + "–$" + r.my_price_high) : "Walkthrough-first offer")
                               : ("$" + r.my_amount)}</div>
                           </div>
-                          <button onClick={() => setBidOpen(pp => ({ ...pp, [r.id]: true }))} style={{ background:"none", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .18)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".78rem", fontWeight:600, cursor:"pointer", padding:".35rem .7rem", flexShrink:0 }}>Edit bid</button>
+                          {/* PRINTABLE QUOTE — the bid they just placed, on letter
+                              paper. Only offered where a bid exists, which is the
+                              only state that has anything to print. It reads the
+                              bid row on click rather than from this row, because
+                              list_open_jobs carries only my_amount and the range,
+                              not the labour/parts split or the assumptions. */}
+                          <div style={{ display:"flex", gap:"var(--ff-s2)", flexShrink:0 }}>
+                            <button
+                              onClick={() => openQuote(r)}
+                              disabled={quoteBusy === r.id}
+                              title="Printable quote for this bid"
+                              aria-label={"Printable quote for " + (r.service_needed ?? "this job")}
+                              style={{ background:"none", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .18)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".78rem", fontWeight:600, cursor: quoteBusy === r.id ? "default" : "pointer", opacity: quoteBusy === r.id ? .55 : 1, minHeight:"44px", padding:".35rem .7rem" }}
+                            >
+                              <Ic name="download" size={13} style={{ marginRight:4 }} />{quoteBusy === r.id ? "Opening…" : "Quote"}
+                            </button>
+                            <button onClick={() => setBidOpen(pp => ({ ...pp, [r.id]: true }))} style={{ background:"none", border:"var(--ff-hair-w) solid rgba(var(--ff-fg), .18)", borderRadius:"8px", color:"var(--ff-text)", fontFamily:"inherit", fontSize:".78rem", fontWeight:600, cursor:"pointer", minHeight:"44px", padding:".35rem .7rem" }}>Edit bid</button>
+                          </div>
                         </div>
                       );
                     }

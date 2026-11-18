@@ -18,6 +18,48 @@
 //
 // Economics are unchanged: client pays quote + same fee rate as the original
 // charge; contractor is paid 93% of the FINAL amount; platform keeps 7%.
+//
+// -- v3 (2026-09-01) ----------------------------------------------------------
+// Two fixes to the top-up Checkout session, both already made in the other four
+// checkout functions and missed here.
+//
+// 1. IT REDIRECTED TO `/client`, WHICH IS NOT A ROUTE. App.tsx has no `/client`;
+//    the catch-all sent a client who had just paid a price top-up to the
+//    marketing homepage with no confirmation that anything had happened. It now
+//    matches every other checkout function: `/client-dashboard?payment=...&job=`,
+//    which ClientDashboard already reads, banners, strips from the URL, and
+//    re-reads the job behind (the webhook can land seconds after the redirect).
+//
+// 2. THE SESSION HAD NO `expires_at`. Every other checkout function pins 2h, and
+//    that window is what `jobs.checkout_started_at` relies on to bound the
+//    `processing` block. A session with the Stripe default 24h life is a client
+//    who can pay a superseded top-up a day later, after the price has moved on.
+//
+// MONEY: touches none of the four payout guards. Nothing about what is collected
+// or paid out changes — only where the browser lands afterwards, and how long the
+// session stays payable.
+//
+// -- v4 (2026-11-17) ----------------------------------------------------------
+// RECORD THE REFUND. Until now this function was the one money path on the
+// platform that moved real money and left no trace of it in our own database:
+// it called stripe.refunds.create, decremented funded_amount, and recorded the
+// amount, the date and the reason nowhere. The only record was at Stripe. The
+// client's own invoice therefore kept showing the full amount paid, with no
+// credit anywhere against it, and there was nothing a credit note could be
+// rendered from.
+//
+// It now accumulates `jobs.refunded_total` and stamps `last_refund_at` /
+// `last_refund_reason`. See supabase/migrations/20261117_job_refund_record.sql
+// for why that is three columns on the job rather than a job_refunds table.
+//
+// This repo copy had also fallen BEHIND the deployed function (it was missing
+// the whole v3 block above), so it has been rewritten from the deployed v9
+// source. CLAUDE.md is right that the deployed one is the truth.
+//
+// MONEY: TOUCHES NONE OF THE FOUR PAYOUT GUARDS. The funded_amount arithmetic
+// below is byte-for-byte what v3 did, and no guard reads the three new columns.
+// They are a record of money that has already moved, never an input to a
+// decision about moving it.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@16.12.0?target=deno";
@@ -49,7 +91,7 @@ Deno.serve(async (req) => {
     if (!job_id) return json({ error: "Missing job_id" }, 400);
 
     const { data: job } = await admin.from("jobs")
-      .select("id, client_id, contractor_id, amount, client_fee, platform_fee, total_charged, contractor_payout, payment_status, stripe_payment_intent_id, extra_charge_intent_ids, funded_amount, fully_funded, price_change_pending")
+      .select("id, client_id, contractor_id, amount, client_fee, platform_fee, total_charged, contractor_payout, payment_status, stripe_payment_intent_id, extra_charge_intent_ids, funded_amount, fully_funded, price_change_pending, refunded_total")
       .eq("id", job_id).maybeSingle();
     if (!job) return json({ error: "Job not found" }, 404);
 
@@ -88,8 +130,10 @@ Deno.serve(async (req) => {
       const receiptEmail = profile?.email ?? undefined;
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
-        success_url: `${SITE}/client?payment=success`,
-        cancel_url: `${SITE}/client?payment=cancelled`,
+        // /client is not a route — this used to land on the marketing homepage.
+        success_url: `${SITE}/client-dashboard?payment=success&job=${job.id}`,
+        cancel_url: `${SITE}/client-dashboard?payment=cancelled&job=${job.id}`,
+        expires_at: Math.floor(Date.now() / 1000) + 2 * 60 * 60,
         customer_email: receiptEmail,
         line_items: [{
           quantity: 1,
@@ -163,6 +207,17 @@ Deno.serve(async (req) => {
       funded_amount: refunded > 0 ? Math.max(r2(funded - refunded), 0) : funded,
       price_change_pending: null,
       price_change_proposed_at: null,
+      // v4: and it is now RECORDED, not just moved. refunded_total accumulates
+      // because a job can be refunded more than once; the date and reason
+      // describe the most recent one, which is what a credit note is about.
+      ...(refunded > 0
+        ? {
+            refunded_total: r2((Number(job.refunded_total) || 0) + refunded),
+            last_refund_at: new Date().toISOString(),
+            last_refund_reason:
+              String(pend.reason ?? "").trim() || "Price reduced after the job was booked",
+          }
+        : {}),
     }).eq("id", job.id);
 
     // What the client still owes after this change (0 once fully funded).

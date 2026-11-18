@@ -1373,6 +1373,8 @@ export type Database = {
           id: string
           is_milestone: boolean
           labour_amount: number | null
+          last_refund_at: string | null
+          last_refund_reason: string | null
           milestone_schedule_status: string | null
           notes: string | null
           on_my_way_at: string | null
@@ -1392,6 +1394,7 @@ export type Database = {
           quote_assumptions: string | null
           quote_items: Json | null
           receipt_sent_at: string | null
+          refunded_total: number
           released_at: string | null
           request_id: string | null
           reschedule_accepted_at: string | null
@@ -1458,6 +1461,8 @@ export type Database = {
           id?: string
           is_milestone?: boolean
           labour_amount?: number | null
+          last_refund_at?: string | null
+          last_refund_reason?: string | null
           milestone_schedule_status?: string | null
           notes?: string | null
           on_my_way_at?: string | null
@@ -1477,6 +1482,7 @@ export type Database = {
           quote_assumptions?: string | null
           quote_items?: Json | null
           receipt_sent_at?: string | null
+          refunded_total?: number
           released_at?: string | null
           request_id?: string | null
           reschedule_accepted_at?: string | null
@@ -1543,6 +1549,8 @@ export type Database = {
           id?: string
           is_milestone?: boolean
           labour_amount?: number | null
+          last_refund_at?: string | null
+          last_refund_reason?: string | null
           milestone_schedule_status?: string | null
           notes?: string | null
           on_my_way_at?: string | null
@@ -1562,6 +1570,7 @@ export type Database = {
           quote_assumptions?: string | null
           quote_items?: Json | null
           receipt_sent_at?: string | null
+          refunded_total?: number
           released_at?: string | null
           request_id?: string | null
           reschedule_accepted_at?: string | null

@@ -548,7 +548,12 @@ def emit(path, message, del_tracked, del_untracked, skip_typecheck):
         if del_untracked:
             a('echo "Removing %d spent/unused file(s) that were never part of the code..."'
               % len(del_untracked))
-            a("rm -f \\")
+            # -r, not just -f: a scratch DIRECTORY (preview/, a stray build dir)
+            # is exactly the kind of untracked junk this list exists to clear, and
+            # `rm -f` on one is an ERROR, not a no-op -- it failed the whole
+            # installer on 2026-11-18 *after* deleting the twelve files before it,
+            # leaving nothing committed and no way to re-run without regenerating.
+            a("rm -rf \\")
             for i, p in enumerate(del_untracked):
                 a("  " + sh_quote(p) + ("" if i == len(del_untracked) - 1 else " \\"))
         a("")

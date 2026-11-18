@@ -118,3 +118,27 @@ export function jobBalanceDue(j: any): number {
 export function jobAwaitingBalance(j: any): boolean {
   return j?.payment_status === "held" && !j?.is_milestone && jobBalanceDue(j) > 0;
 }
+
+/**
+ * How much of this job's money has been given back to the client, in dollars.
+ * 0 when nothing has been refunded and 0 when the row cannot answer.
+ *
+ * `jobs.refunded_total` is written by the only two paths that refund a client:
+ * `adjust-payment` (an approved price DECREASE below what we hold) and
+ * `resolve-dispute` (a full or partial dispute refund). Both ACCUMULATE into
+ * it in the same update that writes `funded_amount` down, so this number and
+ * the money are never one failure apart. Added 2026-11-17 — until then a
+ * refund existed only at Stripe, and the client's own invoice kept showing the
+ * full amount paid with no credit anywhere against it.
+ *
+ * ⚠️ This is a RECORD, never a gate. It is read by the invoice and the credit
+ * note and by nothing that decides whether money may move: the four payout
+ * guards all read `funded_amount` / `fully_funded`, which the refund paths
+ * already decrement correctly and which this does not touch. Do not start
+ * branching a payment control on it — a job refunded and then re-charged would
+ * read a non-zero total forever.
+ */
+export function jobRefunded(j: any): number {
+  const n = Number(j?.refunded_total ?? 0);
+  return Number.isFinite(n) && n > 0 ? r2(n) : 0;
+}
