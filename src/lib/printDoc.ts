@@ -41,11 +41,24 @@ export function money(n: any): string {
   return (v < 0 ? "-$" : "$") + Math.abs(v).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-/** Calgary-local date. Never bare toLocaleDateString() — the session zone is UTC on some surfaces. */
+/**
+ * Calgary-local date. Never bare toLocaleDateString() — the session zone is UTC on some surfaces.
+ *
+ * ⚠️ A BARE "YYYY-MM-DD" IS A CALENDAR DATE, NOT AN INSTANT, AND CONVERTING IT IS A
+ * ONE-DAY-EARLY BUG. `new Date("2026-11-14")` is parsed as UTC midnight, which is
+ * 2026-11-13 18:00 in Calgary, so the timeZone conversion below renders "Nov 13" for a
+ * job scheduled on the 14th. `jobs.scheduled_date` IS a `date` column (the timestamps —
+ * paid_at, released_at, completed_at — are timestamptz and must still be converted), so
+ * this hit the invoice and the payout statement on the same line. A date-only string is
+ * therefore read field-by-field and never passed through a zone at all.
+ */
 export function docDate(v?: any): string {
-  const d = v ? new Date(v) : new Date();
+  const dateOnly = typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v.trim());
+  const d = v ? new Date(dateOnly ? String(v).trim() + "T12:00:00" : v) : new Date();
   if (isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("en-CA", { timeZone: "America/Edmonton", year: "numeric", month: "short", day: "numeric" });
+  const opts: any = { year: "numeric", month: "short", day: "numeric" };
+  if (!dateOnly) opts.timeZone = "America/Edmonton";
+  return d.toLocaleDateString("en-CA", opts);
 }
 
 export type DocLine = {
@@ -97,7 +110,18 @@ const CSS: string = [
   ".meta dd { margin:0; font-weight:700; }",
   ".subtitle { font-size:10pt; color:" + MUTE + "; margin:12px 0 0; }",
   // blocks
-  ".block { margin-top:22px; page-break-inside:avoid; }",
+  // 22px -> 18px -> 14px, and the footer's 30px -> 20px -> 14px, on 2026-11-17. A one-job
+  // invoice (parties + details + charges + payments + two footnotes) overflowed the last
+  // footnote onto a second sheet, and a second page carrying nothing but small print reads
+  // as a printing fault on a document someone files for tax.
+  //
+  // ⚠️ THE BUDGET IS SET BY THE PAID-IN-FULL RECEIPT, NOT BY THE INVOICE. The first pass
+  // tuned against an invoice and left ~16px of slack, which looked fine — but a job that
+  // has been paid off carries ONE MORE payment line (deposit, balance, received to date,
+  // balance owing) than the same job mid-payment, and that line put the whole footer back
+  // on page two. The receipt is also the copy people actually keep, so size the page
+  // against the LONGEST state a single job can reach, not the state in front of you.
+  ".block { margin-top:14px; page-break-inside:avoid; }",
   ".block h2 { font-size:9.5pt; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:" + MUTE + "; margin:0 0 8px; }",
   ".parties { display:flex; flex-wrap:wrap; gap:22px; }",
   ".party { flex:1 1 2.6in; min-width:2.3in; }",
@@ -109,7 +133,7 @@ const CSS: string = [
   "td { padding:6px 0; vertical-align:top; border-bottom:1px solid #eef0f3; }",
   "th.r, td.r { text-align:right; white-space:nowrap; }",
   "tfoot td { border-bottom:none; border-top:2px solid " + INK + "; font-weight:800; padding-top:8px; }",
-  ".lines td { border-bottom:none; padding:4px 0; }",
+  ".lines td { border-bottom:none; padding:3px 0; }",
   ".lines tr.sub td { border-top:1px solid " + LINE + "; padding-top:7px; }",
   ".lines tr.total td { border-top:2px solid " + INK + "; padding-top:8px; font-weight:800; font-size:11.5pt; }",
   ".lines .note { display:block; font-size:8.5pt; color:" + MUTE + "; }",
@@ -122,7 +146,7 @@ const CSS: string = [
   ".embed table { border-collapse:collapse; }",
   ".embed h1, .embed h2, .embed h3 { page-break-after:avoid; }",
   // footer
-  ".foot { margin-top:30px; padding-top:12px; border-top:1px solid " + LINE + "; font-size:8.5pt; color:" + MUTE + "; }",
+  ".foot { margin-top:14px; padding-top:10px; border-top:1px solid " + LINE + "; font-size:8.5pt; color:" + MUTE + "; }",
   ".foot p { margin:0 0 4px; }",
   "@media print { .noprint { display:none !important; } .wrap { padding:0; max-width:none; } body { font-size:10pt; } }",
   "@media (max-width:640px) { .wrap { padding:14px 12px 40px; } .meta { text-align:left; min-width:0; } .meta dl div { justify-content:flex-start; } .head { border-bottom-width:2px; } }",

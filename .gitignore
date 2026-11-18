@@ -80,6 +80,11 @@ _skills-to-install/
 # tracked and load-bearing.
 *-shapes.html
 *-preview.html
+# Same rule, PDF side: a mockup rendered through src/lib/printDoc.ts to show the
+# owner what a printed document actually looks like. Binary, unreviewable in a
+# diff, and a sample invoice carries plausible-looking client names and amounts
+# that have no business on a PUBLIC repo.
+*-mockup.pdf
 
 # Python bytecode from tools/
 __pycache__/
