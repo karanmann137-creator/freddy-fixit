@@ -303,7 +303,15 @@ SRC = "src"
 # one of the four hazards the groups exist for -- a var() in a --ff-* declaration
 # (the alias trap), a token handed to canvas, or a token in a presentation
 # attribute. Read the new site before lowering anything.
-BASELINE = 18
+#
+# 18 -> 17 on 2026-11-17: the client receipt was rebuilt on src/lib/printDoc.ts,
+# which removed its two hand-rolled orange literals and replaced them with ONE
+# in the renderer (DOC_ACCENT). That literal is a FIFTH permanent group and it
+# is permanent for a different reason than the other four: a document opened
+# with document.write() has no :root, so var(--ff-c10) resolves to NOTHING
+# there -- the old receipt's "border-top:2px solid var(--ff-bg)" drew no line
+# at all for exactly that reason. A print document must use hex.
+BASELINE = 17
 
 ORANGE = re.compile(r"#ea6b14|rgba\(\s*234\s*,\s*107\s*,\s*20\b", re.I)
 
@@ -363,7 +371,11 @@ ORANGE = re.compile(r"#ea6b14|rgba\(\s*234\s*,\s*107\s*,\s*20\b", re.I)
 # ui/DeadEnd.tsx, and delete NewRequest's copy. A rise here is a prompt to go
 # looking for the missing primitive — not an instruction to token-swap the
 # literal you just typed.
-SPACING_BASELINE = 1467
+# 1467 -> 1466 on 2026-11-17, SEVENTH fall: the printable-documents pass added
+# the GST/BN field and the bookkeeping card on the --ff-s* scale rather than in
+# rem, and the client receipt's hand-rolled HTML moved into src/lib/printDoc.ts,
+# whose stylesheet this checker does not count (same reason as uiStyles.ts).
+SPACING_BASELINE = 1466
 
 SPACING_PROP = (
     r"(?:gap|rowGap|columnGap|padding|paddingTop|paddingBottom|paddingLeft"

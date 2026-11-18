@@ -673,6 +673,7 @@ export type Database = {
           created_at: string | null
           doc_urls: Json | null
           google_reviews_url: string | null
+          gst_number: string | null
           has_liability_insurance: boolean | null
           has_wcb: boolean | null
           hourly_rate: number | null
@@ -713,6 +714,7 @@ export type Database = {
           created_at?: string | null
           doc_urls?: Json | null
           google_reviews_url?: string | null
+          gst_number?: string | null
           has_liability_insurance?: boolean | null
           has_wcb?: boolean | null
           hourly_rate?: number | null
@@ -753,6 +755,7 @@ export type Database = {
           created_at?: string | null
           doc_urls?: Json | null
           google_reviews_url?: string | null
+          gst_number?: string | null
           has_liability_insurance?: boolean | null
           has_wcb?: boolean | null
           hourly_rate?: number | null

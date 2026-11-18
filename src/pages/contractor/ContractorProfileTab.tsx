@@ -16,8 +16,8 @@ export default function ContractorProfileTab(props: {
   setShowProfileCongrats: import("react").Dispatch<import("react").SetStateAction<boolean>>;
   setContractor: import("react").Dispatch<any>;
   setOpenToOther: (on: boolean) => Promise<void>;
-  pricingForm: { hourly: string; callout: string; };
-  setPricingForm: import("react").Dispatch<import("react").SetStateAction<{ hourly: string; callout: string; }>>;
+  pricingForm: { hourly: string; callout: string; gst: string; };
+  setPricingForm: import("react").Dispatch<import("react").SetStateAction<{ hourly: string; callout: string; gst: string; }>>;
   s: { jobCard: { background: string; border: string; borderRadius: string; padding: string; marginBottom: string; cursor: string; }; btn: { minHeight: string; padding: string; background: string; border: string; borderRadius: string; color: string; fontFamily: string; fontSize: string; letterSpacing: string; cursor: string; }; primaryBtn: { minHeight: string; padding: string; background: string; color: string; border: string; borderRadius: string; boxShadow: string; fontFamily: string; fontSize: string; letterSpacing: string; cursor: string; }; earnCard: { background: string; border: string; borderRadius: string; padding: string; textAlign: "center"; }; chip: { padding: string; background: string; border: string; borderRadius: string; fontSize: string; color: string; display: string; margin: string; }; };
   busyPricing: boolean;
   savePricing: () => Promise<void>;
@@ -116,7 +116,7 @@ export default function ContractorProfileTab(props: {
               )}
             </DashCard>
             </Group>
-            <Group label="YOUR DEFAULT PRICING">
+            <Group label="YOUR PRICING & TAX DETAILS">
               <DashCard style={{ marginBottom:0 }}>
               <p style={{ fontSize:".82rem", color:"rgba(var(--ff-muted), .55)", marginBottom:"1rem", lineHeight:1.5 }}>
                 Set these once and they'll pre-fill your call-out fee when you send an estimate, so you bid faster and more consistently. Clients don't see these numbers.
@@ -131,7 +131,19 @@ export default function ContractorProfileTab(props: {
                   <input type="number" min="0" value={pricingForm.callout} placeholder="e.g. 120" onChange={e => setPricingForm(f => ({ ...f, callout: e.target.value }))} style={ffInp} />
                 </div>
               </div>
-              <button style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none", marginTop:"1rem" }} disabled={busyPricing} onClick={savePricing}>{busyPricing ? "Saving…" : "Save pricing"}</button>
+              {/* GST/BN lives here rather than on its own card so there is one Save button for
+                  the whole group. It is YOUR registration, not the platform's: Freddy Fix It
+                  charges no GST on a booking, so this prints on your payout statements and
+                  earnings summaries ONLY — never on the client's invoice, which would imply
+                  GST was charged on the booking. See src/lib/printDoc.ts. */}
+              <div style={{ marginTop:"var(--ff-s4)" }}>
+                <div style={ffLbl}>GST / business number (optional)</div>
+                <input value={pricingForm.gst} placeholder="e.g. 123456789RT0001" onChange={e => setPricingForm(f => ({ ...f, gst: e.target.value }))} style={{ ...ffInp, maxWidth:"280px" }} />
+                <p style={{ fontSize:".78rem", color:"rgba(var(--ff-muted), .45)", marginTop:"var(--ff-s2)", lineHeight:1.5 }}>
+                  Printed on your payout statements and earnings summaries, in the Earnings tab. Freddy Fix It doesn't charge or remit GST on your behalf — talk to your accountant about your own obligations.
+                </p>
+              </div>
+              <button style={{ ...s.btn, background:"var(--ff-c10)", color:"#fff", border:"none", marginTop:"1rem" }} disabled={busyPricing} onClick={savePricing}>{busyPricing ? "Saving…" : "Save details"}</button>
             </DashCard>
             </Group>
             <Group label="PORTFOLIO & REVIEWS">

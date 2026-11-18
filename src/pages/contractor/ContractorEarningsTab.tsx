@@ -29,8 +29,11 @@ export default function ContractorEarningsTab(props: {
   setupPayouts: () => Promise<void>;
   exportPayoutsCsv: () => void;
   netPayout: (job: any) => number | null;
+  openPayoutStatement: (job: any) => void;
+  openEarningsSummary: (year: number) => void;
+  payoutYears: () => number[];
 }) {
-  const { earn, s, setRewindOpen, goalInput, setGoalInput, savingGoal, saveGoal, totalEarned, contractor, myJobs, streak, respMins, expensesFailed, expenses, awaitingTotal, awaitingJobs, stripeNeeds, busyStripe, setupPayouts, exportPayoutsCsv, netPayout } = props;
+  const { earn, s, setRewindOpen, goalInput, setGoalInput, savingGoal, saveGoal, totalEarned, contractor, myJobs, streak, respMins, expensesFailed, expenses, awaitingTotal, awaitingJobs, stripeNeeds, busyStripe, setupPayouts, exportPayoutsCsv, netPayout, openPayoutStatement, openEarningsSummary, payoutYears } = props;
   return (
     (
           <div>
@@ -198,6 +201,28 @@ export default function ContractorEarningsTab(props: {
               )}
             </DashCard>
             </Group>
+            {/* FOR YOUR BOOKKEEPING — the printable documents, gathered in one
+                place rather than scattered through the tab. The year buttons come
+                from payoutYears(), which lists only the calendar years that
+                actually have a released payout in them, so there is no year
+                picker that can be set to a year with nothing in it. */}
+            <Group label="FOR YOUR BOOKKEEPING">
+              <DashCard style={{ marginBottom:0 }}>
+                <p style={{ color:"rgba(var(--ff-muted), .7)", fontSize:".88rem", margin:"0 0 .8rem", lineHeight:1.5 }}>
+                  Printable records for your accountant. Each one opens in a new tab — press Print, then choose Save as PDF.
+                </p>
+                <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
+                  {payoutYears().map(y => (
+                    <button key={y} style={s.btn} onClick={() => openEarningsSummary(y)}>
+                      <Ic name="download" size={13} style={{ marginRight:4 }} />{y} earnings summary
+                    </button>
+                  ))}
+                </div>
+                <p style={{ color:"rgba(var(--ff-muted), .5)", fontSize:".78rem", margin:".8rem 0 0", lineHeight:1.5 }}>
+                  Gross job prices, platform commission and your net payout, with a line per job. A statement for a single job is on that job in your history below. Freddy Fix It doesn't collect or remit GST — add your GST/BN number on your Profile tab and it prints on both.
+                </p>
+              </DashCard>
+            </Group>
             {/* JOB HISTORY — the caption moves OUT of the card.
                 v1 put a 1.2rem orange Bebas title inside the card; a <Group>
                 label sits above it at .78rem in muted ink, which is the same
@@ -232,7 +257,24 @@ export default function ContractorEarningsTab(props: {
                       title={job.request?.service_needed ?? "Job"}
                       sub={detail}
                       amount={net != null ? "$" + net.toFixed(2) : (job.amount ? "$" + job.amount : undefined)}
-                      right={<Pill tone={historyTone(job.status)}>{job.status.replace("_"," ")}</Pill>}
+                      right={
+                        <div style={{ display:"flex", alignItems:"center", gap:".4rem" }}>
+                          <Pill tone={historyTone(job.status)}>{job.status.replace("_"," ")}</Pill>
+                          {/* Only offered where there is a trustworthy payout figure
+                              to print — a wrong number on a tax record is worse than
+                              no document. */}
+                          {net != null && (
+                            <Button
+                              variant="ghost"
+                              onClick={() => openPayoutStatement(job)}
+                              title="Printable payout statement"
+                              aria-label={"Payout statement for " + (job.request?.service_needed ?? "this job")}
+                            >
+                              <Ic name="download" size={13} />
+                            </Button>
+                          )}
+                        </div>
+                      }
                     />
                   );
                 })}

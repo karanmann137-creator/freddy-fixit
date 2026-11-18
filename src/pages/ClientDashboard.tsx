@@ -46,6 +46,7 @@ import ReportProblem from "@/components/ReportProblem";
 import FileClaimModal, { type ClaimJob } from "@/components/FileClaimModal";
 import RequestHelpModal from "@/components/RequestHelpModal";
 import { jobCode } from "@/lib/jobCode";
+import { openDocument, money, docDate, type DocLine } from "@/lib/printDoc";
 import { jobFullyFunded } from "@/lib/jobFunding";
 import { priceChangeMath, pcMoney, pcRateLabel } from "@/lib/priceChange";
 import { getDismissals, dismiss as dismissKey } from "@/lib/dismissals";
@@ -950,6 +951,12 @@ export default function ClientDashboard() {
     }
   };
 
+  // The client's bookkeeping document for a job: a real invoice/receipt, not the
+  // four-row summary this used to be. Rendered through the ONE print shell in
+  // src/lib/printDoc.ts so it, the payout statement, the earnings summary and the
+  // signed agreement cannot drift apart. The old hand-rolled version carried
+  // "border-top:2px solid var(--ff-bg)", which drew nothing at all — a standalone
+  // document opened with document.write() has no :root and so no CSS variables.
   const downloadReceipt = (j: any) => {
     const amt = Number(j?.amount ?? 0);
     const total = jobTotal(j);
@@ -959,41 +966,85 @@ export default function ClientDashboard() {
     const unpaid = j?.payment_status === "unpaid" || j?.payment_status === "failed" || j?.payment_status === "processing";
     const paid = unpaid ? 0 : Math.min(jobFunded(j) || total, total);
     const balance = Math.max(r2(total - paid), 0);
-    const paidOn = j.paid_at ? new Date(j.paid_at).toLocaleDateString() : new Date().toLocaleDateString();
-    const ref = (j.id ?? "").slice(0, 8).toUpperCase();
-    const esc = (v: any) => String(v ?? "").replace(/[<>&]/g, (c: string) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" } as any)[c]);
-    const html =
-      "<!doctype html><html><head><meta charset='utf-8'><title>Receipt " + esc(ref) + "</title>" +
-      "<style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#1a2236;max-width:560px;margin:40px auto;padding:0 20px}" +
-      "h1{font-size:22px;color:#ea6b14;margin:0 0 2px}.sub{color:#667;font-size:13px;margin-bottom:24px}" +
-      "table{width:100%;border-collapse:collapse;margin:18px 0}td{padding:9px 0;font-size:14px;border-bottom:1px solid #eee}" +
-      "td.r{text-align:right}.tot td{font-weight:700;font-size:16px;border-bottom:none;border-top:2px solid var(--ff-bg);padding-top:12px}" +
-      ".muted{color:#778;font-size:12px}@media print{button{display:none}}" +
-      "button{margin-top:18px;padding:10px 18px;background:#ea6b14;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer}</style></head><body>" +
-      "<h1>FREDDY FIX IT</h1><div class='sub'>Payment receipt · " + esc(paidOn) + "</div>" +
-      "<table>" +
-      "<tr><td>Receipt #</td><td class='r'>" + esc(ref) + "</td></tr>" +
-      "<tr><td>Service</td><td class='r'>" + esc(activeReq?.service_needed ?? "Home service") + "</td></tr>" +
-      (contractor ? "<tr><td>Contractor</td><td class='r'>" + esc(contractor.first_name + " " + (contractor.last_name?.[0] ?? "") + ".") + "</td></tr>" : "") +
-      "<tr><td>Job amount</td><td class='r'>$" + amt.toFixed(2) + "</td></tr>" +
-      "<tr><td>Service fee (" + (amt > 0 ? Math.round((fee / amt) * 100) : Math.round(feeRate * 100)) + "%)</td><td class='r'>$" + fee.toFixed(2) + "</td></tr>" +
-      "<tr class='tot'><td>Job total</td><td class='r'>$" + total.toFixed(2) + "</td></tr>" +
-      "</table>" +
-      // A job can be part-paid (deposit taken, balance still to come), so the
-      // receipt must say what was actually collected rather than implying the
-      // whole total has been charged.
-      (balance > 0.005
-        ? "<table><tr><td>Paid so far</td><td class='r'>$" + paid.toFixed(2) + "</td></tr>" +
-          "<tr><td>Still to pay</td><td class='r'>$" + balance.toFixed(2) + "</td></tr></table>" +
-          "<div class='muted'>This job is part-paid. Your deposit is held securely; the remaining balance is due once the work is finished. Nothing is released to your contractor until you confirm the job is complete.</div>"
-        : "<table><tr class='tot'><td>Total paid</td><td class='r'>$" + paid.toFixed(2) + "</td></tr></table>") +
-      "<div class='muted'>Status: " + esc((j.payment_status ?? "").replace("_", " ")) + ". Payment is held securely and released to your contractor after you confirm the work is complete.</div>" +
-      "<button onclick='window.print()'>Print / Save as PDF</button>" +
-      "</body></html>";
-    const w = window.open("", "_blank");
-    if (!w) { notify("Please allow pop-ups to view your receipt."); return; }
-    w.document.write(html);
-    w.document.close();
+    const service = activeReq?.service_needed ?? "Home service";
+
+    // Accepted add-ons are already inside jobs.amount, so the agreed price line is
+    // the remainder once they're pulled out — otherwise the lines wouldn't add up.
+    const addons: any[] = Array.isArray(j?.quote_items) ? j.quote_items.filter((i: any) => i?.accepted) : [];
+    const addonSum = r2(addons.reduce((t: number, i: any) => t + (Number(i?.amount) || 0), 0));
+    const base = r2(amt - addonSum);
+
+    const charges: DocLine[] = [{ label: service, value: money(base), note: "Agreed price with your pro" }];
+    for (const a of addons) charges.push({ label: "Add-on: " + String(a?.label ?? "Extra work"), value: money(a?.amount) });
+    if (addons.length > 0) charges.push({ label: "Work subtotal", value: money(amt), kind: "sub" });
+    charges.push({
+      label: "Freddy Fix It service fee" + (fee > 0 ? " (" + (Math.round(feeRate * 1000) / 10) + "%)" : ""),
+      value: money(fee),
+      note: fee <= 0.005 ? "Waived on this job" : undefined,
+    });
+    charges.push({ label: "Total", value: money(total), kind: "total" });
+
+    const payments: DocLine[] = [];
+    if (j?.deposit_paid_at) payments.push({ label: "Deposit received", value: money(Math.min(paid, total)), note: docDate(j.deposit_paid_at) });
+    if (j?.paid_at && balance <= 0.005) payments.push({ label: "Paid in full", value: money(paid), note: docDate(j.paid_at) });
+    if (payments.length === 0) payments.push({ label: "Received to date", value: money(paid) });
+    payments.push({ label: balance > 0.005 ? "Balance owing" : "Amount owing", value: money(balance), kind: "total" });
+
+    const details: DocLine[] = [
+      { label: "Job number", value: jobCode(j?.id) },
+      { label: "Service", value: service },
+      { label: "Status", value: String(j?.status ?? "").replace(/_/g, " ") || "—" },
+    ];
+    if (j?.scheduled_date) details.push({ label: "Scheduled", value: docDate(j.scheduled_date) });
+    if (j?.client_confirmed_at) details.push({ label: "Completed", value: docDate(j.client_confirmed_at) });
+    if (j?.service_address) details.push({ label: "Service address", value: String(j.service_address) });
+    else if (activeReq?.location) details.push({ label: "Service area", value: String(activeReq.location) });
+
+    const proName = contractor
+      ? (contractor.company_name || [contractor.first_name, contractor.last_name].filter(Boolean).join(" ") || "Your pro")
+      : "Your pro";
+
+    const ok = openDocument({
+      docType: balance > 0.005 ? "INVOICE" : "RECEIPT",
+      docNumber: jobCode(j?.id),
+      issued: docDate(j?.paid_at ?? j?.deposit_paid_at),
+      subtitle: service + (j?.scheduled_date ? " · " + docDate(j.scheduled_date) : ""),
+      blocks: [
+        {
+          kind: "parties",
+          items: [
+            {
+              title: "Billed to",
+              lines: [
+                [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Client",
+                profile?.email ?? "",
+                profile?.phone ?? "",
+                j?.service_address ?? "",
+              ],
+            },
+            {
+              title: "Work carried out by",
+              lines: [proName, "Booked through Freddy Fix It", "freddyfixit.ca"],
+            },
+          ],
+        },
+        { kind: "lines", title: "Job details", lines: details },
+        { kind: "lines", title: "Charges", lines: charges },
+        {
+          kind: "lines",
+          title: "Payments",
+          lines: payments,
+          note: balance > 0.005
+            ? "This job is part-paid. Your deposit is held securely and the balance is due once the work is finished. Nothing is released to your pro until you confirm the job is complete."
+            : "Payment is held securely and released to your pro after you confirm the work is complete.",
+        },
+      ],
+      footNotes: [
+        "Freddy Fix It does not collect or remit GST on this transaction. Amounts shown are exactly as charged to your card.",
+        "Keep this document for your records. Questions about a charge: hello@freddyfixit.ca, quoting " + jobCode(j?.id) + ".",
+      ],
+    });
+    if (!ok) notify("Please allow pop-ups to view your receipt.");
   };
 
   const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -2876,7 +2927,7 @@ export default function ClientDashboard() {
                                 ) : (
                                   <div style={{ fontSize:".82rem", color:"var(--ff-success)", marginBottom:".6rem" }}><Ic name="check-circle" size={13} style={{ marginRight:4 }} />Payment secured — we'll release it to your contractor once you confirm the work is done.</div>
                                 )}
-                                <button style={s.btn} onClick={() => downloadReceipt(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Download receipt</button>
+                                <button style={s.btn} onClick={() => downloadReceipt(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Invoice / receipt</button>
                               </>
                             ) : activeJob.amount ? (
                               <>
@@ -2940,7 +2991,7 @@ export default function ClientDashboard() {
                                 )}
                                 <div style={{ display:"flex", gap:".6rem", flexWrap:"wrap" as const }}>
                                   <button style={{ ...s.primaryBtn, background:"var(--ff-success)", color:"var(--ff-bg)" }} disabled={busyReq || !!activeJob.price_change_pending || (activeJob.payment_status === "held" && !jobFullyFunded(activeJob))} onClick={confirmCompletion}>{busyReq ? "…" : "✓ Confirm & release payment"}</button>
-                                  <button style={s.btn} onClick={() => downloadReceipt(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Download receipt</button>
+                                  <button style={s.btn} onClick={() => downloadReceipt(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Invoice / receipt</button>
                                 </div>
                                 {/* Demoted from a third equal-weight button to a
                                     quiet link, NOT removed. This is the client's

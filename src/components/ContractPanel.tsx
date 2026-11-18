@@ -14,6 +14,8 @@ import { Ic } from "@/components/Ic";
 import { Sk, SkText } from "@/components/Skeleton";
 import { supabase } from "@/lib/supabase";
 import { ensureTermsAccepted } from "@/lib/terms";
+import { jobCode } from "@/lib/jobCode";
+import { openDocument, docDate, type DocLine } from "@/lib/printDoc";
 
 type Role = "contractor" | "client" | "admin";
 type Contract = {
@@ -221,10 +223,41 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
     } finally { setBusy(false); }
   };
 
+  // The executed agreement, as a document someone can actually file.
+  //
+  // What this used to do was write `contract.signed_html` straight into a blank
+  // tab. That string is the EMAIL copy: a dark-navy card (background:#1a2236,
+  // color:#f0f4ff) built for an inbox. Browsers drop background colours when
+  // printing by default, so printing it produced pale text on white paper —
+  // close enough to a blank page to be useless for bookkeeping. Routing it
+  // through the shared print shell normalises it to dark ink on white (the
+  // .embed rules in src/lib/printDoc.ts), adds letter-paper margins, page-break
+  // handling and a print button, and keeps the signatures and audit trail
+  // reproduced verbatim — this is the legal copy, so nothing in it is rewritten.
   const viewSigned = () => {
     if (!contract?.signed_html) return;
-    const w = window.open("", "_blank");
-    if (w) { w.document.write(contract.signed_html); w.document.close(); }
+    const record: DocLine[] = [
+      { label: "Job number", value: jobCode(job?.id) },
+      { label: "Fully executed", value: fmt(contract.signed_at) || "—" },
+    ];
+    if (contract.contractor_sig_name) record.push({ label: "Contractor signature", value: contract.contractor_sig_name, note: fmt(contract.contractor_signed_at) });
+    if (contract.client_sig_name) record.push({ label: "Client signature", value: contract.client_sig_name, note: fmt(contract.client_signed_at) });
+
+    const ok = openDocument({
+      docType: "SERVICE AGREEMENT",
+      docNumber: jobCode(job?.id),
+      issued: docDate(contract.signed_at),
+      subtitle: "Fully executed copy. Both parties adopted their typed name as a legal electronic signature.",
+      blocks: [
+        { kind: "lines", title: "Agreement record", lines: record },
+        { kind: "html", title: "Executed copy", html: contract.signed_html },
+      ],
+      footNotes: [
+        "Valid under Alberta's Electronic Transactions Act. Full platform terms: freddyfixit.ca/user-agreement.",
+        "Keep this document with your records for this job. Questions: hello@freddyfixit.ca, quoting " + jobCode(job?.id) + ".",
+      ],
+    });
+    if (!ok) setErr("Please allow pop-ups to open the signed agreement.");
   };
 
   const viewUpload = async () => {
@@ -273,7 +306,7 @@ export default function ContractPanel({ job, role, onUpdated, highlight }: { job
           Signed by both parties{contract?.signed_at ? ` on ${fmt(contract.signed_at)}` : ""}. This agreement is now in effect.
         </div>
         <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
-          <button style={{ ...btn, background: "#22c55e", color: "#06210f" }} onClick={viewSigned}><Ic name="file" size={13} style={{ marginRight: 5 }} />View signed copy</button>
+          <button style={{ ...btn, background: "#22c55e", color: "#06210f" }} onClick={viewSigned}><Ic name="file" size={13} style={{ marginRight: 5 }} />View / print signed copy</button>
           {contract?.source === "uploaded" && contract?.uploaded_path && (
             <button style={{ ...btn, background: "rgba(var(--ff-fg), .08)", color: "var(--ff-text)" }} onClick={viewUpload}>View attached document</button>
           )}

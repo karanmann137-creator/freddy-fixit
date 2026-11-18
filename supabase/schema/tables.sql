@@ -227,6 +227,7 @@
 --   weekly_goal  numeric
 --   setup_skipped  ARRAY _text  not null  default '{}'::text[]
 --   operates_alone  boolean  not null  default false
+--   gst_number  text
 
 -- table deleted_account_flags   (RLS on)
 --   id  uuid  not null  default gen_random_uuid()

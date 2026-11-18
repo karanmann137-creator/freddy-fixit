@@ -25,6 +25,7 @@ import ProfileCompleteCelebration from "@/components/ProfileCompleteCelebration"
 import DashboardSidebar, { type SidebarItem } from "@/components/DashboardSidebar";
 import RequestHelpModal from "@/components/RequestHelpModal";
 import { jobCode } from "@/lib/jobCode";
+import { openDocument, money, docDate, type DocLine } from "@/lib/printDoc";
 import { jobBalanceDue, jobAwaitingBalance, jobFullyFunded } from "@/lib/jobFunding";
 import { priceChangeMath, pcMoney, pcRateLabel } from "@/lib/priceChange";
 import JobsCalendar from "@/components/JobsCalendar";
@@ -288,7 +289,7 @@ export default function ContractorDashboard() {
   const [bidForm, setBidForm]         = useState<Record<string,{amount:string;message:string;labour?:string;parts?:string;callout?:string;assumptions?:string;subject?:boolean;price_low?:string;price_high?:string;used_base_price?:boolean;walkthrough?:boolean}>>({});
   const [requoteOpen, setRequoteOpen] = useState<Record<string,boolean>>({});
   const [requoteForm, setRequoteForm] = useState<Record<string,{amount:string;reason:string;labour:string;parts:string;callout:string;subject:boolean;price_low?:string;price_high?:string;used_base_price?:boolean}>>({});
-  const [pricingForm, setPricingForm] = useState({ hourly:"", callout:"" });
+  const [pricingForm, setPricingForm] = useState({ hourly:"", callout:"", gst:"" });
   const [busyPricing, setBusyPricing] = useState(false);
   const [hiding, setHiding]           = useState<string|null>(null);
   const [busyBid, setBusyBid]         = useState<string|null>(null);
@@ -626,6 +627,7 @@ export default function ContractorDashboard() {
     if (contractor) setPricingForm({
       hourly: contractor.hourly_rate != null ? String(contractor.hourly_rate) : "",
       callout: contractor.min_callout != null ? String(contractor.min_callout) : "",
+      gst: contractor.gst_number ?? "",
     });
   }, [contractor?.id]);
 
@@ -1224,13 +1226,17 @@ export default function ContractorDashboard() {
 
   const savePricing = async () => {
     setBusyPricing(true);
+    // gst_number is free text and is PRINTED, never computed with, so it is trimmed and
+    // nulled when blank but otherwise stored exactly as typed — see the migration comment.
+    const gst = pricingForm.gst.trim();
     const { error } = await supabase.from("contractors").update({
       hourly_rate: pricingForm.hourly ? Number(pricingForm.hourly) : null,
       min_callout: pricingForm.callout ? Number(pricingForm.callout) : null,
+      gst_number: gst || null,
     }).eq("id", profile.id);
     setBusyPricing(false);
-    if (error) { notify("Couldn't save pricing: " + error.message); return; }
-    setContractor((c: any) => ({ ...c, hourly_rate: pricingForm.hourly ? Number(pricingForm.hourly) : null, min_callout: pricingForm.callout ? Number(pricingForm.callout) : null }));
+    if (error) { notify("Couldn't save your details: " + error.message); return; }
+    setContractor((c: any) => ({ ...c, hourly_rate: pricingForm.hourly ? Number(pricingForm.hourly) : null, min_callout: pricingForm.callout ? Number(pricingForm.callout) : null, gst_number: gst || null }));
   };
 
   // Availability is stored as { days: string[], start: "HH:MM", end: "HH:MM" }.
@@ -1314,6 +1320,167 @@ export default function ContractorDashboard() {
     if (job?.contractor_payout != null) return Number(job.contractor_payout);
     if (commission == null) return null;
     return Math.round(Number(job?.amount ?? 0) * (1 - commission) * 100) / 100;
+  };
+
+  // ---- Bookkeeping documents ------------------------------------------------
+  // Both go through the ONE print shell in src/lib/printDoc.ts, the same one the
+  // client's invoice uses, so the four printable documents on this platform can't
+  // drift into four different-looking pages.
+  //
+  // GST: the platform does not charge, collect or remit GST on anything, so the
+  // pro's GST/BN appears ONLY on their own documents (this statement and the
+  // earnings summary) and never on the client's invoice — printing it there would
+  // imply GST was charged on the booking, which it was not.
+  const proIdentity = () => [
+    contractor?.company_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Your business",
+    contractor?.company_name ? [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") : "",
+    profile?.email ?? "",
+    contractor?.gst_number ? "GST / BN: " + contractor.gst_number : "",
+  ];
+
+  const openPayoutStatement = (job: any) => {
+    const gross = Number(job?.amount ?? 0);
+    const net = netPayout(job);
+    // A failed rate read is not a zero. Without a trustworthy net figure this
+    // document would be a wrong number on a tax record, so it isn't offered.
+    if (net == null) { notify("We couldn't work out your payout for this job just now — refresh the page and try again."); return; }
+    const fee = Math.round((gross - net) * 100) / 100;
+    const transfers: string[] = Array.isArray(job?.stripe_transfer_ids) && job.stripe_transfer_ids.length > 0
+      ? job.stripe_transfer_ids
+      : (job?.stripe_transfer_id ? [job.stripe_transfer_id] : []);
+    const released = !!job?.released_at;
+
+    const details: DocLine[] = [
+      { label: "Job number", value: jobCode(job?.id) },
+      { label: "Service", value: job?.request?.service_needed ?? "Job" },
+      { label: "Client", value: job?.client?.first_name ?? "Client" },
+    ];
+    if (job?.scheduled_date) details.push({ label: "Scheduled", value: docDate(job.scheduled_date) });
+    if (job?.client_confirmed_at) details.push({ label: "Work confirmed", value: docDate(job.client_confirmed_at) });
+    details.push({ label: "Payout date", value: released ? docDate(job.released_at) : "Not released yet" });
+    if (transfers.length > 0) details.push({ label: transfers.length > 1 ? "Stripe transfers" : "Stripe transfer", value: transfers.join(", ") });
+
+    const ok = openDocument({
+      docType: "PAYOUT STATEMENT",
+      docNumber: jobCode(job?.id),
+      issued: docDate(job?.released_at),
+      subtitle: released
+        ? "Paid out " + docDate(job.released_at)
+        : "Not yet released — this is what you will receive when the client confirms the work.",
+      blocks: [
+        {
+          kind: "parties",
+          items: [
+            { title: "Paid to", lines: proIdentity() },
+            { title: "Paid by", lines: ["Freddy Fix It", "On behalf of the client named below", "freddyfixit.ca", "hello@freddyfixit.ca"] },
+          ],
+        },
+        { kind: "lines", title: "Job", lines: details },
+        {
+          kind: "lines",
+          title: "Payout",
+          lines: [
+            { label: "Job price agreed with the client", value: money(gross) },
+            { label: "Platform commission" + (gross > 0 ? " (" + (Math.round((fee / gross) * 1000) / 10) + "%)" : ""), value: "-" + money(fee) },
+            { label: released ? "Paid to you" : "Payable to you", value: money(net), kind: "total" },
+          ],
+          note: "The client's own service fee is charged separately to them and is not part of this statement.",
+        },
+      ],
+      footNotes: [
+        "Freddy Fix It does not collect or remit GST. The job price above is the amount agreed with the client; whether GST applies to your work, and how you account for it, is between you and your accountant.",
+        "This statement covers one job. For a full period, use the earnings summary on your Earnings tab.",
+      ],
+    });
+    if (!ok) notify("Please allow pop-ups to open your statement.");
+  };
+
+  // Every calendar year that has a released payout in it, newest first — so the
+  // buttons offered are exactly the years the pro actually has records for, and
+  // there is no year picker to get wrong.
+  const payoutYears = (): number[] => {
+    const years = new Set<number>();
+    for (const j of myJobs) if (j?.released_at) years.add(new Date(j.released_at).getFullYear());
+    if (years.size === 0) years.add(new Date().getFullYear());
+    return Array.from(years).sort((a, b) => b - a);
+  };
+
+  const openEarningsSummary = (year: number) => {
+    const paid = myJobs
+      .filter((j: any) => j?.released_at && new Date(j.released_at).getFullYear() === year)
+      .sort((a: any, b: any) => new Date(a.released_at).getTime() - new Date(b.released_at).getTime());
+
+    let gross = 0, net = 0, unknown = 0;
+    const rows: string[][] = [];
+    for (const j of paid) {
+      const g = Number(j?.amount ?? 0);
+      const n = netPayout(j);
+      if (n == null) { unknown++; continue; }
+      gross += g; net += n;
+      rows.push([
+        docDate(j.released_at),
+        jobCode(j.id),
+        j?.request?.service_needed ?? "Job",
+        money(g),
+        "-" + money(Math.round((g - n) * 100) / 100),
+        money(n),
+      ]);
+    }
+    gross = Math.round(gross * 100) / 100;
+    net = Math.round(net * 100) / 100;
+    const fees = Math.round((gross - net) * 100) / 100;
+
+    // Logged job costs are the pro's own private records, so they go on their own
+    // document and are labelled as self-reported — they are not platform figures.
+    const costs = expensesFailed ? null : Math.round(expenses
+      .filter(e => { const j = myJobs.find((x: any) => x.id === e.job_id); return !!j?.released_at && new Date(j.released_at).getFullYear() === year; })
+      .reduce((t, e) => t + (Number(e.amount) || 0), 0) * 100) / 100;
+
+    const totals: DocLine[] = [
+      { label: "Jobs paid out", value: String(rows.length) },
+      { label: "Gross job prices", value: money(gross) },
+      { label: "Platform commission", value: "-" + money(fees) },
+      { label: "Net paid to you", value: money(net), kind: "total" },
+    ];
+    if (costs != null && costs > 0) {
+      totals.push({ label: "Your logged job costs", value: "-" + money(costs), note: "Self-reported on your jobs — not a platform figure" });
+      totals.push({ label: "Net after your logged costs", value: money(Math.round((net - costs) * 100) / 100), kind: "sub" });
+    }
+
+    const ok = openDocument({
+      docType: "EARNINGS SUMMARY",
+      docNumber: String(year),
+      subtitle: "Payouts released to you between 1 January and 31 December " + year + ".",
+      blocks: [
+        {
+          kind: "parties",
+          items: [
+            { title: "Earnings of", lines: proIdentity() },
+            { title: "Paid through", lines: ["Freddy Fix It", "freddyfixit.ca", "hello@freddyfixit.ca"] },
+          ],
+        },
+        { kind: "lines", title: "Totals for " + year, lines: totals },
+        rows.length > 0
+          ? {
+              kind: "table" as const,
+              title: "Jobs paid out in " + year,
+              head: ["Payout date", "Job", "Service", "Job price", "Commission", "Net to you"],
+              rows,
+              foot: ["", "", String(rows.length) + " job" + (rows.length === 1 ? "" : "s"), money(gross), "-" + money(fees), money(net)],
+              right: [3, 4, 5],
+              note: unknown > 0
+                ? unknown + " job" + (unknown === 1 ? " is" : "s are") + " missing a payout figure and has been left out of these totals. Refresh and reprint to include it."
+                : undefined,
+            }
+          : { kind: "text" as const, title: "Jobs paid out in " + year, body: "No payouts were released to you in " + year + "." },
+      ],
+      footNotes: [
+        "Freddy Fix It does not collect or remit GST. The job prices above are the amounts agreed with your clients; whether GST applies to your work, and how you account for it, is between you and your accountant.",
+        "Figures are taken from payouts released in the calendar year shown. A job completed in December but released in January appears in the later year.",
+        "Printed " + docDate() + ". Keep a copy with your records.",
+      ],
+    });
+    if (!ok) notify("Please allow pop-ups to open your summary.");
   };
   // Jobs are collected in two charges — a deposit that books the pro, and the
   // balance once the work is done — so a job sitting at payment_status='held'
@@ -2504,7 +2671,7 @@ export default function ContractorDashboard() {
 
         {activeTab === "profile" && <ContractorProfileTab contractor={contractor} profile={profile} pulseAnchor={pulseAnchor} setShowProfileCongrats={setShowProfileCongrats} setContractor={setContractor} setOpenToOther={setOpenToOther} pricingForm={pricingForm} setPricingForm={setPricingForm} s={s} busyPricing={busyPricing} savePricing={savePricing} googleUrl={googleUrl} setGoogleUrl={setGoogleUrl} busyPf={busyPf} saveGoogleUrl={saveGoogleUrl} portfolio={portfolio} pfUrl={pfUrl} deletePortfolioItem={deletePortfolioItem} pfForm={pfForm} setPfForm={setPfForm} addPortfolioItem={addPortfolioItem} avail={avail} showCustomAvail={showCustomAvail} setShowCustomAvail={setShowCustomAvail} setAvailDays={setAvailDays} dayIsOn={dayIsOn} toggleDay={toggleDay} setAvailStart={setAvailStart} setAvailEnd={setAvailEnd} />}
 
-        {activeTab === "earnings" && <ContractorEarningsTab earn={earn} s={s} setRewindOpen={setRewindOpen} goalInput={goalInput} setGoalInput={setGoalInput} savingGoal={savingGoal} saveGoal={saveGoal} totalEarned={totalEarned} contractor={contractor} myJobs={myJobs} streak={streak} respMins={respMins} expensesFailed={expensesFailed} expenses={expenses} awaitingTotal={awaitingTotal} awaitingJobs={awaitingJobs} stripeNeeds={stripeNeeds} busyStripe={busyStripe} setupPayouts={setupPayouts} exportPayoutsCsv={exportPayoutsCsv} netPayout={netPayout} />}
+        {activeTab === "earnings" && <ContractorEarningsTab earn={earn} s={s} setRewindOpen={setRewindOpen} goalInput={goalInput} setGoalInput={setGoalInput} savingGoal={savingGoal} saveGoal={saveGoal} totalEarned={totalEarned} contractor={contractor} myJobs={myJobs} streak={streak} respMins={respMins} expensesFailed={expensesFailed} expenses={expenses} awaitingTotal={awaitingTotal} awaitingJobs={awaitingJobs} stripeNeeds={stripeNeeds} busyStripe={busyStripe} setupPayouts={setupPayouts} exportPayoutsCsv={exportPayoutsCsv} netPayout={netPayout} openPayoutStatement={openPayoutStatement} openEarningsSummary={openEarningsSummary} payoutYears={payoutYears} />}
 
         {activeTab === "reviews" && <ContractorReviewsTab myReviews={myReviews} s={s} />}
 
