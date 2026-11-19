@@ -65,6 +65,34 @@ declare global {
 
 let started = false;
 
+// ── Campaign tag (which link the visitor arrived from) ────────────────────────
+// Social bio links carry ?utm_source=instagram&utm_medium=social&... . Analytics
+// only start once the visitor accepts the cookie banner, and many people click
+// around first, so by the time they accept the tag has left the address bar and
+// the visit could not be credited to its platform.
+//
+// So the tag is read once, on the landing page, and held in this variable — in
+// memory only: no cookie, no localStorage, nothing sent anywhere. It is handed
+// to analytics only if and when the visitor accepts; otherwise it disappears
+// when the tab closes. It names a link, never a person.
+const CAMPAIGN_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"];
+let campaign: Record<string, string> | null = null;
+let campaignSentToGA = false;
+
+export function captureCampaign(): void {
+  if (campaign !== null || typeof window === "undefined") return;
+  campaign = {};
+  try {
+    const q = new URLSearchParams(window.location.search);
+    for (const k of CAMPAIGN_KEYS) {
+      const v = q.get(k);
+      if (v) campaign[k] = v.slice(0, 100);
+    }
+  } catch { /* a malformed URL just means no tag */ }
+}
+
+const hasCampaign = (): boolean => !!campaign && Object.keys(campaign).length > 0;
+
 // Best-effort removal of the cookies GA4 and PostHog set, used when someone
 // declines or withdraws. We can only clear cookies on our own domain, and a
 // script already in memory keeps running until the page reloads — which is why
@@ -112,6 +140,7 @@ export function setConsent(choice: ConsentChoice): void {
 // multiple times; only the first call does anything. No-op when analytics is
 // disabled OR the visitor hasn't accepted cookies.
 export function initAnalytics(): void {
+  captureCampaign(); // first call is on the landing page, before any consent check
   if (started || !analyticsEnabled() || typeof window === "undefined") return;
   if (!consentGranted()) return; // ← the gate: no consent, no scripts, no cookies
   started = true;
@@ -144,6 +173,13 @@ export function initAnalytics(): void {
       defaults: "2025-05-24",
       person_profiles: "identified_only",
       session_recording: { maskAllInputs: true },
+      // Runs before PostHog records its first pageview, so that pageview and
+      // every later event carry the link the visitor arrived from.
+      loaded: (ph: any) => {
+        if (hasCampaign()) {
+          try { ph.register(campaign); } catch { /* analytics must never break the page */ }
+        }
+      },
     });
   };
   document.head.appendChild(ph);
@@ -152,9 +188,18 @@ export function initAnalytics(): void {
 // Fire a virtual page_view on client-side route changes (SPA navigation).
 export function trackPageView(path: string): void {
   if (!consentGranted() || !analyticsEnabled() || !window.gtag) return;
+  // GA4 reads the campaign from page_location. On the first page_view after
+  // consent, put the remembered tag back if the visitor has since navigated.
+  let location = window.location.origin + path;
+  if (!campaignSentToGA && hasCampaign()) {
+    campaignSentToGA = true;
+    if (path.indexOf("utm_source=") === -1) {
+      location += (path.indexOf("?") === -1 ? "?" : "&") + new URLSearchParams(campaign!).toString();
+    }
+  }
   window.gtag("event", "page_view", {
     page_path: path,
-    page_location: window.location.origin + path,
+    page_location: location,
     page_title: document.title,
   });
 }
