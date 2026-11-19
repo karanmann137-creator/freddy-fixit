@@ -47,7 +47,8 @@ import FileClaimModal, { type ClaimJob } from "@/components/FileClaimModal";
 import RequestHelpModal from "@/components/RequestHelpModal";
 import { jobCode } from "@/lib/jobCode";
 import { openDocument, money, docDate, type DocLine } from "@/lib/printDoc";
-import { jobFullyFunded, jobRefunded } from "@/lib/jobFunding";
+import { jobPhotoThumbs } from "@/lib/docPhotos";
+import { jobFullyFunded, jobRefunded, jobBalanceDue } from "@/lib/jobFunding";
 import { priceChangeMath, pcMoney, pcRateLabel } from "@/lib/priceChange";
 import { getDismissals, dismiss as dismissKey } from "@/lib/dismissals";
 import { searchTokens, matchesSearch } from "@/lib/dashSearch";
@@ -275,6 +276,23 @@ export default function ClientDashboard() {
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
     toastTimer.current = window.setTimeout(() => setToast(null), kind === "ok" ? 3000 : 6000);
   };
+  // The completion certificate downloads and shrinks the job photos before it can
+  // open, so it is the one printable here that takes visible time. Without a busy
+  // state the button looks dead for a few seconds and gets pressed repeatedly,
+  // each press starting another download of the same two photos.
+  const [certBusy, setCertBusy]     = useState(false);
+  /**
+   * Every job this client has ever been charged for, for the period statement —
+   * the only surface here that needs more than the ONE job currently selected.
+   *
+   * ⚠️ `spendFailed` is not ceremony. A statement is a document someone hands to
+   * an accountant, so "we couldn't read your jobs" and "you spent nothing" must
+   * never render the same way: a failed read hides the card, because a statement
+   * printing $0.00 for a year the client spent four thousand dollars in is worse
+   * than no statement at all. Same rule as `expensesFailed` / `jobLoadFailed`.
+   */
+  const [spendJobs, setSpendJobs]   = useState<any[]>([]);
+  const [spendFailed, setSpendFailed] = useState(false);
   const [showResched, setShowResched] = useState(false);
   const [reschedNote, setReschedNote] = useState("");
   const [claimOpen, setClaimOpen]   = useState(false);
@@ -506,6 +524,27 @@ export default function ClientDashboard() {
         // the whole load: a dismissal read that errors resolves to "nothing
         // dismissed", so every banner simply shows, which is the safe direction.
         void getDismissals(user.id).then(d => { if (d.ok) setDismissed(new Set(d.keys)); });
+        /*
+         * Every job this client has been charged for, for the period statement.
+         *
+         * ⚠️ `.eq("client_id", user.id)` IS THE OWNERSHIP TEST, and leaving it to
+         * RLS would be the 2026-11-09 PickPro bug again: `Admin full access to
+         * jobs` is a `FOR ALL` policy, so an unfiltered read returns EVERY job on
+         * the platform to the admin account — which also holds a real client
+         * account here, and is the account most likely to be testing this. A
+         * statement is not a surface where "may I see this row" may stand in for
+         * "is this row mine".
+         *
+         * Fired outside the Promise.all above, like the dismissals read, because
+         * it must not be able to fail the whole dashboard: nothing on screen
+         * depends on it except one printable card. Narrow column list rather than
+         * `select("*")` — jobs has 80 columns and this runs on every load.
+         */
+        void supabase
+          .from("jobs")
+          .select("id, request_id, status, payment_status, amount, total_charged, funded_amount, fully_funded, refunded_total, last_refund_at, client_fee, quote_items, scheduled_date, paid_at, deposit_paid_at, released_at, client_confirmed_at, created_at, service_address")
+          .eq("client_id", user.id)
+          .then(({ data, error }) => { if (error) setSpendFailed(true); else setSpendJobs(data ?? []); });
         // All clients pay the standard 3% service fee unless a referral waives it
         // for a specific first job (checked per-job in the active-job effect below).
       } catch {
@@ -1173,6 +1212,258 @@ export default function ClientDashboard() {
       ],
     });
     if (!ok) notify("Please allow pop-ups to view your credit note.");
+  };
+
+  /**
+   * COMPLETION CERTIFICATE — the document that says the work was done, by whom,
+   * on what date, and what it looked like. This is the one printable here that is
+   * not about money: it is what a client hands an insurer after a claim repair, a
+   * buyer's lawyer during a sale, or a condo board that wants proof the roof was
+   * actually replaced. The invoice proves a payment; nothing proved the WORK.
+   *
+   * ⚠️ IT IS SIGNED BY THE CLIENT'S OWN CONFIRMATION, WHICH IS WHY IT IS GATED ON
+   * `client_confirmed_at` AND NOT ON `status === "completed"`. The two come apart:
+   * `auto_confirm_stale_jobs()` closes a job the client never looked at, and a
+   * certificate whose whole value is "the homeowner agreed this was finished"
+   * must not be issuable for a job nobody agreed to. A job that auto-confirmed
+   * still gets the document — the stamp is real — but the footnote says which of
+   * the two it was, because an insurer reading it is entitled to know.
+   *
+   * ASYNC, unlike its three siblings: the photos have to be downloaded, shrunk
+   * and base64'd first (see docPhotos.ts). So this one can fail slowly, and the
+   * button carries a busy state — a 4-second silent button is a button people
+   * press four times.
+   *
+   * MONEY: reads only. Touches none of the four payout guards.
+   */
+  const openCompletionCert = async (j: any) => {
+    if (!j?.client_confirmed_at && j?.status !== "completed") {
+      notify("A completion certificate is available once the job is confirmed complete.");
+      return;
+    }
+    if (certBusy) return;
+    setCertBusy(true);
+    try {
+      const service = activeReq?.service_needed ?? "Home service";
+      const proName = contractor
+        ? (contractor.company_name || [contractor.first_name, contractor.last_name].filter(Boolean).join(" ") || "Your pro")
+        : "Your pro";
+      // An auto-confirmed job has no client_confirmed_at. Fall back to the
+      // completion stamp so the date on the page is never blank, and say below
+      // which one the reader is looking at.
+      const confirmedByClient = !!j?.client_confirmed_at;
+      const doneOn = j?.client_confirmed_at || j?.completed_at || j?.released_at || null;
+
+      const { photos, dropped } = await jobPhotoThumbs(j);
+
+      const details: DocLine[] = [
+        { label: "Certificate", value: jobCode(j?.id) + "-CC" },
+        { label: "Job number", value: jobCode(j?.id) },
+        { label: "Service", value: service },
+      ];
+      if (j?.scheduled_date) details.push({ label: "Work carried out", value: docDate(j.scheduled_date) });
+      if (doneOn) details.push({ label: confirmedByClient ? "Confirmed complete by you" : "Recorded complete", value: docDate(doneOn) });
+      if (j?.service_address) details.push({ label: "Service address", value: String(j.service_address) });
+      else if (activeReq?.location) details.push({ label: "Service area", value: String(activeReq.location) });
+
+      const scope = String(activeReq?.description ?? "").trim();
+
+      const blocks: any[] = [
+        {
+          kind: "parties",
+          items: [
+            { title: "Issued to", lines: [
+              [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Client",
+              profile?.email ?? "", profile?.phone ?? "", j?.service_address ?? "",
+            ] },
+            { title: "Work carried out by", lines: [proName, "Booked through Freddy Fix It", "freddyfixit.ca"] },
+          ],
+        },
+        { kind: "lines", title: "Certificate details", lines: details },
+      ];
+      if (scope) blocks.push({ kind: "text", title: "Work requested", body: scope });
+      blocks.push({
+        kind: "text",
+        title: "Certification",
+        body: confirmedByClient
+          ? "The work described above was carried out by " + proName + " and confirmed complete by the homeowner on " +
+            docDate(doneOn) + ". Payment for this job was released to the contractor on that confirmation."
+          : "The work described above was recorded as complete by " + proName + " on " + docDate(doneOn) +
+            ". The homeowner did not record a separate confirmation, so this certificate reflects the contractor's completion report and the release of payment against it.",
+      });
+      // The photo block goes last on purpose: it is the only block whose height
+      // we cannot predict, and `page-break-inside:avoid` pushes an overflowing
+      // block to the next sheet whole. Put it anywhere earlier and a tall pair
+      // of portrait photos exiles the certification text to page two on its own.
+      if (photos.length || dropped) {
+        blocks.push({
+          kind: "photos",
+          title: photos.length > 1 ? "Photographic record" : "Photograph",
+          items: photos,
+          note: photos.length ? "Photographs taken by the contractor on site and stored by Freddy Fix It with the job record." : undefined,
+        });
+      }
+
+      const ok = openDocument({
+        docType: "COMPLETION CERTIFICATE",
+        docNumber: jobCode(j?.id) + "-CC",
+        issued: docDate(),
+        subtitle: service + (doneOn ? " · completed " + docDate(doneOn) : ""),
+        blocks,
+        footNotes: [
+          "This certificate records work booked and paid for through Freddy Fix It. It is not a warranty, an inspection report, or a permit.",
+          "Freddy Fix It does not inspect completed work. Licensing, permits and any applicable warranty are the contractor's responsibility and are not certified here.",
+          "Questions about this certificate: hello@freddyfixit.ca, quoting " + jobCode(j?.id) + ".",
+        ],
+      });
+      if (!ok) notify("Please allow pop-ups to view your certificate.");
+    } catch {
+      notify("We couldn't build your certificate just now. Please try again.");
+    } finally {
+      setCertBusy(false);
+    }
+  };
+
+  /**
+   * Calendar years this client actually paid money in, newest first — so the
+   * buttons offered are exactly the years there are records for and there is no
+   * year picker that can be set to an empty year. Mirrors `payoutYears()` on the
+   * contractor side deliberately; the two documents are the same shape of thing
+   * seen from the two sides of the platform.
+   *
+   * The year of a CHARGE, not of a completion. A job paid in December and
+   * finished in January belongs to the year the card was charged, because that
+   * is the year it appears on the client's own statement — and the footnote on
+   * the document says so, since it is the one thing about a period statement a
+   * bookkeeper will want to know and cannot infer.
+   */
+  const spendDate = (j: any) => j?.deposit_paid_at || j?.paid_at || null;
+  const spendYears = (): number[] => {
+    const years = new Set<number>();
+    for (const j of spendJobs) { const d = spendDate(j); if (d) years.add(new Date(d).getFullYear()); }
+    return Array.from(years).sort((a, b) => b - a);
+  };
+
+  /**
+   * CLIENT PERIOD STATEMENT — a year of spending on one page, one line per job.
+   *
+   * Why it exists: the invoice answers "what did this job cost", and nothing
+   * answered "what did I spend with you last year". A client claiming a rental
+   * property's maintenance, or a homeowner handing a year of repairs to an
+   * accountant, had to open and print every job separately and add them up by
+   * hand — which is the kind of arithmetic that gets done wrong once and then
+   * trusted forever.
+   *
+   * ⚠️ IT REPORTS WHAT ARRIVED, NOT WHAT WAS AGREED, AND THE DIFFERENCE IS THE
+   * WHOLE POINT ON A PART-PAID JOB. `jobTotal(j)` is the agreed total; a job
+   * sitting at a 40% deposit has had only the deposit charged, so billing the
+   * full total on a statement would overstate the client's spend by the balance
+   * they have not been asked for yet. So each line is `funded + refunded` (what
+   * the card was actually hit for) less the refund (what came back), which is
+   * exactly the two numbers the invoice prints — one implementation of that
+   * arithmetic, not two. A job with money still outstanding is counted at what
+   * it has taken so far and flagged, rather than silently rounded up or left out.
+   *
+   * MONEY: reads only. Touches NONE of the four payout guards — it reads
+   * `funded_amount` and `refunded_total` for display and cannot move either, and
+   * `fully_funded` only to decide whether to print a note.
+   */
+  const openPeriodStatement = (year: number) => {
+    const inYear = spendJobs
+      .filter(j => { const d = spendDate(j); return d && new Date(d).getFullYear() === year; })
+      .sort((a, b) => new Date(spendDate(a)).getTime() - new Date(spendDate(b)).getTime());
+
+    let charged = 0, refunds = 0, fees = 0, outstanding = 0, partPaid = 0;
+    const rows: string[][] = [];
+    for (const j of inYear) {
+      const refunded = jobRefunded(j);
+      const total = jobTotal(j);
+      // What the card was actually hit for = what we still hold + what has since
+      // gone back out. Both refund paths decrement funded_amount, so the held
+      // figure alone understates the charges with nothing accounting for the gap.
+      const gross = r2(Math.min(Number(j?.funded_amount ?? 0), total) + refunded);
+      const net = r2(gross - refunded);
+      // The service fee rides on the deposit in full, so it is inside the first
+      // charge rather than spread across the job. `client_fee` is what was
+      // actually charged; jobTotal - amount is the fallback for a row stamped
+      // before that column was populated.
+      const fee = j?.client_fee != null ? Number(j.client_fee) : Math.max(r2(total - Number(j?.amount ?? 0)), 0);
+      const owing = jobBalanceDue(j);
+
+      // The fee is capped at what actually arrived: on a job charged only to its
+      // deposit the fee is inside that deposit, so an uncapped sum could report
+      // more in fees than the client was charged in total.
+      charged += gross; refunds += refunded; fees += Math.min(fee, gross);
+      if (owing > 0) { outstanding += owing; partPaid++; }
+
+      const req = requests.find(r => r.id === j?.request_id);
+      rows.push([
+        docDate(spendDate(j)),
+        jobCode(j?.id),
+        req?.service_needed ?? "Home service",
+        money(gross),
+        refunded > 0 ? "-" + money(refunded) : "—",
+        money(net),
+      ]);
+    }
+    charged = r2(charged); refunds = r2(refunds); fees = r2(fees); outstanding = r2(outstanding);
+    const netTotal = r2(charged - refunds);
+
+    const totals: DocLine[] = [
+      { label: "Jobs paid for", value: String(rows.length) },
+      { label: "Charged to you", value: money(charged) },
+    ];
+    if (fees > 0) totals.push({ label: "Of which Freddy Fix It service fees", value: money(fees), note: "Already included in the figure above, not an extra charge" });
+    if (refunds > 0) totals.push({ label: "Refunded to you", value: "-" + money(refunds) });
+    totals.push({ label: "Net spend for " + year, value: money(netTotal), kind: "total" });
+
+    const notes: string[] = [];
+    if (partPaid > 0) {
+      notes.push(
+        partPaid === 1
+          ? "One job is part-paid: " + money(outstanding) + " has not been charged yet and is not in these figures."
+          : partPaid + " jobs are part-paid: " + money(outstanding) + " has not been charged yet and is not in these figures."
+      );
+    }
+
+    const ok = openDocument({
+      docType: "STATEMENT OF ACCOUNT",
+      docNumber: String(year),
+      subtitle: "Charges to your card between 1 January and 31 December " + year + ".",
+      blocks: [
+        {
+          kind: "parties",
+          items: [
+            {
+              title: "Statement for",
+              lines: [
+                [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Client",
+                profile?.email ?? "",
+                profile?.phone ?? "",
+              ],
+            },
+            { title: "Issued by", lines: ["Freddy Fix It", "freddyfixit.ca", "hello@freddyfixit.ca"] },
+          ],
+        },
+        { kind: "lines", title: "Totals for " + year, lines: totals, note: notes.join(" ") || undefined },
+        rows.length > 0
+          ? {
+              kind: "table" as const,
+              title: "Jobs in " + year,
+              head: ["Date charged", "Job", "Service", "Charged", "Refunded", "Net"],
+              rows,
+              foot: ["", "", String(rows.length) + " job" + (rows.length === 1 ? "" : "s"), money(charged), refunds > 0 ? "-" + money(refunds) : "—", money(netTotal)],
+              right: [3, 4, 5],
+            }
+          : { kind: "text" as const, title: "Jobs in " + year, body: "Nothing was charged to you in " + year + "." },
+      ],
+      footNotes: [
+        "Freddy Fix It does not collect or remit GST on these transactions. Amounts shown are exactly as charged to your card.",
+        "A job is shown in the year its first charge was taken. A job paid for in December and finished in January appears in the earlier year.",
+        "Printed " + docDate() + ". Keep a copy with your records. Questions: hello@freddyfixit.ca.",
+      ],
+    });
+    if (!ok) notify("Please allow pop-ups to open your statement.");
   };
 
   const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -3060,6 +3351,17 @@ export default function ClientDashboard() {
                                   {jobRefunded(activeJob) > 0 && (
                                     <button style={s.btn} onClick={() => openCreditNote(activeJob)}><Ic name="download" size={13} style={{ marginRight:4 }} />Credit note</button>
                                   )}
+                                  {/* Gated on the CONFIRMATION, not on the payment state: a job
+                                      can sit at payment_status 'released' the moment the client
+                                      confirms, and this document's whole claim is that someone
+                                      agreed the work was finished. `status === "completed"` is the
+                                      second test because auto_confirm_stale_jobs() closes a job
+                                      without stamping client_confirmed_at. */}
+                                  {(activeJob.client_confirmed_at || activeJob.status === "completed") && (
+                                    <button style={s.btn} disabled={certBusy} onClick={() => openCompletionCert(activeJob)}>
+                                      <Ic name="check-circle" size={13} style={{ marginRight:4 }} />{certBusy ? "Preparing…" : "Completion certificate"}
+                                    </button>
+                                  )}
                                 </div>
                               </>
                             ) : activeJob.payment_status === "refunded" ? (
@@ -3290,7 +3592,7 @@ export default function ClientDashboard() {
         </>
         )}
 
-        {activeTab === "history" && <ClientHistoryTab requests={requests} histFilter={histFilter} search={search} histLimit={histLimit} setHistFilter={setHistFilter} setHistLimit={setHistLimit} setSearch={setSearch} setSelectedReqId={setSelectedReqId} setActiveTab={setActiveTab} busyReq={busyReq} removeRequest={removeRequest} />}
+        {activeTab === "history" && <ClientHistoryTab requests={requests} histFilter={histFilter} search={search} histLimit={histLimit} setHistFilter={setHistFilter} setHistLimit={setHistLimit} setSearch={setSearch} setSelectedReqId={setSelectedReqId} setActiveTab={setActiveTab} busyReq={busyReq} removeRequest={removeRequest} stmtYears={spendFailed ? [] : spendYears()} openPeriodStatement={openPeriodStatement} />}
       </DashContent>
         </div>
       </div>

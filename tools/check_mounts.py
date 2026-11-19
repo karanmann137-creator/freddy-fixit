@@ -82,7 +82,23 @@ INVARIANTS = {
         # invoice points at this document by name, and a refund is exactly the
         # moment a client goes looking for paperwork.
         "openCreditNote(activeJob)",
+        # 2026-11-19: the client's only route to a COMPLETION CERTIFICATE -- the
+        # one document on the platform that is not about money, and the one a
+        # client reaches for months later for an insurer, a landlord or a buyer.
+        # Invisible in the usual way: the job stays complete, the photos stay in
+        # storage, nothing throws. It is also the one printable whose absence
+        # nobody would report quickly, because it is wanted rarely and urgently
+        # -- the worst combination for a silently dropped mount.
+        "openCompletionCert(activeJob)",
     ],
+    # 2026-11-19: the client's only route to a STATEMENT OF ACCOUNT -- a year of
+    # spending on one page. MIN_COUNTS carries the count: it renders on BOTH
+    # branches of this tab (the empty-history branch too, because a request can
+    # be handed back while its paid job survives in the money record), and
+    # losing one leaves the other passing a plain `in` test while the client
+    # most likely to need the statement is the one who cannot reach it. The
+    # asymmetric-sibling shape, pre-empted rather than suffered.
+    "src/pages/client/ClientHistoryTab.tsx": ["{bookkeeping}"],
     "src/pages/ContractorDashboard.tsx": [
         "<ContractPanel", "STAGE_MATCH", "JobsCalendar", "<DashShell",
         # 2026-11-07: the pro's only undo for a price change they proposed
@@ -253,6 +269,7 @@ MIN_COUNTS = {
     # of the three is a credit note that is missing exactly when the job sits in
     # the third, which is the state nobody tests.
     ("src/pages/ClientDashboard.tsx", "openCreditNote(activeJob)"): 3,
+    ("src/pages/client/ClientHistoryTab.tsx", "{bookkeeping}"): 2,
 }
 
 

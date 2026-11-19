@@ -19,18 +19,56 @@ export default function ClientHistoryTab(props: {
   setActiveTab: import("react").Dispatch<import("react").SetStateAction<ClientTab>>;
   busyReq: boolean;
   removeRequest: (r: any) => Promise<void>;
+  /**
+   * Calendar years the client has actually been charged in, newest first.
+   *
+   * EMPTY MEANS "DON'T OFFER THIS", and it covers two different situations on
+   * purpose: nothing has ever been charged (so a statement would print an empty
+   * page), or the jobs read failed (so a statement would print $0.00 for a year
+   * the client spent real money in). The parent decides which; this tab only
+   * needs to know there is nothing worth offering. A button that can only
+   * produce a misleading document is worse than no button.
+   */
+  stmtYears: number[];
+  openPeriodStatement: (year: number) => void;
 }) {
-  const { requests, histFilter, search, histLimit, setHistFilter, setHistLimit, setSearch, setSelectedReqId, setActiveTab, busyReq, removeRequest } = props;
+  const { requests, histFilter, search, histLimit, setHistFilter, setHistLimit, setSearch, setSelectedReqId, setActiveTab, busyReq, removeRequest, stmtYears, openPeriodStatement } = props;
+  const bookkeeping = stmtYears.length > 0 ? (
+    <Group label="For your bookkeeping">
+      <Sheet style={{ padding:"var(--ff-s5)" }}>
+        <p style={{ fontSize:".88rem", color:"rgba(var(--ff-muted), .7)", margin:"0 0 var(--ff-s3)", lineHeight:1.5 }}>
+          A year of your spending on one page, one line per job. Opens in a new tab &mdash; press Print, then choose Save as PDF.
+        </p>
+        <div style={{ display:"flex", gap:"var(--ff-s3)", flexWrap:"wrap" as const }}>
+          {stmtYears.map(y => (
+            <Button key={y} onClick={() => openPeriodStatement(y)}>
+              <Ic name="download" size={13} style={{ marginRight:4 }} />{y} statement
+            </Button>
+          ))}
+        </div>
+      </Sheet>
+    </Group>
+  ) : null;
   return (
     (() => {
                   // Include every request (the active one too) so History is the complete record.
                   const histAll = requests;
                   if (histAll.length === 0) return (
-                    <Group label="Request history">
-                      <Sheet style={{ padding:"var(--ff-s5)" }}>
-                        <p style={{ fontSize:".88rem", color:"rgba(var(--ff-muted), .55)", margin:0 }}>Nothing here yet — your past requests will show up once you&rsquo;ve posted one.</p>
-                      </Sheet>
-                    </Group>
+                    <>
+                      <Group label="Request history">
+                        <Sheet style={{ padding:"var(--ff-s5)" }}>
+                          <p style={{ fontSize:".88rem", color:"rgba(var(--ff-muted), .55)", margin:0 }}>Nothing here yet — your past requests will show up once you&rsquo;ve posted one.</p>
+                        </Sheet>
+                      </Group>
+                      {/* Rendered on BOTH branches, not just the populated one.
+                          A request can be handed back or removed while its paid
+                          job survives in the money record, so "no history rows"
+                          does not imply "nothing was ever charged" — and the one
+                          client that happens to would be the one who most needs
+                          the statement. `bookkeeping` self-hides when there is
+                          genuinely nothing to print. */}
+                      {bookkeeping}
+                    </>
                   );
                   const matches = (r: any) =>
                     histFilter === "all" ? true :
@@ -50,7 +88,8 @@ export default function ClientHistoryTab(props: {
                     { key: "cancelled", label: "Cancelled" },
                   ];
                   return (
-                    /* <Group> rather than a card: the caption is the Bebas label
+                    <>
+                    {/* <Group> rather than a card: the caption is the Bebas label
                        above an inset sheet, so History stops being "a box with a
                        title inside it" and starts matching every other grouped
                        list on the redesigned dashboards. The count moves into the
@@ -59,7 +98,7 @@ export default function ClientHistoryTab(props: {
 
                        The filter chips and the search box sit BETWEEN the caption
                        and the sheet, outside both, because they act on the sheet
-                       rather than belonging to it. */
+                       rather than belonging to it. */}
                     <Group
                       label="Request history"
                       action={<span style={{ opacity:.7 }}>{filtered.length} of {histAll.length}</span>}
@@ -169,6 +208,8 @@ export default function ClientHistoryTab(props: {
                         </Button>
                       )}
                     </Group>
+                    {bookkeeping}
+                    </>
                   );
                 })()
   );

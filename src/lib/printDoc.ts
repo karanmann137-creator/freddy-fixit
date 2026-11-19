@@ -74,6 +74,11 @@ export type DocBlock =
   | { kind: "lines"; title?: string; lines: DocLine[]; note?: string }
   | { kind: "table"; title?: string; head: string[]; rows: string[][]; foot?: string[]; note?: string; right?: number[] }
   | { kind: "text"; title?: string; body: string }
+  /**
+   * Embedded thumbnails. `src` MUST be a `data:image/...` URL — see photosBlock()
+   * for why a signed storage URL is refused rather than rendered.
+   */
+  | { kind: "photos"; title?: string; items: { src: string; caption?: string }[]; note?: string }
   | { kind: "html"; title?: string; html: string };
 
 export type PrintDocument = {
@@ -139,6 +144,13 @@ const CSS: string = [
   ".lines .note { display:block; font-size:8.5pt; color:" + MUTE + "; }",
   ".body { font-size:10pt; white-space:pre-wrap; margin:0; }",
   ".bnote { font-size:8.5pt; color:" + MUTE + "; margin:8px 0 0; }",
+  // Embedded photos. The frame is a border and not a background, per rule 4 —
+  // browsers drop backgrounds when printing, and a photo that fails to decode
+  // must still show as a labelled box rather than as nothing at all.
+  ".shots { display:flex; flex-wrap:wrap; gap:14px; }",
+  ".shot { flex:1 1 2.7in; max-width:3.3in; min-width:2.2in; }",
+  ".shot img { display:block; width:100%; height:auto; border:1px solid " + LINE + "; border-radius:6px; }",
+  ".shot p { font-size:8.5pt; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:" + MUTE + "; margin:5px 0 0; }",
   // embedded signed HTML, normalised to dark ink on white
   ".embed { font-size:10pt; }",
   ".embed * { background:transparent !important; background-color:transparent !important; color:" + INK + " !important; border-color:" + LINE + " !important; max-width:100% !important; box-shadow:none !important; }",
@@ -202,10 +214,48 @@ function tableBlock(b: Extract<DocBlock, { kind: "table" }>): string {
   );
 }
 
+/**
+ * ⚠️ A `data:` URL IS THE WHOLE POINT, SO ANYTHING ELSE IS DROPPED, NOT RENDERED.
+ *
+ * These documents get saved as PDFs, emailed to insurers and filed for years. A
+ * signed Supabase storage URL expires in an hour, so embedding one produces a
+ * document that looks perfect in the print preview and renders two broken image
+ * icons to whoever opens the file tomorrow — a failure that is invisible at the
+ * moment it is created and unfixable by the person who finds it.
+ *
+ * A dropped photo is visible immediately (the block says how many are missing),
+ * which is the trade this refusal buys. Callers hand us base64 via
+ * `jobPhotoThumbs()`; there is deliberately no escape hatch for a remote URL.
+ */
+function photosBlock(b: Extract<DocBlock, { kind: "photos" }>): string {
+  const items = (b.items ?? []).filter((p) => p && /^data:image\//i.test(String(p.src ?? "")));
+  const dropped = (b.items ?? []).length - items.length;
+  if (!items.length && !b.note && !dropped) return "";
+  const shots = items
+    .map(
+      (p) =>
+        '<div class="shot"><img alt="' + escHtml(p.caption || "Job photo") + '" src="' + escHtml(p.src) + '">' +
+        (p.caption ? "<p>" + escHtml(p.caption) + "</p>" : "") +
+        "</div>"
+    )
+    .join("");
+  const notes = [b.note, dropped > 0 ? dropped + (dropped === 1 ? " photo" : " photos") + " could not be included in this document." : ""]
+    .filter((n) => n && String(n).trim() !== "")
+    .join(" ");
+  return (
+    '<div class="block">' +
+    (b.title ? "<h2>" + escHtml(b.title) + "</h2>" : "") +
+    (shots ? '<div class="shots">' + shots + "</div>" : "") +
+    (notes ? '<p class="bnote">' + escHtml(notes) + "</p>" : "") +
+    "</div>"
+  );
+}
+
 function renderBlock(b: DocBlock): string {
   if (b.kind === "parties") return partiesBlock(b.items);
   if (b.kind === "lines") return linesBlock(b);
   if (b.kind === "table") return tableBlock(b);
+  if (b.kind === "photos") return photosBlock(b);
   if (b.kind === "text") {
     return (
       '<div class="block">' +
