@@ -1,3 +1,12 @@
+// review-contractor v13 (2026-11-20): three-way verdict; a failed check is NOT a rejection.
+// ⚠️ v12 sent model "claude-sonnet-4-6" (does not exist) and never read the response
+//    status. Every call 404'd, rawText fell back to "{}", and `overall` collapsed
+//    anything-not-"approved" into "rejected" — so 11 contractors were marked rejected
+//    with review_result '{}' and emailed "action needed" about documents nothing read.
+//    That is why 0 of 25 contractors were ever approved. Fixed three ways: an ordered
+//    model candidate list retried on 404 ONLY, an explicit aiRes.ok check, and a third
+//    outcome `needs_review` for every "could not tell" path.
+//
 // review-contractor v12 (2026-07-29): solo-operator WCB-exempt review.
 // - Never changes contractors.status — the AI verdict is saved for the admin,
 //   who approves/deactivates manually (profile-page Admin Review panel).
@@ -108,12 +117,60 @@ serve(async (req) => {
 
     const hdrs: Record<string, string> = { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" };
     if (hasPdf.length > 0) hdrs["anthropic-beta"] = "pdfs-2024-09-25";
-    const aiRes = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: hdrs, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1024, messages: [{ role: "user", content: contentBlocks }] }) });
-    const aiData = await aiRes.json();
-    const rawText: string = aiData.content?.[0]?.text || "{}";
-    let reviewResult: any = { overall: "pending", summary: "Automatic review could not complete." };
-    try { const m = rawText.match(/\{[\s\S]*\}/); if (m) reviewResult = JSON.parse(m[0]); } catch {}
-    const overall = reviewResult.overall === "approved" ? "approved" : "rejected";
+
+    // ⚠️ The previous version sent a model string that does not exist and never looked at
+    // the response status, so every call 404'd and the failure was recorded as a REJECTION.
+    // Try an ordered candidate list, retrying ONLY on 404 — a 401/429/5xx is a real fault
+    // and must surface, never be mistaken for a verdict about somebody's paperwork.
+    const MODEL_CANDIDATES = ["claude-sonnet-5-5", "claude-sonnet-4-5"];
+    let aiData: any = null;
+    let aiFailure: string | null = null;
+    for (const model of MODEL_CANDIDATES) {
+      let res: Response;
+      try {
+        res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST", headers: hdrs,
+          body: JSON.stringify({ model, max_tokens: 1024, messages: [{ role: "user", content: contentBlocks }] }),
+        });
+      } catch (e) {
+        aiFailure = "network error calling Anthropic: " + String(e);
+        break;
+      }
+      if (res.status === 404) { aiFailure = "model " + model + " not available (404)"; continue; }
+      if (!res.ok) { aiFailure = "Anthropic returned HTTP " + res.status; break; }
+      try { aiData = await res.json(); aiFailure = null; } catch (e) { aiFailure = "unreadable Anthropic response: " + String(e); }
+      break;
+    }
+
+    // THREE outcomes, not two. "Could not tell" is NOT a rejection — it routes to a human
+    // as needs_review. Collapsing it into "rejected" is what falsely rejected 11
+    // contractors (all with review_result '{}') and emailed them action-needed notices
+    // about documents that nothing had ever read.
+    let reviewResult: any;
+    let overall: "approved" | "rejected" | "needs_review";
+    if (aiFailure || !aiData) {
+      reviewResult = {
+        overall: "needs_review",
+        summary: "Automated review could not complete — a person needs to check these documents.",
+        error: aiFailure ?? "no response from Anthropic",
+      };
+      overall = "needs_review";
+    } else {
+      const rawText: string = aiData.content?.[0]?.text ?? "";
+      let parsed: any = null;
+      try { const m = rawText.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); } catch { parsed = null; }
+      if (parsed && (parsed.overall === "approved" || parsed.overall === "rejected")) {
+        reviewResult = parsed;
+        overall = parsed.overall;
+      } else {
+        reviewResult = {
+          overall: "needs_review",
+          summary: "Automated review returned an unreadable verdict — a person needs to check these documents.",
+          raw: rawText.slice(0, 500),
+        };
+        overall = "needs_review";
+      }
+    }
 
     // ADVISORY ONLY: save the verdict for the admin — never touch contractors.status.
     await admin.from("contractors").update({ review_result: reviewResult, review_status: overall }).eq("id", contractor_id);
@@ -125,6 +182,11 @@ serve(async (req) => {
       if (overall === "approved") {
         await sendEmail(email, "Documents received — final review underway",
           `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#1a2236;color:#f0f4ff;padding:2rem;border-radius:12px;"><h2 style="color:#ea6b14;">Thanks, ${name} — your documents look good!</h2><p>Your documents passed our automated checks. Our team is completing your final review now — you'll get an email as soon as your account is active and you can start taking jobs.</p></div>`);
+      } else if (overall === "needs_review") {
+        // Our fault, not theirs. Never imply their paperwork fell short when the
+        // automated check never ran — that is the email 11 people wrongly received.
+        await sendEmail(email, "Documents received — under review",
+          `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#1a2236;color:#f0f4ff;padding:2rem;border-radius:12px;"><h2 style="color:#ea6b14;">Thanks, ${name} — we've got your documents.</h2><p>They're with our team for review now. Nothing further is needed from you — you'll get an email as soon as your account is active and you can start taking jobs.</p></div>`);
       } else {
         await sendEmail(email, "Document review — action needed",
           `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#1a2236;color:#f0f4ff;padding:2rem;border-radius:12px;"><h2 style="color:#ea6b14;">Document Review — Action Required</h2><p>Hi ${name}, we need a couple things before activating your account.</p><p style="background:rgba(255,255,255,.06);padding:1rem;border-radius:8px;border-left:3px solid #ea6b14;">${reviewResult.summary}</p><p>Log in to re-upload your documents or contact <a href="mailto:hello@freddyfixit.ca" style="color:#ea6b14;">hello@freddyfixit.ca</a>.</p><a href="https://freddyfixit.ca/login" style="display:inline-block;margin-top:1.5rem;padding:.75rem 1.5rem;background:#ea6b14;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Log In →</a></div>`);
@@ -132,8 +194,12 @@ serve(async (req) => {
     }
 
     // Tell the admin the AI verdict is in, with a one-click link to review + approve.
+    // needs_review is called out as OUR fault so it can't be read as a thin rejection.
+    const adminLede = overall === "needs_review"
+      ? `<p style="background:rgba(234,107,20,.14);padding:1rem;border-radius:8px;border-left:3px solid #ea6b14;">The automated check <strong>did not run</strong> — this is not a verdict on their documents. Reason: ${reviewResult.error ?? "unreadable response"}. Open the profile and review the documents yourself.</p>`
+      : `<p>The AI verdict is advisory — nothing was activated. Review the documents and approve on their profile page.</p>`;
     await sendEmail(ADMIN_EMAIL, `AI doc review: ${fullName} — ${overall}`,
-      `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#1a2236;color:#f0f4ff;padding:2rem;border-radius:12px;"><h2 style="color:#ea6b14;">AI doc review: ${overall}</h2><p><strong>${fullName}</strong> — ${reviewResult.summary ?? ""}</p><p>The AI verdict is advisory — nothing was activated. Review the documents and approve on their profile page.</p><a href="https://freddyfixit.ca/contractors/${contractor_id}" style="display:inline-block;margin-top:1rem;padding:.75rem 1.5rem;background:#ea6b14;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Open Admin Review →</a></div>`);
+      `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#1a2236;color:#f0f4ff;padding:2rem;border-radius:12px;"><h2 style="color:#ea6b14;">AI doc review: ${overall}</h2><p><strong>${fullName}</strong> — ${reviewResult.summary ?? ""}</p>${adminLede}<a href="https://freddyfixit.ca/contractors/${contractor_id}" style="display:inline-block;margin-top:1rem;padding:.75rem 1.5rem;background:#ea6b14;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Open Admin Review →</a></div>`);
 
     return json({ status: overall, result: reviewResult });
   } catch (e) {

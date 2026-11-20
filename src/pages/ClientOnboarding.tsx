@@ -9,6 +9,7 @@ import { readAuthUser } from "@/lib/authRead";
 import { DeadEnd } from "@/components/ui";
 import OnboardingProgress from "@/components/OnboardingProgress";
 import OnboardingVideo from "@/components/OnboardingVideo";
+import TrustNumbers from "@/components/TrustNumbers";
 import { trackEvent } from "@/lib/analytics";
 import { requestGoogleReview } from "@/lib/reviewPrompt";
 import { useServicePricing, floorFor } from "@/lib/servicePricing";
@@ -1209,6 +1210,15 @@ export default function ClientOnboarding() {
           </div>
         )}
         <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.8rem", letterSpacing:".06em", marginBottom:"2rem" }}>{STEP_TITLES[step-1]}</h1>
+
+        {/* Live traction, first screen only — keyed on S_DESCRIBE for exactly
+            the reason the video below is: `visiblePath` can be either of two
+            paths, and a literal 1 would be the wrong screen on one of them.
+            It sits above the video because the reassurance it offers is read in
+            a glance where a 25-second video is a decision, and it renders
+            nothing at all if the read fails — never zeros. See TrustNumbers.tsx
+            for why that silence is the whole design. */}
+        {step === S_DESCRIBE && <TrustNumbers side="client" />}
 
         {/* The walkthrough, on the first screen only. Someone who has already
             answered two screens' worth of questions has worked out how this

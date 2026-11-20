@@ -12,6 +12,7 @@ import { trackEvent } from "@/lib/analytics";
 import OAuthButtons from "@/components/OAuthButtons";
 import OnboardingProgress from "@/components/OnboardingProgress";
 import OnboardingVideo from "@/components/OnboardingVideo";
+import TrustNumbers from "@/components/TrustNumbers";
 import ServicePicker from "@/components/ServicePicker";
 import VoiceDictate from "@/components/VoiceDictate";
 import { AREAS, areasFromPostal, isPostalCode } from "@/lib/calgaryAreas";
@@ -473,6 +474,14 @@ export default function ContractorOnboarding() {
             <button onClick={() => { try { localStorage.removeItem("ff_contractor_draft"); } catch { /* storage can be unavailable (private mode); best effort */ } window.location.reload(); }} style={{ background:"none", border:"none", color:"var(--ff-c10)", cursor:"pointer", fontFamily:"inherit", fontSize:".78rem", textDecoration:"underline", flexShrink:0 }}>Start over</button>
           </div>
         )}
+
+        {/* Live traction, first screen only — the same rule and the same reason
+            as the video directly below. It sits ABOVE the video because the
+            objection it answers ("is there actually work on here?") is a number,
+            and a number is read in a glance where a 31-second video is a
+            decision. It renders nothing at all if the read fails — never zeros.
+            See TrustNumbers.tsx for why that is the whole design. */}
+        {step === 1 && <TrustNumbers side="contractor" />}
 
         {/* The walkthrough, on the first screen only — the same rule as the
             client side. Someone already three screens deep has worked out how

@@ -228,7 +228,19 @@ INVARIANTS = {
     # is a contractor wondering why he was emailed a masonry job. A fallback
     # designed to swallow a bad split swallows a missing one identically, which
     # is precisely the membership test for this table.
-    "src/pages/ClientOnboarding.tsx": ["<DeadEnd", "<SplitJobDialog", "detectJobSplit("],
+    #
+    # 2026-11-20: `<TrustNumbers` joins this file's list (and gets a key of its
+    # own for ContractorOnboarding below). It is the strongest membership case in
+    # the table, because TrustNumbers RENDERS NULL BY DESIGN on a failed read --
+    # so a dropped mount is not merely invisible, it is INDISTINGUISHABLE from
+    # the component working correctly on a bad connection. No error, no empty
+    # state, no layout gap, no second surface to notice from; the only symptom is
+    # that the one number on the site that makes both funnels credible quietly
+    # stops appearing, to everybody, forever. It moved here from Home.tsx and
+    # ForContractors.tsx the same day, which is why those two keys are gone --
+    # the needle follows the mount, and a needle left on a file that no longer
+    # mounts the thing is a gate that cries wolf.
+    "src/pages/ClientOnboarding.tsx": ["<DeadEnd", "<SplitJobDialog", "detectJobSplit(", "<TrustNumbers"],
     # The split prompt is here for a reason worth stating because it is the
     # opposite of the ContractPanel case.
     #
@@ -251,6 +263,9 @@ INVARIANTS = {
     # and the account is in no worse state, so there is nothing in the data to
     # find afterwards either.
     "src/lib/roleWrite.ts": ["export async function setMyRole", "role_change_block"],
+    # The contractor half of the same 2026-11-20 move -- see the TrustNumbers
+    # note on ClientOnboarding above for why a dropped mount here is silent.
+    "src/pages/ContractorOnboarding.tsx": ["<TrustNumbers"],
 }
 
 # Needles that must appear a MINIMUM number of times rather than at least once.

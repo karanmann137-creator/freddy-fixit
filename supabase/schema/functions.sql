@@ -7,9 +7,14 @@
 -- terms_acceptances table were inserted by hand, in the generator's exact
 -- format and at their generated sort positions, because the full snapshot
 -- query's result is far too large to pass through an assistant context.
+-- HAND-PATCHED 2026-11-20 the same way, for the same reason: platform_trust_stats
+-- was inserted at its sort position, copied verbatim from pg_get_functiondef()
+-- with its real pg_proc.proacl, not from the migration file -- a grant block in a
+-- migration is not evidence that it ran. Verified: proacl carries no bare `=X/`,
+-- so PUBLIC is revoked, and has_function_privilege('anon', ...) is true.
 -- Everything else is generator output. Regenerate to normalise.
 
--- 244 functions in schema public
+-- 245 functions in schema public
 
 -- _accept_bid_internal(p_bid_id uuid)   grants: {postgres=X/postgres,service_role=X/postgres}
 CREATE OR REPLACE FUNCTION public._accept_bid_internal(p_bid_id uuid)
@@ -6639,6 +6644,33 @@ AS $function$
   select jsonb_build_object(
     'mode',   public.platform_mode(),
     'notice', coalesce((select value from public.platform_settings where key = 'pause_notice'), '{}'::jsonb));
+$function$;
+
+-- platform_trust_stats()   grants: {postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+CREATE OR REPLACE FUNCTION public.platform_trust_stats()
+ RETURNS jsonb
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+  with per_request as (
+    select cr.id,
+           max(greatest(coalesce(b.price_high, 0), coalesce(b.amount, 0))) as top_quote,
+           count(b.id) as n_bids
+    from public.client_requests cr
+    left join public.bids b on b.request_id = cr.id
+    group by cr.id
+  )
+  select jsonb_build_object(
+    'work_quoted',      coalesce(floor(sum(top_quote)), 0)::bigint,
+    'requests_total',   count(*),
+    'requests_quoted',  count(*) filter (where n_bids > 0),
+    'quote_rate',       case when count(*) = 0 then null
+                        else round(100.0 * count(*) filter (where n_bids > 0) / count(*))::int end,
+    'contractors_total',(select count(*) from public.contractors),
+    'as_of',            now()
+  )
+  from per_request;
 $function$;
 
 -- prevent_role_escalation()   grants: {postgres=X/postgres,service_role=X/postgres}

@@ -881,7 +881,20 @@ export default function Home() {
         @media (max-width: 339px) { .ff-services-grid { grid-template-columns: minmax(0, 1fr); } }
         /* Mobile-only reorder: trust strip moves below the "Why Freddy Fix It" (About)
            section, ahead of Freddy Verified. Desktop is untouched — no order is set
-           outside this media query, so ties resolve by source order there. */
+           outside this media query, so ties resolve by source order there.
+
+           ⚠️ EVERY CHILD OF THIS CONTAINER NEEDS A RULE HERE, AND A CHILD WITH
+           NO RULE DOES NOT STAY PUT — IT GOES TO THE TOP. An unlisted child
+           defaults to order:0, ties with .ff-how, and the tie resolves by source
+           order, so a new FIRST child jumps ahead of everything on mobile while
+           desktop looks completely untouched. That is exactly what the live
+           traction band did when it was briefly added here on 2026-11-20: three
+           stacked tiles landed directly under the hero and pushed "How it works"
+           off the first screen — the precise cost this reorder exists to avoid
+           for the trust strip. The band has since moved to the two onboarding
+           pages and these four rules are back to what they were, but the trap is
+           a property of the container, not of that one component. Add a child,
+           add its order. */
         @media (max-width: 900px) {
           .ff-mobile-reorder { display: flex; flex-direction: column; }
           .ff-mobile-reorder > .ff-how { order: 0; }

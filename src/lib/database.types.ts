@@ -3714,6 +3714,7 @@ export type Database = {
       platform_commission_rate: { Args: never; Returns: number }
       platform_deposit_rate: { Args: never; Returns: number }
       platform_fee_rate: { Args: never; Returns: number }
+      platform_trust_stats: { Args: never; Returns: Json }
       platform_health_check: {
         Args: never
         Returns: {
