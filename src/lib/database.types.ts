@@ -2467,6 +2467,100 @@ export type Database = {
         }
         Relationships: []
       }
+      sms_consent: {
+        Row: {
+          line_type: string | null
+          line_type_at: string | null
+          opt_in_at: string | null
+          opt_in_surface: string | null
+          opt_out_at: string | null
+          opt_out_source: string | null
+          phone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          line_type?: string | null
+          line_type_at?: string | null
+          opt_in_at?: string | null
+          opt_in_surface?: string | null
+          opt_out_at?: string | null
+          opt_out_source?: string | null
+          phone: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          line_type?: string | null
+          line_type_at?: string | null
+          opt_in_at?: string | null
+          opt_in_surface?: string | null
+          opt_out_at?: string | null
+          opt_out_source?: string | null
+          phone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_consent_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sms_log: {
+        Row: {
+          created_at: string
+          dedupe_key: string | null
+          id: number
+          job_id: string | null
+          kind: string
+          phone: string
+          provider_sid: string | null
+          reason: string | null
+          segments: number
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          dedupe_key?: string | null
+          id?: number
+          job_id?: string | null
+          kind: string
+          phone: string
+          provider_sid?: string | null
+          reason?: string | null
+          segments?: number
+          status: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          dedupe_key?: string | null
+          id?: number
+          job_id?: string | null
+          kind?: string
+          phone?: string
+          provider_sid?: string | null
+          reason?: string | null
+          segments?: number
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_bot_config: {
         Row: {
           key: string
@@ -2955,6 +3049,7 @@ export type Database = {
         Args: { p_id: string | null; p_status: string | null }
         Returns: undefined
       }
+      admin_sms_overview: { Args: never; Returns: Json }
       admin_terms_tail: {
         Args: { p_limit?: number | null }
         Returns: {
@@ -3827,6 +3922,40 @@ export type Database = {
       }
       set_weekly_goal: { Args: { p_goal: number }; Returns: undefined }
       shares_connection: { Args: { other: string }; Returns: boolean }
+      sms_e164: { Args: { p_phone: string | null }; Returns: string }
+      sms_log_write: {
+        Args: {
+          p_dedupe_key?: string | null
+          p_job_id?: string | null
+          p_kind: string | null
+          p_phone: string | null
+          p_provider_sid?: string | null
+          p_reason?: string | null
+          p_segments?: number | null
+          p_status: string | null
+          p_user_id: string | null
+        }
+        Returns: number
+      }
+      sms_month_usage: { Args: never; Returns: Json }
+      sms_record_line_type: {
+        Args: { p_line_type: string | null; p_phone: string | null }
+        Returns: number
+      }
+      sms_record_opt_out: {
+        Args: { p_phone: string | null; p_source?: string | null }
+        Returns: number
+      }
+      sms_send_allowed: {
+        Args: { p_kind?: string | null; p_user_id: string | null }
+        Returns: string
+      }
+      sms_set_opt_in: {
+        Args: { p_opt_in: boolean | null; p_surface?: string | null }
+        Returns: Json
+      }
+      sms_status: { Args: never; Returns: Json }
+      sms_volume_alert: { Args: never; Returns: string }
       social_bot_secret: { Args: never; Returns: string }
       social_propose_action: {
         Args: { p_conversation_id: string | null; p_kind: string | null; p_payload?: Json | null }

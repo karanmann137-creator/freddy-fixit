@@ -1515,3 +1515,67 @@ CREATE TRIGGER ui_dismissals_cap_guard BEFORE INSERT ON public.ui_dismissals FOR
 --   visit-reminders  [*/10 * * * *]  active=True  select public.kick_visit_reminders();
 
 -- views
+
+
+-- ============================================================================
+-- ADDENDUM, hand-appended 2026-11-19. NOT produced by the snapshot query.
+-- See the matching note at the end of functions.sql for why this was appended by
+-- hand rather than regenerated. The next full snapshot run absorbs it.
+-- ============================================================================
+
+-- table sms_consent   (RLS on)
+--   user_id  uuid  not null
+--   phone  text  not null
+--   opt_in_at  timestamp with time zone
+--   opt_in_surface  text
+--   opt_out_at  timestamp with time zone
+--   opt_out_source  text
+--   line_type  text
+--   line_type_at  timestamp with time zone
+--   updated_at  timestamp with time zone  not null  default now()
+
+-- table sms_log   (RLS on)
+--   id  bigint  not null  default nextval('sms_log_id_seq'::regclass)
+--   user_id  uuid
+--   phone  text  not null
+--   kind  text  not null
+--   job_id  uuid
+--   status  text  not null
+--   reason  text
+--   provider_sid  text
+--   segments  integer  not null  default 1
+--   dedupe_key  text
+--   created_at  timestamp with time zone  not null  default now()
+
+-- constraints
+--   sms_consent.sms_consent_pkey: PRIMARY KEY (user_id)
+--   sms_consent.sms_consent_user_id_fkey: FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE
+--   sms_log.sms_log_pkey: PRIMARY KEY (id)
+--   sms_log.sms_log_user_id_fkey: FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE SET NULL
+
+-- indexes
+CREATE UNIQUE INDEX sms_consent_pkey ON public.sms_consent USING btree (user_id);
+CREATE INDEX sms_consent_phone_idx ON public.sms_consent USING btree (phone);
+CREATE UNIQUE INDEX sms_log_pkey ON public.sms_log USING btree (id);
+CREATE UNIQUE INDEX sms_log_dedupe_key_uniq ON public.sms_log USING btree (dedupe_key) WHERE ((dedupe_key IS NOT NULL) AND (status = 'sent'::text));
+CREATE INDEX sms_log_month_idx ON public.sms_log USING btree (created_at DESC) WHERE (status = 'sent'::text);
+CREATE INDEX sms_log_user_idx ON public.sms_log USING btree (user_id, created_at DESC);
+
+-- policies
+--   sms_consent / Users read own sms consent [SELECT] roles={public}
+--     using: ((auth.uid() = user_id) OR is_admin())
+--     check: null
+--   sms_log / Admins read sms log [SELECT] roles={public}
+--     using: is_admin()
+--     check: null
+-- NOTE: neither table has an INSERT/UPDATE/DELETE policy, deliberately -- the only
+-- write paths are the SECURITY DEFINER functions. Same pattern as terms_acceptances
+-- and admin_audit_log.
+
+-- triggers
+-- send-notification-email on public.notifications was recreated to add
+-- 'sms_cap_alert' to the types that survive outbound_paused(); see
+-- supabase/migrations/20261119_sms_cap_alert_survives_pause.sql for the full def.
+
+-- cron jobs
+--   (none added; the SMS half registers no cron)

@@ -54,8 +54,8 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #
 # Bump this ONLY as part of publishing an amendment -- which means sending the
 # UA 12 notice too. See docs/legal.md.
-TERMS_VERSION = "2026-11-16"
-TERMS_VERSION_PRETTY = "November 16, 2026"
+TERMS_VERSION = "2026-11-19"
+TERMS_VERSION_PRETTY = "November 19, 2026"
 
 LEGAL_PAGES = ["src/pages/PrivacyPolicy.tsx", "src/pages/UserAgreement.tsx"]
 
@@ -90,6 +90,18 @@ DECLARED = {
     "api.stripe.com":             "PP 6.2 Stripe, Inc. -- API",
     "connect.stripe.com":         "PP 6.2 Stripe, Inc. -- Connect onboarding",
     "supabase.co":                "PP 6.2 Supabase, Inc.",
+    # Twilio. TWO hosts on purpose, because they carry different data and the
+    # distinction is the one a regulator would ask about: api.twilio.com gets
+    # the number AND the message body, lookups.twilio.com gets the number only
+    # (the mobile-vs-landline check). Declaring one and calling the other is
+    # exactly the gap this gate exists to catch.
+    #
+    # ⚠️ The 6.2 row is published but takes effect 2026-12-03 (PP 14 gives 14
+    # days' notice). Until then NO number may be sent: that is enforced by the
+    # sms_enabled platform setting, NOT by this list -- a declared host is a
+    # disclosed host, never a permitted one.
+    "api.twilio.com":             "PP 6.2 Twilio Inc. -- SMS delivery (number + message body)",
+    "lookups.twilio.com":         "PP 6.2 Twilio Inc. -- line-type check (number only, no message)",
 
     # --- Covered by a clause OTHER than 6.2 ------------------------------
     # The lead scouts. 6.5 is careful about the direction of travel: we READ

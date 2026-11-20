@@ -9271,3 +9271,457 @@ begin
 end;
 $function$;
 
+
+
+-- ============================================================================
+-- ADDENDUM, hand-appended 2026-11-19. NOT produced by the snapshot query.
+-- The eleven SMS consent/cap functions applied that day (migrations
+-- 20261119_sms_consent_and_caps.sql, 20261119_sms_cap_alert_survives_pause.sql,
+-- 20261119_sms_revoke_authenticated.sql). A full regeneration moves ~600 KB of
+-- functions.sql + tables.sql + database.types.ts through the assistant's context
+-- window, which one session cannot carry -- so this block was appended by hand from
+-- the migration source, which is byte-identical to what was applied. The grants are
+-- the live `pg_proc.proacl` values read back AFTER the revoke fix, not the migration's.
+-- The next full snapshot run absorbs this block; delete it then.
+-- ============================================================================
+
+-- sms_e164(p_phone text)   grants: {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+create or replace function public.sms_e164(p_phone text)
+returns text
+language plpgsql
+immutable
+set search_path to 'public', 'extensions', 'pg_temp'
+as $function$
+declare v_d text;
+begin
+  if p_phone is null then return null; end if;
+  v_d := regexp_replace(p_phone, '[^0-9]', '', 'g');
+  if length(v_d) = 11 and left(v_d, 1) = '1' then v_d := substr(v_d, 2); end if;
+  if length(v_d) <> 10 then return null; end if;
+  -- NANP: area code and exchange both start 2-9. Catches '0000000000' and most typos.
+  if left(v_d, 1) in ('0', '1') or substr(v_d, 4, 1) in ('0', '1') then return null; end if;
+  return '+1' || v_d;
+end;
+$function$;
+
+-- sms_month_usage()   grants: {postgres=X/postgres,service_role=X/postgres}
+create or replace function public.sms_month_usage()
+returns jsonb
+language plpgsql
+stable security definer
+set search_path to 'public', 'extensions', 'pg_temp'
+as $function$
+declare
+  v_cap  int;
+  v_sent int;
+  v_from timestamptz;
+begin
+  v_cap := coalesce((select (value #>> '{}')::int from public.platform_settings
+                      where key = 'sms_monthly_cap'), 500);
+  v_from := date_trunc('month', (now() at time zone 'America/Edmonton'))
+            at time zone 'America/Edmonton';
+
+  select count(*) into v_sent
+    from public.sms_log
+   where status = 'sent' and created_at >= v_from;
+
+  return jsonb_build_object(
+    'sent',   coalesce(v_sent, 0),
+    'cap',    v_cap,
+    'month',  to_char((now() at time zone 'America/Edmonton')::date, 'YYYY-MM'),
+    'pct',    case when v_cap > 0 then round(100.0 * coalesce(v_sent, 0) / v_cap) else 0 end,
+    'at_cap', coalesce(v_sent, 0) >= v_cap
+  );
+end;
+$function$;
+
+-- sms_send_allowed(p_user_id uuid, p_kind text default null)   grants: {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+create or replace function public.sms_send_allowed(p_user_id uuid, p_kind text default null)
+returns text
+language plpgsql
+stable security definer
+set search_path to 'public', 'extensions', 'pg_temp'
+as $function$
+declare
+  v_enabled  boolean;
+  v_eff      date;
+  v_phone    text;
+  v_c        record;
+  v_usage    jsonb;
+begin
+  if auth.uid() is null then
+    null;
+  elsif auth.uid() <> p_user_id and not public.is_admin() then
+    return 'You are not allowed to ask about this account.';
+  end if;
+
+  if p_user_id is null then
+    return 'Could not work out which account this is.';
+  end if;
+
+  v_enabled := coalesce((select (value #>> '{}')::boolean from public.platform_settings
+                          where key = 'sms_enabled'), false);
+  if not v_enabled then
+    return 'Text messaging is not switched on yet.';
+  end if;
+
+  v_eff := coalesce((select (value #>> '{}')::date from public.platform_settings
+                      where key = 'sms_effective_date'), date '2026-12-03');
+  if (now() at time zone 'America/Edmonton')::date < v_eff then
+    return 'Text messaging starts on ' || to_char(v_eff, 'FMMonth FMDD, YYYY')
+        || '. Until then we only send email.';
+  end if;
+
+  if public.outbound_paused() then
+    return 'Outbound messages are paused while the site is under maintenance.';
+  end if;
+
+  select public.sms_e164(p.phone) into v_phone
+    from public.profiles p where p.id = p_user_id;
+
+  if not found then
+    return 'We could not find that account.';
+  end if;
+  if v_phone is null then
+    return 'There is no mobile number on this account.';
+  end if;
+
+  select * into v_c from public.sms_consent c where c.user_id = p_user_id;
+
+  if not found or v_c.opt_in_at is null then
+    return 'This account has not asked for text messages.';
+  end if;
+  if v_c.opt_out_at is not null and v_c.opt_out_at >= v_c.opt_in_at then
+    return 'This account has turned text messages off.';
+  end if;
+  if v_c.phone is distinct from v_phone then
+    return 'The mobile number on this account changed. Text messages need to be turned on '
+        || 'again for the new number.';
+  end if;
+  if coalesce(v_c.line_type, 'unknown') not in ('mobile', 'voip') then
+    return case coalesce(v_c.line_type, 'unknown')
+             when 'landline' then 'That number is a landline, so it cannot receive texts.'
+             else 'We have not yet checked whether that number can receive texts.'
+           end;
+  end if;
+
+  v_usage := public.sms_month_usage();
+  if (v_usage ->> 'at_cap')::boolean then
+    return 'This month''s text-message limit (' || (v_usage ->> 'cap')
+        || ') has been reached. Email is still going out as normal.';
+  end if;
+
+  return null;
+end;
+$function$;
+
+-- sms_status()   grants: {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+create or replace function public.sms_status()
+returns jsonb
+language plpgsql
+stable security definer
+set search_path to 'public', 'extensions', 'pg_temp'
+as $function$
+declare
+  v_uid   uuid := auth.uid();
+  v_phone text;
+  v_c     record;
+begin
+  if v_uid is null then
+    return jsonb_build_object('signed_in', false, 'opted_in', false);
+  end if;
+
+  select public.sms_e164(p.phone) into v_phone from public.profiles p where p.id = v_uid;
+  select * into v_c from public.sms_consent c where c.user_id = v_uid;
+
+  return jsonb_build_object(
+    'signed_in',    true,
+    'has_phone',    v_phone is not null,
+    'phone',        v_phone,
+    'opted_in',     v_c.opt_in_at is not null
+                      and (v_c.opt_out_at is null or v_c.opt_out_at < v_c.opt_in_at),
+    'opt_in_at',    v_c.opt_in_at,
+    'stale_phone',  v_c.opt_in_at is not null and v_c.phone is distinct from v_phone,
+    'line_type',    v_c.line_type,
+    'blocked',      public.sms_send_allowed(v_uid, null)
+  );
+end;
+$function$;
+
+-- sms_set_opt_in(p_opt_in boolean, p_surface text default 'settings')   grants: {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+create or replace function public.sms_set_opt_in(p_opt_in boolean, p_surface text default 'settings')
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'public', 'extensions', 'pg_temp'
+as $function$
+declare
+  v_uid   uuid := auth.uid();
+  v_phone text;
+begin
+  if v_uid is null then
+    raise exception 'Sign in to change your text message settings.';
+  end if;
+
+  select public.sms_e164(p.phone) into v_phone from public.profiles p where p.id = v_uid;
+
+  if p_opt_in and v_phone is null then
+    raise exception 'Add a mobile number to your profile first.';
+  end if;
+
+  if p_opt_in then
+    insert into public.sms_consent (user_id, phone, opt_in_at, opt_in_surface, updated_at)
+    values (v_uid, v_phone, now(), coalesce(nullif(btrim(p_surface), ''), 'unknown'), now())
+    on conflict (user_id) do update set
+      opt_in_at      = now(),
+      opt_in_surface = excluded.opt_in_surface,
+      -- A new number invalidates the lookup that belonged to the old one.
+      line_type      = case when sms_consent.phone is distinct from excluded.phone
+                            then null else sms_consent.line_type end,
+      line_type_at   = case when sms_consent.phone is distinct from excluded.phone
+                            then null else sms_consent.line_type_at end,
+      phone          = excluded.phone,
+      updated_at     = now();
+  else
+    -- Opting out with no row at all still records the refusal, so a later "did they ever
+    -- say no?" has an answer. coalesce on phone because there may be no number on file.
+    insert into public.sms_consent (user_id, phone, opt_out_at, opt_out_source, updated_at)
+    values (v_uid, coalesce(v_phone, 'unknown'), now(),
+            coalesce(nullif(btrim(p_surface), ''), 'settings'), now())
+    on conflict (user_id) do update set
+      opt_out_at     = now(),
+      opt_out_source = excluded.opt_out_source,
+      updated_at     = now();
+  end if;
+
+  return public.sms_status();
+end;
+$function$;
+
+-- sms_record_opt_out(p_phone text, p_source text default 'stop_reply')   grants: {postgres=X/postgres,service_role=X/postgres}
+create or replace function public.sms_record_opt_out(p_phone text, p_source text default 'stop_reply')
+returns int
+language plpgsql
+security definer
+set search_path to 'public', 'extensions', 'pg_temp'
+as $function$
+declare
+  v_phone text := public.sms_e164(p_phone);
+  v_n     int  := 0;
+begin
+  if v_phone is null then return 0; end if;
+
+  with targets as (
+    select p.id from public.profiles p where public.sms_e164(p.phone) = v_phone
+  )
+  insert into public.sms_consent (user_id, phone, opt_out_at, opt_out_source, updated_at)
+  select t.id, v_phone, now(), coalesce(nullif(btrim(p_source), ''), 'stop_reply'), now()
+    from targets t
+  on conflict (user_id) do update set
+    opt_out_at     = now(),
+    opt_out_source = excluded.opt_out_source,
+    updated_at     = now();
+
+  get diagnostics v_n = row_count;
+  return v_n;
+end;
+$function$;
+
+-- sms_record_line_type(p_phone text, p_line_type text)   grants: {postgres=X/postgres,service_role=X/postgres}
+create or replace function public.sms_record_line_type(p_phone text, p_line_type text)
+returns int
+language plpgsql
+security definer
+set search_path to 'public', 'extensions', 'pg_temp'
+as $function$
+declare
+  v_phone text := public.sms_e164(p_phone);
+  v_type  text := lower(coalesce(nullif(btrim(p_line_type), ''), 'unknown'));
+  v_n     int  := 0;
+begin
+  if v_phone is null then return 0; end if;
+  -- Normalise Twilio's vocabulary down to the four values the gate understands. Anything
+  -- unrecognised becomes 'unknown', which the gate refuses -- a new provider value must
+  -- never read as permission.
+  v_type := case
+    when v_type = 'mobile' then 'mobile'
+    when v_type in ('voip', 'fixedvoip', 'nonfixedvoip') then 'voip'
+    when v_type in ('landline', 'fixedline') then 'landline'
+    else 'unknown'
+  end;
+
+  update public.sms_consent c
+     set line_type = v_type, line_type_at = now(), updated_at = now()
+   where c.phone = v_phone;
+
+  get diagnostics v_n = row_count;
+  return v_n;
+end;
+$function$;
+
+-- sms_log_write(p_user_id uuid, p_phone text, p_kind text, p_status text, p_reason text default null, p_job_id uuid default null, p_provider_sid text default null, p_segments int default 1, p_dedupe_key text default null)   grants: {postgres=X/postgres,service_role=X/postgres}
+create or replace function public.sms_log_write(
+  p_user_id    uuid,
+  p_phone      text,
+  p_kind       text,
+  p_status     text,
+  p_reason     text default null,
+  p_job_id     uuid default null,
+  p_provider_sid text default null,
+  p_segments   int  default 1,
+  p_dedupe_key text default null
+)
+returns bigint
+language plpgsql
+security definer
+set search_path to 'public', 'extensions', 'pg_temp'
+as $function$
+declare
+  v_id bigint;
+begin
+  insert into public.sms_log (user_id, phone, kind, job_id, status, reason,
+                              provider_sid, segments, dedupe_key)
+  values (p_user_id, coalesce(public.sms_e164(p_phone), coalesce(p_phone, 'unknown')),
+          coalesce(nullif(btrim(p_kind), ''), 'unknown'), p_job_id,
+          coalesce(nullif(btrim(p_status), ''), 'error'), p_reason,
+          p_provider_sid, greatest(1, coalesce(p_segments, 1)), p_dedupe_key)
+  on conflict (dedupe_key) where dedupe_key is not null and status = 'sent'
+  do nothing
+  returning id into v_id;
+
+  if v_id is not null and p_status = 'sent' then
+    begin
+      perform public.sms_volume_alert();
+    exception when others then
+      raise warning 'sms_volume_alert failed: %', sqlerrm;
+    end;
+  end if;
+
+  return v_id;
+end;
+$function$;
+
+-- sms_volume_alert()   grants: {postgres=X/postgres,service_role=X/postgres}
+create or replace function public.sms_volume_alert()
+returns text
+language plpgsql
+security definer
+set search_path to 'public', 'extensions', 'pg_temp'
+as $function$
+declare
+  v_u      jsonb := public.sms_month_usage();
+  v_sent   int   := (v_u ->> 'sent')::int;
+  v_cap    int   := (v_u ->> 'cap')::int;
+  v_month  text  := v_u ->> 'month';
+  v_level  text;
+  v_key    text;
+  v_title  text;
+  v_body   text;
+  v_admin  uuid;
+  v_break  text;
+begin
+  if v_cap <= 0 then return 'no cap'; end if;
+
+  if v_sent >= v_cap then
+    v_level := 'cap';
+  elsif v_sent >= (v_cap * 4) / 5 then
+    v_level := 'warn';
+  else
+    return 'under';
+  end if;
+
+  v_key := 'sms_volume:' || v_month || ':' || v_level;
+  if not ((public.alert_should_send(v_key, 60 * 24 * 40) ->> 'send')::boolean) then
+    return 'throttled';
+  end if;
+
+  select string_agg(kind || ': ' || n, E'\n' order by n desc) into v_break
+    from (select kind, count(*) as n
+            from public.sms_log
+           where status = 'sent'
+             and created_at >= date_trunc('month', (now() at time zone 'America/Edmonton'))
+                               at time zone 'America/Edmonton'
+           group by kind) k;
+
+  v_title := case when v_level = 'cap'
+    then 'Text messages STOPPED: monthly limit of ' || v_cap || ' reached'
+    else 'Text messages at ' || (v_u ->> 'pct') || '% of the monthly limit' end;
+
+  v_body :=
+    case when v_level = 'cap'
+      then 'Freddy Fix It has sent ' || v_sent || ' text messages in ' || v_month
+        || ', which is the whole monthly limit of ' || v_cap || '.' || E'\n\n'
+        || 'Texting has stopped for the rest of the month. Email is still going out as '
+        || 'normal, so nobody has missed anything important.'
+      else 'Freddy Fix It has sent ' || v_sent || ' of ' || v_cap
+        || ' text messages in ' || v_month || '.' || E'\n\n'
+        || 'Nothing has stopped. At ' || v_cap || ' texting pauses for the rest of the '
+        || 'month and email carries on by itself.'
+    end
+    || E'\n\nThis month so far, by type:\n' || coalesce(v_break, '(none)')
+    || E'\n\n'
+    || '----------------------------------------' || E'\n'
+    || 'COPY EVERYTHING BELOW THIS LINE AND PASTE IT TO CLAUDE' || E'\n'
+    || '----------------------------------------' || E'\n\n'
+    || 'Our SMS volume hit ' || (v_u ->> 'pct') || '% of the monthly cap ('
+    || v_sent || ' of ' || v_cap || ' in ' || v_month || '). Per-type breakdown:' || E'\n'
+    || coalesce(v_break, '(none)') || E'\n\n'
+    || 'Read docs/notifications-and-email.md and '
+    || 'supabase/migrations/20261119_sms_consent_and_caps.sql, then query sms_log for '
+    || 'this month and tell me, in plain English:' || E'\n'
+    || '1. Which message types are driving the volume, and roughly what each costs us.'
+    || E'\n'
+    || '2. Whether any of them duplicate an email we already send -- if a type sends both, '
+    || 'say which one I should drop.' || E'\n'
+    || '3. Whether this volume is real growth or a loop (the same person or job texted '
+    || 'more than once for the same thing).' || E'\n'
+    || '4. Only then: whether to raise platform_settings.sms_monthly_cap, and to what.'
+    || E'\n\n'
+    || 'Do not raise the cap before showing me the per-type breakdown and your answer to '
+    || 'number 3. If it is a loop, fix the loop instead of the cap.';
+
+  for v_admin in select id from public.profiles where role = 'admin' loop
+    perform public._notify(v_admin, 'sms_cap_alert', v_title, v_body, null);
+  end loop;
+
+  return 'alerted:' || v_level;
+end;
+$function$;
+
+-- admin_sms_overview()   grants: {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}
+create or replace function public.admin_sms_overview()
+returns jsonb
+language plpgsql
+stable security definer
+set search_path to 'public', 'extensions', 'pg_temp'
+as $function$
+declare v_r jsonb;
+begin
+  if not public.is_admin() then
+    return jsonb_build_object('error', 'admin only');
+  end if;
+
+  select jsonb_build_object(
+    'usage',    public.sms_month_usage(),
+    'enabled',  coalesce((select (value #>> '{}')::boolean from public.platform_settings
+                           where key = 'sms_enabled'), false),
+    'starts',   (select value #>> '{}' from public.platform_settings
+                  where key = 'sms_effective_date'),
+    'opted_in', (select count(*) from public.sms_consent
+                  where opt_in_at is not null
+                    and (opt_out_at is null or opt_out_at < opt_in_at)),
+    'opted_out',(select count(*) from public.sms_consent
+                  where opt_out_at is not null
+                    and (opt_in_at is null or opt_out_at >= opt_in_at)),
+    'landlines',(select count(*) from public.sms_consent where line_type = 'landline'),
+    'unchecked',(select count(*) from public.sms_consent
+                  where opt_in_at is not null and line_type is null),
+    'recent',   coalesce((select jsonb_agg(r) from (
+                  select public.ff_local_ts(created_at) as at, kind, status, reason
+                    from public.sms_log order by created_at desc limit 50) r), '[]'::jsonb)
+  ) into v_r;
+
+  return v_r;
+end;
+$function$;
+
